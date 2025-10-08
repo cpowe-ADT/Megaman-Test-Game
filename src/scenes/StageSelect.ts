@@ -4,12 +4,12 @@ import { ORDERED_BOSSES } from '../bosses/roster'
 export class StageSelect extends Phaser.Scene {
   private index = 0
   private slots: Phaser.Math.Vector2[] = []
-  private cursor!: Phaser.GameObjects.Rectangle
-  private infoText!: Phaser.GameObjects.Text
-  private bossNameText!: Phaser.GameObjects.Text
-  private elementText!: Phaser.GameObjects.Text
-  private previewTitle!: Phaser.GameObjects.Text
-  private previewDescription!: Phaser.GameObjects.Text
+  private cursor?: Phaser.GameObjects.Rectangle
+  private infoText?: Phaser.GameObjects.Text
+  private bossNameText?: Phaser.GameObjects.Text
+  private elementText?: Phaser.GameObjects.Text
+  private previewTitle?: Phaser.GameObjects.Text
+  private previewDescription?: Phaser.GameObjects.Text
 
   constructor() {
     super('StageSelect')
@@ -23,14 +23,6 @@ export class StageSelect extends Phaser.Scene {
     this.createHeader(width)
     this.drawGrid()
     this.createPreviewPanel(width, height)
-    this.cursor = this.add
-      .rectangle(0, 0, 62, 42)
-      .setStrokeStyle(3, 0xffffff, 0.8)
-      .setFillStyle(0xffffff, 0)
-      .setDepth(3)
-
-    this.updateCursor()
-    this.updatePreview()
 
     this.bossNameText = this.add
       .text(width - 16, 56, '', {
@@ -58,7 +50,14 @@ export class StageSelect extends Phaser.Scene {
       })
       .setOrigin(1, 0)
 
-    this.refreshInfo()
+    this.cursor = this.add
+      .rectangle(0, 0, 62, 42)
+      .setStrokeStyle(3, 0xffffff, 0.8)
+      .setFillStyle(0xffffff, 0)
+      .setDepth(3)
+
+    this.updateCursor()
+    this.updatePreview()
 
     this.add
       .text(width / 2, height - 16, 'Arrows to move • Enter to start', {
@@ -67,6 +66,8 @@ export class StageSelect extends Phaser.Scene {
         color: '#9ad'
       })
       .setOrigin(0.5)
+
+    this.createFooter(width, height)
 
     const keyboard = this.input.keyboard
     keyboard?.on('keydown-LEFT', () => this.move(-1))
@@ -156,7 +157,7 @@ export class StageSelect extends Phaser.Scene {
 
   private updateCursor(): void {
     const slot = this.slots[this.index]
-    if (!slot) {
+    if (!slot || !this.cursor) {
       return
     }
     this.cursor.setPosition(slot.x, slot.y)
@@ -177,7 +178,7 @@ export class StageSelect extends Phaser.Scene {
 
   private refreshInfo(): void {
     const entry = ORDERED_BOSSES[this.index]
-    if (!entry) {
+    if (!entry || !this.bossNameText || !this.elementText || !this.infoText) {
       return
     }
     this.bossNameText.setText(entry.blueprint.codename)
@@ -221,7 +222,7 @@ export class StageSelect extends Phaser.Scene {
 
   private updatePreview(): void {
     const entry = ORDERED_BOSSES[this.index]
-    if (!entry) {
+    if (!entry || !this.previewTitle || !this.previewDescription) {
       return
     }
     const { blueprint } = entry
