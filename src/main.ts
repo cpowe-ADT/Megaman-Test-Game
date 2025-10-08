@@ -7,9 +7,14 @@ import { Game } from './scenes/Game'
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'app',
-  width: 320,
-  height: 180,
-  zoom: 3,
+  backgroundColor: '#0b0d12',
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 448,
+    height: 252,
+    zoom: Math.max(1, Math.round((window.devicePixelRatio ?? 1) * 1.25))
+  },
   physics: {
     default: 'arcade',
     arcade: {
@@ -18,7 +23,6 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   pixelArt: true,
-  backgroundColor: '#0b0d12',
   scene: [Boot, Preload, StageSelect, Game]
 }
 
