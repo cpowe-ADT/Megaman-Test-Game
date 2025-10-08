@@ -1,58 +1,22 @@
-# Aegis-X Code Architecture
+# Phaser Starter Architecture
 
-This document captures the major modules that make up the Aegis-X boss rush prototype. It is intended
-as a quick orientation guide for engineers who need to navigate the codebase or extend combat systems.
+This starter keeps the structure intentionally lean so new scenes, assets, or mechanics can be added without wrestling complex frameworks. The project is organized around Phaser's scene system and a handful of generated textures.
 
-## Runtime Overview
+## Scenes
 
-- **`Game`** – Owns the Canvas context, bootstraps input/audio/save subsystems, and drives the frame
-  loop. Scenes are swapped through a simple stack to support modal overlays or cinematics.
-- **Scenes** – Each scene encapsulates a discrete flow state (`Boot`, `Title`, `Select`, `Fight`,
-  `Win`, `End`). Scenes receive an `Env` bundle exposing shared managers and are responsible for their
-  own update/draw cycles.
-- **Entities** – Player and boss classes encapsulate gameplay rules. Projectiles are small data
-  objects updated each frame and rendered after primary actors to keep layering predictable.
-- **Systems** – Input, audio, HUD, FX, save, and camera managers are decoupled from scenes to make
-  orchestration explicit and testable.
+- **Boot** – Seeds a shared color palette inside the registry and immediately transitions to `Preload`.
+- **Preload** – Generates lightweight textures for the player sprite and UI elements. This eliminates the need for external downloads while prototyping.
+- **StageSelect** – Renders an eight-slot boss grid, handles keyboard navigation (arrows + Enter/Space), and starts the `Game` scene with the chosen boss identifier.
+- **Game** – Creates a minimal platforming sandbox with gravity, a moving platform, and responsive player controls. It demonstrates basic Arcade physics usage and shows how data is passed from `StageSelect`.
 
-## Data Flow
+## Rendering & Physics
 
-### Boss Canonical Data
+- Phaser is configured at 320×180 with a zoom factor of 3, yielding a crisp 960×540 presentation ideal for retro pixels.
+- Arcade Physics powers collisions between the player, ground, and moving platform. A tween updates the static platform's body every frame to keep collisions accurate.
 
-`src/game/data/Bosses.ts` defines a single source of truth for every encounter:
+## Tooling
 
-- `BossDefinition` objects capture codename, element, weapon reward, stage select slot, hint text,
-  arena tuning, and theme colors.
-- Helper accessors (e.g. `getBossDefinition`, `getBossTheme`, `getBossWeaponReward`) expose these
-  facts to scenes and systems without duplicating lookups.
-- Stage grid utilities derive their structure from the same definitions, ensuring select screen and
-  combat code stay synchronized.
+- **Vite 5** provides instant dev-server feedback and production bundling.
+- **TypeScript 5** is configured with strict mode and bundler-style module resolution to match modern ESM ecosystems.
 
-### Elements & Weaknesses
-
-`src/game/data/WeaknessTable.ts` houses the elemental rock-paper-scissors loop. It now derives the
-`BossThemes` and `BossWeaponRewards` maps from the canonical boss definitions, eliminating manual
-synchronisation between files.
-
-### Combat Loop
-
-`SceneFight` orchestrates encounters by combining:
-
-- The `Player` controller – handles movement (acceleration, jump buffer, coyote time, dash),
-  inventory state, and projectile spawning.
-- `SimpleBoss` – a data-driven boss shell with configurable move speed, fire cadence, health, and
-  projectile properties.
-- `FXSystem` – responsible for screen shake and particle primitives when attacks connect.
-
-Damage resolution leverages `computeMultiplier` so elemental weaknesses and resistances are applied
-consistently between weapons and bosses.
-
-## Asset & Extensibility Notes
-
-- New bosses only require an additional `BossDefinition`. Existing scenes and systems automatically
-  pick up the entry for stage select, win screens, and rewards.
-- Weapon implementations live under `src/game/weapons`. `ElementalShot` and `Buster` illustrate how
-  to share behaviour while allowing bespoke stats.
-- HUD treatments rely on the `BossDefinition.theme` palette, so UI updates can stay data-driven.
-
-For further expansion ideas and high-level goals, see the project `README.md` roadmap section.
+This foundation is ready for layering in assets, additional scenes, UI, and gameplay systems while keeping the learning curve small for new contributors.
