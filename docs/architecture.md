@@ -7,7 +7,7 @@ This starter keeps the structure intentionally lean so new scenes, assets, or me
 - **Boot** – Seeds a shared color palette inside the registry and immediately transitions to `Preload`.
 - **Preload** – Generates lightweight textures for the player sprite and UI elements. This eliminates the need for external downloads while prototyping.
 - **StageSelect** – Renders an eight-slot boss grid, handles keyboard navigation (arrows + Enter/Space), and starts the `Game` scene with the chosen boss identifier.
-- **Game** – Creates a minimal platforming sandbox with gravity, a moving platform, and responsive player controls. It demonstrates basic Arcade physics usage and shows how data is passed from `StageSelect`.
+- **Game** – Creates a minimal platforming sandbox with gravity, a moving platform, and responsive player controls. The scene now wires Z / X / C / S inputs for dash, charge shots, saber strings, and weapon cycling while showing how data is passed from `StageSelect`.
 
 ## Rendering & Physics
 
