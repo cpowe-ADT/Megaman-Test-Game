@@ -5,14 +5,14 @@ This starter keeps the structure intentionally lean so new scenes, assets, or me
 ## Scenes
 
 - **Boot** – Seeds a shared color palette inside the registry and immediately transitions to `Preload`.
-- **Preload** – Generates lightweight textures for the player sprite and UI elements. This eliminates the need for external downloads while prototyping.
+- **Preload** – Builds a miniature sprite kit at runtime, drawing every player pose, projectile, hazard, and dummy target with `Graphics`. This keeps the project self-contained while still enabling animation-driven gameplay.
 - **StageSelect** – Renders an eight-slot boss grid, handles keyboard navigation (arrows + Enter/Space), and starts the `Game` scene with the chosen boss identifier.
 - **Game** – Creates a minimal platforming sandbox with gravity, a moving platform, and responsive player controls. The scene now wires Z / X / C / S inputs for dash, charge shots, saber strings, and weapon cycling while showing how data is passed from `StageSelect`.
 
 ## Rendering & Physics
 
 - Phaser is configured at 320×180 with a zoom factor of 3, yielding a crisp 960×540 presentation ideal for retro pixels.
-- Arcade Physics powers collisions between the player, ground, and moving platform. A tween updates the static platform's body every frame to keep collisions accurate.
+- Arcade Physics powers collisions between the player, ground, hazards, dummy enemy, moving platform, and projectiles. A tween updates the static platform's body every frame to keep collisions accurate.
 
 ## Tooling
 
