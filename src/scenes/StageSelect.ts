@@ -177,7 +177,10 @@ export class StageSelect extends Phaser.Scene {
           .setInteractive({ useHandCursor: true })
 
         rect.on('pointerover', () => this.onSlotHover(slotIndex))
-        rect.on('pointerdown', () => this.confirm())
+        rect.on('pointerdown', () => {
+          this.onSlotHover(slotIndex)
+          this.confirm()
+        })
 
         const name = this.add
           .text(x, y - 12, '', {
