@@ -1,0 +1,36 @@
+:root {
+  color-scheme: dark;
+  background-color: #05070c;
+  color: #f4f7ff;
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+}
+
+body,
+html,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #091121, #05070c 70%);
+}
+
+.app-shell {
+  border: 2px solid rgba(87, 201, 255, 0.65);
+  box-shadow: 0 0 24px rgba(44, 211, 255, 0.25);
+  padding: 12px;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+
+canvas {
+  display: block;
+  image-rendering: pixelated;
+  width: min(90vw, 960px);
+  height: auto;
+  max-height: 90vh;
+  background: #0b1020;
+}
