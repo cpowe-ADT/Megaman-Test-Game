@@ -4,41 +4,34 @@ interface GameData {
   boss: string
 }
 
-type PlayerAnimationKey =
-  | 'player-idle'
-  | 'player-run'
-  | 'player-jump'
-  | 'player-fall'
-  | 'player-shoot'
-  | 'player-shoot-air'
-  | 'player-slide'
-  | 'player-hurt'
+type ActionKeyMap = {
+  dash: Phaser.Input.Keyboard.Key
+  shoot: Phaser.Input.Keyboard.Key
+  saber: Phaser.Input.Keyboard.Key
+  cycleForward: Phaser.Input.Keyboard.Key
+  shoulderPrev: Phaser.Input.Keyboard.Key
+  shoulderNext: Phaser.Input.Keyboard.Key
+  jumpAlt: Phaser.Input.Keyboard.Key
+  modifier: Phaser.Input.Keyboard.Key
+}
 
 export class Game extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private player!: Phaser.Physics.Arcade.Sprite
+  private actionKeys!: ActionKeyMap
   private bullets!: Phaser.Physics.Arcade.Group
-  private hazards!: Phaser.Physics.Arcade.StaticGroup
-  private enemies!: Phaser.Physics.Arcade.Group
-  private jumpKey!: Phaser.Input.Keyboard.Key
-  private shootKey!: Phaser.Input.Keyboard.Key
-  private altShootKey!: Phaser.Input.Keyboard.Key
-  private slideKey!: Phaser.Input.Keyboard.Key
-  private facing: 1 | -1 = 1
-  private nextShotTime = 0
-  private shootingUntil = 0
-  private slideUntil = 0
-  private hurtUntil = 0
-  private invulnerableUntil = 0
-  private usingSlideHitbox = false
-  private currentAnimation: PlayerAnimationKey = 'player-idle'
-  private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
-    const sprite = body.gameObject as Phaser.GameObjects.Sprite | null
-    if (!sprite || sprite.getData('type') !== 'bullet') {
-      return
-    }
-    this.recycleBullet(sprite as Phaser.Physics.Arcade.Sprite)
-  }
+  private weaponLabel!: Phaser.GameObjects.Text
+  private isChargingShot = false
+  private chargeStartedAt = 0
+  private currentWeaponIndex = 0
+  private readonly weapons = ['Buster', 'Fire', 'Aqua', 'Elec']
+  private dashActive = false
+  private dashTimer = 0
+  private dashCooldownTimer = 0
+  private readonly dashDuration = 140
+  private readonly dashCooldown = 420
+  private saberComboStep = 0
+  private saberComboTimer = 0
 
   constructor() {
     super('Game')
@@ -56,20 +49,12 @@ export class Game extends Phaser.Scene {
       })
       .setScrollFactor(0)
 
-    const instructions = [
-      'Arrows move • Up/Z jump',
-      'X or Space shoot • C slide',
-      'Avoid spikes & training bot!'
-    ].join('\n')
-
-    this.add
-      .text(width - 8, 8, instructions, {
+    this.weaponLabel = this.add
+      .text(6, 18, `Weapon: ${this.weapons[this.currentWeaponIndex]}`, {
         fontFamily: 'monospace',
-        fontSize: '8px',
-        color: '#9ad',
-        align: 'right'
+        fontSize: '10px',
+        color: '#9ad'
       })
-      .setOrigin(1, 0)
       .setScrollFactor(0)
 
     const ground = this.add.rectangle(width / 2, height - 8, width, 16, 0x1a2230)
@@ -139,22 +124,64 @@ export class Game extends Phaser.Scene {
     })
 
     this.cursors = this.input.keyboard!.createCursorKeys()
-    this.jumpKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z)
-    this.shootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X)
-    this.altShootKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
-    this.slideKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.C)
+    this.actionKeys = this.input.keyboard!.addKeys({
+      dash: Phaser.Input.Keyboard.KeyCodes.Z,
+      shoot: Phaser.Input.Keyboard.KeyCodes.X,
+      saber: Phaser.Input.Keyboard.KeyCodes.C,
+      cycleForward: Phaser.Input.Keyboard.KeyCodes.S,
+      shoulderPrev: Phaser.Input.Keyboard.KeyCodes.L,
+      shoulderNext: Phaser.Input.Keyboard.KeyCodes.R,
+      jumpAlt: Phaser.Input.Keyboard.KeyCodes.A,
+      modifier: Phaser.Input.Keyboard.KeyCodes.SHIFT
+    }) as ActionKeyMap
+
+    this.bullets = this.physics.add.group({
+      classType: Phaser.Physics.Arcade.Image,
+      maxSize: 12,
+      allowGravity: false
+    })
 
     this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
     const body = this.player.body as Phaser.Physics.Arcade.Body
-    const now = this.time.now
-    const onGround = body.blocked.down
-    const hurt = now < this.hurtUntil
-    const sliding = now < this.slideUntil
 
-    if (hurt) {
+    if (this.dashCooldownTimer > 0) {
+      this.dashCooldownTimer = Math.max(0, this.dashCooldownTimer - delta)
+    }
+
+    if (this.dashActive) {
+      this.dashTimer = Math.max(0, this.dashTimer - delta)
+      if (this.dashTimer === 0) {
+        this.dashActive = false
+        this.player.setDragX(800)
+        this.updatePlayerTint()
+      }
+    }
+
+    if (this.saberComboStep > 0) {
+      this.saberComboTimer = Math.max(0, this.saberComboTimer - delta)
+      if (this.saberComboTimer === 0) {
+        this.saberComboStep = 0
+        this.updatePlayerTint()
+      }
+    }
+
+    const movingLeft = this.cursors.left?.isDown
+    const movingRight = this.cursors.right?.isDown
+
+    if (!this.dashActive) {
+      if (movingLeft) {
+        this.player.setAccelerationX(-600)
+        this.player.setFlipX(true)
+      } else if (movingRight) {
+        this.player.setAccelerationX(600)
+        this.player.setFlipX(false)
+      } else {
+        this.player.setAccelerationX(0)
+      }
+    } else {
       this.player.setAccelerationX(0)
       this.setPlayerAnimation('player-hurt')
       this.player.setFlipX(this.facing === -1)
@@ -197,163 +224,157 @@ export class Game extends Phaser.Scene {
       this.player.setVelocityY(-260)
     }
 
-    const shootPressed =
-      Phaser.Input.Keyboard.JustDown(this.shootKey) || Phaser.Input.Keyboard.JustDown(this.altShootKey)
-
-    if (shootPressed) {
-      this.fireBuster()
+    if (onGround && Phaser.Input.Keyboard.JustDown(this.actionKeys.jumpAlt)) {
+      this.player.setVelocityY(-230)
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.slideKey) && onGround && now >= this.slideUntil) {
-      this.startSlide()
+    if (Phaser.Input.Keyboard.JustDown(this.actionKeys.dash)) {
+      this.tryDash()
     }
 
-    const shooting = now < this.shootingUntil
-    let animation: PlayerAnimationKey = 'player-idle'
-
-    if (sliding) {
-      animation = 'player-slide'
-    } else if (!onGround) {
-      animation = shooting ? 'player-shoot-air' : body.velocity.y < 0 ? 'player-jump' : 'player-fall'
-    } else if (shooting) {
-      animation = 'player-shoot'
-    } else if (Math.abs(body.velocity.x) > 45) {
-      animation = 'player-run'
+    if (Phaser.Input.Keyboard.JustDown(this.actionKeys.shoot)) {
+      this.startCharge()
     }
 
-    this.setPlayerAnimation(animation)
+    if (Phaser.Input.Keyboard.JustUp(this.actionKeys.shoot) && this.isChargingShot) {
+      this.releaseShot()
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.actionKeys.saber)) {
+      this.startSaberCombo()
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.actionKeys.cycleForward)) {
+      if (this.actionKeys.modifier.isDown) {
+        this.cycleWeapon(-1)
+      } else {
+        this.cycleWeapon(1)
+      }
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.actionKeys.shoulderNext)) {
+      this.cycleWeapon(1)
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.actionKeys.shoulderPrev)) {
+      this.cycleWeapon(-1)
+    }
+
+    if (this.isChargingShot && this.actionKeys.shoot.isDown) {
+      this.updatePlayerTint()
+    }
+
+    this.recycleBullets()
   }
 
-  private fireBuster(): void {
-    const now = this.time.now
-    if (now < this.nextShotTime || now < this.hurtUntil) {
+  private tryDash(): void {
+    if (this.dashCooldownTimer > 0 || this.dashActive) {
       return
     }
 
-    const spawnX = this.player.x + this.facing * 10
-    const spawnY = this.player.y - 4
-    const bullet = this.bullets.get(spawnX, spawnY, 'buster_0') as Phaser.Physics.Arcade.Sprite | null
+    const direction = this.player.flipX ? -1 : 1
+    this.player.setAccelerationX(0)
+    this.player.setDragX(0)
+    this.player.setVelocityX(direction * 280)
 
-    if (!bullet) {
+    this.dashActive = true
+    this.dashTimer = this.dashDuration
+    this.dashCooldownTimer = this.dashDuration + this.dashCooldown
+    this.updatePlayerTint()
+  }
+
+  private startCharge(): void {
+    this.isChargingShot = true
+    this.chargeStartedAt = this.time.now
+    this.updatePlayerTint()
+  }
+
+  private releaseShot(): void {
+    const chargeTime = this.time.now - this.chargeStartedAt
+    const chargeLevel = chargeTime > 1200 ? 2 : chargeTime > 450 ? 1 : 0
+    const speed = [260, 320, 380][chargeLevel]
+    const scale = [1, 1.5, 2][chargeLevel]
+    const tint = [0xffffff, 0xa0d9ff, 0xfff099][chargeLevel]
+    const offsetX = this.player.flipX ? -8 : 8
+
+    const bullet = this.bullets.get(
+      this.player.x + offsetX,
+      this.player.y - 2,
+      'pixel'
+    ) as Phaser.Physics.Arcade.Image | null
+
+    if (bullet) {
+      bullet.setActive(true)
+      bullet.setVisible(true)
+      bullet.setScale(scale)
+      bullet.setTint(tint)
+      const bulletBody = bullet.body as Phaser.Physics.Arcade.Body
+      bulletBody.reset(this.player.x + offsetX, this.player.y - 2)
+      bullet.setVelocityX(this.player.flipX ? -speed : speed)
+    }
+
+    this.isChargingShot = false
+    this.updatePlayerTint()
+  }
+
+  private startSaberCombo(): void {
+    this.saberComboStep = (this.saberComboStep % 4) + 1
+    this.saberComboTimer = 240
+    this.updatePlayerTint()
+  }
+
+  private cycleWeapon(direction: 1 | -1): void {
+    const total = this.weapons.length
+    this.currentWeaponIndex = (this.currentWeaponIndex + direction + total) % total
+    this.weaponLabel.setText(`Weapon: ${this.weapons[this.currentWeaponIndex]}`)
+  }
+
+  private updatePlayerTint(): void {
+    if (!this.player) {
       return
     }
 
-    bullet.setActive(true)
-    bullet.setVisible(true)
-    bullet.body.enable = true
-    bullet.body.allowGravity = false
-    bullet.body.onWorldBounds = true
-    bullet.setVelocity(this.facing * 320, 0)
-    bullet.setData('type', 'bullet')
-    bullet.setSize(6, 6)
-    bullet.setOffset(0, 0)
-    bullet.play('buster-fly')
-    this.shootingUntil = now + 200
-    this.nextShotTime = now + 180
+    if (this.dashActive) {
+      this.player.setTint(0x9adfff)
+      return
+    }
+
+    if (this.saberComboStep > 0) {
+      const colors = [0xfff6a0, 0xffc8a0, 0xff9a9a, 0xffffff]
+      this.player.setTint(colors[this.saberComboStep - 1])
+      return
+    }
+
+    if (this.isChargingShot) {
+      const chargeTime = this.time.now - this.chargeStartedAt
+      const tint = chargeTime > 1200 ? 0xfff099 : chargeTime > 450 ? 0xa0d9ff : 0xffffff
+      this.player.setTint(tint)
+      return
+    }
+
+    this.player.clearTint()
   }
 
-  private recycleBullet(bullet: Phaser.Physics.Arcade.Sprite): void {
-    bullet.body.stop()
-    bullet.body.enable = false
-    bullet.setActive(false)
-    bullet.setVisible(false)
-    this.bullets.killAndHide(bullet)
-  }
+  private recycleBullets(): void {
+    const camera = this.cameras.main
+    const { left, right, top, bottom } = camera.worldView
 
-  private onBulletHitsEnemy(
-    bulletObj: Phaser.GameObjects.GameObject,
-    enemyObj: Phaser.GameObjects.GameObject
-  ): void {
-    const bullet = bulletObj as Phaser.Physics.Arcade.Sprite
-    const enemy = enemyObj as Phaser.Physics.Arcade.Sprite
-    this.recycleBullet(bullet)
+    this.bullets.children.each((obj) => {
+      const bullet = obj as Phaser.Physics.Arcade.Image
+      if (!bullet.active) {
+        return
+      }
 
-    const health = (enemy.getData('health') as number | undefined) ?? 1
-    const nextHealth = health - 1
-    enemy.setData('health', nextHealth)
-    enemy.setTintFill(0xffffff)
-    this.time.delayedCall(80, () => {
-      if (enemy.active) {
-        enemy.clearTint()
+      const offscreen =
+        bullet.x < left - 32 ||
+        bullet.x > right + 32 ||
+        bullet.y < top - 32 ||
+        bullet.y > bottom + 32
+
+      if (offscreen) {
+        bullet.setActive(false)
+        bullet.setVisible(false)
       }
     })
-
-    if (nextHealth <= 0) {
-      enemy.body.enable = false
-      enemy.play('dummy-explode')
-      this.time.delayedCall(260, () => enemy.destroy())
-    }
-  }
-
-  private onPlayerDamaged(
-    playerObj: Phaser.GameObjects.GameObject,
-    sourceObj: Phaser.GameObjects.GameObject
-  ): void {
-    const now = this.time.now
-    if (now < this.invulnerableUntil) {
-      return
-    }
-
-    this.invulnerableUntil = now + 1000
-    this.hurtUntil = now + 400
-    this.slideUntil = 0
-    this.resetPlayerHitbox(true)
-
-    const source = sourceObj as Phaser.GameObjects.Sprite | undefined
-    const direction = source ? Math.sign(this.player.x - source.x) || 1 : -this.facing
-    this.facing = direction >= 0 ? 1 : -1
-    this.player.setVelocity(direction * 160, -220)
-
-    this.player.setTintFill(0xffffff)
-    this.time.delayedCall(100, () => this.player.clearTint())
-
-    this.tweens.add({
-      targets: this.player,
-      alpha: 0.3,
-      duration: 90,
-      yoyo: true,
-      repeat: 6,
-      onComplete: () => this.player.setAlpha(1)
-    })
-  }
-
-  private startSlide(): void {
-    const now = this.time.now
-    if (now < this.hurtUntil) {
-      return
-    }
-
-    this.slideUntil = now + 320
-    this.shootingUntil = this.slideUntil
-    this.applySlideHitbox()
-    this.player.setVelocity(this.facing * 260, 0)
-  }
-
-  private setPlayerAnimation(key: PlayerAnimationKey): void {
-    if (this.currentAnimation === key) {
-      return
-    }
-    this.currentAnimation = key
-    this.player.play(key, true)
-  }
-
-  private applySlideHitbox(): void {
-    if (this.usingSlideHitbox) {
-      return
-    }
-    const body = this.player.body as Phaser.Physics.Arcade.Body
-    body.setSize(14, 12)
-    body.setOffset(2, 6)
-    this.usingSlideHitbox = true
-  }
-
-  private resetPlayerHitbox(force = false): void {
-    if (!force && !this.usingSlideHitbox) {
-      return
-    }
-    const body = this.player.body as Phaser.Physics.Arcade.Body
-    body.setSize(10, 16)
-    body.setOffset(3, 2)
-    this.usingSlideHitbox = false
   }
 }

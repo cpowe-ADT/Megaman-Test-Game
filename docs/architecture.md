@@ -7,7 +7,7 @@ This starter keeps the structure intentionally lean so new scenes, assets, or me
 - **Boot** – Seeds a shared color palette inside the registry and immediately transitions to `Preload`.
 - **Preload** – Builds a miniature sprite kit at runtime, drawing every player pose, projectile, hazard, and dummy target with `Graphics`. This keeps the project self-contained while still enabling animation-driven gameplay.
 - **StageSelect** – Renders an eight-slot boss grid, handles keyboard navigation (arrows + Enter/Space), and starts the `Game` scene with the chosen boss identifier.
-- **Game** – Evolves the sandbox into a combat playground. The player now has animated run/jump/fall/shoot/slide/hurt states, a buster projectile with cooldowns, hazards that inflict knockback, and a roaming dummy that can be destroyed.
+- **Game** – Creates a minimal platforming sandbox with gravity, a moving platform, and responsive player controls. The scene now wires Z / X / C / S inputs for dash, charge shots, saber strings, and weapon cycling while showing how data is passed from `StageSelect`.
 
 ## Rendering & Physics
 
