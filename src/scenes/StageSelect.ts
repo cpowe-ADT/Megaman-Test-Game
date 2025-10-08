@@ -21,6 +21,7 @@ export class StageSelect extends Phaser.Scene {
   private index = 0
   private slots: Phaser.Math.Vector2[] = []
   private cursor!: Phaser.GameObjects.Rectangle
+  private keyboard?: Phaser.Input.Keyboard.KeyboardPlugin
 
   constructor() {
     super('StageSelect')
@@ -55,12 +56,18 @@ export class StageSelect extends Phaser.Scene {
       .setOrigin(0.5)
 
     const keyboard = this.input.keyboard
-    keyboard?.on('keydown-LEFT', () => this.move(-1))
-    keyboard?.on('keydown-RIGHT', () => this.move(1))
-    keyboard?.on('keydown-UP', () => this.move(-4))
-    keyboard?.on('keydown-DOWN', () => this.move(4))
-    keyboard?.on('keydown-ENTER', () => this.confirm())
-    keyboard?.on('keydown-SPACE', () => this.confirm())
+    if (keyboard) {
+      this.keyboard = keyboard
+      keyboard.on('keydown-LEFT', this.handleMoveLeft, this)
+      keyboard.on('keydown-RIGHT', this.handleMoveRight, this)
+      keyboard.on('keydown-UP', this.handleMoveUp, this)
+      keyboard.on('keydown-DOWN', this.handleMoveDown, this)
+      keyboard.on('keydown-ENTER', this.confirm, this)
+      keyboard.on('keydown-SPACE', this.confirm, this)
+
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.removeKeyboardListeners, this)
+      this.events.once(Phaser.Scenes.Events.DESTROY, this.removeKeyboardListeners, this)
+    }
   }
 
   private drawGrid(): void {
@@ -110,5 +117,36 @@ export class StageSelect extends Phaser.Scene {
   private confirm(): void {
     const boss = BOSSES[this.index]
     this.scene.start('Game', { boss: boss.key })
+  }
+
+  private handleMoveLeft(): void {
+    this.move(-1)
+  }
+
+  private handleMoveRight(): void {
+    this.move(1)
+  }
+
+  private handleMoveUp(): void {
+    this.move(-4)
+  }
+
+  private handleMoveDown(): void {
+    this.move(4)
+  }
+
+  private removeKeyboardListeners(): void {
+    if (!this.keyboard) {
+      return
+    }
+
+    this.keyboard.off('keydown-LEFT', this.handleMoveLeft, this)
+    this.keyboard.off('keydown-RIGHT', this.handleMoveRight, this)
+    this.keyboard.off('keydown-UP', this.handleMoveUp, this)
+    this.keyboard.off('keydown-DOWN', this.handleMoveDown, this)
+    this.keyboard.off('keydown-ENTER', this.confirm, this)
+    this.keyboard.off('keydown-SPACE', this.confirm, this)
+
+    this.keyboard = undefined
   }
 }
