@@ -8,6 +8,8 @@ export class StageSelect extends Phaser.Scene {
   private infoText!: Phaser.GameObjects.Text
   private bossNameText!: Phaser.GameObjects.Text
   private elementText!: Phaser.GameObjects.Text
+  private previewTitle!: Phaser.GameObjects.Text
+  private previewDescription!: Phaser.GameObjects.Text
 
   constructor() {
     super('StageSelect')
@@ -218,13 +220,16 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private updatePreview(): void {
-    const boss = BOSSES[this.index]
-    if (!boss) {
+    const entry = ORDERED_BOSSES[this.index]
+    if (!entry) {
       return
     }
-    this.previewTitle.setText(`${boss.name.toUpperCase()} // MISSION BRIEF`)
-    this.previewTitle.setColor('#ffffff')
-    this.previewDescription.setText(boss.description)
+    const { blueprint } = entry
+    this.previewTitle.setText(`${blueprint.codename.toUpperCase()} // ${blueprint.introCallout}`)
+    this.previewDescription.setText(
+      `Arena: ${blueprint.arena}\n` +
+        `Profile: ${blueprint.movementProfile.mobilityNotes}`
+    )
   }
 
   private createFooter(width: number, height: number): void {
