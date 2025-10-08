@@ -15,23 +15,20 @@ export class StageSelect extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale
-    this.cameras.main.setBackgroundColor('#10131a')
+    this.cameras.main.setBackgroundColor('#06090f')
 
-    this.add
-      .text(width / 2, 24, 'Stage Select', {
-        fontFamily: 'monospace',
-        fontSize: '14px',
-        color: '#ffffff'
-      })
-      .setOrigin(0.5)
-
+    this.createBackdrop(width, height)
+    this.createHeader(width)
     this.drawGrid()
+    this.createPreviewPanel(width, height)
     this.cursor = this.add
-      .rectangle(0, 0, 58, 38)
-      .setStrokeStyle(2, 0xffffff)
+      .rectangle(0, 0, 62, 42)
+      .setStrokeStyle(3, 0xffffff, 0.8)
       .setFillStyle(0xffffff, 0)
+      .setDepth(3)
 
     this.updateCursor()
+    this.updatePreview()
 
     this.bossNameText = this.add
       .text(width - 16, 56, '', {
@@ -78,6 +75,43 @@ export class StageSelect extends Phaser.Scene {
     keyboard?.on('keydown-SPACE', () => this.confirm())
   }
 
+  private createBackdrop(width: number, height: number): void {
+    this.add
+      .rectangle(width / 2, height / 2, width, height, 0x0d1424)
+      .setAlpha(0.95)
+
+    this.add
+      .rectangle(width / 2, height / 2, width, height, 0x1a2847)
+      .setAlpha(0.35)
+
+    this.add
+      .rectangle(width / 2, height - 60, width, 120, 0x03060c)
+      .setAlpha(0.35)
+  }
+
+  private createHeader(width: number): void {
+    this.add
+      .rectangle(width / 2, 52, width - 48, 72, 0x101c33, 0.85)
+      .setStrokeStyle(2, 0x3a75c4, 0.6)
+
+    this.add
+      .text(width / 2, 38, 'MISSION SELECT', {
+        fontFamily: 'monospace',
+        fontSize: '26px',
+        color: '#ffffff',
+        letterSpacing: 2
+      })
+      .setOrigin(0.5)
+
+    this.add
+      .text(width / 2, 68, 'Choose a Maverick to infiltrate their stronghold', {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: '#8fb8ff'
+      })
+      .setOrigin(0.5)
+  }
+
   private drawGrid(): void {
     const { width } = this.scale
     const startX = width / 2 - 96
@@ -99,9 +133,10 @@ export class StageSelect extends Phaser.Scene {
       this.add
         .text(rect.x, rect.y - 6, entry.blueprint.codename, {
           fontFamily: 'monospace',
-          fontSize: '10px',
+          fontSize: '12px',
           color: '#ffffff',
-          align: 'center'
+          align: 'center',
+          fontStyle: 'bold'
         })
         .setOrigin(0.5)
 
@@ -130,6 +165,7 @@ export class StageSelect extends Phaser.Scene {
     const len = ORDERED_BOSSES.length
     this.index = (this.index + delta + len) % len
     this.updateCursor()
+    this.updatePreview()
   }
 
   private confirm(): void {
@@ -151,5 +187,58 @@ export class StageSelect extends Phaser.Scene {
     this.infoText.setText(
       `Arena: ${blueprint.arena}\nReward: ${reward.displayName}\n${reward.description}`
     )
+  }
+
+  private createPreviewPanel(width: number, height: number): void {
+    const panelWidth = width - 80
+    const panelY = height - 120
+
+    this.add
+      .rectangle(width / 2, panelY, panelWidth, 104, 0x0c1324, 0.9)
+      .setStrokeStyle(2, 0x3a75c4, 0.6)
+
+    this.previewTitle = this.add
+      .text(width / 2, panelY - 20, '', {
+        fontFamily: 'monospace',
+        fontSize: '20px',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      })
+      .setOrigin(0.5)
+
+    this.previewDescription = this.add
+      .text(width / 2, panelY + 12, '', {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: '#c7d8ff',
+        align: 'center',
+        wordWrap: { width: panelWidth - 40 }
+      })
+      .setOrigin(0.5)
+  }
+
+  private updatePreview(): void {
+    const boss = BOSSES[this.index]
+    if (!boss) {
+      return
+    }
+    this.previewTitle.setText(`${boss.name.toUpperCase()} // MISSION BRIEF`)
+    this.previewTitle.setColor('#ffffff')
+    this.previewDescription.setText(boss.description)
+  }
+
+  private createFooter(width: number, height: number): void {
+    const footerY = height - 32
+    this.add
+      .rectangle(width / 2, footerY, width - 120, 40, 0x091020, 0.8)
+      .setStrokeStyle(1, 0x3a75c4, 0.4)
+
+    this.add
+      .text(width / 2, footerY, '← → / ↑ ↓ NAVIGATE   •   ENTER / SPACE START MISSION', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#9acbff'
+      })
+      .setOrigin(0.5)
   }
 }
