@@ -1,21 +1,18 @@
 import { BossId } from '../types';
+import { getAllBossDefinitions, getBossAtGrid } from '../data/Bosses';
 
-const GRID: BossId[][] = [
-  ['PyroMaw', 'TideReaver', 'VoltHopper'],
-  ['BasaltTitan', 'Rook', 'FerroBlade'],
-  ['MireWraith', 'GaleVixen', 'GlacierRonin']
-];
+const nodes = getAllBossDefinitions()
+  .map((definition) => ({ id: definition.id, col: definition.stage.col, row: definition.stage.row }))
+  .sort((a, b) => (a.row - b.row) || (a.col - b.col));
 
 export function gridToBossId(col: number, row: number): BossId {
-  return GRID[row][col];
+  const definition = getBossAtGrid(col, row);
+  if (!definition) {
+    throw new Error(`No boss registered at grid position (${col}, ${row})`);
+  }
+  return definition.id;
 }
 
 export function iterateGrid(): { id: BossId; col: number; row: number }[] {
-  const result: { id: BossId; col: number; row: number }[] = [];
-  GRID.forEach((row, rowIndex) => {
-    row.forEach((id, colIndex) => {
-      result.push({ id, col: colIndex, row: rowIndex });
-    });
-  });
-  return result;
+  return nodes;
 }

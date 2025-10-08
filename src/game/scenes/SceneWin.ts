@@ -1,6 +1,6 @@
 import { BaseScene } from './BaseScene';
 import { BossId, Env } from '../types';
-import { BossWeaponRewards } from '../data/WeaknessTable';
+import { getBossDefinition } from '../data/Bosses';
 import { SceneSelect } from './SceneSelect';
 import { SceneEnd } from './SceneEnd';
 import { Game } from '../Game';
@@ -33,7 +33,7 @@ export class SceneWin extends BaseScene {
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
-    const weapon = BossWeaponRewards[this.bossId];
+    const definition = getBossDefinition(this.bossId);
     ctx.save();
     ctx.fillStyle = '#04060d';
     ctx.fillRect(0, 0, this.env.canvas.width, this.env.canvas.height);
@@ -41,7 +41,7 @@ export class SceneWin extends BaseScene {
     ctx.font = '24px "Rajdhani", sans-serif';
     ctx.fillText('Victory!', 250, 120);
     ctx.font = '18px "Rajdhani", sans-serif';
-    ctx.fillText(`Weapon acquired: ${weapon}`, 180, 180);
+    ctx.fillText(`Weapon acquired: ${definition.weaponReward}`, 180, 180);
     ctx.fillText('Press confirm to continue.', 200, 220);
     ctx.restore();
   }

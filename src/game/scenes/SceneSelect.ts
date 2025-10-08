@@ -1,20 +1,8 @@
 import { BaseScene } from './BaseScene';
 import { iterateGrid } from '../stage/StageGrid';
-import { BossThemes } from '../data/WeaknessTable';
 import { BossId, Element, SaveState } from '../types';
 import { SceneFight } from './SceneFight';
-
-const WEAKNESS_HINTS: Record<BossId, string> = {
-  PyroMaw: 'Rumor: Water quenches raging fire.',
-  TideReaver: 'Rumor: Lightning can ionize torrents.',
-  VoltHopper: 'Rumor: Earth can ground stray voltage.',
-  BasaltTitan: 'Rumor: Metal drills through stone.',
-  FerroBlade: 'Rumor: Corrosive toxins eat alloys.',
-  MireWraith: 'Rumor: Wind scatters toxic mists.',
-  GaleVixen: 'Rumor: Ice can stall furious gales.',
-  GlacierRonin: 'Rumor: Fire melts ancient ice.',
-  Rook: 'Sentinel cleared. Training complete.'
-};
+import { getBossDefinition, getBossHint } from '../data/Bosses';
 
 export class SceneSelect extends BaseScene {
   private cursor = { col: 1, row: 1 };
@@ -46,18 +34,19 @@ export class SceneSelect extends BaseScene {
     ctx.fillText('Select Target', 24, 40);
 
     for (const node of iterateGrid()) {
-      const theme = BossThemes[node.id];
+      const definition = getBossDefinition(node.id);
       const x = 120 + node.col * 140;
       const y = 100 + node.row * 80;
       const cleared = save.defeated[node.id];
-      ctx.fillStyle = theme.primaryBG;
+      ctx.fillStyle = definition.theme.primaryBG;
       ctx.fillRect(x, y, 96, 64);
-      ctx.strokeStyle = node.col === this.cursor.col && node.row === this.cursor.row ? theme.accent : 'rgba(255,255,255,0.25)';
+      ctx.strokeStyle =
+        node.col === this.cursor.col && node.row === this.cursor.row ? definition.theme.accent : 'rgba(255,255,255,0.25)';
       ctx.lineWidth = 3;
       ctx.strokeRect(x, y, 96, 64);
-      ctx.fillStyle = theme.glow;
+      ctx.fillStyle = definition.theme.glow;
       ctx.font = '16px "Rajdhani", sans-serif';
-      ctx.fillText(node.id, x + 8, y + 32);
+      ctx.fillText(definition.codename, x + 8, y + 32);
       if (cleared) {
         ctx.fillStyle = '#ffd966';
         ctx.fillText('CLEARED', x + 8, y + 52);
@@ -70,7 +59,7 @@ export class SceneSelect extends BaseScene {
     ctx.fillRect(24, 280, 592, 64);
     ctx.fillStyle = '#ffffff';
     ctx.font = '18px "Rajdhani", sans-serif';
-    ctx.fillText(active, 40, 308);
+    ctx.fillText(getBossDefinition(active).codename, 40, 308);
     ctx.font = '14px "Rajdhani", sans-serif';
     ctx.fillText(hint, 40, 332);
     ctx.restore();
@@ -89,7 +78,7 @@ export class SceneSelect extends BaseScene {
     const discovered = save.unlockedWeapons.length > 2;
     if (!discovered) return 'Intel locked. Defeat more bosses to learn weaknesses.';
     const weaponElement = this.resolveWeaponElement(save.unlockedWeapons[save.unlockedWeapons.length - 1]);
-    const hint = WEAKNESS_HINTS[id];
+    const hint = getBossHint(id);
     return `${hint} (Last acquired element: ${weaponElement})`;
   }
 
@@ -115,5 +104,5 @@ export function isBossCleared(id: BossId, save: SaveState) {
 }
 
 export function weaknessHintFor(id: BossId) {
-  return WEAKNESS_HINTS[id];
+  return getBossHint(id);
 }
