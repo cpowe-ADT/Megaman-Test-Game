@@ -1,26 +1,13 @@
 import Phaser from 'phaser'
-
-type BossDefinition = {
-  key: string
-  name: string
-  color: number
-}
-
-const BOSSES: BossDefinition[] = [
-  { key: 'ember_man', name: 'Ember Man', color: 0xff6b6b },
-  { key: 'aqua_woman', name: 'Aqua Woman', color: 0x4dc9ff },
-  { key: 'volt_knight', name: 'Volt Knight', color: 0xffd166 },
-  { key: 'frost_king', name: 'Frost King', color: 0xcde9ff },
-  { key: 'gale_ranger', name: 'Gale Ranger', color: 0xa0ffd0 },
-  { key: 'metal_magus', name: 'Metal Magus', color: 0xc0c0c0 },
-  { key: 'terra_brute', name: 'Terra Brute', color: 0x9b7653 },
-  { key: 'smoke_ninja', name: 'Smoke Ninja', color: 0xaaaaaa }
-]
+import { ORDERED_BOSSES } from '../bosses/roster'
 
 export class StageSelect extends Phaser.Scene {
   private index = 0
   private slots: Phaser.Math.Vector2[] = []
   private cursor!: Phaser.GameObjects.Rectangle
+  private infoText!: Phaser.GameObjects.Text
+  private bossNameText!: Phaser.GameObjects.Text
+  private elementText!: Phaser.GameObjects.Text
 
   constructor() {
     super('StageSelect')
@@ -46,6 +33,34 @@ export class StageSelect extends Phaser.Scene {
 
     this.updateCursor()
 
+    this.bossNameText = this.add
+      .text(width - 16, 56, '', {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: '#ffffff'
+      })
+      .setOrigin(1, 0)
+
+    this.elementText = this.add
+      .text(width - 16, 76, '', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#9ad'
+      })
+      .setOrigin(1, 0)
+
+    this.infoText = this.add
+      .text(width - 16, 100, '', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#cbd3ff',
+        align: 'right',
+        wordWrap: { width: 120 }
+      })
+      .setOrigin(1, 0)
+
+    this.refreshInfo()
+
     this.add
       .text(width / 2, height - 16, 'Arrows to move • Enter to start', {
         fontFamily: 'monospace',
@@ -65,27 +80,36 @@ export class StageSelect extends Phaser.Scene {
 
   private drawGrid(): void {
     const { width } = this.scale
-    const startX = width / 2 - 120
-    const startY = 60
-    const cellW = 60
+    const startX = width / 2 - 96
+    const startY = 64
+    const cellW = 64
     const cellH = 40
+    const bosses = ORDERED_BOSSES
 
-    BOSSES.forEach((boss, i) => {
-      const col = i % 4
-      const row = Math.floor(i / 4)
+    bosses.forEach((entry, i) => {
+      const col = i % 3
+      const row = Math.floor(i / 3)
       const x = startX + col * cellW + cellW / 2
       const y = startY + row * cellH + cellH / 2
 
       const rect = this.add
-        .rectangle(x, y, cellW - 8, cellH - 8, boss.color, 0.25)
-        .setStrokeStyle(2, boss.color)
+        .rectangle(x, y, cellW - 8, cellH - 8, entry.blueprint.theme.primary, 0.22)
+        .setStrokeStyle(2, entry.blueprint.theme.primary)
 
       this.add
-        .text(rect.x, rect.y, boss.name, {
+        .text(rect.x, rect.y - 6, entry.blueprint.codename, {
           fontFamily: 'monospace',
           fontSize: '10px',
           color: '#ffffff',
           align: 'center'
+        })
+        .setOrigin(0.5)
+
+      this.add
+        .text(rect.x, rect.y + 6, `${entry.blueprint.element.toUpperCase()}`, {
+          fontFamily: 'monospace',
+          fontSize: '8px',
+          color: '#9ad'
         })
         .setOrigin(0.5)
 
@@ -99,16 +123,33 @@ export class StageSelect extends Phaser.Scene {
       return
     }
     this.cursor.setPosition(slot.x, slot.y)
+    this.refreshInfo()
   }
 
   private move(delta: number): void {
-    const len = BOSSES.length
+    const len = ORDERED_BOSSES.length
     this.index = (this.index + delta + len) % len
     this.updateCursor()
   }
 
   private confirm(): void {
-    const boss = BOSSES[this.index]
-    this.scene.start('Game', { boss: boss.key })
+    const entry = ORDERED_BOSSES[this.index]
+    this.scene.start('Game', { bossId: entry.id })
+  }
+
+  private refreshInfo(): void {
+    const entry = ORDERED_BOSSES[this.index]
+    if (!entry) {
+      return
+    }
+    this.bossNameText.setText(entry.blueprint.codename)
+    this.elementText.setText(
+      `Type: ${entry.blueprint.element}  Weak to: ${entry.weakTo}  Resists: ${entry.strongAgainst}`
+    )
+    const blueprint = entry.blueprint
+    const reward = blueprint.weaponReward
+    this.infoText.setText(
+      `Arena: ${blueprint.arena}\nReward: ${reward.displayName}\n${reward.description}`
+    )
   }
 }

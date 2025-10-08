@@ -1,26 +1,42 @@
 import Phaser from 'phaser'
+import { BossController } from '../bosses/BossController'
+import { BossId } from '../bosses/types'
+import { getBossById } from '../bosses/roster'
 
 interface GameData {
-  boss: string
+  bossId: BossId
 }
 
 export class Game extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private player!: Phaser.Physics.Arcade.Sprite
+  private boss!: BossController
+  private bossLabel!: Phaser.GameObjects.Text
+  private phaseLabel!: Phaser.GameObjects.Text
+  private currentPhaseName = 'Intro Lock'
 
   constructor() {
     super('Game')
   }
 
   create(data: GameData): void {
+    const blueprint = getBossById(data.bossId)
     const { width, height } = this.scale
     this.cameras.main.setBackgroundColor('#0e1622')
 
-    this.add
-      .text(6, 6, `Boss: ${data.boss}`, {
+    this.bossLabel = this.add
+      .text(6, 6, `${blueprint.codename} • ${blueprint.element}`, {
         fontFamily: 'monospace',
         fontSize: '10px',
         color: '#9ad'
+      })
+      .setScrollFactor(0)
+
+    this.phaseLabel = this.add
+      .text(6, 18, 'Phase: Intro Lock', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#7fa'
       })
       .setScrollFactor(0)
 
@@ -52,6 +68,35 @@ export class Game extends Phaser.Scene {
     this.physics.add.collider(this.player, platform)
 
     this.cursors = this.input.keyboard!.createCursorKeys()
+
+    this.boss = new BossController(this, blueprint, {
+      spawn: new Phaser.Math.Vector2(width - 48, height - 40),
+      lockIntro: true
+    })
+
+    this.time.delayedCall(1600, () => {
+      this.boss.unlockIntro()
+      const phase = this.boss.currentPhase
+      this.currentPhaseName = phase.name
+      this.phaseLabel.setText(`Phase: ${this.currentPhaseName}`)
+    })
+
+    this.events.on('boss-phase-change', (event) => {
+      const { phase } = event as { phase: { name: string } }
+      this.currentPhaseName = phase.name
+      this.phaseLabel.setText(`Phase: ${this.currentPhaseName}`)
+    })
+
+    this.events.on('boss-attack', (event) => {
+      const { attack } = event as { attack: { name: string } }
+      this.phaseLabel.setText(`Phase: ${this.currentPhaseName}\nAction: ${attack.name}`)
+    })
+
+    this.events.on('boss-defeated', (event) => {
+      const { reward } = event as { reward: { displayName: string } }
+      this.phaseLabel.setText(`Victory! Weapon Acquired: ${reward.displayName}`)
+    })
+
     this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
   }
 
@@ -59,6 +104,8 @@ export class Game extends Phaser.Scene {
     const body = this.player.body as Phaser.Physics.Arcade.Body
     const movingLeft = this.cursors.left?.isDown
     const movingRight = this.cursors.right?.isDown
+
+    this.registry.set('player_x', this.player.x)
 
     if (movingLeft) {
       this.player.setAccelerationX(-600)
@@ -77,6 +124,10 @@ export class Game extends Phaser.Scene {
     const onGround = body.blocked.down
     if (onGround && jumpKey && Phaser.Input.Keyboard.JustDown(jumpKey)) {
       this.player.setVelocityY(-230)
+    }
+
+    if (this.boss && this.boss.scene) {
+      this.boss.update(this.time.now, this.game.loop.delta)
     }
   }
 }
