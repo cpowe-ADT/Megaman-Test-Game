@@ -20,12 +20,12 @@ export class StageSelect extends Phaser.Scene {
   private previewTitle?: Phaser.GameObjects.Text
   private previewDescription?: Phaser.GameObjects.Text
   private pageIndicator?: Phaser.GameObjects.Text
-  private readonly columns = 2
-  private readonly rows = 4
+  private readonly columns = 3
+  private readonly rows = 3
   private readonly pageSize = this.columns * this.rows
-  private panelWidth = 160
+  private panelWidth = 140
   private cellWidth = 0
-  private readonly cellHeight = 60
+  private readonly cellHeight = 56
 
   constructor() {
     super('StageSelect')
@@ -42,8 +42,9 @@ export class StageSelect extends Phaser.Scene {
     this.createFooter(width, height)
 
     this.cursor = this.add
-      .rectangle(0, 0, this.cellWidth - 12, this.cellHeight - 16, 0xffffff, 0)
+      .rectangle(0, 0, this.cellWidth - 14, this.cellHeight - 18)
       .setStrokeStyle(3, 0xffffff, 0.9)
+      .setFillStyle(0xffffff, 0)
       .setDepth(3)
 
     this.refreshPage()
@@ -91,74 +92,74 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private createPreviewPanel(width: number, height: number): void {
-    const maxPanelWidth = Math.max(160, width * 0.32)
-    const desiredPanelWidth = Phaser.Math.Clamp(width * 0.38, 160, 220)
+    const maxPanelWidth = Math.max(120, width - 96 - this.columns * 60)
+    const desiredPanelWidth = Phaser.Math.Clamp(width * 0.36, 120, 168)
     this.panelWidth = Math.round(Math.min(desiredPanelWidth, maxPanelWidth))
-    const panelHeight = height - 96
-    const panelX = width - this.panelWidth / 2 - 36
-    const panelY = height / 2 + 10
+    const panelHeight = height - 72
+    const panelX = width - this.panelWidth / 2 - 28
+    const panelY = height / 2 + 6
 
     this.add
       .rectangle(panelX, panelY, this.panelWidth, panelHeight, 0x0c1324, 0.9)
       .setStrokeStyle(2, 0x3a75c4, 0.6)
 
     this.previewTitle = this.add
-      .text(panelX, panelY - panelHeight / 2 + 20, '', {
+      .text(panelX, panelY - panelHeight / 2 + 16, '', {
         fontFamily: 'monospace',
-        fontSize: '14px',
+        fontSize: '15px',
         color: '#8fb8ff',
         align: 'center',
-        wordWrap: { width: this.panelWidth - 32 }
+        wordWrap: { width: this.panelWidth - 24 }
       })
       .setOrigin(0.5, 0)
 
     this.bossNameText = this.add
-      .text(panelX, this.previewTitle.y + 28, '', {
+      .text(panelX, this.previewTitle.y + 32, '', {
         fontFamily: 'monospace',
-        fontSize: '16px',
+        fontSize: '18px',
         color: '#ffffff',
         fontStyle: 'bold'
       })
       .setOrigin(0.5, 0)
 
     this.elementText = this.add
-      .text(panelX, this.bossNameText.y + 22, '', {
+      .text(panelX, this.bossNameText.y + 24, '', {
         fontFamily: 'monospace',
-        fontSize: '11px',
+        fontSize: '12px',
         color: '#9ad'
       })
       .setOrigin(0.5, 0)
 
     this.previewDescription = this.add
-      .text(panelX, this.elementText.y + 22, '', {
+      .text(panelX, this.elementText.y + 24, '', {
         fontFamily: 'monospace',
-        fontSize: '10px',
+        fontSize: '11px',
         color: '#c7d8ff',
         align: 'center',
-        wordWrap: { width: this.panelWidth - 32 }
+        wordWrap: { width: this.panelWidth - 24 }
       })
       .setOrigin(0.5, 0)
 
-    const infoTop = panelY + panelHeight / 2 - 60
+    const infoTop = panelY + panelHeight / 2 - 52
     this.infoText = this.add
       .text(panelX, infoTop, '', {
         fontFamily: 'monospace',
-        fontSize: '10px',
+        fontSize: '11px',
         color: '#cbd3ff',
         align: 'center',
-        wordWrap: { width: this.panelWidth - 32 }
+        wordWrap: { width: this.panelWidth - 24 }
       })
       .setOrigin(0.5, 0)
   }
 
   private drawGrid(width: number, height: number): void {
-    const listAreaWidth = width - this.panelWidth - 140
-    const computedCellWidth = Math.floor(listAreaWidth / this.columns)
-    this.cellWidth = Math.max(150, computedCellWidth)
-    const horizontalPadding = (listAreaWidth - this.cellWidth * this.columns) / 2
-    const startX = 60 + horizontalPadding + this.cellWidth / 2
+    const gridWidth = width - this.panelWidth - 96
+    const computedCellWidth = Math.floor(gridWidth / this.columns)
+    this.cellWidth = Math.max(56, computedCellWidth)
+    const horizontalPadding = (gridWidth - this.cellWidth * this.columns) / 2
+    const startX = 44 + horizontalPadding + this.cellWidth / 2
     const gridHeight = this.rows * this.cellHeight
-    const startY = height / 2 - gridHeight / 2 + 16
+    const startY = height / 2 - gridHeight / 2 + 12
 
     this.slots = []
     this.slotEntries = []
@@ -170,37 +171,31 @@ export class StageSelect extends Phaser.Scene {
         const y = startY + row * this.cellHeight
 
         const rect = this.add
-          .rectangle(x, y, this.cellWidth - 20, this.cellHeight - 24, 0x162036, 0.55)
-          .setStrokeStyle(2, 0x3a75c4, 0.75)
+          .rectangle(x, y, this.cellWidth - 18, this.cellHeight - 20, 0x1a2847, 0.28)
+          .setStrokeStyle(2, 0x3a75c4, 0.5)
           .setData('slotIndex', slotIndex)
           .setInteractive({ useHandCursor: true })
 
         rect.on('pointerover', () => this.onSlotHover(slotIndex))
-        rect.on('pointerdown', () => this.onSlotSelect(slotIndex))
+        rect.on('pointerdown', () => this.confirm())
 
         const name = this.add
-          .text(x - this.cellWidth / 2 + 18, y - 10, '', {
+          .text(x, y - 12, '', {
             fontFamily: 'monospace',
-            fontSize: '14px',
+            fontSize: '13px',
             color: '#ffffff',
             fontStyle: 'bold',
-            align: 'left'
+            align: 'center'
           })
-          .setOrigin(0, 0.5)
-          .setInteractive({ useHandCursor: true })
-          .on('pointerover', () => this.onSlotHover(slotIndex))
-          .on('pointerdown', () => this.onSlotSelect(slotIndex))
+          .setOrigin(0.5)
 
         const element = this.add
-          .text(x - this.cellWidth / 2 + 18, y + 12, '', {
+          .text(x, y + 8, '', {
             fontFamily: 'monospace',
             fontSize: '11px',
-            color: '#8fb8ff'
+            color: '#9ad'
           })
-          .setOrigin(0, 0.5)
-          .setInteractive({ useHandCursor: true })
-          .on('pointerover', () => this.onSlotHover(slotIndex))
-          .on('pointerdown', () => this.onSlotSelect(slotIndex))
+          .setOrigin(0.5)
 
         this.slots.push(new Phaser.Math.Vector2(x, y))
         this.slotEntries.push({ rect, name, element, bossIndex: null })
@@ -218,7 +213,7 @@ export class StageSelect extends Phaser.Scene {
     this.add
       .text(width / 2, footerY - 10, '← ↑ → ↓ NAVIGATE   •   ENTER / SPACE START   •   Q / E CHANGE PAGE', {
         fontFamily: 'monospace',
-        fontSize: '10px',
+        fontSize: '11px',
         color: '#9acbff',
         align: 'center'
       })
@@ -251,26 +246,12 @@ export class StageSelect extends Phaser.Scene {
 
   private onSlotHover(slotIndex: number): void {
     const slot = this.slotEntries[slotIndex]
-    if (!slot || slot.bossIndex == null) {
-      return
-    }
-    if (slot.bossIndex === this.index) {
+    if (!slot || slot.bossIndex == null || slot.bossIndex === this.index) {
       return
     }
     this.index = slot.bossIndex
     this.updateCursor()
     this.updatePreview()
-  }
-
-  private onSlotSelect(slotIndex: number): void {
-    const slot = this.slotEntries[slotIndex]
-    if (!slot || slot.bossIndex == null) {
-      return
-    }
-    this.index = slot.bossIndex
-    this.updateCursor()
-    this.updatePreview()
-    this.confirm()
   }
 
   private move(delta: number): void {
@@ -307,17 +288,11 @@ export class StageSelect extends Phaser.Scene {
       slot.bossIndex = start + slotIndex
       slot.rect
         .setVisible(true)
-        .setStrokeStyle(2, entry.blueprint.theme.primary, 0.85)
-        .setFillStyle(entry.blueprint.theme.primary, 0.24)
+        .setStrokeStyle(2, entry.blueprint.theme.primary, 0.9)
+        .setFillStyle(entry.blueprint.theme.primary, 0.2)
         .setInteractive({ useHandCursor: true })
-      slot.name
-        .setVisible(true)
-        .setColor('#ffffff')
-        .setText(entry.blueprint.codename)
-      slot.element
-        .setVisible(true)
-        .setColor('#9acbff')
-        .setText(`Type • ${entry.blueprint.element.toUpperCase()}   Weak • ${entry.weakTo}`)
+      slot.name.setVisible(true).setText(entry.blueprint.codename)
+      slot.element.setVisible(true).setText(entry.blueprint.element.toUpperCase())
     })
 
     this.pageIndicator?.setText(`Page ${this.currentPage + 1} / ${totalPages}`)
@@ -342,7 +317,6 @@ export class StageSelect extends Phaser.Scene {
     }
 
     this.cursor.setVisible(true)
-    this.cursor.setSize(this.cellWidth - 12, this.cellHeight - 18)
     this.cursor.setPosition(slotPosition.x, slotPosition.y)
     this.refreshInfo()
   }
@@ -381,9 +355,7 @@ export class StageSelect extends Phaser.Scene {
     this.elementText.setText(
       `Type: ${blueprint.element}  •  Weak: ${entry.weakTo}  •  Resists: ${entry.strongAgainst}`
     )
-    this.infoText.setText(
-      `Arena: ${blueprint.arena}\nWeapon: ${reward.displayName}\n${reward.description}`
-    )
+    this.infoText.setText(`Arena: ${blueprint.arena}\nWeapon: ${reward.displayName}\n${reward.description}`)
   }
 
   private updatePreview(): void {
