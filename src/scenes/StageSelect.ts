@@ -1,15 +1,31 @@
 import Phaser from 'phaser'
 import { ORDERED_BOSSES } from '../bosses/roster'
 
+type SlotEntry = {
+  rect: Phaser.GameObjects.Rectangle
+  name: Phaser.GameObjects.Text
+  element: Phaser.GameObjects.Text
+  bossIndex: number | null
+}
+
 export class StageSelect extends Phaser.Scene {
   private index = 0
+  private currentPage = 0
   private slots: Phaser.Math.Vector2[] = []
+  private slotEntries: SlotEntry[] = []
   private cursor?: Phaser.GameObjects.Rectangle
-  private infoText?: Phaser.GameObjects.Text
   private bossNameText?: Phaser.GameObjects.Text
   private elementText?: Phaser.GameObjects.Text
+  private infoText?: Phaser.GameObjects.Text
   private previewTitle?: Phaser.GameObjects.Text
   private previewDescription?: Phaser.GameObjects.Text
+  private pageIndicator?: Phaser.GameObjects.Text
+  private readonly columns = 2
+  private readonly rows = 4
+  private readonly pageSize = this.columns * this.rows
+  private panelWidth = 160
+  private cellWidth = 0
+  private readonly cellHeight = 60
 
   constructor() {
     super('StageSelect')
@@ -21,61 +37,20 @@ export class StageSelect extends Phaser.Scene {
 
     this.createBackdrop(width, height)
     this.createHeader(width)
-    this.drawGrid()
     this.createPreviewPanel(width, height)
-
-    this.bossNameText = this.add
-      .text(width - 16, 56, '', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#ffffff'
-      })
-      .setOrigin(1, 0)
-
-    this.elementText = this.add
-      .text(width - 16, 76, '', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9ad'
-      })
-      .setOrigin(1, 0)
-
-    this.infoText = this.add
-      .text(width - 16, 100, '', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#cbd3ff',
-        align: 'right',
-        wordWrap: { width: 120 }
-      })
-      .setOrigin(1, 0)
+    this.drawGrid(width, height)
+    this.createFooter(width, height)
 
     this.cursor = this.add
-      .rectangle(0, 0, 62, 42)
-      .setStrokeStyle(3, 0xffffff, 0.8)
-      .setFillStyle(0xffffff, 0)
+      .rectangle(0, 0, this.cellWidth - 12, this.cellHeight - 16, 0xffffff, 0)
+      .setStrokeStyle(3, 0xffffff, 0.9)
       .setDepth(3)
 
+    this.refreshPage()
     this.updateCursor()
     this.updatePreview()
 
-    this.add
-      .text(width / 2, height - 16, 'Arrows to move • Enter to start', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9ad'
-      })
-      .setOrigin(0.5)
-
-    this.createFooter(width, height)
-
-    const keyboard = this.input.keyboard
-    keyboard?.on('keydown-LEFT', () => this.move(-1))
-    keyboard?.on('keydown-RIGHT', () => this.move(1))
-    keyboard?.on('keydown-UP', () => this.move(-4))
-    keyboard?.on('keydown-DOWN', () => this.move(4))
-    keyboard?.on('keydown-ENTER', () => this.confirm())
-    keyboard?.on('keydown-SPACE', () => this.confirm())
+    this.registerKeyboardShortcuts()
   }
 
   private createBackdrop(width: number, height: number): void {
@@ -88,19 +63,19 @@ export class StageSelect extends Phaser.Scene {
       .setAlpha(0.35)
 
     this.add
-      .rectangle(width / 2, height - 60, width, 120, 0x03060c)
+      .rectangle(width / 2, height - 48, width, 96, 0x03060c)
       .setAlpha(0.35)
   }
 
   private createHeader(width: number): void {
     this.add
-      .rectangle(width / 2, 52, width - 48, 72, 0x101c33, 0.85)
+      .rectangle(width / 2, 48, width - 64, 84, 0x101c33, 0.88)
       .setStrokeStyle(2, 0x3a75c4, 0.6)
 
     this.add
-      .text(width / 2, 38, 'MISSION SELECT', {
+      .text(width / 2, 30, 'MISSION SELECT', {
         fontFamily: 'monospace',
-        fontSize: '26px',
+        fontSize: '28px',
         color: '#ffffff',
         letterSpacing: 2
       })
@@ -109,70 +84,287 @@ export class StageSelect extends Phaser.Scene {
     this.add
       .text(width / 2, 68, 'Choose a Maverick to infiltrate their stronghold', {
         fontFamily: 'monospace',
-        fontSize: '12px',
+        fontSize: '13px',
         color: '#8fb8ff'
       })
       .setOrigin(0.5)
   }
 
-  private drawGrid(): void {
-    const { width } = this.scale
-    const startX = width / 2 - 96
-    const startY = 64
-    const cellW = 64
-    const cellH = 40
-    const bosses = ORDERED_BOSSES
+  private createPreviewPanel(width: number, height: number): void {
+    const maxPanelWidth = Math.max(160, width * 0.32)
+    const desiredPanelWidth = Phaser.Math.Clamp(width * 0.38, 160, 220)
+    this.panelWidth = Math.round(Math.min(desiredPanelWidth, maxPanelWidth))
+    const panelHeight = height - 96
+    const panelX = width - this.panelWidth / 2 - 36
+    const panelY = height / 2 + 10
 
-    bosses.forEach((entry, i) => {
-      const col = i % 3
-      const row = Math.floor(i / 3)
-      const x = startX + col * cellW + cellW / 2
-      const y = startY + row * cellH + cellH / 2
+    this.add
+      .rectangle(panelX, panelY, this.panelWidth, panelHeight, 0x0c1324, 0.9)
+      .setStrokeStyle(2, 0x3a75c4, 0.6)
 
-      const rect = this.add
-        .rectangle(x, y, cellW - 8, cellH - 8, entry.blueprint.theme.primary, 0.22)
-        .setStrokeStyle(2, entry.blueprint.theme.primary)
+    this.previewTitle = this.add
+      .text(panelX, panelY - panelHeight / 2 + 20, '', {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: '#8fb8ff',
+        align: 'center',
+        wordWrap: { width: this.panelWidth - 32 }
+      })
+      .setOrigin(0.5, 0)
 
-      this.add
-        .text(rect.x, rect.y - 6, entry.blueprint.codename, {
-          fontFamily: 'monospace',
-          fontSize: '12px',
-          color: '#ffffff',
-          align: 'center',
-          fontStyle: 'bold'
-        })
-        .setOrigin(0.5)
+    this.bossNameText = this.add
+      .text(panelX, this.previewTitle.y + 28, '', {
+        fontFamily: 'monospace',
+        fontSize: '16px',
+        color: '#ffffff',
+        fontStyle: 'bold'
+      })
+      .setOrigin(0.5, 0)
 
-      this.add
-        .text(rect.x, rect.y + 6, `${entry.blueprint.element.toUpperCase()}`, {
-          fontFamily: 'monospace',
-          fontSize: '8px',
-          color: '#9ad'
-        })
-        .setOrigin(0.5)
+    this.elementText = this.add
+      .text(panelX, this.bossNameText.y + 22, '', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#9ad'
+      })
+      .setOrigin(0.5, 0)
 
-      this.slots.push(new Phaser.Math.Vector2(rect.x, rect.y))
-    })
+    this.previewDescription = this.add
+      .text(panelX, this.elementText.y + 22, '', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#c7d8ff',
+        align: 'center',
+        wordWrap: { width: this.panelWidth - 32 }
+      })
+      .setOrigin(0.5, 0)
+
+    const infoTop = panelY + panelHeight / 2 - 60
+    this.infoText = this.add
+      .text(panelX, infoTop, '', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#cbd3ff',
+        align: 'center',
+        wordWrap: { width: this.panelWidth - 32 }
+      })
+      .setOrigin(0.5, 0)
   }
 
-  private updateCursor(): void {
-    const slot = this.slots[this.index]
-    if (!slot || !this.cursor) {
+  private drawGrid(width: number, height: number): void {
+    const listAreaWidth = width - this.panelWidth - 140
+    const computedCellWidth = Math.floor(listAreaWidth / this.columns)
+    this.cellWidth = Math.max(150, computedCellWidth)
+    const horizontalPadding = (listAreaWidth - this.cellWidth * this.columns) / 2
+    const startX = 60 + horizontalPadding + this.cellWidth / 2
+    const gridHeight = this.rows * this.cellHeight
+    const startY = height / 2 - gridHeight / 2 + 16
+
+    this.slots = []
+    this.slotEntries = []
+
+    for (let row = 0; row < this.rows; row += 1) {
+      for (let col = 0; col < this.columns; col += 1) {
+        const slotIndex = row * this.columns + col
+        const x = startX + col * this.cellWidth
+        const y = startY + row * this.cellHeight
+
+        const rect = this.add
+          .rectangle(x, y, this.cellWidth - 20, this.cellHeight - 24, 0x162036, 0.55)
+          .setStrokeStyle(2, 0x3a75c4, 0.75)
+          .setData('slotIndex', slotIndex)
+          .setInteractive({ useHandCursor: true })
+
+        rect.on('pointerover', () => this.onSlotHover(slotIndex))
+        rect.on('pointerdown', () => this.onSlotSelect(slotIndex))
+
+        const name = this.add
+          .text(x - this.cellWidth / 2 + 18, y - 10, '', {
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'left'
+          })
+          .setOrigin(0, 0.5)
+          .setInteractive({ useHandCursor: true })
+          .on('pointerover', () => this.onSlotHover(slotIndex))
+          .on('pointerdown', () => this.onSlotSelect(slotIndex))
+
+        const element = this.add
+          .text(x - this.cellWidth / 2 + 18, y + 12, '', {
+            fontFamily: 'monospace',
+            fontSize: '11px',
+            color: '#8fb8ff'
+          })
+          .setOrigin(0, 0.5)
+          .setInteractive({ useHandCursor: true })
+          .on('pointerover', () => this.onSlotHover(slotIndex))
+          .on('pointerdown', () => this.onSlotSelect(slotIndex))
+
+        this.slots.push(new Phaser.Math.Vector2(x, y))
+        this.slotEntries.push({ rect, name, element, bossIndex: null })
+      }
+    }
+  }
+
+  private createFooter(width: number, height: number): void {
+    const footerY = height - 28
+
+    this.add
+      .rectangle(width / 2, footerY, width - 160, 44, 0x091020, 0.8)
+      .setStrokeStyle(1, 0x3a75c4, 0.4)
+
+    this.add
+      .text(width / 2, footerY - 10, '← ↑ → ↓ NAVIGATE   •   ENTER / SPACE START   •   Q / E CHANGE PAGE', {
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        color: '#9acbff',
+        align: 'center'
+      })
+      .setOrigin(0.5)
+
+    this.pageIndicator = this.add
+      .text(width / 2, footerY + 12, '', {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: '#8fb8ff'
+      })
+      .setOrigin(0.5)
+  }
+
+  private registerKeyboardShortcuts(): void {
+    const keyboard = this.input.keyboard
+    if (!keyboard) {
       return
     }
-    this.cursor.setPosition(slot.x, slot.y)
-    this.refreshInfo()
+
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)?.on('down', () => this.move(-1))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)?.on('down', () => this.move(1))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP)?.on('down', () => this.move(-this.columns))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN)?.on('down', () => this.move(this.columns))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)?.on('down', () => this.confirm())
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)?.on('down', () => this.confirm())
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q)?.on('down', () => this.changePage(-1))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)?.on('down', () => this.changePage(1))
+  }
+
+  private onSlotHover(slotIndex: number): void {
+    const slot = this.slotEntries[slotIndex]
+    if (!slot || slot.bossIndex == null) {
+      return
+    }
+    if (slot.bossIndex === this.index) {
+      return
+    }
+    this.index = slot.bossIndex
+    this.updateCursor()
+    this.updatePreview()
+  }
+
+  private onSlotSelect(slotIndex: number): void {
+    const slot = this.slotEntries[slotIndex]
+    if (!slot || slot.bossIndex == null) {
+      return
+    }
+    this.index = slot.bossIndex
+    this.updateCursor()
+    this.updatePreview()
+    this.confirm()
   }
 
   private move(delta: number): void {
-    const len = ORDERED_BOSSES.length
-    this.index = (this.index + delta + len) % len
+    const total = ORDERED_BOSSES.length
+    this.index = (this.index + delta + total) % total
+    this.updateCursor()
+    this.updatePreview()
+  }
+
+  private ensurePageForIndex(): void {
+    const targetPage = Math.floor(this.index / this.pageSize)
+    if (targetPage !== this.currentPage) {
+      this.currentPage = targetPage
+      this.refreshPage()
+    }
+  }
+
+  private refreshPage(): void {
+    const bosses = ORDERED_BOSSES
+    const totalPages = Math.max(1, Math.ceil(bosses.length / this.pageSize))
+    this.currentPage = Phaser.Math.Clamp(this.currentPage, 0, totalPages - 1)
+    const start = this.currentPage * this.pageSize
+
+    this.slotEntries.forEach((slot, slotIndex) => {
+      const entry = bosses[start + slotIndex]
+      if (!entry) {
+        slot.bossIndex = null
+        slot.rect.setVisible(false).disableInteractive()
+        slot.name.setVisible(false)
+        slot.element.setVisible(false)
+        return
+      }
+
+      slot.bossIndex = start + slotIndex
+      slot.rect
+        .setVisible(true)
+        .setStrokeStyle(2, entry.blueprint.theme.primary, 0.85)
+        .setFillStyle(entry.blueprint.theme.primary, 0.24)
+        .setInteractive({ useHandCursor: true })
+      slot.name
+        .setVisible(true)
+        .setColor('#ffffff')
+        .setText(entry.blueprint.codename)
+      slot.element
+        .setVisible(true)
+        .setColor('#9acbff')
+        .setText(`Type • ${entry.blueprint.element.toUpperCase()}   Weak • ${entry.weakTo}`)
+    })
+
+    this.pageIndicator?.setText(`Page ${this.currentPage + 1} / ${totalPages}`)
+  }
+
+  private updateCursor(): void {
+    this.ensurePageForIndex()
+    if (!this.cursor) {
+      return
+    }
+
+    const slotIndex = this.slotEntries.findIndex((slot) => slot.bossIndex === this.index)
+    if (slotIndex === -1) {
+      this.cursor.setVisible(false)
+      return
+    }
+
+    const slotPosition = this.slots[slotIndex]
+    if (!slotPosition) {
+      this.cursor.setVisible(false)
+      return
+    }
+
+    this.cursor.setVisible(true)
+    this.cursor.setSize(this.cellWidth - 12, this.cellHeight - 18)
+    this.cursor.setPosition(slotPosition.x, slotPosition.y)
+    this.refreshInfo()
+  }
+
+  private changePage(delta: number): void {
+    const totalPages = Math.max(1, Math.ceil(ORDERED_BOSSES.length / this.pageSize))
+    this.currentPage = (this.currentPage + delta + totalPages) % totalPages
+
+    const start = this.currentPage * this.pageSize
+    const end = Math.min(start + this.pageSize - 1, ORDERED_BOSSES.length - 1)
+    this.index = Phaser.Math.Clamp(this.index, start, end)
+
+    this.refreshPage()
     this.updateCursor()
     this.updatePreview()
   }
 
   private confirm(): void {
     const entry = ORDERED_BOSSES[this.index]
+    if (!entry) {
+      return
+    }
     this.scene.start('Game', { bossId: entry.id })
   }
 
@@ -181,43 +373,17 @@ export class StageSelect extends Phaser.Scene {
     if (!entry || !this.bossNameText || !this.elementText || !this.infoText) {
       return
     }
-    this.bossNameText.setText(entry.blueprint.codename)
-    this.elementText.setText(
-      `Type: ${entry.blueprint.element}  Weak to: ${entry.weakTo}  Resists: ${entry.strongAgainst}`
-    )
+
     const blueprint = entry.blueprint
     const reward = blueprint.weaponReward
-    this.infoText.setText(
-      `Arena: ${blueprint.arena}\nReward: ${reward.displayName}\n${reward.description}`
+
+    this.bossNameText.setText(blueprint.codename)
+    this.elementText.setText(
+      `Type: ${blueprint.element}  •  Weak: ${entry.weakTo}  •  Resists: ${entry.strongAgainst}`
     )
-  }
-
-  private createPreviewPanel(width: number, height: number): void {
-    const panelWidth = width - 80
-    const panelY = height - 120
-
-    this.add
-      .rectangle(width / 2, panelY, panelWidth, 104, 0x0c1324, 0.9)
-      .setStrokeStyle(2, 0x3a75c4, 0.6)
-
-    this.previewTitle = this.add
-      .text(width / 2, panelY - 20, '', {
-        fontFamily: 'monospace',
-        fontSize: '20px',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      })
-      .setOrigin(0.5)
-
-    this.previewDescription = this.add
-      .text(width / 2, panelY + 12, '', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#c7d8ff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 40 }
-      })
-      .setOrigin(0.5)
+    this.infoText.setText(
+      `Arena: ${blueprint.arena}\nWeapon: ${reward.displayName}\n${reward.description}`
+    )
   }
 
   private updatePreview(): void {
@@ -225,26 +391,11 @@ export class StageSelect extends Phaser.Scene {
     if (!entry || !this.previewTitle || !this.previewDescription) {
       return
     }
+
     const { blueprint } = entry
-    this.previewTitle.setText(`${blueprint.codename.toUpperCase()} // ${blueprint.introCallout}`)
+    this.previewTitle.setText(blueprint.introCallout)
     this.previewDescription.setText(
-      `Arena: ${blueprint.arena}\n` +
-        `Profile: ${blueprint.movementProfile.mobilityNotes}`
+      `Profile: ${blueprint.movementProfile.mobilityNotes}\nReward Tip: ${blueprint.weaponReward.tutorial}`
     )
-  }
-
-  private createFooter(width: number, height: number): void {
-    const footerY = height - 32
-    this.add
-      .rectangle(width / 2, footerY, width - 120, 40, 0x091020, 0.8)
-      .setStrokeStyle(1, 0x3a75c4, 0.4)
-
-    this.add
-      .text(width / 2, footerY, '← → / ↑ ↓ NAVIGATE   •   ENTER / SPACE START MISSION', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#9acbff'
-      })
-      .setOrigin(0.5)
   }
 }
