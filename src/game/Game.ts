@@ -7,6 +7,10 @@ import { HUD } from './hud/HUD';
 import { Camera } from './camera/Camera';
 import { SceneBoot } from './scenes/SceneBoot';
 
+/**
+ * Root game façade responsible for wiring subsystems together, running the main loop,
+ * and delegating to the active scene for update/draw duties.
+ */
 export class Game {
   private ctx: CanvasRenderingContext2D;
   private activeScene: Scene;
@@ -31,6 +35,7 @@ export class Game {
     this.activeScene = new SceneBoot(this, this.env);
   }
 
+  /** Boots the scene state machine and begins the requestAnimationFrame loop. */
   start() {
     this.activeScene.enter();
     this.lastTime = performance.now();
@@ -44,18 +49,24 @@ export class Game {
     this.rafId = requestAnimationFrame(loop);
   }
 
+  /** Tears down the active scene and disposes owned managers. */
   dispose() {
     this.rafId && cancelAnimationFrame(this.rafId);
     this.activeScene.exit();
     this.env.input.dispose();
   }
 
+  /**
+   * Polls input, advances the active scene, and updates global FX state.
+   * @param dt Elapsed time since the previous frame in milliseconds.
+   */
   update(dt: number) {
     this.env.input.update();
     this.activeScene.update(dt);
     this.env.fx.update(dt);
   }
 
+  /** Delegates rendering to the active scene, HUD, and VFX layers. */
   draw() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.activeScene.draw(this.ctx);
@@ -63,18 +74,21 @@ export class Game {
     this.env.fx.draw(this.ctx);
   }
 
+  /** Replaces the current scene with a new instance. */
   setScene(scene: Scene) {
     this.activeScene.exit();
     this.activeScene = scene;
     this.activeScene.enter();
   }
 
+  /** Pushes a new scene on the stack while preserving the previous one. */
   pushScene(scene: Scene) {
     this.sceneStack.push(this.activeScene);
     this.activeScene = scene;
     this.activeScene.enter();
   }
 
+  /** Restores the previous scene from the stack. */
   popScene() {
     this.activeScene.exit();
     const previous = this.sceneStack.pop();

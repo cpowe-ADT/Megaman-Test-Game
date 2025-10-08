@@ -8,6 +8,9 @@ import { SceneWin } from './SceneWin';
 import { Projectile } from '../entities/Projectile';
 import { Game } from '../Game';
 
+/**
+ * Arena encounter scene that orchestrates player/boss combat and tracks progression state.
+ */
 export class SceneFight extends BaseScene {
   private player: Player;
   private boss = createBoss(this.bossId, this.env.fx);

@@ -9,6 +9,10 @@ const MOVE_SPEED = 0.24;
 const JUMP_SPEED = -0.75;
 const DASH_SPEED = 0.9;
 
+/**
+ * Arcade-style player controller that encapsulates movement, combat, and inventory state.
+ * The class is intentionally self-contained to keep scene logic focused on orchestration.
+ */
 export class Player {
   rect: Rect = { x: 300, y: 240, w: 24, h: 40 };
   vel: V2 = { x: 0, y: 0 };
@@ -50,6 +54,10 @@ export class Player {
     this.switchWeapon(ids[nextIndex]);
   }
 
+  /**
+   * Advances movement, handles buffered inputs, and ticks active projectiles.
+   * @param dt Elapsed milliseconds since the previous frame.
+   */
   update(dt: number) {
     this.invMs = Math.max(0, this.invMs - dt);
     this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
@@ -101,6 +109,7 @@ export class Player {
     this.projectiles = this.projectiles.filter((p) => p.lifeMs > 0);
   }
 
+  /** Renders the player avatar and any active projectiles. */
   draw(ctx: CanvasRenderingContext2D) {
     ctx.save();
     ctx.fillStyle = '#58d1ff';
@@ -111,20 +120,24 @@ export class Player {
     }
   }
 
+  /** Applies damage while respecting invulnerability frames. */
   hurt(dmg: number) {
     if (this.invMs > 0) return;
     this.hp = Math.max(0, this.hp - dmg);
     this.invMs = 400;
   }
 
+  /** Returns a live reference to player-owned projectiles for collision checks. */
   getProjectiles() {
     return this.projectiles;
   }
 
+  /** Snapshot of the weapon energy meter. */
   getEnergy() {
     return { value: this.energy, max: this.energyMax };
   }
 
+  /** Currently equipped weapon instance, if any. */
   getCurrentWeapon() {
     return this.inventory.get(this.currentWeaponId) ?? null;
   }
