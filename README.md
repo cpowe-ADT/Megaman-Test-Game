@@ -23,22 +23,25 @@ npm install
 npm run dev
 ```
 
-Vite automatically opens your browser to the development server. Use the arrow keys to highlight a boss, press **Enter** or **Space** to load the gameplay scene, then use the control map below once the stage loads.
+Vite automatically opens your browser to the development server. Use the arrow keys to highlight a boss, press **Enter** to load the gameplay scene, then use the control map below once the stage loads.
 
 ### Default Controls
 
 | Action | Keys | Notes |
 | --- | --- | --- |
 | Move | Left / Right arrows | Horizontal acceleration with air control |
-| Jump | Up arrow or **A** | Hold briefly for extra height |
+| Confirm (menus) | **Enter** / Numpad Enter | Stage Select, pause overlays |
+| Jump | **Space** (hold) or Up arrow | Hold to buffer jumps on landing |
 | Dash | **Z** | Short burst with cooldown |
 | Shoot / Charge | **X** | Hold to charge, release to fire higher-level shots |
 | Saber combo | **C** | Chains up to four swings |
 | Cycle weapon | **S** (hold **Shift** for reverse) | Quick swap through unlocked weapons |
 | Shoulder cycle | **L** / **R** | Optional rapid cycling |
-| Pause (coming soon) | **Enter** | Reserved for pause/menu overlay |
+| Pause (coming soon) | **Esc** | Reserved for pause/menu overlay |
 
 Controls are wired through Phaser's keyboard system, so rebinding can be added later via scene-level helpers.
+
+> Stage Select ignores **Space** — only Enter (or Numpad Enter) confirms a mission. Space exclusively drives jumping once you enter gameplay, while Escape is reserved for the upcoming pause overlay.
 
 ### Build for Production
 

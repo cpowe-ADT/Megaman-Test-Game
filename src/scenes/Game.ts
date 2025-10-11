@@ -2,6 +2,12 @@ import Phaser from 'phaser'
 import { BossController } from '../bosses/BossController'
 import { BossId } from '../bosses/types'
 import { getBossById } from '../bosses/roster'
+import { DEBUG_UI } from '../config/debug'
+import { inputActions } from '../input/InputActions'
+import { DebugOverlay } from '../ui/DebugOverlay'
+import { JumpController } from './game/JumpController'
+
+const JUMP_VELOCITY = -420
 
 interface GameData {
   bossId: BossId
@@ -14,7 +20,6 @@ type ActionKeyMap = {
   cycleForward: Phaser.Input.Keyboard.Key
   shoulderPrev: Phaser.Input.Keyboard.Key
   shoulderNext: Phaser.Input.Keyboard.Key
-  jumpAlt: Phaser.Input.Keyboard.Key
   modifier: Phaser.Input.Keyboard.Key
 }
 
@@ -47,6 +52,8 @@ export class Game extends Phaser.Scene {
   private readonly slideDuration = 260
   private currentPhaseName = ''
   private animationLockUntil = 0
+  private debugOverlay?: DebugOverlay
+  private readonly jumpController = new JumpController(JUMP_VELOCITY)
 
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
     const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
@@ -66,6 +73,18 @@ export class Game extends Phaser.Scene {
     const blueprint = getBossById(data.bossId)
     const { width, height } = this.scale
     this.cameras.main.setBackgroundColor('#0e1622')
+
+    if (this.input.keyboard) {
+      inputActions.initialize(this.input.keyboard)
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => inputActions.release(this.input.keyboard!))
+    }
+
+    if (DEBUG_UI) {
+      this.debugOverlay = new DebugOverlay(this)
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.debugOverlay?.destroy())
+    }
+
+    this.jumpController.reset()
 
     this.bossLabel = this.add
       .text(6, 6, `${blueprint.codename} • ${blueprint.element}`, {
@@ -203,8 +222,16 @@ export class Game extends Phaser.Scene {
       return
     }
 
+    if (this.input.keyboard) {
+      inputActions.updateFrameClock(this.game.loop.now)
+    }
+
+    if (inputActions.isPressed('toggleDebug')) {
+      this.debugOverlay?.toggle()
+    }
+
     const body = this.player.body as Phaser.Physics.Arcade.Body
-    const onGround = body.blocked.down
+    const grounded = body.blocked.down || body.touching.down || body.onFloor()
     const now = this.time.now
     const sliding = now < this.slideUntil
 
@@ -232,14 +259,14 @@ export class Game extends Phaser.Scene {
     }
 
     this.handleWeaponCycling()
-    this.handleShooting(now, onGround)
-    this.handleSaberInput(now, onGround)
+    this.handleShooting(now, grounded)
+    this.handleSaberInput(now, grounded)
 
     const movingLeft = this.cursors.left?.isDown ?? false
     const movingRight = this.cursors.right?.isDown ?? false
 
     if (Phaser.Input.Keyboard.JustDown(this.actionKeys.dash) && this.dashCooldownTimer === 0) {
-      if (onGround && this.cursors.down?.isDown) {
+      if (grounded && this.cursors.down?.isDown) {
         this.startSlide(now, movingLeft, movingRight)
       } else {
         this.startDash(now, movingLeft, movingRight)
@@ -249,7 +276,7 @@ export class Game extends Phaser.Scene {
     if (sliding) {
       this.applySlideHitbox()
       this.player.setAccelerationX(0)
-      if (onGround) {
+      if (grounded) {
         this.player.setVelocityX(260 * this.facing)
       }
     } else {
@@ -268,12 +295,18 @@ export class Game extends Phaser.Scene {
       }
     }
 
-    if (!sliding && onGround) {
-      const jumpTriggered =
-        (this.cursors.up && Phaser.Input.Keyboard.JustDown(this.cursors.up)) ||
-        Phaser.Input.Keyboard.JustDown(this.actionKeys.jumpAlt)
+    let jumpTriggered = false
+    if (!sliding) {
+      const wantsJump = inputActions.isDown('jump')
+      if (this.jumpController.update(this.player, wantsJump, grounded)) {
+        jumpTriggered = true
+      } else if (grounded && this.cursors.up && Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
+        this.player.setVelocityY(JUMP_VELOCITY)
+        this.jumpController.reset()
+        jumpTriggered = true
+      }
+
       if (jumpTriggered) {
-        this.player.setVelocityY(-260)
         this.animationLockUntil = Math.max(this.animationLockUntil, now + 120)
         this.setPlayerAnimation('player-jump')
       }
@@ -289,7 +322,7 @@ export class Game extends Phaser.Scene {
       let animationKey = 'player-idle'
       if (sliding) {
         animationKey = 'player-slide'
-      } else if (!onGround) {
+      } else if (!grounded) {
         animationKey = body.velocity.y < 0 ? 'player-jump' : 'player-fall'
       } else if (Math.abs(body.velocity.x) > 30) {
         animationKey = 'player-run'
@@ -301,6 +334,18 @@ export class Game extends Phaser.Scene {
 
     if (this.boss && this.boss.scene) {
       this.boss.update(this.time.now, this.game.loop.delta)
+    }
+
+    if (DEBUG_UI) {
+      const snapshot = inputActions.getSnapshot()
+      this.debugOverlay?.update({
+        scene: this.scene.key,
+        lastKey: snapshot.lastKey,
+        transition: null,
+        confirmHint: 'Enter / NumpadEnter (menus)',
+        jumpHint: 'Space',
+        paused: false
+      })
     }
   }
 
@@ -317,7 +362,6 @@ export class Game extends Phaser.Scene {
       cycleForward: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
       shoulderPrev: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
       shoulderNext: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
-      jumpAlt: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
       modifier: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
     }
   }
@@ -335,7 +379,7 @@ export class Game extends Phaser.Scene {
     }
   }
 
-  private handleShooting(now: number, onGround: boolean): void {
+  private handleShooting(now: number, grounded: boolean): void {
     const shootKey = this.actionKeys.shoot
     if (Phaser.Input.Keyboard.JustDown(shootKey)) {
       this.isChargingShot = true
@@ -347,11 +391,11 @@ export class Game extends Phaser.Scene {
       this.fireBullet(charged)
       this.isChargingShot = false
       this.animationLockUntil = Math.max(this.animationLockUntil, now + 180)
-      this.setPlayerAnimation(onGround ? 'player-shoot' : 'player-shoot-air')
+      this.setPlayerAnimation(grounded ? 'player-shoot' : 'player-shoot-air')
     }
   }
 
-  private handleSaberInput(now: number, onGround: boolean): void {
+  private handleSaberInput(now: number, grounded: boolean): void {
     if (!Phaser.Input.Keyboard.JustDown(this.actionKeys.saber)) {
       return
     }
@@ -360,7 +404,7 @@ export class Game extends Phaser.Scene {
     this.saberComboTimer = this.saberComboWindow
     this.animationLockUntil = Math.max(this.animationLockUntil, now + 180)
     this.updatePlayerTint()
-    this.setPlayerAnimation(onGround ? 'player-shoot' : 'player-shoot-air')
+    this.setPlayerAnimation(grounded ? 'player-shoot' : 'player-shoot-air')
     this.applySaberDamage()
   }
 
