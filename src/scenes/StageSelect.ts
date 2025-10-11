@@ -8,6 +8,12 @@ type SlotEntry = {
   bossIndex: number | null
 }
 
+/**
+ * Stage select layout guidelines:
+ * 1. Always verify copy will fit inside its slot or preview panel before rendering.
+ * 2. Auto-resize text when it exceeds its container and then reflow it with generous spacing.
+ * 3. Keep a minimum 6px rhythm between stacked lines so captions never collide with borders.
+ */
 export class StageSelect extends Phaser.Scene {
   private index = 0
   private currentPage = 0
@@ -26,6 +32,10 @@ export class StageSelect extends Phaser.Scene {
   private panelWidth = 140
   private cellWidth = 0
   private readonly cellHeight = 56
+  private previewPanelBounds?: { top: number; height: number; width: number; x: number }
+  private snap(value: number): number {
+    return Math.round(value)
+  }
 
   constructor() {
     super('StageSelect')
@@ -94,17 +104,21 @@ export class StageSelect extends Phaser.Scene {
   private createPreviewPanel(width: number, height: number): void {
     const maxPanelWidth = Math.max(120, width - 96 - this.columns * 60)
     const desiredPanelWidth = Phaser.Math.Clamp(width * 0.36, 120, 168)
-    this.panelWidth = Math.round(Math.min(desiredPanelWidth, maxPanelWidth))
+    this.panelWidth = this.snap(Math.min(desiredPanelWidth, maxPanelWidth))
     const panelHeight = height - 72
-    const panelX = width - this.panelWidth / 2 - 28
-    const panelY = height / 2 + 6
+    const panelX = this.snap(width - this.panelWidth / 2 - 28)
+    const panelY = this.snap(height / 2 + 6)
+    const panelTop = this.snap(panelY - panelHeight / 2)
 
     this.add
       .rectangle(panelX, panelY, this.panelWidth, panelHeight, 0x0c1324, 0.9)
       .setStrokeStyle(2, 0x3a75c4, 0.6)
 
+    const titleY = this.snap(panelTop + 16)
+    this.previewPanelBounds = { top: panelTop, height: panelHeight, width: this.panelWidth, x: panelX }
+
     this.previewTitle = this.add
-      .text(panelX, panelY - panelHeight / 2 + 16, '', {
+      .text(panelX, titleY, '', {
         fontFamily: 'monospace',
         fontSize: '15px',
         color: '#8fb8ff',
@@ -112,26 +126,32 @@ export class StageSelect extends Phaser.Scene {
         wordWrap: { width: this.panelWidth - 24 }
       })
       .setOrigin(0.5, 0)
+    this.registerSizing(this.previewTitle, 11)
 
+    const nameY = this.snap(titleY + 32)
     this.bossNameText = this.add
-      .text(panelX, this.previewTitle.y + 32, '', {
+      .text(panelX, nameY, '', {
         fontFamily: 'monospace',
         fontSize: '18px',
         color: '#ffffff',
         fontStyle: 'bold'
       })
       .setOrigin(0.5, 0)
+    this.registerSizing(this.bossNameText, 12)
 
+    const elementY = this.snap(nameY + 24)
     this.elementText = this.add
-      .text(panelX, this.bossNameText.y + 24, '', {
+      .text(panelX, elementY, '', {
         fontFamily: 'monospace',
         fontSize: '12px',
         color: '#9ad'
       })
       .setOrigin(0.5, 0)
+    this.registerSizing(this.elementText, 10)
 
+    const descriptionY = this.snap(elementY + 24)
     this.previewDescription = this.add
-      .text(panelX, this.elementText.y + 24, '', {
+      .text(panelX, descriptionY, '', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#c7d8ff',
@@ -139,8 +159,9 @@ export class StageSelect extends Phaser.Scene {
         wordWrap: { width: this.panelWidth - 24 }
       })
       .setOrigin(0.5, 0)
+    this.registerSizing(this.previewDescription, 9)
 
-    const infoTop = panelY + panelHeight / 2 - 52
+    const infoTop = this.snap(panelY + panelHeight / 2 - 52)
     this.infoText = this.add
       .text(panelX, infoTop, '', {
         fontFamily: 'monospace',
@@ -150,16 +171,17 @@ export class StageSelect extends Phaser.Scene {
         wordWrap: { width: this.panelWidth - 24 }
       })
       .setOrigin(0.5, 0)
+    this.registerSizing(this.infoText, 9)
   }
 
   private drawGrid(width: number, height: number): void {
     const gridWidth = width - this.panelWidth - 96
     const computedCellWidth = Math.floor(gridWidth / this.columns)
     this.cellWidth = Math.max(56, computedCellWidth)
-    const horizontalPadding = (gridWidth - this.cellWidth * this.columns) / 2
-    const startX = 44 + horizontalPadding + this.cellWidth / 2
+    const horizontalPadding = this.snap((gridWidth - this.cellWidth * this.columns) / 2)
+    const startX = this.snap(44 + horizontalPadding + this.cellWidth / 2)
     const gridHeight = this.rows * this.cellHeight
-    const startY = height / 2 - gridHeight / 2 + 12
+    const startY = this.snap(height / 2 - gridHeight / 2 + 12)
 
     this.slots = []
     this.slotEntries = []
@@ -167,8 +189,8 @@ export class StageSelect extends Phaser.Scene {
     for (let row = 0; row < this.rows; row += 1) {
       for (let col = 0; col < this.columns; col += 1) {
         const slotIndex = row * this.columns + col
-        const x = startX + col * this.cellWidth
-        const y = startY + row * this.cellHeight
+        const x = this.snap(startX + col * this.cellWidth)
+        const y = this.snap(startY + row * this.cellHeight)
 
         const rect = this.add
           .rectangle(x, y, this.cellWidth - 18, this.cellHeight - 20, 0x1a2847, 0.28)
@@ -187,7 +209,8 @@ export class StageSelect extends Phaser.Scene {
             fontStyle: 'bold',
             align: 'center'
           })
-          .setOrigin(0.5)
+          .setOrigin(0.5, 0)
+        this.registerSizing(name, 11)
 
         const element = this.add
           .text(x, y + 8, '', {
@@ -195,7 +218,8 @@ export class StageSelect extends Phaser.Scene {
             fontSize: '11px',
             color: '#9ad'
           })
-          .setOrigin(0.5)
+          .setOrigin(0.5, 0)
+        this.registerSizing(element, 9)
 
         this.slots.push(new Phaser.Math.Vector2(x, y))
         this.slotEntries.push({ rect, name, element, bossIndex: null })
@@ -293,6 +317,7 @@ export class StageSelect extends Phaser.Scene {
         .setInteractive({ useHandCursor: true })
       slot.name.setVisible(true).setText(entry.blueprint.codename)
       slot.element.setVisible(true).setText(entry.blueprint.element.toUpperCase())
+      this.layoutSlotEntry(slot)
     })
 
     this.pageIndicator?.setText(`Page ${this.currentPage + 1} / ${totalPages}`)
@@ -317,7 +342,7 @@ export class StageSelect extends Phaser.Scene {
     }
 
     this.cursor.setVisible(true)
-    this.cursor.setPosition(slotPosition.x, slotPosition.y)
+    this.cursor.setPosition(this.snap(slotPosition.x), this.snap(slotPosition.y))
     this.refreshInfo()
   }
 
@@ -356,6 +381,8 @@ export class StageSelect extends Phaser.Scene {
       `Type: ${blueprint.element}  •  Weak: ${entry.weakTo}  •  Resists: ${entry.strongAgainst}`
     )
     this.infoText.setText(`Arena: ${blueprint.arena}\nWeapon: ${reward.displayName}\n${reward.description}`)
+
+    this.layoutPreviewPanel()
   }
 
   private updatePreview(): void {
@@ -369,5 +396,177 @@ export class StageSelect extends Phaser.Scene {
     this.previewDescription.setText(
       `Profile: ${blueprint.movementProfile.mobilityNotes}\nReward Tip: ${blueprint.weaponReward.tutorial}`
     )
+
+    this.layoutPreviewPanel()
+  }
+
+  private registerSizing(text: Phaser.GameObjects.Text, minFontSize: number): void {
+    if (!text.getData('baseFontSize')) {
+      text.setData('baseFontSize', this.getCurrentFontSize(text))
+    }
+    text.setData('minFontSize', minFontSize)
+  }
+
+  private getCurrentFontSize(text: Phaser.GameObjects.Text): number {
+    const raw = text.style.fontSize
+    if (typeof raw === 'number') {
+      return raw
+    }
+    const parsed = parseFloat(raw ?? '12')
+    return Number.isFinite(parsed) ? parsed : 12
+  }
+
+  private getBaseFontSize(text: Phaser.GameObjects.Text): number {
+    const stored = text.getData('baseFontSize')
+    if (typeof stored === 'number') {
+      return stored
+    }
+    const current = this.getCurrentFontSize(text)
+    text.setData('baseFontSize', current)
+    return current
+  }
+
+  private getMinFontSize(text: Phaser.GameObjects.Text): number {
+    const stored = text.getData('minFontSize')
+    return typeof stored === 'number' ? stored : 8
+  }
+
+  private restoreBaseFontSize(text: Phaser.GameObjects.Text): void {
+    text.setFontSize(this.getBaseFontSize(text))
+  }
+
+  private fitTextWithinBounds(
+    text: Phaser.GameObjects.Text,
+    maxWidth: number,
+    maxHeight?: number
+  ): void {
+    this.restoreBaseFontSize(text)
+
+    const minFont = this.getMinFontSize(text)
+    let guard = 0
+    while (guard < 24 && text.displayWidth > maxWidth && this.getCurrentFontSize(text) > minFont) {
+      text.setFontSize(this.getCurrentFontSize(text) - 1)
+      guard += 1
+    }
+
+    if (typeof maxHeight === 'number') {
+      guard = 0
+      while (guard < 24 && text.displayHeight > maxHeight && this.getCurrentFontSize(text) > minFont) {
+        text.setFontSize(this.getCurrentFontSize(text) - 1)
+        guard += 1
+      }
+    }
+  }
+
+  private shrinkText(text: Phaser.GameObjects.Text, maxWidth: number): boolean {
+    const minFont = this.getMinFontSize(text)
+    const current = this.getCurrentFontSize(text)
+    if (current <= minFont) {
+      return false
+    }
+
+    text.setFontSize(current - 1)
+
+    let guard = 0
+    while (guard < 24 && text.displayWidth > maxWidth && this.getCurrentFontSize(text) > minFont) {
+      text.setFontSize(this.getCurrentFontSize(text) - 1)
+      guard += 1
+    }
+
+    return true
+  }
+
+  private positionPreviewTexts(
+    bounds: { top: number; height: number; width: number; x: number },
+    topPadding: number,
+    spacing: { tight: number; standard: number; roomy: number }
+  ): number {
+    if (!this.previewTitle || !this.bossNameText || !this.elementText || !this.previewDescription || !this.infoText) {
+      return bounds.top
+    }
+
+    let cursorY = bounds.top + topPadding
+
+    const applyPosition = (
+      text: Phaser.GameObjects.Text,
+      additionalSpacing: number
+    ): void => {
+      text.setX(bounds.x)
+      text.setY(this.snap(cursorY))
+      cursorY += text.displayHeight + additionalSpacing
+    }
+
+    applyPosition(this.previewTitle, spacing.standard)
+    applyPosition(this.bossNameText, spacing.tight)
+    applyPosition(this.elementText, spacing.standard)
+    applyPosition(this.previewDescription, spacing.roomy)
+    applyPosition(this.infoText, 0)
+
+    return cursorY
+  }
+
+  private layoutPreviewPanel(): void {
+    if (
+      !this.previewPanelBounds ||
+      !this.previewTitle ||
+      !this.bossNameText ||
+      !this.elementText ||
+      !this.previewDescription ||
+      !this.infoText
+    ) {
+      return
+    }
+
+    const bounds = this.previewPanelBounds
+    const innerWidth = bounds.width - 24
+
+    this.fitTextWithinBounds(this.previewTitle, innerWidth, 48)
+    this.fitTextWithinBounds(this.bossNameText, innerWidth, 40)
+    this.fitTextWithinBounds(this.elementText, innerWidth, 32)
+    this.fitTextWithinBounds(this.previewDescription, innerWidth, bounds.height * 0.35)
+    this.fitTextWithinBounds(this.infoText, innerWidth, bounds.height * 0.32)
+
+    const spacing = { tight: 6, standard: 12, roomy: 16 }
+    let iterations = 0
+    const maxBottom = bounds.top + bounds.height - 16
+
+    while (iterations < 12) {
+      const contentBottom = this.positionPreviewTexts(bounds, 16, spacing)
+      if (contentBottom <= maxBottom) {
+        break
+      }
+
+      if (this.shrinkText(this.infoText, innerWidth)) {
+        iterations += 1
+        continue
+      }
+
+      if (this.shrinkText(this.previewDescription, innerWidth)) {
+        iterations += 1
+        continue
+      }
+
+      break
+    }
+
+    this.positionPreviewTexts(bounds, 16, spacing)
+  }
+
+  private layoutSlotEntry(slot: SlotEntry): void {
+    const { rect, name, element } = slot
+    const innerWidth = this.cellWidth - 28
+
+    this.fitTextWithinBounds(name, innerWidth, this.cellHeight / 2)
+    this.fitTextWithinBounds(element, innerWidth, this.cellHeight / 2)
+
+    const spacing = 6
+    const totalHeight = name.displayHeight + spacing + element.displayHeight
+    const topY = rect.y - totalHeight / 2
+
+    name.setX(rect.x)
+    name.setY(this.snap(topY))
+
+    element.setX(rect.x)
+    element.setY(this.snap(topY + name.displayHeight + spacing))
   }
 }
