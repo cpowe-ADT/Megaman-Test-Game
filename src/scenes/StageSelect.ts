@@ -1,5 +1,9 @@
 import Phaser from 'phaser'
 import { ORDERED_BOSSES } from '../bosses/roster'
+import { DEBUG_UI } from '../config/debug'
+import { inputActions } from '../input/InputActions'
+import { StageSelectLogic } from './stage-select/StageSelectLogic'
+import { DebugOverlay } from '../ui/DebugOverlay'
 
 type SlotEntry = {
   rect: Phaser.GameObjects.Rectangle
@@ -26,6 +30,9 @@ export class StageSelect extends Phaser.Scene {
   private previewTitle?: Phaser.GameObjects.Text
   private previewDescription?: Phaser.GameObjects.Text
   private pageIndicator?: Phaser.GameObjects.Text
+  private debugOverlay?: DebugOverlay
+  private readonly logic = new StageSelectLogic()
+  private requestedTransition: { scene: string; data: unknown } | null = null
   private readonly columns = 3
   private readonly rows = 3
   private readonly pageSize = this.columns * this.rows
@@ -60,8 +67,57 @@ export class StageSelect extends Phaser.Scene {
     this.refreshPage()
     this.updateCursor()
     this.updatePreview()
+    this.logic.setIndex(this.index)
 
     this.registerKeyboardShortcuts()
+
+    if (this.input.keyboard) {
+      inputActions.initialize(this.input.keyboard)
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => inputActions.release(this.input.keyboard!))
+    }
+
+    if (DEBUG_UI) {
+      this.debugOverlay = new DebugOverlay(this)
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.debugOverlay?.destroy())
+    }
+  }
+
+  update(): void {
+    if (this.input.keyboard) {
+      inputActions.updateFrameClock(this.game.loop.now)
+    }
+
+    if (inputActions.isPressed('toggleDebug')) {
+      this.debugOverlay?.toggle()
+    }
+
+    if (inputActions.isPressed('confirm')) {
+      this.confirm()
+    }
+
+    const pendingTransition = this.requestedTransition
+
+    if (DEBUG_UI) {
+      const snapshot = inputActions.getSnapshot()
+      const info = `Scene=StageSelect | LastKey=${snapshot?.lastKey ?? '--'} | Transition=${
+        pendingTransition ? JSON.stringify(pendingTransition) : 'none'
+      }`
+      // eslint-disable-next-line no-console
+      console.debug(`[debug] ${info}`)
+      this.debugOverlay?.update({
+        scene: this.scene.key,
+        lastKey: snapshot?.lastKey ?? null,
+        transition: pendingTransition ? pendingTransition.scene : null,
+        confirmHint: 'Enter / NumpadEnter',
+        jumpHint: 'Space (gameplay)',
+        paused: false
+      })
+    }
+
+    if (pendingTransition) {
+      this.requestedTransition = null
+      this.scene.start(pendingTransition.scene, pendingTransition.data)
+    }
   }
 
   private createBackdrop(width: number, height: number): void {
@@ -235,7 +291,7 @@ export class StageSelect extends Phaser.Scene {
       .setStrokeStyle(1, 0x3a75c4, 0.4)
 
     this.add
-      .text(width / 2, footerY - 10, '← ↑ → ↓ NAVIGATE   •   ENTER / SPACE START   •   Q / E CHANGE PAGE', {
+      .text(width / 2, footerY - 10, '← ↑ → ↓ NAVIGATE   •   ENTER START   •   Q / E CHANGE PAGE', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#9acbff',
@@ -262,8 +318,6 @@ export class StageSelect extends Phaser.Scene {
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)?.on('down', () => this.move(1))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP)?.on('down', () => this.move(-this.columns))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN)?.on('down', () => this.move(this.columns))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)?.on('down', () => this.confirm())
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)?.on('down', () => this.confirm())
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q)?.on('down', () => this.changePage(-1))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)?.on('down', () => this.changePage(1))
   }
@@ -274,6 +328,7 @@ export class StageSelect extends Phaser.Scene {
       return
     }
     this.index = slot.bossIndex
+    this.logic.setIndex(this.index)
     this.updateCursor()
     this.updatePreview()
   }
@@ -281,6 +336,7 @@ export class StageSelect extends Phaser.Scene {
   private move(delta: number): void {
     const total = ORDERED_BOSSES.length
     this.index = (this.index + delta + total) % total
+    this.logic.setIndex(this.index)
     this.updateCursor()
     this.updatePreview()
   }
@@ -353,6 +409,7 @@ export class StageSelect extends Phaser.Scene {
     const start = this.currentPage * this.pageSize
     const end = Math.min(start + this.pageSize - 1, ORDERED_BOSSES.length - 1)
     this.index = Phaser.Math.Clamp(this.index, start, end)
+    this.logic.setIndex(this.index)
 
     this.refreshPage()
     this.updateCursor()
@@ -360,11 +417,19 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private confirm(): void {
-    const entry = ORDERED_BOSSES[this.index]
-    if (!entry) {
+    this.logic.setIndex(this.index)
+    const transition = this.logic.confirm()
+    if (!transition) {
       return
     }
-    this.scene.start('Game', { bossId: entry.id })
+
+    this.requestedTransition = { scene: transition.scene, data: transition.data }
+    if (!DEBUG_UI) {
+      // Immediately start the scene when debug overlay isn't intercepting for display.
+      const pending = this.requestedTransition
+      this.requestedTransition = null
+      this.scene.start(pending.scene, pending.data)
+    }
   }
 
   private refreshInfo(): void {
