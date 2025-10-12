@@ -117,31 +117,38 @@ export class Game extends Phaser.Scene {
     const weaponEnergyMax = blueprint.weaponReward?.maxEnergy ?? this.weaponEnergy.max
     this.weaponEnergy = { current: weaponEnergyMax, max: weaponEnergyMax }
 
-    this.bossLabel = this.add
-      .text(6, 6, `${this.bossName} • ${blueprint.element}`, {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9ad'
-      })
-      .setScrollFactor(0)
+    const makeOverlayLabel = (
+      x: number,
+      y: number,
+      text: string,
+      originX = 0
+    ): Phaser.GameObjects.Text => {
+      const label = this.add
+        .text(x, y, text, {
+          fontFamily: 'monospace',
+          fontSize: '9px',
+          color: '#b7e3ff',
+          align: originX === 1 ? 'right' : 'left'
+        })
+        .setScrollFactor(0)
+        .setOrigin(originX, 0)
+        .setDepth(1000)
 
-    this.weaponLabel = this.add
-      .text(6, 18, '', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9ad'
-      })
-      .setScrollFactor(0)
+      label.setLetterSpacing(1)
+      label.setShadow(0, 1, '#041224', 0, false, true)
+      label.setStroke('#0a2137', 2)
+      return label
+    }
 
-    this.phaseLabel = this.add
-      .text(width - 6, 6, 'Phase: --', {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#9ad',
-        align: 'right'
-      })
-      .setScrollFactor(0)
-      .setOrigin(1, 0)
+    this.bossLabel = makeOverlayLabel(
+      10,
+      8,
+      `${(this.bossName ?? '').toUpperCase()} • ${blueprint.element.toUpperCase()}`
+    )
+
+    this.weaponLabel = makeOverlayLabel(10, 18, '')
+
+    this.phaseLabel = makeOverlayLabel(width - 10, 8, 'PHASE • --', 1)
 
     const ground = this.add.rectangle(width / 2, height - 8, width, 16, 0x1a2230)
     this.physics.add.existing(ground, true)
@@ -272,32 +279,32 @@ export class Game extends Phaser.Scene {
       lockIntro: true
     })
     this.initializeHud()
-    this.currentPhaseName = this.bossController.currentPhase.name
-    this.phaseLabel.setText(`Phase: ${this.currentPhaseName}`)
+    this.currentPhaseName = this.bossController.currentPhase.name.toUpperCase()
+    this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}`)
 
     this.time.delayedCall(1600, () => {
       this.bossController?.unlockIntro()
       const phase = this.bossController?.currentPhase
       if (phase) {
-        this.currentPhaseName = phase.name
-        this.phaseLabel.setText(`Phase: ${this.currentPhaseName}`)
+        this.currentPhaseName = phase.name.toUpperCase()
+        this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}`)
       }
     })
 
     this.events.on('boss-phase-change', (event) => {
       const { phase } = event as { phase: { name: string } }
-      this.currentPhaseName = phase.name
-      this.phaseLabel.setText(`Phase: ${this.currentPhaseName}`)
+      this.currentPhaseName = phase.name.toUpperCase()
+      this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}`)
     })
 
     this.events.on('boss-attack', (event) => {
       const { attack } = event as { attack: { name: string } }
-      this.phaseLabel.setText(`Phase: ${this.currentPhaseName}\nAction: ${attack.name}`)
+      this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}\nACTION • ${attack.name.toUpperCase()}`)
     })
 
     this.events.on('boss-defeated', (event) => {
       const { reward } = event as { reward: { displayName: string } }
-      this.phaseLabel.setText(`Victory! Weapon Acquired: ${reward.displayName}`)
+      this.phaseLabel.setText(`VICTORY • WEAPON ACQUIRED\n${reward.displayName.toUpperCase()}`)
     })
 
     this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
@@ -536,7 +543,8 @@ export class Game extends Phaser.Scene {
 
   private initializeHud(): void {
     this.hud = new HUD(this)
-    const bossLabelName = this.boss?.data?.get('name') ?? this.bossName ?? '??'
+    const bossLabelRaw = this.boss?.data?.get('name') ?? this.bossName ?? '??'
+    const bossLabelName = typeof bossLabelRaw === 'string' ? bossLabelRaw : String(bossLabelRaw)
     this.hud.setNames('Sentinel ROOK', bossLabelName)
     this.hud.setLives(this.playerLives)
     this.hud.updatePlayerHp(this.playerHp, this.playerMaxHp)
@@ -874,7 +882,80 @@ export class Game extends Phaser.Scene {
   }
 
   private updateWeaponLabel(): void {
-    this.weaponLabel.setText(`Weapon: ${this.weapons[this.currentWeaponIndex]}`)
+    const weapon = this.weapons[this.currentWeaponIndex]
+    this.weaponLabel.setText(`WEAPON • ${weapon.toUpperCase()}`)
+  }
+
+  private applyDamageToPlayer(dmg: number): void {
+    if (!this.player || !this.player.active || this.playerLives < 0) {
+      return
+    }
+
+    this.playerHp = Math.max(0, this.playerHp - dmg)
+    this.player.setDataEnabled()
+    this.player.data.set('hp', this.playerHp)
+    this.player.data.set('maxHp', this.playerMaxHp)
+    this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
+
+    if (this.playerHp <= 0) {
+      this.playerDeathAndRespawn()
+    }
+  }
+
+  private playerDeathAndRespawn(): void {
+    if (!this.player) {
+      return
+    }
+
+    this.playerLives--
+    this.hud?.setLives(this.playerLives)
+
+    const anyPlayer = this.player as any
+    if (typeof anyPlayer.disableBody === 'function') {
+      anyPlayer.disableBody(true, true)
+    } else {
+      this.player.setActive(false).setVisible(false)
+      const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+      if (body) {
+        body.enable = false
+      }
+    }
+
+    if (this.playerLives > 0) {
+      this.time.delayedCall(600, () => {
+        if (!this.player || !this.respawnPoint) {
+          return
+        }
+
+        const playerAny = this.player as any
+        if (typeof playerAny.enableBody === 'function') {
+          playerAny.enableBody(true, this.respawnPoint.x, this.respawnPoint.y, true, true)
+        } else {
+          this.player.setPosition(this.respawnPoint.x, this.respawnPoint.y)
+          const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+          if (body) {
+            body.enable = true
+            body.reset(this.respawnPoint.x, this.respawnPoint.y)
+          }
+        }
+        this.playerHp = this.playerMaxHp
+        this.player.setDataEnabled()
+        this.player.data.set('hp', this.playerHp)
+        this.player.data.set('maxHp', this.playerMaxHp)
+        this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
+        this.player.setVelocity(0, 0)
+        this.player.setActive(true).setVisible(true)
+      })
+    } else {
+      this.gameOver()
+    }
+  }
+
+  private gameOver(): void {
+    this.add
+      .text(this.scale.width / 2, this.scale.height / 2, 'GAME OVER', { color: '#fff' })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
   }
 
   private applyDamageToPlayer(dmg: number): void {
