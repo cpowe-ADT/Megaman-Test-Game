@@ -3,9 +3,10 @@ import { BossController } from '../bosses/BossController'
 import { BossId } from '../bosses/types'
 import { getBossById } from '../bosses/roster'
 import { DEBUG_UI } from '../config/debug'
-import { inputActions } from '../input/InputActions'
+import InputActions from '../input/InputActions'
 import { DebugOverlay } from '../ui/DebugOverlay'
 import { JumpController } from './game/JumpController'
+import { evaluatePauseState } from './game/pauseLogic'
 
 const JUMP_VELOCITY = -420
 
@@ -54,6 +55,10 @@ export class Game extends Phaser.Scene {
   private animationLockUntil = 0
   private debugOverlay?: DebugOverlay
   private readonly jumpController = new JumpController(JUMP_VELOCITY)
+  private debugToggleHandler?: () => void
+  private preventScrollHandler?: (event: KeyboardEvent) => void
+  private pauseOverlay?: Phaser.GameObjects.Container
+  private paused = false
 
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
     const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
@@ -74,9 +79,19 @@ export class Game extends Phaser.Scene {
     const { width, height } = this.scale
     this.cameras.main.setBackgroundColor('#0e1622')
 
+    InputActions.init(this)
+    this.installScrollGuards()
+    this.createPauseOverlay(width, height)
+
     if (this.input.keyboard) {
-      inputActions.initialize(this.input.keyboard)
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => inputActions.release(this.input.keyboard!))
+      this.debugToggleHandler = () => this.debugOverlay?.toggle()
+      this.input.keyboard.on('keydown-BACKTICK', this.debugToggleHandler)
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        if (this.debugToggleHandler) {
+          this.input.keyboard?.off('keydown-BACKTICK', this.debugToggleHandler)
+          this.debugToggleHandler = undefined
+        }
+      })
     }
 
     if (DEBUG_UI) {
@@ -222,16 +237,25 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    if (this.input.keyboard) {
-      inputActions.updateFrameClock(this.game.loop.now)
+    const pauseState = evaluatePauseState(this.paused, InputActions.isPressedPauseOnce())
+    this.setPaused(pauseState.paused)
+
+    if (DEBUG_UI) {
+      this.debugOverlay?.update({
+        sceneName: this.scene.key,
+        managerName: this.scene.key,
+        confirmHint: 'Enter / NumpadEnter (menus)',
+        jumpHint: 'Space',
+        pauseHint: 'Esc (toggle)'
+      })
     }
 
-    if (inputActions.isPressed('toggleDebug')) {
-      this.debugOverlay?.toggle()
+    if (pauseState.skipUpdate) {
+      return
     }
 
     const body = this.player.body as Phaser.Physics.Arcade.Body
-    const grounded = body.blocked.down || body.touching.down || body.onFloor()
+    const grounded = body.onFloor() || body.blocked.down
     const now = this.time.now
     const sliding = now < this.slideUntil
 
@@ -297,12 +321,8 @@ export class Game extends Phaser.Scene {
 
     let jumpTriggered = false
     if (!sliding) {
-      const wantsJump = inputActions.isDown('jump')
+      const wantsJump = InputActions.isDownJump()
       if (this.jumpController.update(this.player, wantsJump, grounded)) {
-        jumpTriggered = true
-      } else if (grounded && this.cursors.up && Phaser.Input.Keyboard.JustDown(this.cursors.up)) {
-        this.player.setVelocityY(JUMP_VELOCITY)
-        this.jumpController.reset()
         jumpTriggered = true
       }
 
@@ -335,18 +355,77 @@ export class Game extends Phaser.Scene {
     if (this.boss && this.boss.scene) {
       this.boss.update(this.time.now, this.game.loop.delta)
     }
+  }
 
-    if (DEBUG_UI) {
-      const snapshot = inputActions.getSnapshot()
-      this.debugOverlay?.update({
-        scene: this.scene.key,
-        lastKey: snapshot.lastKey,
-        transition: null,
-        confirmHint: 'Enter / NumpadEnter (menus)',
-        jumpHint: 'Space',
-        paused: false
-      })
+  private createPauseOverlay(width: number, height: number): void {
+    const overlay = this.add.container(0, 0)
+    overlay.setScrollFactor(0)
+    overlay.setDepth(900)
+
+    const dim = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.55)
+    dim.setScrollFactor(0)
+
+    const label = this.add.text(width / 2, height / 2, 'Paused', {
+      fontFamily: 'monospace',
+      fontSize: '22px',
+      color: '#ffffff',
+      backgroundColor: 'rgba(8, 12, 20, 0.75)',
+      padding: { x: 12, y: 8 },
+      align: 'center'
+    })
+    label.setOrigin(0.5)
+    label.setScrollFactor(0)
+    label.setShadow(2, 2, '#000000', 4, true, true)
+
+    overlay.add([dim, label])
+    overlay.setVisible(false)
+    this.pauseOverlay = overlay
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      overlay.destroy(true)
+      if (this.pauseOverlay === overlay) {
+        this.pauseOverlay = undefined
+      }
+    })
+  }
+
+  private setPaused(paused: boolean): void {
+    if (this.paused === paused) {
+      return
     }
+
+    this.paused = paused
+    if (paused) {
+      this.physics.world.pause()
+    } else {
+      this.physics.world.resume()
+    }
+
+    this.pauseOverlay?.setVisible(paused)
+  }
+
+  private installScrollGuards(): void {
+    const keyboard = this.input.keyboard
+    if (!keyboard || this.preventScrollHandler) {
+      return
+    }
+
+    const blockedCodes = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
+    const handler = (event: KeyboardEvent) => {
+      if (blockedCodes.has(event.code)) {
+        event.preventDefault()
+      }
+    }
+
+    this.preventScrollHandler = handler
+    keyboard.on('keydown', handler)
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      keyboard.off('keydown', handler)
+      if (this.preventScrollHandler === handler) {
+        this.preventScrollHandler = undefined
+      }
+    })
   }
 
   private initializeActionKeys(): void {

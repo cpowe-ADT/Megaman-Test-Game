@@ -7,14 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "node --loader ./tools/ts-node-loader.mjs --test"
   },
   "dependencies": {
     "phaser": "^3.80.0"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
-    "vite": "^5.0.0",
-    "vitest": "^1.6.0"
+    "vite": "^5.0.0"
   }
 }
