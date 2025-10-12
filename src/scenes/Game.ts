@@ -66,7 +66,7 @@ export class Game extends Phaser.Scene {
       return
     }
     if (this.bullets && this.bullets.contains(sprite)) {
-      this.recycleBullet(sprite)
+      this.recycleBullet(sprite, undefined)
     }
   }
 
@@ -154,6 +154,8 @@ export class Game extends Phaser.Scene {
 
     this.bullets = this.physics.add.group({
       classType: Phaser.Physics.Arcade.Sprite,
+      maxSize: 50,
+      runChildUpdate: true,
       allowGravity: false,
       collideWorldBounds: true
     })
@@ -179,16 +181,8 @@ export class Game extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.enemies, this.onPlayerDamaged, undefined, this)
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHitsEnemy, undefined, this)
 
-    this.physics.add.collider(
-      this.bullets,
-      ground,
-      (bullet) => this.recycleBullet(bullet as Phaser.Physics.Arcade.Sprite)
-    )
-    this.physics.add.collider(
-      this.bullets,
-      platform,
-      (bullet) => this.recycleBullet(bullet as Phaser.Physics.Arcade.Sprite)
-    )
+    this.physics.add.collider(this.bullets, ground, this.recycleBullet, undefined, this)
+    this.physics.add.collider(this.bullets, platform, this.recycleBullet, undefined, this)
 
     this.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.handleWorldBounds)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -545,22 +539,42 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    bullet.enableBody(true, bulletX, bulletY, true, true)
     bullet.setActive(true)
     bullet.setVisible(true)
     bullet.setDepth(2)
     bullet.play('buster-fly')
     bullet.setScale(charged ? 1.2 : 1)
-    bullet.body.reset(bulletX, bulletY)
-    bullet.body.allowGravity = false
-    bullet.body.setCollideWorldBounds(true)
-    ;(bullet.body as Phaser.Physics.Arcade.Body).onWorldBounds = true
+
+    const body = bullet.body as Phaser.Physics.Arcade.Body
+    body.enable = true
+    body.reset(bulletX, bulletY)
+    body.allowGravity = false
+    body.setCollideWorldBounds(true)
+    body.onWorldBounds = true
     bullet.setVelocityX((charged ? 360 : 260) * this.facing)
     bullet.setData('power', charged ? 2 : 1)
   }
 
-  private recycleBullet(bullet: Phaser.Physics.Arcade.Sprite): void {
-    bullet.disableBody(true, true)
+  private recycleBullet(a: any, b: any): void {
+    let bullet = a as Phaser.Physics.Arcade.Sprite
+
+    if (!bullet || !bullet.body || !(bullet instanceof Phaser.Physics.Arcade.Sprite)) {
+      bullet = b as Phaser.Physics.Arcade.Sprite
+    }
+
+    if (!bullet || !bullet.body) {
+      return
+    }
+
+    const anyBullet = bullet as any
+    if (typeof anyBullet.disableBody === 'function') {
+      anyBullet.disableBody(true, true)
+    } else {
+      this.bullets.killAndHide(bullet)
+      ;(bullet.body as Phaser.Physics.Arcade.Body).enable = false
+    }
+
+    bullet.setVelocity(0, 0)
     bullet.setScale(1)
     bullet.setData('power', 1)
   }
@@ -593,9 +607,8 @@ export class Game extends Phaser.Scene {
   ): void {
     const bullet = bulletObj as Phaser.Physics.Arcade.Sprite
     const enemy = enemyObj as Phaser.Physics.Arcade.Sprite
-    this.recycleBullet(bullet)
-
     const power = (bullet.getData('power') as number) ?? 1
+    this.recycleBullet(bullet, enemy)
     const current = (enemy.getData('health') as number) ?? 0
     const remaining = current - power
     enemy.setData('health', remaining)
