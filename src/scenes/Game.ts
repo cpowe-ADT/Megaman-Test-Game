@@ -5,6 +5,7 @@ import { getBossById } from '../bosses/roster'
 import { DEBUG_UI } from '../config/debug'
 import InputActions from '../input/InputActions'
 import { DebugOverlay } from '../ui/DebugOverlay'
+import { HUD } from '../ui/HUD'
 import { JumpController } from './game/JumpController'
 import { evaluatePauseState } from './game/pauseLogic'
 
@@ -35,6 +36,7 @@ export class Game extends Phaser.Scene {
   private bossLabel!: Phaser.GameObjects.Text
   private weaponLabel!: Phaser.GameObjects.Text
   private phaseLabel!: Phaser.GameObjects.Text
+  private hud?: HUD
   private isChargingShot = false
   private chargeStartedAt = 0
   private currentWeaponIndex = 0
@@ -59,6 +61,12 @@ export class Game extends Phaser.Scene {
   private preventScrollHandler?: (event: KeyboardEvent) => void
   private pauseOverlay?: Phaser.GameObjects.Container
   private paused = false
+  private playerHp = { current: 28, max: 28 }
+  private weaponEnergy = { current: 28, max: 28 }
+  private lives = 3
+  private bossHp?: { current: number; max: number }
+  private bossName?: string
+  private scaleResizeHandler?: Phaser.Types.Core.ScaleEventCallback
 
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
     const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
@@ -100,6 +108,10 @@ export class Game extends Phaser.Scene {
     }
 
     this.jumpController.reset()
+    this.bossName = blueprint.codename
+    this.bossHp = { current: blueprint.baseStats.maxHp, max: blueprint.baseStats.maxHp }
+    const weaponEnergyMax = blueprint.weaponReward?.maxEnergy ?? this.weaponEnergy.max
+    this.weaponEnergy = { current: weaponEnergyMax, max: weaponEnergyMax }
 
     this.bossLabel = this.add
       .text(6, 6, `${blueprint.codename} • ${blueprint.element}`, {
@@ -151,6 +163,9 @@ export class Game extends Phaser.Scene {
     playerBody.setSize(10, 16)
     playerBody.setOffset(3, 2)
     this.player.play('player-idle')
+    this.player.setDataEnabled()
+    this.player.data.set('hp', this.playerHp.current)
+    this.player.data.set('maxHp', this.playerHp.max)
 
     this.bullets = this.physics.add.group({
       classType: Phaser.Physics.Arcade.Sprite,
@@ -213,6 +228,7 @@ export class Game extends Phaser.Scene {
       spawn: new Phaser.Math.Vector2(width - 48, height - 40),
       lockIntro: true
     })
+    this.initializeHud()
     this.currentPhaseName = this.boss.currentPhase.name
     this.phaseLabel.setText(`Phase: ${this.currentPhaseName}`)
 
@@ -455,6 +471,25 @@ export class Game extends Phaser.Scene {
       shoulderNext: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
       modifier: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
     }
+  }
+
+  private initializeHud(): void {
+    this.hud = new HUD(this)
+    this.hud.setNames('Sentinel ROOK', this.bossName ?? '??')
+    this.hud.setLives(this.lives)
+    this.hud.updatePlayerHp(this.playerHp.current, this.playerHp.max)
+    this.hud.updateWeapon(this.weaponEnergy.current, this.weaponEnergy.max)
+    if (this.bossHp) {
+      this.hud.updateBossHp(this.bossHp.current, this.bossHp.max)
+    }
+    this.scaleResizeHandler = () => this.hud?.resize()
+    this.scale.on('resize', this.scaleResizeHandler)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.scaleResizeHandler) {
+        this.scale.off('resize', this.scaleResizeHandler)
+        this.scaleResizeHandler = undefined
+      }
+    })
   }
 
   private handleWeaponCycling(): void {
@@ -739,5 +774,7 @@ export class Game extends Phaser.Scene {
     const next = Math.max(0, current - dmg)
     this.player.data.set('hp', next)
     this.player.data.set('maxHp', max)
+    this.playerHp = { current: next, max }
+    this.hud?.updatePlayerHp(next, max)
   }
 }
