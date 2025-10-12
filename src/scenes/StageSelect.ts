@@ -3,6 +3,7 @@ import { ORDERED_BOSSES } from '../bosses/roster'
 import { DEBUG_UI } from '../config/debug'
 import InputActions from '../input/InputActions'
 import { StageSelectLogic } from './stage-select/StageSelectLogic'
+import { Save, SaveData } from '../systems/Save'
 import { DebugOverlay } from '../ui/DebugOverlay'
 
 type SlotEntry = {
@@ -34,6 +35,7 @@ export class StageSelect extends Phaser.Scene {
   private debugToggleHandler?: () => void
   private preventScrollHandler?: (event: KeyboardEvent) => void
   private readonly logic = new StageSelectLogic()
+  private saveData: SaveData = Save.load()
   private requestedTransition: { scene: string; data: unknown } | null = null
   private transitionRequestedAt = 0
   private readonly columns = 3
@@ -52,6 +54,7 @@ export class StageSelect extends Phaser.Scene {
   }
 
   create(): void {
+    this.saveData = Save.load()
     const { width, height } = this.scale
     this.cameras.main.setBackgroundColor('#06090f')
 
@@ -395,7 +398,12 @@ export class StageSelect extends Phaser.Scene {
         .setFillStyle(entry.blueprint.theme.primary, 0.2)
         .setInteractive({ useHandCursor: true })
       slot.name.setVisible(true).setText(entry.blueprint.codename)
-      slot.element.setVisible(true).setText(entry.blueprint.element.toUpperCase())
+      const stageId = entry.id
+      const weaponId = entry.blueprint.weaponReward?.id ?? stageId
+      const unlocked = this.saveData.weaponsUnlocked.includes(weaponId) ? '✓' : ' '
+      const gameOvers = this.saveData.gameOverCounts[stageId] ?? 0
+      const elementLabel = `${entry.blueprint.element.toUpperCase()}  [${unlocked}]  GOs:${gameOvers}`
+      slot.element.setVisible(true).setText(elementLabel)
       this.layoutSlotEntry(slot)
     })
 
@@ -446,14 +454,16 @@ export class StageSelect extends Phaser.Scene {
       return
     }
 
-    this.requestedTransition = { scene: transition.scene, data: transition.data }
+    const data = { ...(transition.data as Record<string, unknown>), stageId: transition.data.bossId }
+
+    this.requestedTransition = { scene: transition.scene, data }
     this.transitionRequestedAt = performance.now()
     if (!DEBUG_UI) {
       // Immediately start the scene when debug overlay isn't intercepting for display.
       const pending = this.requestedTransition
       this.requestedTransition = null
       this.transitionRequestedAt = 0
-      this.scene.start(pending.scene, pending.data)
+      this.scene.start(pending.scene, data)
     }
   }
 
@@ -645,6 +655,15 @@ export class StageSelect extends Phaser.Scene {
   private layoutSlotEntry(slot: SlotEntry): void {
     const { rect, name, element } = slot
     const innerWidth = this.cellWidth - 28
+
+    // [REGION: SELECT-FONT-FIX - BEGIN]
+    name.setScale(0.9)
+    element.setScale(0.82)
+    ;(name as any).maxWidth = innerWidth
+    ;(element as any).maxWidth = innerWidth
+    ;(name as any).setLetterSpacing?.(0)
+    ;(element as any).setLetterSpacing?.(0)
+    // [REGION: SELECT-FONT-FIX - END]
 
     this.fitTextWithinBounds(name, innerWidth, this.cellHeight / 2)
     this.fitTextWithinBounds(element, innerWidth, this.cellHeight / 2)
