@@ -69,6 +69,10 @@ export class Game extends Phaser.Scene {
       return
     }
 
+    if (this.bossController) {
+      return
+    }
+
     const shooter = this.bossBody ?? this.bossTarget
     if (!shooter || !this.bullets) {
       return
