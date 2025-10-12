@@ -166,7 +166,9 @@ export class Game extends Phaser.Scene {
 
     this.enemies = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite })
     const dummy = this.enemies.create(width - 60, height - 25, 'dummy_idle_0') as Phaser.Physics.Arcade.Sprite
-    dummy.setData('health', 3)
+    dummy.setDataEnabled()
+    dummy.setData('hp', 3)
+    dummy.setData('maxHp', 3)
     dummy.setBounceX(1)
     dummy.setCollideWorldBounds(true)
     dummy.setVelocityX(40)
@@ -183,6 +185,20 @@ export class Game extends Phaser.Scene {
 
     this.physics.add.collider(this.bullets, ground, this.recycleBullet, undefined, this)
     this.physics.add.collider(this.bullets, platform, this.recycleBullet, undefined, this)
+    this.physics.add.overlap(
+      this.player,
+      this.bullets,
+      (p, b) => {
+        const bullet = b as Phaser.Physics.Arcade.Sprite
+        if (bullet?.data?.get('owner') === 'enemy') {
+          const dmg = (bullet.data.get('damage') as number | undefined) ?? 1
+          this.applyDamageToPlayer(dmg)
+          this.recycleBullet(bullet, p as any)
+        }
+      },
+      undefined,
+      this
+    )
 
     this.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.handleWorldBounds)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -539,30 +555,36 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    bullet.setActive(true)
-    bullet.setVisible(true)
-    bullet.setDepth(2)
-    bullet.play('buster-fly')
-    bullet.setScale(charged ? 1.2 : 1)
-
+    bullet.setActive(true).setVisible(true)
     const body = bullet.body as Phaser.Physics.Arcade.Body
     body.enable = true
     body.reset(bulletX, bulletY)
     body.allowGravity = false
     body.setCollideWorldBounds(true)
     body.onWorldBounds = true
+    bullet.setDepth(2)
+    bullet.setDataEnabled()
+    bullet.data.set('owner', 'player')
+    bullet.data.set('damage', charged ? 2 : 1)
+    bullet.setPosition(bulletX, bulletY)
     bullet.setVelocityX((charged ? 360 : 260) * this.facing)
-    bullet.setData('power', charged ? 2 : 1)
+    bullet.play('buster-fly')
+    bullet.setScale(charged ? 1.2 : 1)
+  }
+
+  private asDynSprite(obj: any): Phaser.Physics.Arcade.Sprite | null {
+    if (!obj || !obj.body) {
+      return null
+    }
+    const body = obj.body
+    const isDynamic = body instanceof Phaser.Physics.Arcade.Body
+    const hasSetVelocity = typeof (obj as any).setVelocity === 'function'
+    return isDynamic && hasSetVelocity ? (obj as Phaser.Physics.Arcade.Sprite) : null
   }
 
   private recycleBullet(a: any, b: any): void {
-    let bullet = a as Phaser.Physics.Arcade.Sprite
-
-    if (!bullet || !bullet.body || !(bullet instanceof Phaser.Physics.Arcade.Sprite)) {
-      bullet = b as Phaser.Physics.Arcade.Sprite
-    }
-
-    if (!bullet || !bullet.body) {
+    const bullet = this.asDynSprite(a) || this.asDynSprite(b)
+    if (!bullet) {
       return
     }
 
@@ -571,12 +593,15 @@ export class Game extends Phaser.Scene {
       anyBullet.disableBody(true, true)
     } else {
       this.bullets.killAndHide(bullet)
-      ;(bullet.body as Phaser.Physics.Arcade.Body).enable = false
+      const body = bullet.body as Phaser.Physics.Arcade.Body
+      body.enable = false
     }
 
-    bullet.setVelocity(0, 0)
-    bullet.setScale(1)
-    bullet.setData('power', 1)
+    if (typeof (bullet as any).setVelocity === 'function') {
+      ;(bullet as any).setVelocity(0, 0)
+    } else if (bullet.body && typeof (bullet.body as any).setVelocity === 'function') {
+      ;(bullet.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0)
+    }
   }
 
   private applySaberDamage(): void {
@@ -588,12 +613,8 @@ export class Game extends Phaser.Scene {
       const distanceX = Math.abs(enemy.x - this.player.x)
       const distanceY = Math.abs(enemy.y - this.player.y)
       if (distanceX <= 36 && distanceY <= 32) {
-        const current = (enemy.getData('health') as number) ?? 0
-        const remaining = current - 2
-        enemy.setData('health', remaining)
-        if (remaining <= 0) {
-          this.handleEnemyDefeat(enemy)
-        } else {
+        const remaining = this.applyDamageToTarget(enemy, 2)
+        if (remaining > 0) {
           this.flashEnemy(enemy)
         }
       }
@@ -607,23 +628,43 @@ export class Game extends Phaser.Scene {
   ): void {
     const bullet = bulletObj as Phaser.Physics.Arcade.Sprite
     const enemy = enemyObj as Phaser.Physics.Arcade.Sprite
-    const power = (bullet.getData('power') as number) ?? 1
-    this.recycleBullet(bullet, enemy)
-    const current = (enemy.getData('health') as number) ?? 0
-    const remaining = current - power
-    enemy.setData('health', remaining)
-
-    if (remaining <= 0) {
-      this.handleEnemyDefeat(enemy)
-    } else {
+    if (!bullet?.data || bullet.data.get('owner') !== 'player') {
+      return
+    }
+    const dmg = (bullet.data.get('damage') as number | undefined) ?? 1
+    const remaining = this.applyDamageToTarget(enemy, dmg)
+    if (remaining > 0) {
       this.flashEnemy(enemy)
     }
+    this.recycleBullet(bullet, enemy)
   }
 
-  private handleEnemyDefeat(enemy: Phaser.Physics.Arcade.Sprite): void {
-    const { x, y } = enemy
-    enemy.disableBody(true, true)
-    const explosion = this.add.sprite(x, y - enemy.displayHeight / 2, 'explosion_0')
+  private applyDamageToTarget(target: Phaser.Physics.Arcade.Sprite, dmg: number): number {
+    target.setDataEnabled()
+    const current = (target.getData('hp') ?? target.getData('maxHp') ?? 3) as number
+    const max = (target.getData('maxHp') ?? Math.max(3, current)) as number
+    const next = Math.max(0, current - dmg)
+    target.data.set('hp', next)
+    target.data.set('maxHp', max)
+    if (next <= 0) {
+      this.onTargetDefeated(target)
+    }
+    return next
+  }
+
+  private onTargetDefeated(target: Phaser.Physics.Arcade.Sprite): void {
+    const anyTarget = target as any
+    const { x, y, displayHeight } = target
+    if (typeof anyTarget.disableBody === 'function') {
+      anyTarget.disableBody(true, true)
+    } else {
+      target.setActive(false).setVisible(false)
+    }
+    this.handleEnemyDefeat(x, y, displayHeight)
+  }
+
+  private handleEnemyDefeat(x: number, y: number, targetHeight: number): void {
+    const explosion = this.add.sprite(x, y - targetHeight / 2, 'explosion_0')
     explosion.play('dummy-explode')
     explosion.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
       explosion.destroy()
@@ -645,6 +686,7 @@ export class Game extends Phaser.Scene {
       return
     }
 
+    this.applyDamageToPlayer(1)
     player.setTint(0xff6b6b)
     player.setVelocityY(-160)
     this.animationLockUntil = Math.max(this.animationLockUntil, this.time.now + 220)
@@ -686,5 +728,17 @@ export class Game extends Phaser.Scene {
 
   private updateWeaponLabel(): void {
     this.weaponLabel.setText(`Weapon: ${this.weapons[this.currentWeaponIndex]}`)
+  }
+
+  private applyDamageToPlayer(dmg: number): void {
+    if (!this.player) {
+      return
+    }
+    this.player.setDataEnabled()
+    const current = (this.player.getData('hp') ?? this.player.getData('maxHp') ?? 28) as number
+    const max = (this.player.getData('maxHp') ?? Math.max(28, current)) as number
+    const next = Math.max(0, current - dmg)
+    this.player.data.set('hp', next)
+    this.player.data.set('maxHp', max)
   }
 }
