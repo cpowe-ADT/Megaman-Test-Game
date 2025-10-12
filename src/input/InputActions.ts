@@ -1,121 +1,87 @@
 import Phaser from 'phaser'
 
-type EdgeAction = 'confirm' | 'pause' | 'toggleDebug'
-export type InputAction = EdgeAction | 'jump'
-
-const ACTION_CONFIG: Record<InputAction, { type: 'edge' | 'level'; codes: number[] }> = {
-  confirm: {
-    type: 'edge',
-    codes: [Phaser.Input.Keyboard.KeyCodes.ENTER, Phaser.Input.Keyboard.KeyCodes.NUMPAD_ENTER]
-  },
-  jump: { type: 'level', codes: [Phaser.Input.Keyboard.KeyCodes.SPACE] },
-  pause: { type: 'edge', codes: [Phaser.Input.Keyboard.KeyCodes.ESC] },
-  toggleDebug: { type: 'edge', codes: [Phaser.Input.Keyboard.KeyCodes.BACKTICK] }
-}
-
-type KeyBinding = {
-  key: Phaser.Input.Keyboard.Key
-  isDown: boolean
-}
-
-export interface InputSnapshot {
-  lastKey: string | null
-}
-
-export class InputActions {
+class InputActionsSingleton {
   private keyboard?: Phaser.Input.Keyboard.KeyboardPlugin
-  private readonly bindings = new Map<InputAction, KeyBinding[]>()
-  private readonly edgeActions = new Set<EdgeAction>()
-  private readonly keyStates = new Map<number, boolean>()
-  private keydownHandler?: (event: KeyboardEvent) => void
-  private lastKey: string | null = null
+  private enterKey?: Phaser.Input.Keyboard.Key
+  private spaceKey?: Phaser.Input.Keyboard.Key
+  private escKey?: Phaser.Input.Keyboard.Key
+  private pendingNumpadConfirm = false
+  private readonly handleKeydown = (event: KeyboardEvent) => {
+    if (event.code === 'NumpadEnter' && !event.repeat) {
+      this.pendingNumpadConfirm = true
+    }
+  }
 
-  initialize(keyboard: Phaser.Input.Keyboard.KeyboardPlugin): void {
-    if (this.keyboard === keyboard) {
+  init(scene: Phaser.Scene): void {
+    const keyboard = scene.input.keyboard
+    if (!keyboard) {
+      this.unbind()
       return
     }
 
-    this.release()
+    this.unbind()
     this.keyboard = keyboard
 
-    for (const [action, config] of Object.entries(ACTION_CONFIG) as [InputAction, (typeof ACTION_CONFIG)[InputAction]][]) {
-      const keys = config.codes
-        .map((code) => keyboard.addKey(code))
-        .filter((key): key is Phaser.Input.Keyboard.Key => Boolean(key))
-        .map((key) => ({ key, isDown: key.isDown }))
-      if (keys.length > 0) {
-        this.bindings.set(action, keys)
-      }
-    }
+    this.enterKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+    this.spaceKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+    this.escKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
 
-    this.keydownHandler = (event: KeyboardEvent) => {
-      this.lastKey = event.key || event.code || null
-    }
-    keyboard.on('keydown', this.keydownHandler)
+    keyboard.on('keydown', this.handleKeydown)
+
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.keyboard === keyboard) {
+        this.unbind()
+      }
+    })
   }
 
-  release(target?: Phaser.Input.Keyboard.KeyboardPlugin): void {
-    if (target && this.keyboard && target !== this.keyboard) {
+  confirmPressedOnce(): boolean {
+    const fromEnter = this.enterKey ? Phaser.Input.Keyboard.JustDown(this.enterKey) : false
+    const fromNumpad = this.pendingNumpadConfirm
+    this.pendingNumpadConfirm = false
+    return fromEnter || fromNumpad
+  }
+
+  isDownJump(): boolean {
+    return this.spaceKey?.isDown ?? false
+  }
+
+  isPressedPauseOnce(): boolean {
+    return this.escKey ? Phaser.Input.Keyboard.JustDown(this.escKey) : false
+  }
+
+  private unbind(): void {
+    if (!this.keyboard) {
+      this.enterKey = undefined
+      this.spaceKey = undefined
+      this.escKey = undefined
+      this.pendingNumpadConfirm = false
       return
     }
 
-    if (this.keyboard && this.keydownHandler) {
-      this.keyboard.off('keydown', this.keydownHandler)
+    this.keyboard.off('keydown', this.handleKeydown)
+
+    if (this.enterKey) {
+      this.keyboard.removeKey(this.enterKey.keyCode)
     }
 
-    for (const bindings of this.bindings.values()) {
-      bindings.forEach(({ key }) => this.keyboard?.removeKey(key))
+    if (this.spaceKey) {
+      this.keyboard.removeKey(this.spaceKey.keyCode)
     }
 
-    this.bindings.clear()
-    this.edgeActions.clear()
-    this.keyStates.clear()
-    this.keydownHandler = undefined
+    if (this.escKey) {
+      this.keyboard.removeKey(this.escKey.keyCode)
+    }
+
     this.keyboard = undefined
-    this.lastKey = null
-  }
-
-  updateFrameClock(_ts: number): void {
-    this.edgeActions.clear()
-
-    for (const [action, bindings] of this.bindings.entries()) {
-      const config = ACTION_CONFIG[action]
-      for (const binding of bindings) {
-        const key = binding.key
-        const wasDown = this.keyStates.get(key.keyCode) ?? false
-        const isDown = key.isDown
-        binding.isDown = isDown
-        this.keyStates.set(key.keyCode, isDown)
-
-        if (isDown && !wasDown) {
-          this.lastKey = key.key ?? key.originalEvent?.key ?? key.originalEvent?.code ?? String(key.keyCode)
-          if (config.type === 'edge') {
-            this.edgeActions.add(action as EdgeAction)
-          }
-        }
-      }
-    }
-  }
-
-  isPressed(action: EdgeAction): boolean {
-    return this.edgeActions.has(action)
-  }
-
-  isDown(action: 'jump'): boolean {
-    const bindings = this.bindings.get(action)
-    if (!bindings) {
-      return false
-    }
-    return bindings.some((binding) => binding.key.isDown)
-  }
-
-  getSnapshot(): InputSnapshot {
-    return { lastKey: this.lastKey }
-  }
-
-  getLastKey(): string | null {
-    return this.lastKey
+    this.enterKey = undefined
+    this.spaceKey = undefined
+    this.escKey = undefined
+    this.pendingNumpadConfirm = false
   }
 }
 
-export const inputActions = new InputActions()
+const instance = new InputActionsSingleton()
+
+export const InputActions = instance
+export default instance

@@ -30,8 +30,8 @@ Vite automatically opens your browser to the development server. Use the arrow k
 | Action | Keys | Notes |
 | --- | --- | --- |
 | Move | Left / Right arrows | Horizontal acceleration with air control |
-| Confirm (menus) | **Enter** / Numpad Enter | Stage Select, pause overlays |
-| Jump | **Space** (hold) or Up arrow | Hold to buffer jumps on landing |
+| Confirm (menus) | **Enter** / **Numpad Enter** | Stage Select, pause overlays |
+| Jump | **Space** | Gameplay only, triggers while grounded |
 | Dash | **Z** | Short burst with cooldown |
 | Shoot / Charge | **X** | Hold to charge, release to fire higher-level shots |
 | Saber combo | **C** | Chains up to four swings |
@@ -41,7 +41,7 @@ Vite automatically opens your browser to the development server. Use the arrow k
 
 Controls are wired through Phaser's keyboard system, so rebinding can be added later via scene-level helpers.
 
-> Stage Select ignores **Space** — only Enter (or Numpad Enter) confirms a mission. Space exclusively drives jumping once you enter gameplay, while Escape is reserved for the upcoming pause overlay.
+> Stage Select ignores **Space** — only Enter (or Numpad Enter) confirms a mission. Space exclusively drives grounded jumping once you enter gameplay, while Escape is reserved for the upcoming pause overlay.
 
 ### Build for Production
 
@@ -54,6 +54,10 @@ The optimized build is emitted to `dist/`. You can preview it locally with:
 ```bash
 npm run preview
 ```
+
+### Troubleshooting
+
+- If the dev server or HMR feels out of sync, run `npm run preview` to sanity-check the production build.
 
 ## Project Structure
 

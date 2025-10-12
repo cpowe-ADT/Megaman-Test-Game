@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { ORDERED_BOSSES } from '../bosses/roster'
 import { DEBUG_UI } from '../config/debug'
-import { inputActions } from '../input/InputActions'
+import InputActions from '../input/InputActions'
 import { StageSelectLogic } from './stage-select/StageSelectLogic'
 import { DebugOverlay } from '../ui/DebugOverlay'
 
@@ -31,8 +31,11 @@ export class StageSelect extends Phaser.Scene {
   private previewDescription?: Phaser.GameObjects.Text
   private pageIndicator?: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
+  private debugToggleHandler?: () => void
+  private preventScrollHandler?: (event: KeyboardEvent) => void
   private readonly logic = new StageSelectLogic()
   private requestedTransition: { scene: string; data: unknown } | null = null
+  private transitionRequestedAt = 0
   private readonly columns = 3
   private readonly rows = 3
   private readonly pageSize = this.columns * this.rows
@@ -71,9 +74,18 @@ export class StageSelect extends Phaser.Scene {
 
     this.registerKeyboardShortcuts()
 
+    this.installScrollGuards()
+    InputActions.init(this)
+
     if (this.input.keyboard) {
-      inputActions.initialize(this.input.keyboard)
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => inputActions.release(this.input.keyboard!))
+      this.debugToggleHandler = () => this.debugOverlay?.toggle()
+      this.input.keyboard.on('keydown-BACKTICK', this.debugToggleHandler)
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        if (this.debugToggleHandler) {
+          this.input.keyboard?.off('keydown-BACKTICK', this.debugToggleHandler)
+          this.debugToggleHandler = undefined
+        }
+      })
     }
 
     if (DEBUG_UI) {
@@ -83,39 +95,26 @@ export class StageSelect extends Phaser.Scene {
   }
 
   update(): void {
-    if (this.input.keyboard) {
-      inputActions.updateFrameClock(this.game.loop.now)
-    }
-
-    if (inputActions.isPressed('toggleDebug')) {
-      this.debugOverlay?.toggle()
-    }
-
-    if (inputActions.isPressed('confirm')) {
+    if (InputActions.confirmPressedOnce()) {
       this.confirm()
     }
 
     const pendingTransition = this.requestedTransition
 
     if (DEBUG_UI) {
-      const snapshot = inputActions.getSnapshot()
-      const info = `Scene=StageSelect | LastKey=${snapshot?.lastKey ?? '--'} | Transition=${
-        pendingTransition ? JSON.stringify(pendingTransition) : 'none'
-      }`
-      // eslint-disable-next-line no-console
-      console.debug(`[debug] ${info}`)
       this.debugOverlay?.update({
-        scene: this.scene.key,
-        lastKey: snapshot?.lastKey ?? null,
-        transition: pendingTransition ? pendingTransition.scene : null,
+        sceneName: this.scene.key,
+        managerName: this.scene.key,
         confirmHint: 'Enter / NumpadEnter',
         jumpHint: 'Space (gameplay)',
-        paused: false
+        pauseHint: 'Esc (gameplay)',
+        transitionRequestedAt: this.transitionRequestedAt
       })
     }
 
     if (pendingTransition) {
       this.requestedTransition = null
+      this.transitionRequestedAt = 0
       this.scene.start(pendingTransition.scene, pendingTransition.data)
     }
   }
@@ -322,6 +321,30 @@ export class StageSelect extends Phaser.Scene {
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)?.on('down', () => this.changePage(1))
   }
 
+  private installScrollGuards(): void {
+    const keyboard = this.input.keyboard
+    if (!keyboard || this.preventScrollHandler) {
+      return
+    }
+
+    const blockedCodes = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
+    const handler = (event: KeyboardEvent) => {
+      if (blockedCodes.has(event.code)) {
+        event.preventDefault()
+      }
+    }
+
+    this.preventScrollHandler = handler
+    keyboard.on('keydown', handler)
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      keyboard.off('keydown', handler)
+      if (this.preventScrollHandler === handler) {
+        this.preventScrollHandler = undefined
+      }
+    })
+  }
+
   private onSlotHover(slotIndex: number): void {
     const slot = this.slotEntries[slotIndex]
     if (!slot || slot.bossIndex == null || slot.bossIndex === this.index) {
@@ -424,10 +447,12 @@ export class StageSelect extends Phaser.Scene {
     }
 
     this.requestedTransition = { scene: transition.scene, data: transition.data }
+    this.transitionRequestedAt = performance.now()
     if (!DEBUG_UI) {
       // Immediately start the scene when debug overlay isn't intercepting for display.
       const pending = this.requestedTransition
       this.requestedTransition = null
+      this.transitionRequestedAt = 0
       this.scene.start(pending.scene, pending.data)
     }
   }
