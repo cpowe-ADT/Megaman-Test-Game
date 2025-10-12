@@ -6,9 +6,9 @@ export class HUD {
   private gPlayer: Phaser.GameObjects.Graphics
   private gWeapon: Phaser.GameObjects.Graphics
   private gBoss: Phaser.GameObjects.Graphics
-  private tPlayer: Phaser.GameObjects.BitmapText
-  private tBoss: Phaser.GameObjects.BitmapText
-  private tLives: Phaser.GameObjects.BitmapText
+  private tPlayer: Phaser.GameObjects.Text
+  private tBoss: Phaser.GameObjects.Text
+  private tLives: Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -23,15 +23,20 @@ export class HUD {
     this.gBoss = scene.add.graphics()
     this.root.add(this.gBoss)
 
-    this.tPlayer = scene.add.bitmapText(16, 16, 'font', 'Sentinel ROOK', 16)
+    const labelStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: 'sans-serif',
+      fontSize: '16px',
+      color: '#ffffff',
+    }
+
+    this.tPlayer = scene.add.text(16, 16, 'Sentinel ROOK', labelStyle)
     this.root.add(this.tPlayer)
 
-    this.tBoss = scene.add.bitmapText(scene.scale.width - 240, 16, 'font', 'Boss: ???', 16)
+    this.tBoss = scene.add.text(scene.scale.width - 240, 16, 'Boss: ???', labelStyle)
     this.root.add(this.tBoss)
 
-    this.tLives = scene
-      .add.bitmapText(scene.scale.width - 160, scene.scale.height - 28, 'font', 'Lives: 3', 16)
-      .setOrigin(0, 1)
+    this.tLives = scene.add.text(scene.scale.width - 160, scene.scale.height - 8, 'Lives: 3', labelStyle)
+    this.tLives.setOrigin(0, 1)
     this.root.add(this.tLives)
   }
 
