@@ -69,10 +69,6 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    if (this.bossController) {
-      return
-    }
-
     const shooter = this.bossBody ?? this.bossTarget
     if (!shooter || !this.bullets) {
       return
@@ -212,6 +208,7 @@ export class Game extends Phaser.Scene {
     }
 
     bullet.setActive(true).setVisible(true)
+    bullet.setDepth(2)
     bullet.setPosition(spawnX, spawnY)
     bullet.setDataEnabled()
     bullet.data?.set('owner', 'enemy')
@@ -232,6 +229,7 @@ export class Game extends Phaser.Scene {
       body.enable = true
       body.allowGravity = false
       body.setCollideWorldBounds(true)
+      body.reset(spawnX, spawnY)
       body.setVelocity(travel.x, travel.y)
       body.onWorldBounds = true
     } else {

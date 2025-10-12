@@ -10,6 +10,7 @@ interface BossStateContext {
   key: BossStateKey
   timerMs: number
   cooldownMs: number
+  attackFired: boolean
 }
 
 /**
@@ -57,7 +58,7 @@ export class BossController extends Phaser.GameObjects.Container {
     body.setOffset(-blueprint.spritePlan.frame.x * this.sprite.originX, -blueprint.spritePlan.frame.y * (1 - this.sprite.originY))
     body.setCollideWorldBounds(true)
 
-    this.state = { key: 'intro', timerMs: 0, cooldownMs: 0 }
+    this.state = { key: 'intro', timerMs: 0, cooldownMs: 0, attackFired: false }
   }
 
   get currentPhase() {
@@ -195,18 +196,22 @@ export class BossController extends Phaser.GameObjects.Container {
       case 'special':
         if (
           attack &&
-          this.state.timerMs >= attack.telegraph.telegraphMs &&
-          !this.attackCooldowns.has(attack.name)
+          !this.state.attackFired &&
+          this.state.timerMs >= attack.telegraph.telegraphMs
         ) {
           this.scene.events.emit('boss-attack', { id: this.blueprint.id, attack })
           this.attackCooldowns.set(attack.name, attack.cooldownMs)
+          this.state.attackFired = true
         }
         this.playAnimation(this.state.key)
         break
     }
 
-    if (attack && this.state.timerMs >= attack.executeMs) {
-      this.enterState('recover')
+    if (attack) {
+      const duration = Math.max(attack.executeMs, attack.telegraph.telegraphMs)
+      if (this.state.timerMs >= duration) {
+        this.enterState('recover')
+      }
     }
 
     if (this.state.key === 'recover' && this.state.timerMs > 220) {
@@ -215,7 +220,7 @@ export class BossController extends Phaser.GameObjects.Container {
   }
 
   private enterState(state: BossStateKey, attack?: AttackPattern): void {
-    this.state = { key: state, timerMs: 0, cooldownMs: attack?.cooldownMs ?? 0 }
+    this.state = { key: state, timerMs: 0, cooldownMs: attack?.cooldownMs ?? 0, attackFired: false }
     this.activeAttack = attack
   }
 
