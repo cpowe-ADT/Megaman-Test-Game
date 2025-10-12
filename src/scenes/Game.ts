@@ -74,13 +74,24 @@ export class Game extends Phaser.Scene {
   private scaleResizeHandler?: Phaser.Types.Core.ScaleEventCallback
   private _hitsInstalled = false
   private _bossSpawned = false
-  private _devOn = true
-  private _devInitOnce = false
-  private _devPanel!: Phaser.GameObjects.Text
-  private _devGfx!: Phaser.GameObjects.Graphics
-  private _devTick = 0
-  private _registry = new Map<number, { kind: string; ref: any; label: Phaser.GameObjects.Text }>()
-  private _eid = 1
+  // ======================= [DEV-UX-BEGIN]
+  private readonly _dev = {
+    on: true,
+    initOnce: false,
+    tick: 0,
+    panel: undefined as Phaser.GameObjects.Text | undefined,
+    gfx: undefined as Phaser.GameObjects.Graphics | undefined,
+    entries: new Map<
+      number,
+      {
+        kind: string
+        ref: (Phaser.GameObjects.GameObject & { body?: Phaser.Physics.Arcade.Body }) | undefined
+        label: Phaser.GameObjects.Text
+      }
+    >(),
+    nextId: 1
+  }
+  // ======================= [DEV-UX-END]
 
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
     const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
@@ -206,25 +217,27 @@ export class Game extends Phaser.Scene {
   }
 
   private devInit() {
-    if (this._devInitOnce) return
-    this._devInitOnce = true
-    this._devPanel = this.add
-      .text(8, 48, '', { fontFamily: 'monospace', fontSize: '12px', color: '#b0e0ff' })
+    if (this._dev.initOnce) return
+    this._dev.initOnce = true
+
+    this._dev.panel = this.add
+      .text(8, 40, '', {
+        fontFamily: 'monospace',
+        fontSize: '9px',
+        color: '#b0e0ff',
+        lineSpacing: 2
+      })
       .setScrollFactor(0)
       .setDepth(10001)
-    this._devGfx = this.add.graphics().setDepth(10000)
-    ;(this.physics.world as any).createDebugGraphic?.()
+    this._dev.gfx = this.add.graphics().setDepth(10000)
 
-    this.input.keyboard?.on('keydown-F1', () => (this._devOn = !this._devOn))
-    this.input.keyboard?.on('keydown-F2', () => (window as any).__dump?.())
-    this.input.keyboard?.on('keydown-F3', () => {
-      const w: any = this.physics.world
-      w.drawDebug = !w.drawDebug
-      w.debugGraphic?.clear()
-    })
+    const world = this.physics.world as any
+    world.drawDebug = false
+    world.createDebugGraphic?.()
+    world.debugGraphic?.clear?.()
 
-    ;(window as any).__dump = () => {
-      const rows = Array.from(this._registry.values()).map(({ kind, ref }) => ({
+    const dump = () => {
+      const rows = Array.from(this._dev.entries.values()).map(({ kind, ref }) => ({
         eid: ref?.data?.get?.('eid'),
         kind,
         owner: ref?.data?.get?.('owner'),
@@ -234,37 +247,78 @@ export class Game extends Phaser.Scene {
         visible: !!ref?.visible,
         bodyEnabled: !!ref?.body?.enable,
         immovable: !!ref?.body?.immovable,
-        x: Math.round(ref?.x ?? 0),
-        y: Math.round(ref?.y ?? 0),
+        x: Math.round((ref as any)?.x ?? 0),
+        y: Math.round((ref as any)?.y ?? 0),
         vx: Math.round(ref?.body?.velocity?.x ?? 0),
         vy: Math.round(ref?.body?.velocity?.y ?? 0),
-        w: Math.round(ref?.body?.width ?? ref?.width ?? 0),
-        h: Math.round(ref?.body?.height ?? ref?.height ?? 0),
+        w: Math.round(ref?.body?.width ?? (ref as any)?.width ?? 0),
+        h: Math.round(ref?.body?.height ?? (ref as any)?.height ?? 0),
         checkColl: ref?.body?.checkCollision ? { ...ref.body.checkCollision } : null
       }))
       console.table(rows)
       return rows
     }
+
+    ;(window as any).dump = dump
+
+    const toggleOverlay = () => {
+      this._dev.on = !this._dev.on
+      if (!this._dev.on) {
+        this._dev.panel?.setText('')
+        this._dev.gfx?.clear()
+      }
+    }
+    const handleDump = () => dump()
+    const handlePhysics = () => {
+      const arcadeWorld = this.physics.world as any
+      arcadeWorld.drawDebug = !arcadeWorld.drawDebug
+      arcadeWorld.debugGraphic?.clear?.()
+    }
+
+    const keyboard = this.input.keyboard
+    if (keyboard) {
+      keyboard.on('keydown-BACKTICK', toggleOverlay)
+      keyboard.on('keydown-D', handleDump)
+      keyboard.on('keydown-BACKSLASH', handlePhysics)
+
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        keyboard.off('keydown-BACKTICK', toggleOverlay)
+        keyboard.off('keydown-D', handleDump)
+        keyboard.off('keydown-BACKSLASH', handlePhysics)
+        if ((window as any).dump === dump) {
+          delete (window as any).dump
+        }
+      })
+    }
   }
 
-  private devRegister(ref: any, kind: string) {
+  private devRegister<T extends Phaser.GameObjects.GameObject & { data?: Phaser.Data.DataManager }>(
+    ref: T | undefined,
+    kind: string
+  ): T | undefined {
     if (!ref) return ref
 
-    ref.setDataEnabled?.()
-    let id = ref.data?.get?.('eid') as number | undefined
+    const anyRef = ref as any
+    anyRef.setDataEnabled?.()
+    const data = anyRef.data as Phaser.Data.DataManager | undefined
+    let id = data?.get?.('eid') as number | undefined
     if (id == null) {
-      id = this._eid++
-      ref.data?.set?.('eid', id)
+      id = this._dev.nextId++
+      data?.set?.('eid', id)
     }
-    ref.data?.set?.('kind', kind)
+    data?.set?.('kind', kind)
 
-    let entry = this._registry.get(id)
+    let entry = this._dev.entries.get(id)
     if (!entry) {
       const label = this.add
-        .text(ref.x, ref.y - 14, '', { fontFamily: 'monospace', fontSize: '11px', color: '#7fffd4' })
+        .text(anyRef.x ?? 0, (anyRef.y ?? 0) - 12, '', {
+          fontFamily: 'monospace',
+          fontSize: '8px',
+          color: '#7fffd4'
+        })
         .setDepth(10000)
       entry = { kind, ref, label }
-      this._registry.set(id, entry)
+      this._dev.entries.set(id, entry)
     } else {
       entry.kind = kind
       entry.ref = ref
@@ -274,70 +328,76 @@ export class Game extends Phaser.Scene {
   }
 
   private devUpdate() {
-    if (!this._devOn) {
-      this._devPanel?.setText('')
-      this._devGfx?.clear()
+    if (!this._dev.on) {
+      this._dev.panel?.setText('')
+      this._dev.gfx?.clear()
       return
     }
-    if (this.time.now < this._devTick) return
-    this._devTick = this.time.now + 200
+    if (this.time.now < this._dev.tick) return
+    this._dev.tick = this.time.now + 180
 
-    this._devGfx.clear()
-    const lines: string[] = ['F1: toggle overlay  F2: dump()  F3: arcade debug', '— ENTITIES —']
+    this._dev.gfx?.clear()
 
-    for (const { kind, ref, label } of this._registry.values()) {
+    const camera = this.cameras.main
+    const pad = 128
+    const view = camera.worldView
+    const left = view.left - pad
+    const right = view.right + pad
+    const top = view.top - pad
+    const bottom = view.bottom + pad
+
+    const lines: string[] = ['` overlay  D dump  \\ physics', '─ entities near camera ─']
+
+    for (const { kind, ref, label } of this._dev.entries.values()) {
       if (!ref?.active) {
         label.setVisible(false)
         continue
       }
 
-      const id = ref.data?.get?.('eid')
-      const hp = ref.data?.get?.('hp')
-      const mxhp = ref.data?.get?.('maxHp')
-      const own = ref.data?.get?.('owner')
-      const posx = Math.round(ref.x)
-      const posy = Math.round(ref.y)
-      const vx = Math.round(ref.body?.velocity?.x ?? 0)
-      const vy = Math.round(ref.body?.velocity?.y ?? 0)
+      const anyRef = ref as any
+      const posx = Math.round(anyRef?.x ?? 0)
+      const posy = Math.round(anyRef?.y ?? 0)
+      const withinView = posx >= left && posx <= right && posy >= top && posy <= bottom
+      label.setVisible(withinView)
 
-      label
-        .setVisible(true)
-        .setText(`#${id} ${kind}${own ? ` (${own})` : ''}  hp:${hp ?? '-'}  x:${posx} y:${posy}`)
-        .setPosition(ref.x - 22, ref.y - 18)
+      if (withinView) {
+        const id = ref?.data?.get?.('eid')
+        const hp = ref?.data?.get?.('hp')
+        const mxhp = ref?.data?.get?.('maxHp')
+        const own = ref?.data?.get?.('owner')
+        const vx = Math.round(ref?.body?.velocity?.x ?? 0)
+        const vy = Math.round(ref?.body?.velocity?.y ?? 0)
 
-      const b = ref.body as Phaser.Physics.Arcade.Body | undefined
-      if (b) {
-        this._devGfx.lineStyle(1, 0x00ff00, 1)
-        this._devGfx.strokeRect(b.x, b.y, b.width, b.height)
+        label
+          .setText(`#${id} ${kind}`)
+          .setPosition((anyRef?.x ?? 0) - 18, (anyRef?.y ?? 0) - 16)
+
+        const body = ref?.body as Phaser.Physics.Arcade.Body | undefined
+        if (body) {
+          this._dev.gfx?.lineStyle(1, 0x2afe6f, 1)
+          this._dev.gfx?.strokeRect(body.x, body.y, body.width, body.height)
+        }
+
+        const detailParts = [`#${id}`, kind]
+        if (own) detailParts.push(`owner:${own}`)
+        detailParts.push(`hp:${hp ?? '-'}/${mxhp ?? '-'}`, `xy:${posx},${posy}`, `v:${vx},${vy}`)
+        lines.push(detailParts.join(' '))
       }
-
-      const detailParts = [`#${id}`, kind]
-      if (own) detailParts.push(`owner:${own}`)
-      detailParts.push(
-        `hp:${hp ?? '-'}/${mxhp ?? '-'}`,
-        `xy:${posx},${posy}`,
-        `v:${vx},${vy}`,
-        `active:${!!ref.active}`,
-        `body:${!!ref.body?.enable}`
-      )
-
-      lines.push(detailParts.join(' '))
     }
 
-    this._devPanel.setText(lines.join('\n'))
+    this._dev.panel?.setText(lines.join('\n'))
   }
 
   private devLogOverlap(tag: string, bullet: any, target: any, accepted: boolean, reason: string) {
     const bId = bullet?.data?.get?.('eid')
     const tId = target?.data?.get?.('eid')
-    const msg = `[COLLIDE] ${tag} bullet#${bId} -> targ#${tId}  accepted=${accepted}  reason=${reason}`
+    const status = accepted ? 'ACCEPT' : 'BLOCK '
+    const msg = `[COLLIDE] ${tag} ${status} b#${bId ?? '-'} -> t#${tId ?? '-'} :: ${reason}`
     console.log(msg, {
-      bOwner: bullet?.data?.get?.('owner'),
-      bActive: bullet?.active,
-      bBody: !!bullet?.body?.enable,
-      tKind: target?.data?.get?.('kind'),
-      tActive: target?.active,
-      tBody: !!target?.body?.enable
+      bulletOwner: bullet?.data?.get?.('owner'),
+      bulletBody: !!bullet?.body?.enable,
+      targetKind: target?.data?.get?.('kind'),
+      targetBody: !!target?.body?.enable
     })
   }
 
