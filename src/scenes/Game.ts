@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { BossController } from '../bosses/BossController'
-import { BossId } from '../bosses/types'
+import { AttackPattern, BossId } from '../bosses/types'
 import { getBossById } from '../bosses/roster'
 import { DEBUG_UI } from '../config/debug'
 import InputActions from '../input/InputActions'
@@ -62,6 +62,10 @@ export class Game extends Phaser.Scene {
   private startBossFireLoop(): void {
     this.bossFireTimer?.remove(false)
 
+    if (this.bossController) {
+      return
+    }
+
     const shooter = this.bossBody ?? this.bossTarget
     if (!shooter || !this.bullets) {
       return
@@ -119,6 +123,108 @@ export class Game extends Phaser.Scene {
         this.devRegister(bullet, 'bullet.enemy')
       }
     })
+  }
+
+  private executeBossAttack(attack: AttackPattern): void {
+    const origin = this.bossTarget ?? this.bossBody
+    if (!origin || !this.bullets) {
+      return
+    }
+
+    const isProjectileAttack = attack.state === 'shoot' || attack.state === 'summon'
+    if (!isProjectileAttack) {
+      return
+    }
+
+    const spawnList =
+      attack.spawns && attack.spawns.length > 0 ? attack.spawns : attack.state === 'shoot' ? ['slow_bullet'] : []
+
+    spawnList.forEach((spawn) => this.spawnBossProjectile(spawn, attack, origin))
+  }
+
+  private spawnBossProjectile(
+    id: string,
+    attack: AttackPattern,
+    origin: Phaser.GameObjects.GameObject
+  ): void {
+    switch (id) {
+      case 'slow_bullet':
+        this.spawnBossBullet(origin, attack, { speed: 220, damage: 1 })
+        break
+      case 'fire_orb':
+        this.spawnBossBullet(origin, attack, {
+          speed: 180,
+          damage: 2,
+          tint: this.bossController?.blueprint.theme.accent
+        })
+        break
+      case 'arc_shards':
+        this.spawnBossBulletSpread(origin, attack, [
+          { speed: 240, damage: 1, angle: -0.22 },
+          { speed: 240, damage: 1, angle: 0 },
+          { speed: 240, damage: 1, angle: 0.22 }
+        ])
+        break
+      default:
+        this.spawnBossBullet(origin, attack, { speed: 240, damage: 1 })
+        break
+    }
+  }
+
+  private spawnBossBulletSpread(
+    origin: Phaser.GameObjects.GameObject,
+    attack: AttackPattern,
+    configs: { speed: number; damage: number; angle?: number; tint?: number }[]
+  ): void {
+    configs.forEach((cfg) => this.spawnBossBullet(origin, attack, cfg))
+  }
+
+  private spawnBossBullet(
+    origin: Phaser.GameObjects.GameObject,
+    attack: AttackPattern,
+    config: { speed: number; damage: number; angle?: number; tint?: number }
+  ): void {
+    if (!this.bullets) {
+      return
+    }
+
+    const direction = this.player && this.player.x < origin.x ? -1 : 1
+    const spawnX = origin.x + 12 * direction
+    const spawnY = origin.y - 6
+
+    const bullet = this.bullets.get(spawnX, spawnY, 'bullet_enemy') as
+      | Phaser.Physics.Arcade.Sprite
+      | null
+    if (!bullet) {
+      return
+    }
+
+    bullet.setActive(true).setVisible(true)
+    bullet.setPosition(spawnX, spawnY)
+    bullet.setDataEnabled()
+    bullet.data?.set('owner', 'enemy')
+    bullet.data?.set('damage', config.damage)
+    bullet.data?.set('attack', attack.name)
+
+    const tint = config.tint ?? this.bossController?.blueprint.theme.trail ?? 0x55ccff
+    const anyBullet = bullet as any
+    anyBullet.setTint?.(tint)
+    anyBullet.setBlendMode?.(Phaser.BlendModes.ADD)
+
+    const baseAngle = direction === -1 ? Math.PI : 0
+    const travel = new Phaser.Math.Vector2(1, 0).setAngle(baseAngle + (config.angle ?? 0))
+    travel.scale(config.speed)
+
+    const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+    if (body) {
+      body.enable = true
+      body.allowGravity = false
+      body.setVelocity(travel.x, travel.y)
+    } else {
+      bullet.setVelocity(travel.x, travel.y)
+    }
+
+    this.devRegister(bullet, 'bullet.enemy')
   }
   // [REGION: BOSS-FIRE - END]
 
@@ -953,8 +1059,9 @@ export class Game extends Phaser.Scene {
     })
 
     this.events.on('boss-attack', (event) => {
-      const { attack } = event as { attack: { name: string } }
+      const { attack } = event as { attack: AttackPattern }
       this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}\nACTION • ${attack.name.toUpperCase()}`)
+      this.executeBossAttack(attack)
     })
 
     this.events.on('boss-defeated', (event) => {
