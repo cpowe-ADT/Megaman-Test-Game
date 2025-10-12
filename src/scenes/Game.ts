@@ -79,20 +79,8 @@ export class Game extends Phaser.Scene {
   private _devPanel!: Phaser.GameObjects.Text
   private _devGfx!: Phaser.GameObjects.Graphics
   private _devTick = 0
-  private _devMap = new Map<number, { kind: string; ref: any; label: Phaser.GameObjects.Text }>()
+  private _registry = new Map<number, { kind: string; ref: any; label: Phaser.GameObjects.Text }>()
   private _eid = 1
-
-  // ==== DEV INSPECTOR ====
-  private _devOn = true
-  private _eid = 1
-  private _devPanel!: Phaser.GameObjects.Text
-  private _devGfx!: Phaser.GameObjects.Graphics
-  private _devTick = 0
-  private _registry = new Map<
-    number,
-    { kind: string; ref: any; label: Phaser.GameObjects.Text }
-  >()
-  // ==== /DEV INSPECTOR ====
 
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
     const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
@@ -221,60 +209,67 @@ export class Game extends Phaser.Scene {
     if (this._devInitOnce) return
     this._devInitOnce = true
     this._devPanel = this.add
-      .text(8, 48, '', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#b0e0ff'
-      })
+      .text(8, 48, '', { fontFamily: 'monospace', fontSize: '12px', color: '#b0e0ff' })
       .setScrollFactor(0)
       .setDepth(10001)
     this._devGfx = this.add.graphics().setDepth(10000)
+    ;(this.physics.world as any).createDebugGraphic?.()
+
     this.input.keyboard?.on('keydown-F1', () => (this._devOn = !this._devOn))
     this.input.keyboard?.on('keydown-F2', () => (window as any).__dump?.())
     this.input.keyboard?.on('keydown-F3', () => {
       const w: any = this.physics.world
       w.drawDebug = !w.drawDebug
-      w.debugGraphic?.clear?.()
-      ;(w as any).createDebugGraphic?.()
+      w.debugGraphic?.clear()
     })
+
     ;(window as any).__dump = () => {
-      console.table(
-        Array.from(this._devMap.values()).map(({ kind, ref }) => ({
-          eid: ref?.data?.get?.('eid'),
-          kind,
-          owner: ref?.data?.get?.('owner'),
-          hp: ref?.data?.get?.('hp'),
-          maxHp: ref?.data?.get?.('maxHp'),
-          active: !!ref?.active,
-          bodyEnabled: !!ref?.body?.enable,
-          x: Math.round(ref?.x ?? 0),
-          y: Math.round(ref?.y ?? 0)
-        }))
-      )
+      const rows = Array.from(this._registry.values()).map(({ kind, ref }) => ({
+        eid: ref?.data?.get?.('eid'),
+        kind,
+        owner: ref?.data?.get?.('owner'),
+        hp: ref?.data?.get?.('hp'),
+        maxHp: ref?.data?.get?.('maxHp'),
+        active: !!ref?.active,
+        visible: !!ref?.visible,
+        bodyEnabled: !!ref?.body?.enable,
+        immovable: !!ref?.body?.immovable,
+        x: Math.round(ref?.x ?? 0),
+        y: Math.round(ref?.y ?? 0),
+        vx: Math.round(ref?.body?.velocity?.x ?? 0),
+        vy: Math.round(ref?.body?.velocity?.y ?? 0),
+        w: Math.round(ref?.body?.width ?? ref?.width ?? 0),
+        h: Math.round(ref?.body?.height ?? ref?.height ?? 0),
+        checkColl: ref?.body?.checkCollision ? { ...ref.body.checkCollision } : null
+      }))
+      console.table(rows)
+      return rows
     }
   }
 
   private devRegister(ref: any, kind: string) {
     if (!ref) return ref
+
     ref.setDataEnabled?.()
-    const id = ref.data?.get?.('eid') ?? this._eid++
-    ref.data?.set?.('eid', id)
+    let id = ref.data?.get?.('eid') as number | undefined
+    if (id == null) {
+      id = this._eid++
+      ref.data?.set?.('eid', id)
+    }
     ref.data?.set?.('kind', kind)
-    let entry = this._devMap.get(id)
+
+    let entry = this._registry.get(id)
     if (!entry) {
       const label = this.add
-        .text(ref.x, ref.y - 14, '', {
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          color: '#7fffd4'
-        })
+        .text(ref.x, ref.y - 14, '', { fontFamily: 'monospace', fontSize: '11px', color: '#7fffd4' })
         .setDepth(10000)
       entry = { kind, ref, label }
-      this._devMap.set(id, entry)
+      this._registry.set(id, entry)
     } else {
       entry.kind = kind
       entry.ref = ref
     }
+
     return ref
   }
 
@@ -286,46 +281,64 @@ export class Game extends Phaser.Scene {
     }
     if (this.time.now < this._devTick) return
     this._devTick = this.time.now + 200
+
     this._devGfx.clear()
-    const lines = ['F1 overlay | F2 dump | F3 physics debug', '— ENTITIES —']
-    for (const { kind, ref, label } of this._devMap.values()) {
+    const lines: string[] = ['F1: toggle overlay  F2: dump()  F3: arcade debug', '— ENTITIES —']
+
+    for (const { kind, ref, label } of this._registry.values()) {
       if (!ref?.active) {
         label.setVisible(false)
         continue
       }
+
       const id = ref.data?.get?.('eid')
       const hp = ref.data?.get?.('hp')
-      const mx = ref.data?.get?.('maxHp')
+      const mxhp = ref.data?.get?.('maxHp')
       const own = ref.data?.get?.('owner')
-      const x = Math.round(ref.x)
-      const y = Math.round(ref.y)
+      const posx = Math.round(ref.x)
+      const posy = Math.round(ref.y)
+      const vx = Math.round(ref.body?.velocity?.x ?? 0)
+      const vy = Math.round(ref.body?.velocity?.y ?? 0)
+
       label
         .setVisible(true)
-        .setText(`#${id} ${kind}${own ? `(${own})` : ''} hp:${hp ?? '-'} / ${mx ?? '-'} x:${x} y:${y}`)
+        .setText(`#${id} ${kind}${own ? ` (${own})` : ''}  hp:${hp ?? '-'}  x:${posx} y:${posy}`)
         .setPosition(ref.x - 22, ref.y - 18)
+
       const b = ref.body as Phaser.Physics.Arcade.Body | undefined
       if (b) {
-        this._devGfx.lineStyle(1, 0x00ff00, 1).strokeRect(b.x, b.y, b.width, b.height)
+        this._devGfx.lineStyle(1, 0x00ff00, 1)
+        this._devGfx.strokeRect(b.x, b.y, b.width, b.height)
       }
-      lines.push(
-        `#${id} ${kind} ${own ? `owner:${own} ` : ''}hp:${hp ?? '-'} / ${mx ?? '-'} xy:${x},${y} body:${!!b?.enable}`
+
+      const detailParts = [`#${id}`, kind]
+      if (own) detailParts.push(`owner:${own}`)
+      detailParts.push(
+        `hp:${hp ?? '-'}/${mxhp ?? '-'}`,
+        `xy:${posx},${posy}`,
+        `v:${vx},${vy}`,
+        `active:${!!ref.active}`,
+        `body:${!!ref.body?.enable}`
       )
+
+      lines.push(detailParts.join(' '))
     }
+
     this._devPanel.setText(lines.join('\n'))
   }
 
-  private devLogOverlap(tag: string, bullet: any, target: any, ok: boolean, reason: string) {
+  private devLogOverlap(tag: string, bullet: any, target: any, accepted: boolean, reason: string) {
     const bId = bullet?.data?.get?.('eid')
     const tId = target?.data?.get?.('eid')
-    console.log(
-      `[COLLIDE] ${tag} bullet#${bId} -> targ#${tId} ok=${ok} reason=${reason}`,
-      {
-        bOwner: bullet?.data?.get?.('owner'),
-        tKind: target?.data?.get?.('kind'),
-        bBody: !!bullet?.body?.enable,
-        tBody: !!target?.body?.enable
-      }
-    )
+    const msg = `[COLLIDE] ${tag} bullet#${bId} -> targ#${tId}  accepted=${accepted}  reason=${reason}`
+    console.log(msg, {
+      bOwner: bullet?.data?.get?.('owner'),
+      bActive: bullet?.active,
+      bBody: !!bullet?.body?.enable,
+      tKind: target?.data?.get?.('kind'),
+      tActive: target?.active,
+      tBody: !!target?.body?.enable
+    })
   }
 
   create(data: GameData): void {
@@ -1013,123 +1026,6 @@ export class Game extends Phaser.Scene {
       ;(bullet as any).__trailEmitter = emitter
     }
   }
-
-  // ==== DEV INSPECTOR ====
-  private devRegister(ref: any, kind: string) {
-    if (!ref || (ref as any).data?.get('eid')) return ref
-    const id = this._eid++
-    ref.setDataEnabled?.()
-    ref.data?.set('eid', id)
-    ref.data?.set('kind', kind)
-
-    const label = this.add
-      .text(ref.x, ref.y - 14, '', { fontFamily: 'monospace', fontSize: '11px', color: '#7fffd4' })
-      .setDepth(10000)
-    this._registry.set(id, { kind, ref, label })
-    return ref
-  }
-
-  private devInit() {
-    this._devPanel = this.add
-      .text(8, 48, '', { fontFamily: 'monospace', fontSize: '12px', color: '#b0e0ff' })
-      .setScrollFactor(0)
-      .setDepth(10001)
-    this._devGfx = this.add.graphics().setDepth(10000)
-    ;(this.physics.world as any).createDebugGraphic?.()
-
-    this.input.keyboard?.on('keydown-F1', () => (this._devOn = !this._devOn))
-    this.input.keyboard?.on('keydown-F2', () => (window as any).__dump?.())
-    this.input.keyboard?.on('keydown-F3', () => {
-      const w: any = this.physics.world
-      w.drawDebug = !w.drawDebug
-      w.debugGraphic?.clear()
-    })
-
-    ;(window as any).__dump = () => {
-      const rows = Array.from(this._registry.values()).map(({ kind, ref }) => ({
-        eid: ref?.data?.get('eid'),
-        kind,
-        owner: ref?.data?.get?.('owner'),
-        hp: ref?.data?.get?.('hp'),
-        maxHp: ref?.data?.get?.('maxHp'),
-        active: !!ref?.active,
-        visible: !!ref?.visible,
-        bodyEnabled: !!ref?.body?.enable,
-        immovable: !!ref?.body?.immovable,
-        x: Math.round(ref?.x ?? 0),
-        y: Math.round(ref?.y ?? 0),
-        vx: Math.round(ref?.body?.velocity?.x ?? 0),
-        vy: Math.round(ref?.body?.velocity?.y ?? 0),
-        w: Math.round(ref?.body?.width ?? ref?.width ?? 0),
-        h: Math.round(ref?.body?.height ?? ref?.height ?? 0),
-        checkColl: ref?.body?.checkCollision ? { ...ref.body.checkCollision } : null
-      }))
-      console.table(rows)
-      return rows
-    }
-  }
-
-  private devUpdate() {
-    if (!this._devOn) {
-      this._devPanel.setText('')
-      this._devGfx.clear()
-      return
-    }
-
-    if (this.time.now < this._devTick) return
-    this._devTick = this.time.now + 200
-
-    this._devGfx.clear()
-    const lines: string[] = ['F1: toggle overlay  F2: dump()  F3: arcade debug']
-    lines.push('— ENTITIES —')
-
-    for (const { kind, ref, label } of this._registry.values()) {
-      if (!ref?.active) {
-        label.setVisible(false)
-        continue
-      }
-      const id = ref.data?.get('eid')
-      const hp = ref.data?.get?.('hp')
-      const mxhp = ref.data?.get?.('maxHp')
-      const own = ref.data?.get?.('owner')
-      const posx = Math.round(ref.x)
-      const posy = Math.round(ref.y)
-      const vx = Math.round(ref.body?.velocity?.x ?? 0)
-      const vy = Math.round(ref.body?.velocity?.y ?? 0)
-
-      label
-        .setVisible(true)
-        .setText(`#${id} ${kind} ${own ? '(' + own + ')' : ''}  hp:${hp ?? '-'}  x:${posx} y:${posy}`)
-        .setPosition(ref.x - 22, ref.y - 18)
-
-      const b = ref.body as Phaser.Physics.Arcade.Body | undefined
-      if (b) {
-        this._devGfx.lineStyle(1, 0x00ff00, 1)
-        this._devGfx.strokeRect(b.x, b.y, b.width, b.height)
-      }
-
-      lines.push(
-        `#${id} ${kind} ${own ? `owner:${own} ` : ''}hp:${hp ?? '-'}/${mxhp ?? '-'}  xy:${posx},${posy}  v:${vx},${vy}  active:${!!ref.active} body:${!!ref.body?.enable}`
-      )
-    }
-
-    this._devPanel.setText(lines.join('\n'))
-  }
-
-  private devLogOverlap(tag: string, bullet: any, target: any, accepted: boolean, reason: string) {
-    const bId = bullet?.data?.get?.('eid')
-    const tId = target?.data?.get?.('eid')
-    const msg = `[COLLIDE] ${tag} bullet#${bId} -> targ#${tId}  accepted=${accepted}  reason=${reason}`
-    console.log(msg, {
-      bOwner: bullet?.data?.get?.('owner'),
-      bActive: bullet?.active,
-      bBody: !!bullet?.body?.enable,
-      tKind: target?.data?.get?.('kind'),
-      tActive: target?.active,
-      tBody: !!target?.body?.enable
-    })
-  }
-  // ==== /DEV INSPECTOR ====
 
   private styleBulletForOwner(
     bullet: Phaser.Physics.Arcade.Sprite,
