@@ -719,7 +719,6 @@ export class Game extends Phaser.Scene {
     if (!bullet) {
       return
     }
-
     const anyBullet = bullet as any
     if (typeof anyBullet.disableBody === 'function') {
       anyBullet.disableBody(true, true)
@@ -885,6 +884,78 @@ export class Game extends Phaser.Scene {
   private updateWeaponLabel(): void {
     const weapon = this.weapons[this.currentWeaponIndex]
     this.weaponLabel.setText(`WEAPON • ${weapon.toUpperCase()}`)
+  }
+
+  private applyDamageToPlayer(dmg: number): void {
+    if (!this.player || !this.player.active || this.playerLives < 0) {
+      return
+    }
+
+    this.playerHp = Math.max(0, this.playerHp - dmg)
+    this.player.setDataEnabled()
+    this.player.data.set('hp', this.playerHp)
+    this.player.data.set('maxHp', this.playerMaxHp)
+    this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
+
+    if (this.playerHp <= 0) {
+      this.playerDeathAndRespawn()
+    }
+  }
+
+  private playerDeathAndRespawn(): void {
+    if (!this.player) {
+      return
+    }
+
+    this.playerLives--
+    this.hud?.setLives(this.playerLives)
+
+    const anyPlayer = this.player as any
+    if (typeof anyPlayer.disableBody === 'function') {
+      anyPlayer.disableBody(true, true)
+    } else {
+      this.player.setActive(false).setVisible(false)
+      const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+      if (body) {
+        body.enable = false
+      }
+    }
+
+    if (this.playerLives > 0) {
+      this.time.delayedCall(600, () => {
+        if (!this.player || !this.respawnPoint) {
+          return
+        }
+
+        const playerAny = this.player as any
+        if (typeof playerAny.enableBody === 'function') {
+          playerAny.enableBody(true, this.respawnPoint.x, this.respawnPoint.y, true, true)
+        } else {
+          this.player.setPosition(this.respawnPoint.x, this.respawnPoint.y)
+          const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+          if (body) {
+            body.enable = true
+            body.reset(this.respawnPoint.x, this.respawnPoint.y)
+          }
+        }
+        this.playerHp = this.playerMaxHp
+        this.player.setDataEnabled()
+        this.player.data.set('hp', this.playerHp)
+        this.player.data.set('maxHp', this.playerMaxHp)
+        this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
+        this.player.setVelocity(0, 0)
+        this.player.setActive(true).setVisible(true)
+      })
+    } else {
+      this.gameOver()
+    }
+  }
+
+  private gameOver(): void {
+    this.add
+      .text(this.scale.width / 2, this.scale.height / 2, 'GAME OVER', { color: '#fff' })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
   }
 
   private applyDamageToPlayer(dmg: number): void {
