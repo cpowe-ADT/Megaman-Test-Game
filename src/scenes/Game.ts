@@ -8,6 +8,9 @@ import { DebugOverlay } from '../ui/DebugOverlay'
 import { HUD } from '../ui/HUD'
 import { JumpController } from './game/JumpController'
 import { evaluatePauseState } from './game/pauseLogic'
+import PauseScene from './PauseScene'
+import WinScene from './WinScene'
+import GameOverScene from './GameOverScene'
 
 const JUMP_VELOCITY = -420
 
@@ -25,6 +28,14 @@ type ActionKeyMap = {
   modifier: Phaser.Input.Keyboard.Key
 }
 
+type StageConfig = {
+  id: string
+  allowFallOff: boolean
+  leftWall: boolean
+  rightWall: boolean
+  midPlatforms: { x: number; y: number; w: number }[]
+}
+
 export class Game extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private player!: Phaser.Physics.Arcade.Sprite
@@ -32,6 +43,7 @@ export class Game extends Phaser.Scene {
   private bullets!: Phaser.Physics.Arcade.Group
   private hazards!: Phaser.Physics.Arcade.StaticGroup
   private enemies!: Phaser.Physics.Arcade.Group
+  private stagePlatforms?: Phaser.Physics.Arcade.StaticGroup
   private bossController?: BossController
   private bossLabel!: Phaser.GameObjects.Text
   private weaponLabel!: Phaser.GameObjects.Text
@@ -41,6 +53,74 @@ export class Game extends Phaser.Scene {
   private bossArt?: Phaser.GameObjects.Sprite
   private bossTarget?: Phaser.Physics.Arcade.Sprite
   private _bossSpawned = false
+  private victoryTriggered = false
+  private gameOverTriggered = false
+
+  // [REGION: BOSS-FIRE - BEGIN]
+  private bossFireTimer?: Phaser.Time.TimerEvent
+
+  private startBossFireLoop(): void {
+    this.bossFireTimer?.remove(false)
+
+    const shooter = this.bossBody ?? this.bossTarget
+    if (!shooter || !this.bullets) {
+      return
+    }
+
+    this.bossFireTimer = this.time.addEvent({
+      delay: 1200,
+      loop: true,
+      callbackScope: this,
+      callback: () => {
+        if (!shooter.active || !this.player?.active) {
+          return
+        }
+
+        const dir = this.player.x < shooter.x ? -1 : 1
+        const spawnX = shooter.x + 10 * dir
+        const spawnY = shooter.y - 2
+
+        const bullet = this.bullets.get(spawnX, spawnY, 'bullet_enemy') as
+          | Phaser.Physics.Arcade.Sprite
+          | null
+        if (!bullet) {
+          return
+        }
+
+        bullet.setActive(true).setVisible(true)
+        const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+        if (body) {
+          body.enable = true
+        }
+        bullet.setPosition(spawnX, spawnY)
+        bullet.setVelocity(260 * dir, 0)
+        bullet.setDataEnabled()
+        bullet.data.set('owner', 'enemy')
+        bullet.data.set('damage', 1)
+
+        const anyBullet = bullet as any
+        if (typeof anyBullet.setTint === 'function') {
+          anyBullet.setTint(0x55ccff)
+        }
+        if (typeof anyBullet.setBlendMode === 'function') {
+          anyBullet.setBlendMode(Phaser.BlendModes.ADD)
+        }
+
+        const bossArt = this.bossArt
+        bossArt?.play('boss_shoot', true)
+        if (bossArt) {
+          this.time.delayedCall(260, () => {
+            if (bossArt.anims) {
+              bossArt.play('boss_walk', true)
+            }
+          })
+        }
+
+        this.devRegister(bullet, 'bullet.enemy')
+      }
+    })
+  }
+  // [REGION: BOSS-FIRE - END]
 
   private spawnBossOnce(cb: () => void): void {
     if (this._bossSpawned) {
@@ -89,6 +169,12 @@ export class Game extends Phaser.Scene {
   private readonly slideDuration = 260
   private currentPhaseName = ''
   private animationLockUntil = 0
+  // [REGION: CHARGE-AURA - BEGIN]
+  private chargePM!: Phaser.GameObjects.Particles.ParticleEmitterManager
+  private chargeEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
+  private charging = false
+  private fullyCharged = false
+  // [REGION: CHARGE-AURA - END]
   private debugOverlay?: DebugOverlay
   private readonly jumpController = new JumpController(JUMP_VELOCITY)
   private debugToggleHandler?: () => void
@@ -131,6 +217,72 @@ export class Game extends Phaser.Scene {
     nextId: 1
   }
   // ======================= [DEV-UX-END]
+
+  // [REGION: STAGE-BUILDER - BEGIN]
+  private readonly stageConfigs: Record<string, StageConfig> = {
+    metal: {
+      id: 'metal',
+      allowFallOff: false,
+      leftWall: true,
+      rightWall: true,
+      midPlatforms: [
+        { x: 160, y: 170, w: 60 },
+        { x: 220, y: 130, w: 60 }
+      ]
+    },
+    water: {
+      id: 'water',
+      allowFallOff: true,
+      leftWall: false,
+      rightWall: false,
+      midPlatforms: [
+        { x: 160, y: 170, w: 60 },
+        { x: 160, y: 130, w: 60 },
+        { x: 230, y: 150, w: 40 }
+      ]
+    },
+    fire: {
+      id: 'fire',
+      allowFallOff: false,
+      leftWall: true,
+      rightWall: false,
+      midPlatforms: [{ x: 200, y: 160, w: 50 }]
+    }
+  }
+
+  private buildStage(stageId: string): void {
+    const cfg = this.stageConfigs[stageId] ?? this.stageConfigs.metal
+    const { width, height } = this.scale
+
+    this.physics.world.setBounds(0, 0, width, height, true, cfg.leftWall, cfg.rightWall, true)
+    this.physics.world.setBoundsCollision(cfg.leftWall, cfg.rightWall, true, !cfg.allowFallOff)
+
+    this.stagePlatforms?.clear(true, true)
+    this.stagePlatforms?.destroy()
+    this.stagePlatforms = this.physics.add.staticGroup()
+
+    cfg.midPlatforms.forEach((p) => {
+      const rect = this.add.rectangle(p.x, p.y, p.w, 8, 0x33404f)
+      this.physics.add.existing(rect, true)
+      const body = rect.body as Phaser.Physics.Arcade.StaticBody | undefined
+      body?.updateFromGameObject()
+      this.stagePlatforms?.add(rect)
+    })
+
+    if (this.player) {
+      this.physics.add.collider(this.player, this.stagePlatforms)
+    }
+    if (this.enemies) {
+      this.physics.add.collider(this.enemies, this.stagePlatforms)
+    }
+    if (this.bossBody) {
+      this.physics.add.collider(this.bossBody, this.stagePlatforms)
+    }
+    if (this.bossTarget && this.bossTarget !== this.bossBody) {
+      this.physics.add.collider(this.bossTarget, this.stagePlatforms)
+    }
+  }
+  // [REGION: STAGE-BUILDER - END]
 
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
     const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
@@ -233,6 +385,7 @@ export class Game extends Phaser.Scene {
           reward: { displayName: 'FROST SLASH' }
         })
       }
+      this.onBossDefeated()
     }
 
     if (this.bossController) {
@@ -478,7 +631,7 @@ export class Game extends Phaser.Scene {
       this.bossBody.setVelocityX(60 * direction)
     }
 
-    if (!this.nextBossShot || now > this.nextBossShot) {
+    if (!this.bossFireTimer && (!this.nextBossShot || now > this.nextBossShot)) {
       const origin = this.bossArt ?? this.bossBody
       const originX = origin?.x ?? this.bossBody.x
       const originY = origin?.y ?? this.bossBody.y
@@ -491,6 +644,12 @@ export class Game extends Phaser.Scene {
 
   create(data: GameData): void {
     this.ensureBulletTextures()
+    this.ensureSlashTexture()
+
+    const saberPM = this.add.particles(0, 0, 'slash')
+    saberPM.setDepth(9)
+    ;(this as any)._saberPM = saberPM
+
     if (!this.textures.exists('px')) {
       const g = this.make.graphics({ x: 0, y: 0, add: false })
       g.fillStyle(0xffffff, 1)
@@ -510,6 +669,28 @@ export class Game extends Phaser.Scene {
     enemyTrail.setDepth(1)
     ;(this as any)._enemyTrail = enemyTrail
 
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      saberPM.destroy()
+      enemyTrail.destroy()
+      this.bossFireTimer?.remove(false)
+      this.bossFireTimer = undefined
+      this.chargeEmitter?.stop()
+      this.stagePlatforms?.clear(true, true)
+      this.stagePlatforms?.destroy()
+      this.stagePlatforms = undefined
+    })
+
+    const manager = this.scene.manager
+    if (!manager.keys['Pause']) {
+      this.scene.add('Pause', PauseScene, false)
+    }
+    if (!manager.keys['WinScene']) {
+      this.scene.add('WinScene', WinScene, false)
+    }
+    if (!manager.keys['GameOver']) {
+      this.scene.add('GameOver', GameOverScene, false)
+    }
+
     this.devInit()
     const blueprint = getBossById(data.bossId)
     const bossMaxHp = blueprint.baseStats?.maxHp ?? 20
@@ -517,9 +698,31 @@ export class Game extends Phaser.Scene {
     const { width, height } = this.scale
     this.cameras.main.setBackgroundColor('#0e1622')
 
+    const stageId = (data as any)?.stageId ?? data.bossId ?? 'metal'
+    ;(this as any).stageId = stageId
+    ;(this as any).rewardWeapon = blueprint.weaponReward?.id ?? blueprint.id
+    this.victoryTriggered = false
+    this.gameOverTriggered = false
+
     InputActions.init(this)
     this.installScrollGuards()
     this.createPauseOverlay(width, height)
+
+    const escHandler = () => {
+      if (this.scene.isPaused(this.scene.key)) {
+        return
+      }
+      this.setPaused(true)
+      this.scene.launch('Pause')
+      this.scene.pause()
+    }
+    this.input.keyboard?.on('keydown-ESC', escHandler)
+    const resumeHandler = () => this.setPaused(false)
+    this.events.on(Phaser.Scenes.Events.RESUME, resumeHandler)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown-ESC', escHandler)
+      this.events.off(Phaser.Scenes.Events.RESUME, resumeHandler)
+    })
 
     if (this.input.keyboard) {
       this.debugToggleHandler = () => this.debugOverlay?.toggle()
@@ -609,6 +812,8 @@ export class Game extends Phaser.Scene {
     this.player.data.set('maxHp', this.playerMaxHp)
     this.devRegister(this.player, 'player')
 
+    this.buildStage(stageId)
+
     this.bullets = this.physics.add.group({
       classType: Phaser.Physics.Arcade.Sprite,
       maxSize: 50,
@@ -632,9 +837,14 @@ export class Game extends Phaser.Scene {
     dummy.play('dummy-idle')
     this.devRegister(dummy, 'enemy')
 
+    if (this.stagePlatforms) {
+      this.physics.add.collider(this.enemies, this.stagePlatforms)
+    }
+
+    this.makeBossFrames()
     // ======================= [BOSS-SPAWN-BEGIN]
     this.spawnBossOnce(() => {
-      this.bossBody = this.physics.add.sprite(560, 120, 'boss_idle_0')
+      this.bossBody = this.physics.add.sprite(560, 120, 'boss_tex', 0)
       this.bossBody.setVisible(false)
       this.bossBody.setCollideWorldBounds(true)
       this.bossBody.setDataEnabled()
@@ -653,17 +863,23 @@ export class Game extends Phaser.Scene {
       this.devRegister(this.bossBody, 'boss.body')
       this.bossTarget = this.bossBody
 
+      if (this.stagePlatforms) {
+        this.physics.add.collider(this.bossBody, this.stagePlatforms)
+      }
+
       if (!this.bossArt) {
-        this.bossArt = this.add.sprite(this.bossBody.x, this.bossBody.y, 'boss_idle_0')
+        this.bossArt = this.add.sprite(this.bossBody.x, this.bossBody.y, 'boss_tex', 0)
       } else {
-        this.bossArt.setTexture('boss_idle_0')
+        this.bossArt.setTexture('boss_tex', 0)
         this.bossArt.setVisible(true)
         this.bossArt.setPosition(this.bossBody.x, this.bossBody.y)
       }
       this.bossArt.setDepth(2)
       this.bossArt.setDataEnabled?.()
+      this.bossArt.play('boss_walk')
       this.devRegister(this.bossArt, 'boss.art')
       this.devRegister(this.bossTarget, 'boss.hitbox')
+      this.startBossFireLoop()
     })
     // ======================= [BOSS-SPAWN-END]
 
@@ -711,8 +927,12 @@ export class Game extends Phaser.Scene {
         this.devRegister(this.bossTarget, 'boss.hitbox')
         this.physics.add.collider(this.bossTarget, ground)
         this.physics.add.collider(this.bossTarget, platform)
+        if (this.stagePlatforms) {
+          this.physics.add.collider(this.bossTarget, this.stagePlatforms)
+        }
       }
       this.installHitWires()
+      this.startBossFireLoop()
     }
     this.initializeHud()
     this.currentPhaseName = this.bossController.currentPhase.name.toUpperCase()
@@ -753,6 +973,7 @@ export class Game extends Phaser.Scene {
         this.bossTarget.setActive(false).setVisible(false)
       }
       this.bossArt?.setVisible(false)
+      this.onBossDefeated()
     })
 
     this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
@@ -1026,10 +1247,12 @@ export class Game extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(shootKey)) {
       this.isChargingShot = true
       this.chargeStartedAt = now
+      this.startCharging()
     }
 
     if (this.isChargingShot && !shootKey.isDown) {
       const charged = now - this.chargeStartedAt >= 600
+      this.stopCharging()
       this.fireBullet(charged)
       this.isChargingShot = false
       this.animationLockUntil = Math.max(this.animationLockUntil, now + 180)
@@ -1048,6 +1271,9 @@ export class Game extends Phaser.Scene {
     this.updatePlayerTint()
     this.setPlayerAnimation(grounded ? 'player-shoot' : 'player-shoot-air')
     this.applySaberDamage()
+    if (this.player) {
+      this.playSaberFx(this.player, this.facing)
+    }
   }
 
   private startDash(now: number, movingLeft: boolean, movingRight: boolean): void {
@@ -1199,6 +1425,115 @@ export class Game extends Phaser.Scene {
     }
   }
 
+  // [REGION: SABER-FX - BEGIN]
+  private ensureSlashTexture(): void {
+    if (this.textures.exists('slash')) {
+      return
+    }
+    const g = this.make.graphics({ x: 0, y: 0, add: false })
+    g.fillStyle(0xffffff, 1)
+    for (let i = 0; i < 10; i += 1) {
+      g.fillRect(i, 10 - i, 1, 2)
+    }
+    g.generateTexture('slash', 12, 12)
+    g.destroy()
+  }
+
+  private playSaberFx(origin: Phaser.GameObjects.Sprite, direction: number): void {
+    const pm = (this as any)._saberPM as
+      | Phaser.GameObjects.Particles.ParticleEmitterManager
+      | undefined
+    if (!pm) {
+      return
+    }
+
+    const emitter = pm.createEmitter({
+      x: origin.x + 8 * direction,
+      y: origin.y,
+      angle: { min: -20 + (direction < 0 ? 180 : 0), max: 20 + (direction < 0 ? 180 : 0) },
+      speed: 80,
+      lifespan: 160,
+      scale: { start: 1.2, end: 0 },
+      quantity: 6,
+      blendMode: 'ADD'
+    })
+    this.time.delayedCall(180, () => emitter.stop())
+  }
+  // [REGION: SABER-FX - END]
+
+  // [REGION: CHARGE-AURA - BEGIN]
+  private initChargeFx(): void {
+    if (this.chargePM) {
+      return
+    }
+
+    if (!this.textures.exists('px')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false })
+      g.fillStyle(0xffffff, 1)
+      g.fillRect(0, 0, 2, 2)
+      g.generateTexture('px', 2, 2)
+      g.destroy()
+    }
+
+    this.chargePM = this.add.particles(0, 0, 'px').setDepth(10)
+  }
+
+  private startCharging(): void {
+    if (!this.player?.active) {
+      return
+    }
+    this.initChargeFx()
+    if (this.charging) {
+      return
+    }
+    this.charging = true
+    this.fullyCharged = false
+
+    this.chargeEmitter?.stop()
+    this.chargeEmitter = this.chargePM.createEmitter({
+      follow: this.player,
+      lifespan: 220,
+      speed: { min: 10, max: 40 },
+      scale: { start: 1.0, end: 0 },
+      quantity: 6,
+      alpha: { start: 0.9, end: 0 },
+      tint: 0x88ddff,
+      angle: { min: 0, max: 360 }
+    })
+
+    this.time.delayedCall(600, () => {
+      if (!this.charging) {
+        return
+      }
+      this.fullyCharged = true
+      this.chargeEmitter?.setQuantity(2)
+      this.chargeEmitter?.setLifespan(400)
+      this.chargeEmitter?.setSpeed({ min: 5, max: 20 })
+      this.chargeEmitter?.setTint(0x55ffcc)
+      this.tweens.add({ targets: this.player, scale: 1.05, duration: 80, yoyo: true })
+    })
+  }
+
+  private stopCharging(): void {
+    this.charging = false
+    if (!this.chargeEmitter) {
+      return
+    }
+
+    if (!this.fullyCharged) {
+      this.chargeEmitter.stop()
+      this.chargeEmitter = undefined
+      return
+    }
+
+    this.chargeEmitter.setQuantity(1)
+    this.chargeEmitter.setLifespan(500)
+    this.chargeEmitter.setSpeed(10)
+    this.chargeEmitter.setAlpha({ start: 0.5, end: 0 })
+    this.chargeEmitter.setTint(0x99ffee)
+  }
+  // [REGION: CHARGE-AURA - END]
+
   private ensureBulletTextures(): void {
     const tex = this.textures
     if (!tex.exists('bullet_player')) {
@@ -1225,6 +1560,68 @@ export class Game extends Phaser.Scene {
       g.destroy()
     }
   }
+
+  // [REGION: BOSS-ART-PLACEHOLDER - BEGIN]
+  private makeBossFrames(): void {
+    if (this.textures.exists('boss_tex')) {
+      return
+    }
+
+    const rt = this.make.renderTexture({ x: -1000, y: -1000, width: 48, height: 48, add: false })
+    const drawFrame = (color: number, diag: boolean) => {
+      const g = this.add.graphics({ x: 0, y: 0 })
+      g.fillStyle(color, 1)
+      g.fillRect(0, 0, 32, 32)
+      if (diag) {
+        g.lineStyle(2, 0x113311)
+        g.beginPath()
+        g.moveTo(0, 32)
+        g.lineTo(32, 0)
+        g.strokePath()
+      }
+      rt.draw(g, 8, 8)
+      g.destroy()
+    }
+
+    drawFrame(0x4bc06b, true)
+    this.textures.addSpriteSheet('boss_tex', rt.texture.getSourceImage(), {
+      frameWidth: 48,
+      frameHeight: 48
+    })
+    rt.clear()
+    drawFrame(0x5bd07b, false)
+    this.textures.get('boss_tex').add(1, 0, 0, 48, 48)
+    drawFrame(0x6be08b, true)
+    this.textures.get('boss_tex').add(2, 0, 0, 48, 48)
+    rt.destroy()
+
+    if (!this.anims.exists('boss_idle')) {
+      this.anims.create({ key: 'boss_idle', frames: [{ key: 'boss_tex', frame: 0 }], frameRate: 4, repeat: -1 })
+    }
+    if (!this.anims.exists('boss_walk')) {
+      this.anims.create({
+        key: 'boss_walk',
+        frames: [
+          { key: 'boss_tex', frame: 0 },
+          { key: 'boss_tex', frame: 1 }
+        ],
+        frameRate: 6,
+        repeat: -1
+      })
+    }
+    if (!this.anims.exists('boss_shoot')) {
+      this.anims.create({
+        key: 'boss_shoot',
+        frames: [
+          { key: 'boss_tex', frame: 2 },
+          { key: 'boss_tex', frame: 0 }
+        ],
+        frameRate: 10,
+        repeat: 0
+      })
+    }
+  }
+  // [REGION: BOSS-ART-PLACEHOLDER - END]
 
   private asDynSprite(obj: any): Phaser.Physics.Arcade.Sprite | null {
     if (!obj || !obj.body) {
@@ -1310,6 +1707,43 @@ export class Game extends Phaser.Scene {
     return next
   }
 
+  // [REGION: FLOW-HOOKS - BEGIN]
+  private onBossDefeated(): void {
+    if (this.victoryTriggered) {
+      return
+    }
+    this.victoryTriggered = true
+    this.bossFireTimer?.remove(false)
+    this.bossFireTimer = undefined
+    this.stopCharging()
+    const stageId = ((this as any).stageId as string | undefined) ?? 'unknown'
+    const weaponId = ((this as any).rewardWeapon as string | undefined) ?? 'buster+'
+    if (this.scene.manager.keys['Pause']) {
+      this.scene.stop('Pause')
+    }
+    if (this.scene.manager.keys['WinScene']) {
+      this.scene.start('WinScene', { stageId, weaponId })
+    }
+  }
+
+  private onPlayerGameOver(): void {
+    if (this.gameOverTriggered) {
+      return
+    }
+    this.gameOverTriggered = true
+    this.bossFireTimer?.remove(false)
+    this.bossFireTimer = undefined
+    this.stopCharging()
+    const stageId = ((this as any).stageId as string | undefined) ?? 'unknown'
+    if (this.scene.manager.keys['Pause']) {
+      this.scene.stop('Pause')
+    }
+    if (this.scene.manager.keys['GameOver']) {
+      this.scene.start('GameOver', { stageId })
+    }
+  }
+  // [REGION: FLOW-HOOKS - END]
+
   private applyDamageToBoss(dmg: number): void {
     if (this.bossController) {
       const max = this.bossHp?.max ?? this.bossController.blueprint.baseStats.maxHp
@@ -1324,6 +1758,9 @@ export class Game extends Phaser.Scene {
         this.bossTarget.data?.set?.('maxHp', max)
       }
       this.bossController.hurt(dmg)
+      if (current <= 0) {
+        this.onBossDefeated()
+      }
       return
     }
 
@@ -1356,6 +1793,7 @@ export class Game extends Phaser.Scene {
       this.events.emit('boss-defeated', {
         reward: { displayName: 'FROST SLASH' }
       })
+      this.onBossDefeated()
     }
   }
 
@@ -1459,6 +1897,7 @@ export class Game extends Phaser.Scene {
       return
     }
 
+    this.stopCharging()
     this.playerLives--
     this.hud?.setLives(this.playerLives)
 
@@ -1504,9 +1943,6 @@ export class Game extends Phaser.Scene {
   }
 
   private gameOver(): void {
-    this.add
-      .text(this.scale.width / 2, this.scale.height / 2, 'GAME OVER', { color: '#fff' })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
+    this.onPlayerGameOver()
   }
 }
