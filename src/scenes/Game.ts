@@ -572,12 +572,19 @@ export class Game extends Phaser.Scene {
     bullet.setScale(charged ? 1.2 : 1)
   }
 
-  private recycleBullet(a: any, b: any): void {
-    let bullet = a as Phaser.Physics.Arcade.Sprite
-    if (!(bullet?.body)) {
-      bullet = b as Phaser.Physics.Arcade.Sprite
+  private asDynSprite(obj: any): Phaser.Physics.Arcade.Sprite | null {
+    if (!obj || !obj.body) {
+      return null
     }
-    if (!(bullet?.body)) {
+    const body = obj.body
+    const isDynamic = body instanceof Phaser.Physics.Arcade.Body
+    const hasSetVelocity = typeof (obj as any).setVelocity === 'function'
+    return isDynamic && hasSetVelocity ? (obj as Phaser.Physics.Arcade.Sprite) : null
+  }
+
+  private recycleBullet(a: any, b: any): void {
+    const bullet = this.asDynSprite(a) || this.asDynSprite(b)
+    if (!bullet) {
       return
     }
     const anyBullet = bullet as any
@@ -585,9 +592,15 @@ export class Game extends Phaser.Scene {
       anyBullet.disableBody(true, true)
     } else {
       this.bullets.killAndHide(bullet)
-      ;(bullet.body as Phaser.Physics.Arcade.Body).enable = false
+      const body = bullet.body as Phaser.Physics.Arcade.Body
+      body.enable = false
     }
-    bullet.setVelocity(0, 0)
+
+    if (typeof (bullet as any).setVelocity === 'function') {
+      ;(bullet as any).setVelocity(0, 0)
+    } else if (bullet.body && typeof (bullet.body as any).setVelocity === 'function') {
+      ;(bullet.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0)
+    }
   }
 
   private applySaberDamage(): void {
