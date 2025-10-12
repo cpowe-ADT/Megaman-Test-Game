@@ -198,7 +198,6 @@ export class Game extends Phaser.Scene {
   private _devTick = 0
   private _registry = new Map<number, { kind: string; ref: any; label: Phaser.GameObjects.Text }>()
   private _eid = 1
-  private _bossSpawned = false
   // ======================= [DEV-UX-BEGIN]
   private readonly _dev = {
     on: true,
