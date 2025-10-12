@@ -5,6 +5,7 @@ import { getBossById } from '../bosses/roster'
 import { DEBUG_UI } from '../config/debug'
 import InputActions from '../input/InputActions'
 import { DebugOverlay } from '../ui/DebugOverlay'
+import { HUD } from '../ui/HUD'
 import { JumpController } from './game/JumpController'
 import { evaluatePauseState } from './game/pauseLogic'
 
@@ -35,6 +36,7 @@ export class Game extends Phaser.Scene {
   private bossLabel!: Phaser.GameObjects.Text
   private weaponLabel!: Phaser.GameObjects.Text
   private phaseLabel!: Phaser.GameObjects.Text
+  private hud?: HUD
   private isChargingShot = false
   private chargeStartedAt = 0
   private currentWeaponIndex = 0
@@ -59,6 +61,14 @@ export class Game extends Phaser.Scene {
   private preventScrollHandler?: (event: KeyboardEvent) => void
   private pauseOverlay?: Phaser.GameObjects.Container
   private paused = false
+  private playerMaxHp = 0
+  private playerHp = 0
+  private weaponEnergy = { current: 28, max: 28 }
+  private playerLives = 0
+  private respawnPoint?: Phaser.Math.Vector2
+  private bossHp?: { current: number; max: number }
+  private bossName?: string
+  private scaleResizeHandler?: Phaser.Types.Core.ScaleEventCallback
 
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
     const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
@@ -100,6 +110,10 @@ export class Game extends Phaser.Scene {
     }
 
     this.jumpController.reset()
+    this.bossName = blueprint.codename
+    this.bossHp = { current: blueprint.baseStats.maxHp, max: blueprint.baseStats.maxHp }
+    const weaponEnergyMax = blueprint.weaponReward?.maxEnergy ?? this.weaponEnergy.max
+    this.weaponEnergy = { current: weaponEnergyMax, max: weaponEnergyMax }
 
     this.bossLabel = this.add
       .text(6, 6, `${blueprint.codename} • ${blueprint.element}`, {
@@ -151,6 +165,13 @@ export class Game extends Phaser.Scene {
     playerBody.setSize(10, 16)
     playerBody.setOffset(3, 2)
     this.player.play('player-idle')
+    this.playerMaxHp = 8
+    this.playerHp = this.playerMaxHp
+    this.playerLives = 3
+    this.respawnPoint = new Phaser.Math.Vector2(this.player.x, this.player.y)
+    this.player.setDataEnabled()
+    this.player.data.set('hp', this.playerHp)
+    this.player.data.set('maxHp', this.playerMaxHp)
 
     this.bullets = this.physics.add.group({
       classType: Phaser.Physics.Arcade.Sprite,
@@ -213,6 +234,7 @@ export class Game extends Phaser.Scene {
       spawn: new Phaser.Math.Vector2(width - 48, height - 40),
       lockIntro: true
     })
+    this.initializeHud()
     this.currentPhaseName = this.boss.currentPhase.name
     this.phaseLabel.setText(`Phase: ${this.currentPhaseName}`)
 
@@ -455,6 +477,25 @@ export class Game extends Phaser.Scene {
       shoulderNext: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
       modifier: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
     }
+  }
+
+  private initializeHud(): void {
+    this.hud = new HUD(this)
+    this.hud.setNames('Sentinel ROOK', this.bossName ?? '??')
+    this.hud.setLives(this.playerLives)
+    this.hud.updatePlayerHp(this.playerHp, this.playerMaxHp)
+    this.hud.updateWeapon(this.weaponEnergy.current, this.weaponEnergy.max)
+    if (this.bossHp) {
+      this.hud.updateBossHp(this.bossHp.current, this.bossHp.max)
+    }
+    this.scaleResizeHandler = () => this.hud?.resize()
+    this.scale.on('resize', this.scaleResizeHandler)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.scaleResizeHandler) {
+        this.scale.off('resize', this.scaleResizeHandler)
+        this.scaleResizeHandler = undefined
+      }
+    })
   }
 
   private handleWeaponCycling(): void {
@@ -730,14 +771,74 @@ export class Game extends Phaser.Scene {
   }
 
   private applyDamageToPlayer(dmg: number): void {
+    if (!this.player || !this.player.active || this.playerLives < 0) {
+      return
+    }
+
+    this.playerHp = Math.max(0, this.playerHp - dmg)
+    this.player.setDataEnabled()
+    this.player.data.set('hp', this.playerHp)
+    this.player.data.set('maxHp', this.playerMaxHp)
+    this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
+
+    if (this.playerHp <= 0) {
+      this.playerDeathAndRespawn()
+    }
+  }
+
+  private playerDeathAndRespawn(): void {
     if (!this.player) {
       return
     }
-    this.player.setDataEnabled()
-    const current = (this.player.getData('hp') ?? this.player.getData('maxHp') ?? 28) as number
-    const max = (this.player.getData('maxHp') ?? Math.max(28, current)) as number
-    const next = Math.max(0, current - dmg)
-    this.player.data.set('hp', next)
-    this.player.data.set('maxHp', max)
+
+    this.playerLives--
+    this.hud?.setLives(this.playerLives)
+
+    const anyPlayer = this.player as any
+    if (typeof anyPlayer.disableBody === 'function') {
+      anyPlayer.disableBody(true, true)
+    } else {
+      this.player.setActive(false).setVisible(false)
+      const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+      if (body) {
+        body.enable = false
+      }
+    }
+
+    if (this.playerLives > 0) {
+      this.time.delayedCall(600, () => {
+        if (!this.player || !this.respawnPoint) {
+          return
+        }
+
+        const playerAny = this.player as any
+        if (typeof playerAny.enableBody === 'function') {
+          playerAny.enableBody(true, this.respawnPoint.x, this.respawnPoint.y, true, true)
+        } else {
+          this.player.setPosition(this.respawnPoint.x, this.respawnPoint.y)
+          const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+          if (body) {
+            body.enable = true
+            body.reset(this.respawnPoint.x, this.respawnPoint.y)
+          }
+        }
+        this.playerHp = this.playerMaxHp
+        this.player.setDataEnabled()
+        this.player.data.set('hp', this.playerHp)
+        this.player.data.set('maxHp', this.playerMaxHp)
+        this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
+        this.player.setVelocity(0, 0)
+        this.player.setActive(true).setVisible(true)
+      })
+    } else {
+      this.gameOver()
+    }
+  }
+
+  private gameOver(): void {
+    this.add
+      .text(this.scale.width / 2, this.scale.height / 2, 'GAME OVER', { color: '#fff' })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
   }
 }
