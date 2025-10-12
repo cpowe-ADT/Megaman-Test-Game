@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { BossController } from '../bosses/BossController'
-import { BossId } from '../bosses/types'
+import { AttackPattern, BossId } from '../bosses/types'
 import { getBossById } from '../bosses/roster'
 import { DEBUG_UI } from '../config/debug'
 import InputActions from '../input/InputActions'
@@ -58,9 +58,16 @@ export class Game extends Phaser.Scene {
 
   // [REGION: BOSS-FIRE - BEGIN]
   private bossFireTimer?: Phaser.Time.TimerEvent
+  private bossFireTimerMissingLogged = false
 
   private startBossFireLoop(): void {
     this.bossFireTimer?.remove(false)
+    this.bossFireTimer = undefined
+    this.bossFireTimerMissingLogged = false
+
+    if (this.bossController) {
+      return
+    }
 
     const shooter = this.bossBody ?? this.bossTarget
     if (!shooter || !this.bullets) {
@@ -84,6 +91,7 @@ export class Game extends Phaser.Scene {
           | Phaser.Physics.Arcade.Sprite
           | null
         if (!bullet) {
+          console.warn('[Boss] enemy bullet pool exhausted; unable to fire timer shot')
           return
         }
 
@@ -91,6 +99,9 @@ export class Game extends Phaser.Scene {
         const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
         if (body) {
           body.enable = true
+          body.allowGravity = false
+          body.setCollideWorldBounds(true)
+          body.onWorldBounds = true
         }
         bullet.setPosition(spawnX, spawnY)
         bullet.setVelocity(260 * dir, 0)
@@ -120,7 +131,135 @@ export class Game extends Phaser.Scene {
       }
     })
   }
+
+  private executeBossAttack(attack: AttackPattern): void {
+    const origin = this.bossTarget ?? this.bossBody
+    if (!origin || !this.bullets) {
+      return
+    }
+
+    const isProjectileAttack = attack.state === 'shoot' || attack.state === 'summon'
+    if (!isProjectileAttack) {
+      return
+    }
+
+    const spawnList =
+      attack.spawns && attack.spawns.length > 0 ? attack.spawns : attack.state === 'shoot' ? ['slow_bullet'] : []
+
+    spawnList.forEach((spawn) => this.spawnBossProjectile(spawn, attack, origin))
+  }
+
+  private spawnBossProjectile(
+    id: string,
+    attack: AttackPattern,
+    origin: Phaser.GameObjects.GameObject
+  ): void {
+    switch (id) {
+      case 'slow_bullet':
+        this.spawnBossBullet(origin, attack, { speed: 220, damage: 1 })
+        break
+      case 'fire_orb':
+        this.spawnBossBullet(origin, attack, {
+          speed: 180,
+          damage: 2,
+          tint: this.bossController?.blueprint.theme.accent
+        })
+        break
+      case 'arc_shards':
+        this.spawnBossBulletSpread(origin, attack, [
+          { speed: 240, damage: 1, angle: -0.22 },
+          { speed: 240, damage: 1, angle: 0 },
+          { speed: 240, damage: 1, angle: 0.22 }
+        ])
+        break
+      default:
+        this.spawnBossBullet(origin, attack, { speed: 240, damage: 1 })
+        break
+    }
+  }
+
+  private spawnBossBulletSpread(
+    origin: Phaser.GameObjects.GameObject,
+    attack: AttackPattern,
+    configs: { speed: number; damage: number; angle?: number; tint?: number }[]
+  ): void {
+    configs.forEach((cfg) => this.spawnBossBullet(origin, attack, cfg))
+  }
+
+  private spawnBossBullet(
+    origin: Phaser.GameObjects.GameObject,
+    attack: AttackPattern,
+    config: { speed: number; damage: number; angle?: number; tint?: number }
+  ): void {
+    if (!this.bullets) {
+      return
+    }
+
+    const direction = this.player && this.player.x < origin.x ? -1 : 1
+    const spawnX = origin.x + 12 * direction
+    const spawnY = origin.y - 6
+
+    const bullet = this.bullets.get(spawnX, spawnY, 'bullet_enemy') as
+      | Phaser.Physics.Arcade.Sprite
+      | null
+    if (!bullet) {
+      console.warn('[Boss] enemy bullet pool exhausted', { attack: attack.name })
+      return
+    }
+
+    bullet.setActive(true).setVisible(true)
+    bullet.setPosition(spawnX, spawnY)
+    bullet.setDataEnabled()
+    bullet.data?.set('owner', 'enemy')
+    bullet.data?.set('damage', config.damage)
+    bullet.data?.set('attack', attack.name)
+
+    const tint = config.tint ?? this.bossController?.blueprint.theme.trail ?? 0x55ccff
+    const anyBullet = bullet as any
+    anyBullet.setTint?.(tint)
+    anyBullet.setBlendMode?.(Phaser.BlendModes.ADD)
+
+    const baseAngle = direction === -1 ? Math.PI : 0
+    const travel = new Phaser.Math.Vector2(1, 0).setAngle(baseAngle + (config.angle ?? 0))
+    travel.scale(config.speed)
+
+    const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+    if (body) {
+      body.enable = true
+      body.allowGravity = false
+      body.setCollideWorldBounds(true)
+      body.setVelocity(travel.x, travel.y)
+      body.onWorldBounds = true
+    } else {
+      bullet.setVelocity(travel.x, travel.y)
+    }
+
+    this.devRegister(bullet, 'bullet.enemy')
+  }
   // [REGION: BOSS-FIRE - END]
+
+  private rearmBossFireTimer(reason: string): void {
+    if (this.bossController) {
+      return
+    }
+
+    const shooter = this.bossBody ?? this.bossTarget
+    if (!shooter?.active || !this.bullets) {
+      return
+    }
+
+    const prevTimer = this.bossFireTimer
+    this.startBossFireLoop()
+    if (this.bossFireTimer) {
+      console.info(`[Boss] fire timer re-armed (${reason})`)
+    } else if (!prevTimer) {
+      this.bossFireTimerMissingLogged = false
+    }
+  }
+
+  private onSceneWake(): void {
+    this.rearmBossFireTimer('scene wake')
+  }
 
   private spawnBossOnce(cb: () => void): void {
     if (this._bossSpawned) {
@@ -673,6 +812,8 @@ export class Game extends Phaser.Scene {
       enemyTrail.destroy()
       this.bossFireTimer?.remove(false)
       this.bossFireTimer = undefined
+      this.bossFireTimerMissingLogged = false
+      this.physics.world.off('worldbounds', this.handleBulletWorldBounds, this)
       this.chargeEmitter?.stop()
       this.stagePlatforms?.clear(true, true)
       this.stagePlatforms?.destroy()
@@ -716,11 +857,16 @@ export class Game extends Phaser.Scene {
       this.scene.pause()
     }
     this.input.keyboard?.on('keydown-ESC', escHandler)
-    const resumeHandler = () => this.setPaused(false)
+    const resumeHandler = () => {
+      this.setPaused(false)
+      this.rearmBossFireTimer('scene resume')
+    }
     this.events.on(Phaser.Scenes.Events.RESUME, resumeHandler)
+    this.events.on(Phaser.Scenes.Events.WAKE, this.onSceneWake, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-ESC', escHandler)
       this.events.off(Phaser.Scenes.Events.RESUME, resumeHandler)
+      this.events.off(Phaser.Scenes.Events.WAKE, this.onSceneWake, this)
     })
 
     if (this.input.keyboard) {
@@ -820,6 +966,7 @@ export class Game extends Phaser.Scene {
       allowGravity: false,
       collideWorldBounds: true
     })
+    this.physics.world.on('worldbounds', this.handleBulletWorldBounds, this)
 
     this.hazards = this.physics.add.staticGroup()
     this.hazards.create(120, height - 22, 'hazard_spikes').refreshBody()
@@ -953,8 +1100,9 @@ export class Game extends Phaser.Scene {
     })
 
     this.events.on('boss-attack', (event) => {
-      const { attack } = event as { attack: { name: string } }
+      const { attack } = event as { attack: AttackPattern }
       this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}\nACTION • ${attack.name.toUpperCase()}`)
+      this.executeBossAttack(attack)
     })
 
     this.events.on('boss-defeated', (event) => {
@@ -988,6 +1136,21 @@ export class Game extends Phaser.Scene {
     const pauseState = evaluatePauseState(this.paused, InputActions.isPressedPauseOnce())
     this.setPaused(pauseState.paused)
     const now = this.time.now
+
+    if (!this.bossController) {
+      const shooter = this.bossBody ?? this.bossTarget
+      if (shooter?.active) {
+        if (!this.bossFireTimer) {
+          if (!this.bossFireTimerMissingLogged) {
+            console.warn('[Boss] fire timer missing while boss is active; restarting')
+            this.bossFireTimerMissingLogged = true
+          }
+          this.startBossFireLoop()
+        } else {
+          this.bossFireTimerMissingLogged = false
+        }
+      }
+    }
 
     if (DEBUG_UI) {
       this.debugOverlay?.update({
@@ -1364,6 +1527,7 @@ export class Game extends Phaser.Scene {
       'bullet_enemy'
     ) as Phaser.Physics.Arcade.Sprite | undefined
     if (!bullet) {
+      console.warn('[Boss] enemy bullet pool exhausted; legacy fire failed')
       return
     }
 
@@ -1637,6 +1801,10 @@ export class Game extends Phaser.Scene {
     if (!bullet) {
       return
     }
+    const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+    if (body) {
+      body.onWorldBounds = false
+    }
     const em = (bullet as any).__trailEmitter
     if (em && typeof em.stop === 'function') {
       em.stop()
@@ -1647,14 +1815,30 @@ export class Game extends Phaser.Scene {
       anyBullet.disableBody(true, true)
     } else {
       this.bullets.killAndHide(bullet)
-      const body = bullet.body as Phaser.Physics.Arcade.Body
-      body.enable = false
+      if (body) {
+        body.enable = false
+      }
     }
 
     if (typeof (bullet as any).setVelocity === 'function') {
       ;(bullet as any).setVelocity(0, 0)
     } else if (bullet.body && typeof (bullet.body as any).setVelocity === 'function') {
       ;(bullet.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0)
+    }
+  }
+
+  private handleBulletWorldBounds(body: Phaser.Physics.Arcade.Body): void {
+    if (!this.bullets) {
+      return
+    }
+
+    const go = body.gameObject
+    if (!go) {
+      return
+    }
+
+    if (this.bullets.contains(go)) {
+      this.recycleBullet(go, undefined)
     }
   }
 
@@ -1714,6 +1898,7 @@ export class Game extends Phaser.Scene {
     this.victoryTriggered = true
     this.bossFireTimer?.remove(false)
     this.bossFireTimer = undefined
+    this.bossFireTimerMissingLogged = false
     this.stopCharging()
     const stageId = ((this as any).stageId as string | undefined) ?? 'unknown'
     const weaponId = ((this as any).rewardWeapon as string | undefined) ?? 'buster+'
@@ -1732,6 +1917,7 @@ export class Game extends Phaser.Scene {
     this.gameOverTriggered = true
     this.bossFireTimer?.remove(false)
     this.bossFireTimer = undefined
+    this.bossFireTimerMissingLogged = false
     this.stopCharging()
     const stageId = ((this as any).stageId as string | undefined) ?? 'unknown'
     if (this.scene.manager.keys['Pause']) {
