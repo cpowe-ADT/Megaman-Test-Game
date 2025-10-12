@@ -87,6 +87,7 @@ export class Game extends Phaser.Scene {
   }
 
   create(data: GameData): void {
+    this.ensureBulletTextures()
     const blueprint = getBossById(data.bossId)
     const { width, height } = this.scale
     this.cameras.main.setBackgroundColor('#0e1622')
@@ -659,7 +660,11 @@ export class Game extends Phaser.Scene {
     const bulletX = this.player.x + offsetX
     const bulletY = this.player.y - 6
 
-    const bullet = this.bullets.get(bulletX, bulletY, 'buster_0') as Phaser.Physics.Arcade.Sprite | undefined
+    const bullet = this.bullets.get(
+      bulletX,
+      bulletY,
+      'bullet_player'
+    ) as Phaser.Physics.Arcade.Sprite | undefined
     if (!bullet) {
       return
     }
@@ -674,15 +679,23 @@ export class Game extends Phaser.Scene {
     bullet.setDepth(2)
     bullet.setDataEnabled()
     bullet.data.set('owner', 'player')
-    bullet.data.set('damage', charged ? 2 : 1)
+    bullet.data.set('damage', bullet.data.get('damage') ?? 1)
+
+    this.styleBulletForOwner(bullet, 'player')
     bullet.setPosition(bulletX, bulletY)
     bullet.setVelocityX((charged ? 360 : 260) * this.facing)
-    bullet.play('buster-fly')
-    bullet.setScale(charged ? 1.2 : 1)
+    if (charged) {
+      bullet.data.set('damage', 2)
+      bullet.setScale(1.2)
+    }
   }
 
   private fireEnemyBullet(x: number, y: number, vx: number): void {
-    const bullet = this.bullets.get(x, y, 'enemy_bullet') as Phaser.Physics.Arcade.Sprite | undefined
+    const bullet = this.bullets.get(
+      x,
+      y,
+      'bullet_enemy'
+    ) as Phaser.Physics.Arcade.Sprite | undefined
     if (!bullet) {
       return
     }
@@ -695,13 +708,59 @@ export class Game extends Phaser.Scene {
     body.setCollideWorldBounds(true)
     body.onWorldBounds = true
     bullet.setDepth(2)
+    bullet.setDataEnabled()
+    bullet.data.set('owner', 'enemy')
+    bullet.data.set('damage', bullet.data.get('damage') ?? 1)
+
+    this.styleBulletForOwner(bullet, 'enemy')
     bullet.setPosition(x, y)
     bullet.setVelocityX(vx)
     bullet.setVelocityY(0)
     bullet.setFlipX(vx < 0)
-    bullet.setDataEnabled()
-    bullet.data.set('owner', 'enemy')
-    bullet.data.set('damage', 1)
+  }
+
+  private styleBulletForOwner(
+    bullet: Phaser.Physics.Arcade.Sprite,
+    owner: 'player' | 'enemy'
+  ): void {
+    if (owner === 'player') {
+      bullet.setTexture('bullet_player')
+      bullet.clearTint()
+      bullet.setScale(1)
+      ;(bullet as any).setBlendMode?.(Phaser.BlendModes.NORMAL)
+    } else {
+      bullet.setTexture('bullet_enemy')
+      bullet.setTint(0x55ccff)
+      bullet.setScale(1.1)
+      ;(bullet as any).setBlendMode?.(Phaser.BlendModes.ADD)
+    }
+  }
+
+  private ensureBulletTextures(): void {
+    const tex = this.textures
+    if (!tex.exists('bullet_player')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false })
+      g.fillStyle(0xffffff, 1)
+      g.fillCircle(6, 6, 5) // 12×12 circle
+      g.generateTexture('bullet_player', 12, 12)
+      g.destroy()
+    }
+    if (!tex.exists('bullet_enemy')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false })
+      g.fillStyle(0xffffff, 1)
+      // diamond (rotated square)
+      g.fillPoints(
+        [
+          { x: 8, y: 0 },
+          { x: 16, y: 8 },
+          { x: 8, y: 16 },
+          { x: 0, y: 8 }
+        ],
+        true
+      )
+      g.generateTexture('bullet_enemy', 16, 16)
+      g.destroy()
+    }
   }
 
   private asDynSprite(obj: any): Phaser.Physics.Arcade.Sprite | null {
