@@ -6,32 +6,43 @@ export class HUD {
   private gPlayer: Phaser.GameObjects.Graphics
   private gWeapon: Phaser.GameObjects.Graphics
   private gBoss: Phaser.GameObjects.Graphics
-  private tPlayer: Phaser.GameObjects.BitmapText
-  private tBoss: Phaser.GameObjects.BitmapText
-  private tLives: Phaser.GameObjects.BitmapText
+  private tPlayer: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
+  private tBoss: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
+  private tLives: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
     this.root = scene.add.container(0, 0).setScrollFactor(0)
 
-    this.gPlayer = scene.add.graphics()
+    const hasBitmap = this.scene.cache.bitmapFont.exists('font')
+    const mkText = (x: number, y: number, s: string, size = 16) => {
+      return hasBitmap
+        ? this.scene.add.bitmapText(x, y, 'font', s, size).setScrollFactor(0)
+        : this.scene
+            .add.text(x, y, s, {
+              fontFamily: 'monospace',
+              fontSize: `${size}px`,
+              color: '#cfe8ff',
+            })
+            .setScrollFactor(0)
+    }
+
+    this.gPlayer = scene.add.graphics().setScrollFactor(0)
     this.root.add(this.gPlayer)
 
-    this.gWeapon = scene.add.graphics()
+    this.gWeapon = scene.add.graphics().setScrollFactor(0)
     this.root.add(this.gWeapon)
 
-    this.gBoss = scene.add.graphics()
+    this.gBoss = scene.add.graphics().setScrollFactor(0)
     this.root.add(this.gBoss)
 
-    this.tPlayer = scene.add.bitmapText(16, 16, 'font', 'Sentinel ROOK', 16)
+    this.tPlayer = mkText(16, 16, 'Sentinel ROOK', 16)
     this.root.add(this.tPlayer)
 
-    this.tBoss = scene.add.bitmapText(scene.scale.width - 240, 16, 'font', 'Boss: ???', 16)
+    this.tBoss = mkText(scene.scale.width - 240, 16, 'Boss: ???', 16)
     this.root.add(this.tBoss)
 
-    this.tLives = scene
-      .add.bitmapText(scene.scale.width - 160, scene.scale.height - 28, 'font', 'Lives: 3', 16)
-      .setOrigin(0, 1)
+    this.tLives = mkText(scene.scale.width - 160, scene.scale.height - 8, 'Lives: 3', 16).setOrigin(0, 1)
     this.root.add(this.tLives)
   }
 
