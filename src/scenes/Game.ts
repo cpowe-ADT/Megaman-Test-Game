@@ -152,9 +152,11 @@ export class Game extends Phaser.Scene {
     playerBody.setOffset(3, 2)
     this.player.play('player-idle')
 
-    this.bullets = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite })
-    this.bullets.defaults.set('allowGravity', false)
-    this.bullets.defaults.set('collideWorldBounds', true)
+    this.bullets = this.physics.add.group({
+      classType: Phaser.Physics.Arcade.Sprite,
+      allowGravity: false,
+      collideWorldBounds: true
+    })
 
     this.hazards = this.physics.add.staticGroup()
     this.hazards.create(120, height - 22, 'hazard_spikes').refreshBody()
