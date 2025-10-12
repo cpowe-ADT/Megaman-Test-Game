@@ -587,7 +587,6 @@ export class Game extends Phaser.Scene {
     if (!bullet) {
       return
     }
-
     const anyBullet = bullet as any
     if (typeof anyBullet.disableBody === 'function') {
       anyBullet.disableBody(true, true)
