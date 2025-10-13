@@ -129,6 +129,14 @@ export class Game extends Phaser.Scene {
     const spawnList =
       attack.spawns && attack.spawns.length > 0 ? attack.spawns : attack.state === 'shoot' ? ['slow_bullet'] : []
 
+    if (typeof window !== 'undefined' && (window as any).__DEV__) {
+      console.debug('[Boss][Attack] execute', {
+        attack: attack.name,
+        origin: { x: origin.x, y: origin.y },
+        spawns: spawnList
+      })
+    }
+
     spawnList.forEach((spawn) => this.spawnBossProjectile(spawn, attack, origin))
   }
 
@@ -280,6 +288,11 @@ export class Game extends Phaser.Scene {
 
   private handleBossAttackEvent(event: { attack: AttackPattern }): void {
     const { attack } = event
+
+    if (typeof window !== 'undefined' && (window as any).__DEV__ && attack) {
+      console.debug('[Boss][Event] received', attack.name, this.time.now)
+    }
+
     if (!attack) {
       return
     }
