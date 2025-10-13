@@ -31,15 +31,17 @@ export class Preload extends Phaser.Scene {
     const primary = palette?.primary ?? 0x3b82f6
     const accent = palette?.accent ?? 0x93c5fd
 
-    const graphics = this.make.graphics({ x: 0, y: 0, add: false })
+    const graphics = this.make.graphics(
+      { x: 0, y: 0, add: false } as Phaser.Types.GameObjects.Graphics.Options & { add?: boolean }
+    )
 
     const face = 0xf7d7b5
     const outline = 0x04162f
     const primaryColor = Phaser.Display.Color.IntegerToColor(primary)
     const darkPrimary = Phaser.Display.Color.GetColor(
-      Math.floor((primaryColor.r * 3) / 5),
-      Math.floor((primaryColor.g * 3) / 5),
-      Math.floor((primaryColor.b * 3) / 5)
+      Math.floor((primaryColor.red * 3) / 5),
+      Math.floor((primaryColor.green * 3) / 5),
+      Math.floor((primaryColor.blue * 3) / 5)
     )
     const bulletCore = 0xe0f2ff
     const bulletOuter = 0x60a5fa
@@ -341,6 +343,15 @@ export class Preload extends Phaser.Scene {
     createAnimation('buster-fly', ['buster_0', 'buster_1', 'buster_2', 'buster_1'], 18)
     createAnimation('dummy-idle', ['dummy_idle_0', 'dummy_idle_1'], 4)
     createAnimation('dummy-explode', ['explosion_0', 'explosion_1', 'explosion_2', 'explosion_3'], 16, 0)
+
+    if (!this.textures.exists('bossBullet')) {
+      const tex = this.textures.createCanvas('bossBullet', 4, 4)
+      const canvas = tex.getSourceImage() as HTMLCanvasElement
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#60a5fa'
+      ctx.fillRect(0, 0, 4, 4)
+      tex.refresh()
+    }
 
     this.scene.start('StageSelect')
   }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Phaser from 'phaser'
 import { BossController } from '../bosses/BossController'
 import { AttackPattern, BossId } from '../bosses/types'

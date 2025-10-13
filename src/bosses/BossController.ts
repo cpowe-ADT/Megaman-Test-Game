@@ -23,7 +23,7 @@ interface BossStateContext {
 export class BossController extends Phaser.GameObjects.Container {
   readonly blueprint: BossBlueprint
   private sprite: Phaser.GameObjects.Sprite
-  private state: BossStateContext
+  private fsm: BossStateContext
   private hp: number
   private introLocked: boolean
   private currentPhaseIndex = 0
@@ -31,6 +31,7 @@ export class BossController extends Phaser.GameObjects.Container {
   private activeAttack?: AttackPattern
   private usingPlaceholder = false
   private nextAttackAvailableMs = 0
+  declare body: Phaser.Physics.Arcade.Body
 
   constructor(scene: Phaser.Scene, blueprint: BossBlueprint, config: BossControllerConfig) {
     super(scene, config.spawn.x, config.spawn.y)
@@ -53,12 +54,18 @@ export class BossController extends Phaser.GameObjects.Container {
     scene.add.existing(this)
 
     scene.physics.add.existing(this)
-    const body = this.body as Phaser.Physics.Arcade.Body
+    this.setSize(this.width || 32, this.height || 32)
+    this.body.setAllowGravity(false)
+
+    const body = this.body
     body.setSize(blueprint.spritePlan.frame.x, blueprint.spritePlan.frame.y)
-    body.setOffset(-blueprint.spritePlan.frame.x * this.sprite.originX, -blueprint.spritePlan.frame.y * (1 - this.sprite.originY))
+    body.setOffset(
+      -blueprint.spritePlan.frame.x * this.sprite.originX,
+      -blueprint.spritePlan.frame.y * (1 - this.sprite.originY)
+    )
     body.setCollideWorldBounds(true)
 
-    this.state = { key: 'intro', timerMs: 0, attackFired: false }
+    this.fsm = { key: 'intro', timerMs: 0, attackFired: false }
   }
 
   get currentPhase() {
@@ -66,12 +73,12 @@ export class BossController extends Phaser.GameObjects.Container {
   }
 
   update(time: number, delta: number): void {
-    const body = this.body as Phaser.Physics.Arcade.Body
+    const body = this.body
     body.setDrag(600, 0)
 
     this.tickCooldowns(delta)
 
-    if (this.state.key === 'intro') {
+    if (this.fsm.key === 'intro') {
       this.handleIntro(delta)
       return
     }
@@ -104,7 +111,7 @@ export class BossController extends Phaser.GameObjects.Container {
     if (this.nextAttackAvailableMs > 0) {
       this.nextAttackAvailableMs = Math.max(0, this.nextAttackAvailableMs - delta)
     }
-    this.state.timerMs += delta
+    this.fsm.timerMs += delta
   }
 
   private handleIntro(delta: number): void {
@@ -112,7 +119,7 @@ export class BossController extends Phaser.GameObjects.Container {
       return
     }
     const introDuration = 1200
-    if (this.state.timerMs >= introDuration) {
+    if (this.fsm.timerMs >= introDuration) {
       this.enterState('idle')
     }
   }
@@ -139,7 +146,7 @@ export class BossController extends Phaser.GameObjects.Container {
     if (this.nextAttackAvailableMs > 0) {
       return
     }
-    if (this.state.key !== 'idle' && this.state.key !== 'move' && this.state.key !== 'recover') {
+    if (this.fsm.key !== 'idle' && this.fsm.key !== 'move' && this.fsm.key !== 'recover') {
       return
     }
     if (this.activeAttack) {
@@ -166,9 +173,9 @@ export class BossController extends Phaser.GameObjects.Container {
   }
 
   private applyState(delta: number): void {
-    const body = this.body as Phaser.Physics.Arcade.Body
+    const body = this.body
     const attack = this.activeAttack
-    switch (this.state.key) {
+    switch (this.fsm.key) {
       case 'idle':
         body.setAcceleration(0, 0)
         this.playAnimation('idle')
@@ -178,13 +185,13 @@ export class BossController extends Phaser.GameObjects.Container {
         this.playAnimation('move')
         break
       case 'jump':
-        if (this.state.timerMs < delta) {
+        if (this.fsm.timerMs < delta) {
           body.setVelocityY(-this.blueprint.baseStats.jumpHeight)
         }
         this.playAnimation('jump')
         break
       case 'dash':
-        if (attack && this.state.timerMs < attack.executeMs) {
+        if (attack && this.fsm.timerMs < attack.executeMs) {
           const playerX = this.scene.registry.get('player_x') as number | undefined
           const direction = (playerX ?? this.x) < this.x ? -1 : 1
           body.setVelocityX(direction * this.blueprint.baseStats.dashSpeed)
@@ -196,32 +203,32 @@ export class BossController extends Phaser.GameObjects.Container {
       case 'special':
         if (
           attack &&
-          !this.state.attackFired &&
-          this.state.timerMs >= attack.telegraph.telegraphMs
+          !this.fsm.attackFired &&
+          this.fsm.timerMs >= attack.telegraph.telegraphMs
         ) {
           this.scene.events.emit('boss-attack', { id: this.blueprint.id, attack })
           this.attackCooldowns.set(attack.name, attack.cooldownMs)
-          this.state.attackFired = true
+          this.fsm.attackFired = true
         }
-        this.playAnimation(this.state.key)
+        this.playAnimation(this.fsm.key)
         break
     }
 
     if (attack) {
       const duration = Math.max(attack.executeMs, attack.telegraph.telegraphMs)
-      if (this.state.timerMs >= duration) {
+      if (this.fsm.timerMs >= duration) {
         this.nextAttackAvailableMs = Math.max(this.nextAttackAvailableMs, attack.cooldownMs)
         this.enterState('recover')
       }
     }
 
-    if (this.state.key === 'recover' && this.state.timerMs > 220) {
+    if (this.fsm.key === 'recover' && this.fsm.timerMs > 220) {
       this.enterState('idle')
     }
   }
 
   private enterState(state: BossStateKey, attack?: AttackPattern): void {
-    this.state = { key: state, timerMs: 0, attackFired: false }
+    this.fsm = { key: state, timerMs: 0, attackFired: false }
     this.activeAttack = attack
   }
 
