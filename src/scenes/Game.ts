@@ -193,6 +193,7 @@ export class Game extends Phaser.Scene {
       return
     }
 
+    const isDev = typeof window !== 'undefined' && (window as any).__DEV__
     const direction =
       config.direction ?? (this.player && this.player.x < origin.x ? -1 : 1) ?? 1
     const spawnX = origin.x + 12 * direction
@@ -202,8 +203,14 @@ export class Game extends Phaser.Scene {
       | Phaser.Physics.Arcade.Sprite
       | null
     if (!bullet) {
-      const attackName = attack?.name ?? config.label ?? 'unknown'
-      console.warn('[Boss] boss bullet pool exhausted', { attack: attackName })
+      if (isDev) {
+        const attackName = attack?.name ?? config.label ?? 'unknown'
+        console.warn('[Boss][Bullet] pool exhausted', {
+          attack: attackName,
+          active: this.bossBullets.getTotalUsed(),
+          size: this.bossBullets.getLength()
+        })
+      }
       return
     }
 
@@ -225,6 +232,19 @@ export class Game extends Phaser.Scene {
     travel.scale(config.speed)
 
     const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+    const bodyWasEnabled = body?.enable ?? false
+    if (isDev) {
+      if (!body) {
+        console.warn('[Boss][Bullet] missing arcade body', {
+          attack: attack?.name ?? config.label ?? 'unknown',
+          texture: bullet.texture.key
+        })
+      } else if (!bodyWasEnabled) {
+        console.warn('[Boss][Bullet] body disabled before reset', {
+          attack: attack?.name ?? config.label ?? 'unknown'
+        })
+      }
+    }
     if (body) {
       body.enable = true
       body.allowGravity = false
@@ -232,8 +252,22 @@ export class Game extends Phaser.Scene {
       body.onWorldBounds = true
       body.reset(spawnX, spawnY)
       body.setVelocity(travel.x, travel.y)
+      if (isDev) {
+        console.debug('[Boss][Bullet] body reset', {
+          attack: attack?.name ?? config.label ?? 'unknown',
+          wasEnabled: bodyWasEnabled,
+          enabled: body.enable,
+          velocity: { x: travel.x, y: travel.y }
+        })
+      }
     } else {
       bullet.setVelocity(travel.x, travel.y)
+      if (isDev) {
+        console.debug('[Boss][Bullet] sprite velocity applied (no body)', {
+          attack: attack?.name ?? config.label ?? 'unknown',
+          velocity: { x: travel.x, y: travel.y }
+        })
+      }
     }
 
     const tint = config.tint ?? this.bossController?.blueprint.theme.trail ?? 0x55ccff
@@ -1184,6 +1218,12 @@ export class Game extends Phaser.Scene {
       collideWorldBounds: true,
       defaultKey: BOSS_BULLET_TEXTURE_KEY
     })
+    if (typeof window !== 'undefined' && (window as any).__DEV__) {
+      console.debug('[Boss][Bullet] pool init', {
+        textureReady: this.textures.exists(BOSS_BULLET_TEXTURE_KEY),
+        poolReady: this.bossBullets?.getLength()
+      })
+    }
     this.physics.world.on('worldbounds', this.handleBulletWorldBounds, this)
 
     if (this.devHudEnabled) {
