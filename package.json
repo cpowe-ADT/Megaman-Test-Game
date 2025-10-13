@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -p tsconfig.probe.json && vite build",
     "preview": "vite preview",
-    "test": "node --loader ./tools/ts-node-loader.mjs --test"
+    "test": "node --loader ./tools/ts-node-loader.mjs tools/vitest-runner.ts",
+    "probe:boss": "vite --open /debug/boss-probe.html",
+    "probe:boss:diag": "VITE_DIAG=1 vite --open /debug/boss-probe.html",
+    "assets:check": "node --loader ./tools/ts-node-loader.mjs scripts/ensure-bullet-asset.ts"
   },
   "dependencies": {
     "phaser": "^3.80.0"
