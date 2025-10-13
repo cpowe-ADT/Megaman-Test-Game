@@ -344,6 +344,15 @@ export class Preload extends Phaser.Scene {
     createAnimation('dummy-idle', ['dummy_idle_0', 'dummy_idle_1'], 4)
     createAnimation('dummy-explode', ['explosion_0', 'explosion_1', 'explosion_2', 'explosion_3'], 16, 0)
 
+    if (!this.textures.exists('bossBullet')) {
+      const tex = this.textures.createCanvas('bossBullet', 4, 4)
+      const canvas = tex.getSourceImage() as HTMLCanvasElement
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#60a5fa'
+      ctx.fillRect(0, 0, 4, 4)
+      tex.refresh()
+    }
+
     this.scene.start('StageSelect')
   }
 }

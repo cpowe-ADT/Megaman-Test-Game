@@ -233,6 +233,15 @@ export class BossFireProbeScene extends Phaser.Scene {
   }
 
   private prepareMode(mode: 'controller' | 'legacy'): void {
+    if (!this.textures.exists(BOSS_BULLET_TEXTURE_KEY)) {
+      const tex = this.textures.createCanvas(BOSS_BULLET_TEXTURE_KEY, 4, 4)
+      const canvas = tex.getSourceImage() as HTMLCanvasElement
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#60a5fa'
+      ctx.fillRect(0, 0, 4, 4)
+      tex.refresh()
+    }
+
     const diagnostics = ensurePlaceholderTexture(this)
     const outcome: ProbeOutcome = {
       mode,
