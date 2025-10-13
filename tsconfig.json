@@ -9,7 +9,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@boss/BossController": ["src/bosses/BossController.ts"]
+    }
   },
   "include": ["src", "debug", "scripts", "types", "tools"],
   "references": [{ "path": "tsconfig.node.json" }]

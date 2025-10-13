@@ -23,8 +23,10 @@ export type ProjectileDetailsProvider<T extends (...args: any[]) => any> = (
   ...args: Parameters<T>
 ) => ProjectileFactoryDetails
 
+export const BOSS_BULLET_TEXTURE_KEY = 'bossBullet'
+
 export function ensurePlaceholderTexture(scene: Phaser.Scene): BossProjectileDiagnosticsState {
-  const key = 'pixel'
+  const key = BOSS_BULLET_TEXTURE_KEY
   let usedPlaceholder = false
   if (!scene.textures.exists(key)) {
     const gfx = scene.add.graphics()

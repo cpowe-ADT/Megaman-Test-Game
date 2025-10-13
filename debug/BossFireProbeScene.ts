@@ -9,7 +9,8 @@ import {
   wrapBossProjectileFactory,
   noteGroupFull,
   hasCapacity,
-  BossProjectileDiagnosticsState
+  BossProjectileDiagnosticsState,
+  BOSS_BULLET_TEXTURE_KEY
 } from '../src/boss/diagnostics/BossFireDiagnostics'
 import {
   EVENTS,
@@ -129,7 +130,8 @@ async function ensureBossController(): Promise<BossControllerCtor> {
   if (bossControllerCtor) {
     return bossControllerCtor
   }
-  const module = await import('../src/bosses/BossController')
+  // @ts-ignore -- Vite resolves runtime module; tsconfig.probe remaps to proxy for type checks
+  const module = await import('@boss/BossController')
   bossControllerCtor = module.BossController as BossControllerCtor
   return bossControllerCtor
 }
@@ -182,7 +184,7 @@ export class BossFireProbeScene extends Phaser.Scene {
       const sprite = this.projectileGroup.get(
         originX,
         originY,
-        diagnostics.placeholderTextureKey
+        BOSS_BULLET_TEXTURE_KEY
       ) as Phaser.Physics.Arcade.Sprite | null
       if (!sprite) {
         diagnostics.groupFullHits += 1
@@ -257,8 +259,16 @@ export class BossFireProbeScene extends Phaser.Scene {
     this.projectileGroup = this.physics.add.group({
       classType: Phaser.Physics.Arcade.Sprite,
       maxSize: 12,
-      allowGravity: false
+      allowGravity: false,
+      runChildUpdate: false,
+      collideWorldBounds: true,
+      defaultKey: BOSS_BULLET_TEXTURE_KEY
     })
+
+    if ((this.projectileGroup.maxSize ?? 0) <= 0 && this.projectileGroup.getLength() <= 0) {
+      runtime.notes.push('group_capacity_invalid')
+      runtime.suspects.add('group_full')
+    }
     this.setupProjectileFactory(diagnostics)
 
     GlobalEventBus.on(EVENTS.BOSS_ENTERED_ATTACK, this.handleAttackLifecycle, this)
