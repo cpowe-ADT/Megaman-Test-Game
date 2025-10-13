@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.probe.json && vite build",
+    "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
     "test": "node --loader ./tools/ts-node-loader.mjs tools/vitest-runner.ts",
     "probe:boss": "vite --open /debug/boss-probe.html",
     "probe:boss:diag": "VITE_DIAG=1 vite --open /debug/boss-probe.html",
+    "probe:bullet": "vite --open /debug/bullet-probe.html",
+    "probe:bullet:diag": "VITE_DIAG=1 vite --open /debug/bullet-probe.html",
     "assets:check": "node --loader ./tools/ts-node-loader.mjs scripts/ensure-bullet-asset.ts"
   },
   "dependencies": {
