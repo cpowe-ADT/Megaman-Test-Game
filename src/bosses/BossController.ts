@@ -211,7 +211,9 @@ export class BossController extends Phaser.GameObjects.Container {
       const duration = Math.max(attack.executeMs, attack.telegraph.telegraphMs)
       if (this.state.timerMs >= duration) {
         const elapsedSinceFire = Math.max(0, this.state.timerMs - attack.telegraph.telegraphMs)
-        const remainingCooldown = Math.max(0, attack.cooldownMs - elapsedSinceFire)
+        const remainingCooldown = this.attackCooldowns.has(attack.name)
+          ? Math.max(0, attack.cooldownMs - elapsedSinceFire)
+          : attack.cooldownMs
         this.nextAttackAvailableMs = Math.max(this.nextAttackAvailableMs, remainingCooldown)
         this.enterState('recover')
       }
