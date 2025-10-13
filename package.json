@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.probe.json && vite build",
     "preview": "vite preview",
     "test": "node --loader ./tools/ts-node-loader.mjs tools/vitest-runner.ts",
     "probe:boss": "vite --open /debug/boss-probe.html",
