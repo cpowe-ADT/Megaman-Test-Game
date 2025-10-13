@@ -36,7 +36,7 @@ export class StageSelect extends Phaser.Scene {
   private preventScrollHandler?: (event: KeyboardEvent) => void
   private readonly logic = new StageSelectLogic()
   private saveData: SaveData = Save.load()
-  private requestedTransition: { scene: string; data: unknown } | null = null
+  private requestedTransition: { scene: string; data: Record<string, unknown> } | null = null
   private transitionRequestedAt = 0
   private readonly columns = 3
   private readonly rows = 3
