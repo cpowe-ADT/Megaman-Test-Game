@@ -26,4 +26,10 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [Boot, Preload, StageSelect, Game]
 }
 
-new Phaser.Game(config)
+const game = new Phaser.Game(config)
+
+if (typeof window !== 'undefined') {
+  ;(window as any).__game = game
+}
+
+export default game

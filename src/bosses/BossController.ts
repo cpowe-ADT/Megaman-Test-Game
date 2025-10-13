@@ -86,6 +86,18 @@ export class BossController extends Phaser.GameObjects.Container {
     this.evaluatePhase()
     this.selectNextState()
     this.applyState(delta)
+
+    if (
+      (this.fsm.key === 'idle' || this.fsm.key === 'move' || this.fsm.key === 'recover') &&
+      this.fsm.timerMs > 3000 &&
+      !this.activeAttack
+    ) {
+      const fallback =
+        this.blueprint.attacks.find((a) => a.state === 'shoot') ?? this.blueprint.attacks[0]
+      if (fallback) {
+        this.enterState(fallback.state, fallback)
+      }
+    }
   }
 
   hurt(amount: number): void {
