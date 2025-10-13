@@ -81,6 +81,8 @@ export class Game extends Phaser.Scene {
   private bossWatchdogCooldownUntil = 0
   private bossAttackFirstLogEmitted = false
   private bossBulletFirstLogEmitted = false
+  private bossFireTimerPausedByPhysics = false
+  private pausedBossProjectileEmitters: Phaser.GameObjects.Particles.ParticleEmitter[] = []
 
   private startBossFireLoop(): void {
     this.bossFireTimer?.remove(false)
@@ -327,6 +329,65 @@ export class Game extends Phaser.Scene {
 
   private onSceneWake(): void {
     this.rearmBossFireTimer('scene wake')
+  }
+
+  private handlePhysicsWorldPause(): void {
+    this.bossFireTimerPausedByPhysics = false
+
+    if (this.bossFireTimer && !this.bossFireTimer.paused) {
+      this.bossFireTimer.paused = true
+      this.bossFireTimerPausedByPhysics = true
+    }
+
+    this.pausedBossProjectileEmitters = []
+
+    if (this.bossBullets) {
+      this.bossBullets.children.iterate((child: Phaser.GameObjects.GameObject | undefined) => {
+        const emitter = (child as any)?.__trailEmitter as
+          | Phaser.GameObjects.Particles.ParticleEmitter
+          | undefined
+        if (!emitter) {
+          return undefined
+        }
+
+        const emitterAny = emitter as any
+        if (typeof emitterAny.pause === 'function' && (emitterAny.on ?? true)) {
+          emitterAny.pause()
+          this.pausedBossProjectileEmitters.push(emitter)
+        }
+
+        return undefined
+      })
+    }
+  }
+
+  private handlePhysicsWorldResume(): void {
+    const now = this.time.now
+
+    if (this.bossFireTimerPausedByPhysics && this.bossFireTimer) {
+      this.bossFireTimer.paused = false
+    }
+    this.bossFireTimerPausedByPhysics = false
+
+    if (this.pausedBossProjectileEmitters.length > 0) {
+      this.pausedBossProjectileEmitters.forEach((emitter) => {
+        const emitterAny = emitter as any
+        if (typeof emitterAny.resume === 'function') {
+          emitterAny.resume()
+        } else if (typeof emitterAny.start === 'function') {
+          emitterAny.start()
+        }
+      })
+      this.pausedBossProjectileEmitters = []
+    }
+
+    if (!this.bossController) {
+      this.nextBossShot = now + 200
+    }
+
+    this.rearmBossFireTimer('physics resume')
+    this.lastBossBulletSpawnAt = now
+    this.bossWatchdogCooldownUntil = now
   }
 
   private spawnBossOnce(cb: () => void): void {
@@ -940,6 +1001,8 @@ export class Game extends Phaser.Scene {
       this.bossFireTimer?.remove(false)
       this.bossFireTimer = undefined
       this.bossFireTimerMissingLogged = false
+      this.bossFireTimerPausedByPhysics = false
+      this.pausedBossProjectileEmitters = []
       this.physics.world.off('worldbounds', this.handleBulletWorldBounds, this)
       this.events.off('boss-attack', this.handleBossAttackEvent, this)
       this.chargeEmitter?.stop()
@@ -993,10 +1056,14 @@ export class Game extends Phaser.Scene {
     }
     this.events.on(Phaser.Scenes.Events.RESUME, resumeHandler)
     this.events.on(Phaser.Scenes.Events.WAKE, this.onSceneWake, this)
+    this.physics.world.on('pause', this.handlePhysicsWorldPause, this)
+    this.physics.world.on('resume', this.handlePhysicsWorldResume, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-ESC', escHandler)
       this.events.off(Phaser.Scenes.Events.RESUME, resumeHandler)
       this.events.off(Phaser.Scenes.Events.WAKE, this.onSceneWake, this)
+      this.physics.world.off('pause', this.handlePhysicsWorldPause, this)
+      this.physics.world.off('resume', this.handlePhysicsWorldResume, this)
     })
 
     if (this.input.keyboard) {
