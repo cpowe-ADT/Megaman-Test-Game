@@ -346,11 +346,15 @@ export class Preload extends Phaser.Scene {
 
     if (!this.textures.exists('bossBullet')) {
       const tex = this.textures.createCanvas('bossBullet', 4, 4)
-      const canvas = tex.getSourceImage() as HTMLCanvasElement
-      const ctx = canvas.getContext('2d')!
-      ctx.fillStyle = '#60a5fa'
-      ctx.fillRect(0, 0, 4, 4)
-      tex.refresh()
+      if (tex) {
+        const canvas = tex.getSourceImage() as HTMLCanvasElement
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.fillStyle = '#60a5fa'
+          ctx.fillRect(0, 0, 4, 4)
+          tex.refresh()
+        }
+      }
     }
 
     this.scene.start('StageSelect')
