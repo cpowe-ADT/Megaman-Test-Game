@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "../src/bosses/BossController": ["./tools/controller-proxy"]
+    }
+  },
+  "include": [
+    "debug/**/*.ts",
+    "scripts/**/*.ts",
+    "src/boss/diagnostics/**/*.ts",
+    "src/boss/logic/**/*.ts",
+    "src/boss/__tests__/**/*.ts",
+    "src/config/diagnostics.ts",
+    "src/events.ts",
+    "src/systems/debug/**/*.ts",
+    "tools/vitest-runner.ts",
+    "tools/vitest-shim.ts",
+    "types/**/*.d.ts"
+  ],
+  "exclude": ["src/bosses/BossController.ts"]
+}

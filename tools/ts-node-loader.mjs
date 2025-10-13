@@ -6,6 +6,11 @@ import ts from 'typescript'
 export async function resolve(specifier, context, defaultResolve) {
   const parentURL = context.parentURL ?? pathToFileURL(`${process.cwd()}/`).href
 
+  if (specifier === 'vitest') {
+    const shimUrl = new URL('./tools/vitest-shim.ts', pathToFileURL(`${process.cwd()}/`).href)
+    return { url: shimUrl.href, shortCircuit: true }
+  }
+
   if (specifier.endsWith('.ts')) {
     const resolvedUrl = new URL(specifier, parentURL)
     return { url: resolvedUrl.href, shortCircuit: true }
