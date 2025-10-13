@@ -1039,7 +1039,7 @@ export const ORDERED_BOSSES: BossRosterEntry[] = Object.values(BOSS_ROSTER).map(
   ])[0] as keyof typeof WeaknessTable
 
   return {
-    id: blueprint.id,
+    id: blueprint.id as BossId,
     blueprint,
     weakTo,
     strongAgainst

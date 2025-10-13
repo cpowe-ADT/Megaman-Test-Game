@@ -31,15 +31,17 @@ export class Preload extends Phaser.Scene {
     const primary = palette?.primary ?? 0x3b82f6
     const accent = palette?.accent ?? 0x93c5fd
 
-    const graphics = this.make.graphics({ x: 0, y: 0, add: false })
+    const graphics = this.make.graphics(
+      { x: 0, y: 0, add: false } as Phaser.Types.GameObjects.Graphics.Options & { add?: boolean }
+    )
 
     const face = 0xf7d7b5
     const outline = 0x04162f
     const primaryColor = Phaser.Display.Color.IntegerToColor(primary)
     const darkPrimary = Phaser.Display.Color.GetColor(
-      Math.floor((primaryColor.r * 3) / 5),
-      Math.floor((primaryColor.g * 3) / 5),
-      Math.floor((primaryColor.b * 3) / 5)
+      Math.floor((primaryColor.red * 3) / 5),
+      Math.floor((primaryColor.green * 3) / 5),
+      Math.floor((primaryColor.blue * 3) / 5)
     )
     const bulletCore = 0xe0f2ff
     const bulletOuter = 0x60a5fa

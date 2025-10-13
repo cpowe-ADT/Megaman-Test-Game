@@ -128,7 +128,7 @@ export interface WeaponRewardPlan {
 }
 
 export interface BossBlueprint {
-  id: string
+  id: BossId | 'probe_boss'
   codename: string
   element: Element
   arena: string
