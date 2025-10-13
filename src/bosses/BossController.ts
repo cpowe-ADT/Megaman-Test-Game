@@ -55,9 +55,8 @@ export class BossController extends Phaser.GameObjects.Container {
 
     scene.physics.add.existing(this)
     this.setSize(this.width || 32, this.height || 32)
-    this.body.setAllowGravity(false)
-
     const body = this.body
+    body.setAllowGravity(true)
     body.setSize(blueprint.spritePlan.frame.x, blueprint.spritePlan.frame.y)
     body.setOffset(
       -blueprint.spritePlan.frame.x * this.sprite.originX,
