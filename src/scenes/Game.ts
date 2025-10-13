@@ -12,6 +12,19 @@ import PauseScene from './PauseScene'
 import WinScene from './WinScene'
 import GameOverScene from './GameOverScene'
 
+const BOSS_BULLET_TEXTURE_KEY = 'bossBullet'
+
+function ensureBossBulletTexture(scene: Phaser.Scene): void {
+  if (scene.textures.exists(BOSS_BULLET_TEXTURE_KEY)) {
+    return
+  }
+  const graphics = scene.add.graphics()
+  graphics.fillStyle(0xff3b30, 1).fillCircle(2, 2, 2)
+  graphics.generateTexture(BOSS_BULLET_TEXTURE_KEY, 4, 4)
+  graphics.destroy()
+  console.info('[DEV] Generated fallback bossBullet texture')
+}
+
 const JUMP_VELOCITY = -420
 
 interface GameData {
@@ -175,7 +188,7 @@ export class Game extends Phaser.Scene {
     const spawnX = origin.x + 12 * direction
     const spawnY = origin.y - 6
 
-    const bullet = this.bossBullets.get(spawnX, spawnY, 'bossBullet') as
+    const bullet = this.bossBullets.get(spawnX, spawnY, BOSS_BULLET_TEXTURE_KEY) as
       | Phaser.Physics.Arcade.Sprite
       | null
     if (!bullet) {
@@ -291,112 +304,6 @@ export class Game extends Phaser.Scene {
     this.executeBossAttack(attack)
   }
 
-  private executeBossAttack(attack: AttackPattern): void {
-    const origin = this.bossTarget ?? this.bossBody
-    if (!origin || !this.bullets) {
-      return
-    }
-
-    const isProjectileAttack = attack.state === 'shoot' || attack.state === 'summon'
-    if (!isProjectileAttack) {
-      return
-    }
-
-    const spawnList =
-      attack.spawns && attack.spawns.length > 0 ? attack.spawns : attack.state === 'shoot' ? ['slow_bullet'] : []
-
-    spawnList.forEach((spawn) => this.spawnBossProjectile(spawn, attack, origin))
-  }
-
-  private spawnBossProjectile(
-    id: string,
-    attack: AttackPattern,
-    origin: Phaser.GameObjects.GameObject
-  ): void {
-    switch (id) {
-      case 'slow_bullet':
-        this.spawnBossBullet(origin, attack, { speed: 220, damage: 1 })
-        break
-      case 'fire_orb':
-        this.spawnBossBullet(origin, attack, {
-          speed: 180,
-          damage: 2,
-          tint: this.bossController?.blueprint.theme.accent
-        })
-        break
-      case 'arc_shards':
-        this.spawnBossBulletSpread(origin, attack, [
-          { speed: 240, damage: 1, angle: -0.22 },
-          { speed: 240, damage: 1, angle: 0 },
-          { speed: 240, damage: 1, angle: 0.22 }
-        ])
-        break
-      default:
-        this.spawnBossBullet(origin, attack, { speed: 240, damage: 1 })
-        break
-    }
-  }
-
-  private spawnBossBulletSpread(
-    origin: Phaser.GameObjects.GameObject,
-    attack: AttackPattern,
-    configs: { speed: number; damage: number; angle?: number; tint?: number }[]
-  ): void {
-    configs.forEach((cfg) => this.spawnBossBullet(origin, attack, cfg))
-  }
-
-  private spawnBossBullet(
-    origin: Phaser.GameObjects.GameObject,
-    attack: AttackPattern,
-    config: { speed: number; damage: number; angle?: number; tint?: number }
-  ): void {
-    if (!this.bullets) {
-      return
-    }
-
-    const direction = this.player && this.player.x < origin.x ? -1 : 1
-    const spawnX = origin.x + 12 * direction
-    const spawnY = origin.y - 6
-
-    const bullet = this.bullets.get(spawnX, spawnY, 'bullet_enemy') as
-      | Phaser.Physics.Arcade.Sprite
-      | null
-    if (!bullet) {
-      console.warn('[Boss] enemy bullet pool exhausted', { attack: attack.name })
-      return
-    }
-
-    bullet.setActive(true).setVisible(true)
-    bullet.setDepth(2)
-    bullet.setPosition(spawnX, spawnY)
-    bullet.setDataEnabled()
-    bullet.data?.set('owner', 'enemy')
-    bullet.data?.set('damage', config.damage)
-    bullet.data?.set('attack', attack.name)
-
-    const tint = config.tint ?? this.bossController?.blueprint.theme.trail ?? 0x55ccff
-    const anyBullet = bullet as any
-    anyBullet.setTint?.(tint)
-    anyBullet.setBlendMode?.(Phaser.BlendModes.ADD)
-
-    const baseAngle = direction === -1 ? Math.PI : 0
-    const travel = new Phaser.Math.Vector2(1, 0).setAngle(baseAngle + (config.angle ?? 0))
-    travel.scale(config.speed)
-
-    const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
-    if (body) {
-      body.enable = true
-      body.allowGravity = false
-      body.setCollideWorldBounds(true)
-      body.reset(spawnX, spawnY)
-      body.setVelocity(travel.x, travel.y)
-      body.onWorldBounds = true
-    } else {
-      bullet.setVelocity(travel.x, travel.y)
-    }
-
-    this.devRegister(bullet, 'bullet.enemy')
-  }
   // [REGION: BOSS-FIRE - END]
 
   private rearmBossFireTimer(reason: string): void {
@@ -988,17 +895,20 @@ export class Game extends Phaser.Scene {
 
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
-      this.devHudEnabled = params.get('dev') === '1'
+      this.devHudEnabled = params.get('dev') === '1' || !!(window as any).__DEV__
     } else {
       this.devHudEnabled = false
     }
 
-    this.ensureBulletTextures()
+    ensureBossBulletTexture(this)
+    this.ensurePlayerBulletTexture()
     this.ensureSlashTexture()
 
     console.info('[Boss] bullet textures ready', {
-      boss: this.textures.exists('bossBullet'),
-      player: this.textures.exists('bullet_player')
+      bossKey: BOSS_BULLET_TEXTURE_KEY,
+      bossLoaded: this.textures.exists(BOSS_BULLET_TEXTURE_KEY),
+      playerKey: 'bullet_player',
+      playerLoaded: this.textures.exists('bullet_player')
     })
 
     const saberPM = this.add.particles(0, 0, 'slash')
@@ -1192,7 +1102,7 @@ export class Game extends Phaser.Scene {
       runChildUpdate: false,
       allowGravity: false,
       collideWorldBounds: true,
-      defaultKey: 'bossBullet'
+      defaultKey: BOSS_BULLET_TEXTURE_KEY
     })
     this.physics.world.on('worldbounds', this.handleBulletWorldBounds, this)
 
@@ -1789,7 +1699,7 @@ export class Game extends Phaser.Scene {
       bullet.setScale(1)
       ;(bullet as any).setBlendMode?.(Phaser.BlendModes.NORMAL)
     } else {
-      bullet.setTexture('bossBullet')
+      bullet.setTexture(BOSS_BULLET_TEXTURE_KEY)
       bullet.setTint(0xff3b30)
       bullet.setScale(1.1)
       bullet.setDepth(1000)
@@ -1907,20 +1817,13 @@ export class Game extends Phaser.Scene {
   }
   // [REGION: CHARGE-AURA - END]
 
-  private ensureBulletTextures(): void {
+  private ensurePlayerBulletTexture(): void {
     const tex = this.textures
     if (!tex.exists('bullet_player')) {
       const g = this.make.graphics({ x: 0, y: 0, add: false })
       g.fillStyle(0xffffff, 1)
       g.fillCircle(6, 6, 5) // 12×12 circle
       g.generateTexture('bullet_player', 12, 12)
-      g.destroy()
-    }
-    if (!tex.exists('bossBullet')) {
-      const g = this.make.graphics({ x: 0, y: 0, add: false })
-      g.fillStyle(0xff3b30, 1)
-      g.fillCircle(2, 2, 2)
-      g.generateTexture('bossBullet', 4, 4)
       g.destroy()
     }
   }
