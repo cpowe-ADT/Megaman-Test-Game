@@ -9,7 +9,6 @@ export interface BossControllerConfig {
 interface BossStateContext {
   key: BossStateKey
   timerMs: number
-  cooldownMs: number
   attackFired: boolean
 }
 
@@ -31,6 +30,7 @@ export class BossController extends Phaser.GameObjects.Container {
   private attackCooldowns = new Map<string, number>()
   private activeAttack?: AttackPattern
   private usingPlaceholder = false
+  private nextAttackAvailableMs = 0
 
   constructor(scene: Phaser.Scene, blueprint: BossBlueprint, config: BossControllerConfig) {
     super(scene, config.spawn.x, config.spawn.y)
@@ -58,7 +58,7 @@ export class BossController extends Phaser.GameObjects.Container {
     body.setOffset(-blueprint.spritePlan.frame.x * this.sprite.originX, -blueprint.spritePlan.frame.y * (1 - this.sprite.originY))
     body.setCollideWorldBounds(true)
 
-    this.state = { key: 'intro', timerMs: 0, cooldownMs: 0, attackFired: false }
+    this.state = { key: 'intro', timerMs: 0, attackFired: false }
   }
 
   get currentPhase() {
@@ -101,8 +101,8 @@ export class BossController extends Phaser.GameObjects.Container {
         this.attackCooldowns.set(key, next)
       }
     })
-    if (this.state.cooldownMs > 0) {
-      this.state.cooldownMs = Math.max(0, this.state.cooldownMs - delta)
+    if (this.nextAttackAvailableMs > 0) {
+      this.nextAttackAvailableMs = Math.max(0, this.nextAttackAvailableMs - delta)
     }
     this.state.timerMs += delta
   }
@@ -136,7 +136,7 @@ export class BossController extends Phaser.GameObjects.Container {
   }
 
   private selectNextState(): void {
-    if (this.state.cooldownMs > 0) {
+    if (this.nextAttackAvailableMs > 0) {
       return
     }
     if (this.state.key !== 'idle' && this.state.key !== 'move' && this.state.key !== 'recover') {
@@ -210,6 +210,7 @@ export class BossController extends Phaser.GameObjects.Container {
     if (attack) {
       const duration = Math.max(attack.executeMs, attack.telegraph.telegraphMs)
       if (this.state.timerMs >= duration) {
+        this.nextAttackAvailableMs = Math.max(this.nextAttackAvailableMs, attack.cooldownMs)
         this.enterState('recover')
       }
     }
@@ -220,7 +221,7 @@ export class BossController extends Phaser.GameObjects.Container {
   }
 
   private enterState(state: BossStateKey, attack?: AttackPattern): void {
-    this.state = { key: state, timerMs: 0, cooldownMs: attack?.cooldownMs ?? 0, attackFired: false }
+    this.state = { key: state, timerMs: 0, attackFired: false }
     this.activeAttack = attack
   }
 
