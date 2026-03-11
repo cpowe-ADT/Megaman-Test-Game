@@ -1,0 +1,793 @@
+Original prompt: My game doesnt really work properly. So I want you to first Do a couple of things Fix all the errors you see add a Test build metholodgy, So there are test for the releative codes. Build a compiler or something I can just press to open the game and start updating it. So things work
+
+## Session Log
+- Found and cloned repo into /Users/thristannewman/Desktop/MEGAMAN GAME.
+- Baseline build failure is TypeScript nullability around createCanvas texture creation in Preload and BossFireProbeScene.
+- Existing tests exist, but automation loop is incomplete (no render_game_to_text / advanceTime hooks; test script coverage is partial).
+
+## TODO
+- Fix TypeScript compile errors.
+- Add stronger test/build methodology scripts.
+- Add one-click launcher to open local dev server quickly.
+- Add/expand tests for core gameplay-related logic.
+- Run automated checks and browser smoke test.
+- Patched createCanvas nullability in Preload and BossFireProbeScene to unblock strict typecheck/build.
+- Added debug state hooks in src/main.ts: window.render_game_to_text and window.advanceTime for automated smoke validation.
+- Added unit tests for StageSelectLogic, Save system behavior, and JumpController hold/reset behavior.
+- Added scripts/smoke-test.mjs to run automated browser smoke validation with artifacts.
+- Added one-click launcher: Open-MegaMan-Dev.command.
+- Expanded npm scripts: start, typecheck, test:logic, test:scenes, test:smoke, verify.
+- Smoke test initially failed because shared skill client resolved playwright outside project deps; switched to a local copy of the same client script in scripts/ for reliable module resolution.
+- Smoke screenshots were black under headless WebGL; added renderer override in src/main.ts and switched smoke URL to '?renderer=canvas' for reliable visual artifacts.
+- Fixed Phaser particle API regressions in Game.ts by removing deprecated createEmitter paths for boss trails, saber FX, and charge aura; switched to direct add.particles emitter usage and cleaned up emitters on recycle/shutdown.
+- Added animation-play fallback guard to prevent runtime crashes when animation playback throws.
+- Final verification complete: npm run verify passes (tests, typecheck/build, smoke).
+- Smoke artifacts now render correctly (non-black screenshots) using canvas renderer override.
+- Remaining known non-blocker: Vite chunk-size warning (>500kB), build still succeeds.
+
+## Next-agent TODOs / suggestions
+- Consider code-splitting scenes to reduce bundle size warning.
+- Remove legacy // @ts-nocheck in Game.ts by incrementally typing high-risk sections.
+- Implemented full recovery plan scope:
+  - Stage Select redesign with fixed layout regions and reduced text density.
+  - New click contract: click-select, second click confirm, Enter/NumpadEnter confirm.
+  - Added stage-select debug state in render_game_to_text (selectedBossId, canConfirm).
+  - Added sprite manifest contract, validator, runtime loader helper, importer, and prompt-pack generator.
+  - Added consultant audit and implementation spec docs.
+  - Added sprite image-generation runbook.
+  - Added new tests for selection contract and manifest validation.
+  - Updated smoke workflow with click safety and keyboard+enter transition assertion.
+- Validation: npm run verify passes after changes.
+- Added no-key local sprite pipeline: scripts/sprites/generate-placeholder-atlases.py creates PNG+JSON atlases for all bosses.
+- Added npm script: sprites:placeholders.
+- Switched manifest entries to ready with local runtime paths for generated atlases.
+- Verified complete pipeline with npm run verify (including smoke) after placeholder atlas generation.
+- Investigated report: "game crashes when shooting" and "boss not losing life".
+- Reproduced runtime crash in Playwright with sustained shoot input: `this.chargeEmitter?.setLifespan is not a function` in `Game.ts` delayed charge callback.
+- Fixed charge emitter API usage to Phaser 3.80-compatible `updateConfig` calls for charged/decay tuning.
+- Hardened overlap bullet resolution in `handlePlayerBulletHitsBoss` and `handleEnemyBulletHitsPlayer` by selecting bullets via group membership (`resolveBulletFromOverlap`) before owner checks.
+- Added fallback owner correction when a pooled bullet has missing owner metadata.
+- Extended local Playwright client key map with gameplay buttons (`x`, `z`, `c`, `q`, `e`, `numpad_enter`).
+- Extended smoke script with scenario `3-enter-then-charge-shot` to hold shoot input and catch future shoot-path regressions.
+- Validation complete: `npm run verify` passes after these fixes.
+- Implemented boss-clear loop updates:
+  - WinScene now persists clear state (`Save.markBossCleared(stageId)`), displays a congratulations message, and auto-returns to Stage Select after ~1.8s (Enter/Space/click also continue immediately).
+  - Stage Select now reads `clearedBosses` from save and renders cleared bosses with muted/gray styling plus `CLEARED` status in slot meta and preview details.
+- Implemented sword fix against boss:
+  - `applySaberDamage` now includes boss hit detection (range + facing), applies boss damage (`applyDamageToBoss(2)`), and flashes boss on hit.
+- Hardened scene shutdown unbinds:
+  - Guarded keyboard/world event `.off(...)` calls in `Game.ts` and `StageSelect.ts` to avoid null teardown errors during scene transitions.
+- Save schema extended:
+  - `SaveData` now includes `clearedBosses: string[]` with backward-compatible load fallback.
+  - Added `Save.markBossCleared(stageId)` API.
+- Added test coverage:
+  - `tests/save-system.test.ts` now includes cleared-boss dedupe persistence test.
+- Validation complete:
+  - `npm run verify` passes (sprites validate + tests + typecheck/build + smoke).
+- Found additional scene-shutdown teardown instability while forcing victory flow transitions: guarded `InputActions` unbind (`off` / `removeKey`) with safe try/catch to tolerate already-disposed keyboard plugins.
+- Re-ran full `npm run verify` after the input teardown hardening; all gates pass.
+- Addressed Stage Select readability regression by removing high-DPI scaling (`zoom: 1`), reducing font sizes, simplifying copy, and tightening panel text/wrapping so no region overlaps at default viewport.
+- Upgraded boss sprite quality pipeline without API key dependency:
+  - Improved placeholder atlas generator (`scripts/sprites/generate-placeholder-atlases.py`) with richer robot silhouettes, glow VFX, and animation variation.
+  - Regenerated all boss atlases via `npm run sprites:placeholders`.
+  - Updated `BossController` to resolve manifest atlas keys (`atlas_<bossId>`) and build animations from available atlas frames.
+  - Updated `Game` boss visual setup to use manifest atlas textures when present and fallback to legacy `boss_tex` placeholder only if missing.
+- Added missing HUD API for boss UI binder compatibility: `HUD.setBossBarVisible`.
+- Full validation complete: `npm run verify` passes after all updates.
+- Implemented new reusable boss framework under `src/boss/framework` with data-driven state machine, attack controller, damage pipeline, phase controller, arena hooks, and UI binder.
+- Added `BossBase` (`IBoss`) and timed attack modules (`IAttack`) with windup/active/recovery lifecycle.
+- Added sample data config `src/boss/config/volt_golem.json` and config loader (`src/boss/config/index.ts`).
+- Reworked `src/bosses/BossController.ts` to use the new framework while preserving Game-scene compatibility events.
+- Integrated `Game.ts` with optional query-driven sample boss override (`?bossConfig=volt_golem`), new damage handling feedback, and `window.bossDebug` commands.
+- Added architecture note: `docs/boss-framework.md`.
+- Added tests for attack selection, damage i-frames/resistance, and state/phase transitions; wired them into `tools/vitest-runner.ts`.
+- Added modular new-player subsystem under `src/player/` with central feature flags/config, controller/state-machine/motor/combat/animator/vfx/debug runtime modules.
+- Integrated `Preload` placeholder animation registration for full `AnimationManifest` keys to prevent missing-asset crashes.
+- Added flag-gated `Game` integration (`enableNewPlayerController`) with runtime hooks for projectile spawn, sword hitbox application, and damage handling/i-frames path.
+- Added debug-state plumbing in `main.ts` payload (`featureFlags`, `newPlayer`) for render_game_to_text inspection.
+- Added unit-like coverage in `tests/player-system-config.test.ts` for flags defaults, manifest keys, sword direction keys, and 8-direction resolver behavior.
+- Validation: `npm run test` passed (logic + scene tests).
+- Validation: `npm run build` passed (typecheck + vite build).
+- Validation: `npm run test:smoke` passed; reviewed Stage Select and in-game screenshots and state artifacts.
+- Added new enemy framework scaffold under `src/enemy/*` behind default-off feature flags:
+  - `featureFlags.ts` with `enableEnemyFramework`, `enableEnemyAI`, `enableEnemyProjectiles`, `enableEnemyDrops`, `enableEnemyDebug`.
+  - `EnemyCatalog.ts` with 12 config-driven enemy archetypes.
+  - `EnemyAnimationManifest.ts` with placeholder animation registry + frame event markers.
+  - Runtime modules: `EnemyEntity`, `EnemyMotor`, `EnemyAI`, `EnemyCombat`, `EnemySpawner`, `EnemyProjectiles`, `EnemyDebugOverlay`, `EnemyLevelData`.
+- Integrated enemy framework minimally into `Game.ts`:
+  - Initializes only when `enableEnemyFramework` is true.
+  - Keeps existing dummy enemy behavior when framework is disabled.
+  - Routes player bullet/saber/sword damage into framework entities when present.
+  - Adds optional debug spawn hook `window.spawnEnemyDebug(...)` and optional scripted wave toggle via registry.
+  - Adds optional placeholder drops when `enableEnemyDrops` is true.
+- Updated debug payload in `main.ts` to include framework enemy state summaries when active.
+- Validation checkpoint: `npm run typecheck` passes after integration.
+- Began executing refactor plan Phase 0 (baseline/instrumentation) with no gameplay logic rewrite.
+- Added `src/tools/debug/CombatDebugBus.ts` to capture rolling combat hit telemetry (accepted/rejected, source/target, totals).
+- Added `src/tools/debug/StateSnapshot.ts` for reusable sprite/combat snapshot shaping and clamping.
+- Wired `Game` scene to record combat events across boss/player/enemy damage paths and expose `getCombatDebugSnapshot()`.
+- Extended `render_game_to_text` payload (`src/main.ts`) to include `combatDebug` for Game scene.
+- Enhanced `DebugOverlay` to show HP, phase, cooldown/charge/i-frame timers, and last hit summary when provided.
+- Extended smoke assertions (`scripts/smoke-test.mjs`) to require combat debug snapshot structure in Game state payload.
+- Added tests:
+  - `tests/combat-debug-bus.test.ts`
+  - `tests/state-snapshot.test.ts`
+- Validation after Phase 0 increment:
+  - `npm test` passes.
+  - `npm run test:smoke` passes.
+  - `npm run build` passes.
+- Executed Phase 1 scaffold with no gameplay behavior swap:
+  - Added `src/config/refactorFlags.ts` (new refactor feature flag resolver + defaults).
+  - Added core scaffolding: `src/core/TickContext.ts`, `src/core/GameEvents.ts`, `src/core/EventBus.ts`.
+  - Added legacy pass-through facades: `src/combat/CombatFacade.ts`, `src/animation/AnimationFacade.ts`.
+  - Added placeholder architecture folders and type stubs: `src/physics/index.ts`, `src/entities/index.ts`, `src/ai/index.ts`, `src/attacks/index.ts`, `src/movement/index.ts`.
+  - Added content registry scaffolding under `src/content/registries/*`.
+- Added verification tests for Phase 1 safety:
+  - `tests/refactor-flags.test.ts`
+  - `tests/refactor-facades.test.ts`
+- Validation after Phase 1 scaffold:
+  - `npm test` passes.
+  - `npm run build` passes.
+- Started game launcher in background via `Open-MegaMan-Dev.command`; Vite dev server is running at `http://localhost:5173/` with browser auto-open enabled.
+- User requested full execution + launch; confirmed local dev game is running and opened browser to `http://localhost:5173`.
+- Ran Playwright interaction loop with local client script (`scripts/web_game_playwright_client.js`) against `?renderer=canvas` and captured artifacts at `output/skill-playcheck/`.
+- Verified screenshot output is visible (mission select and gameplay states) and confirmed no console-error artifact files in the skill-playcheck run.
+- Re-ran full quality gate (`npm run verify`) successfully after latest refactor increments.
+- Added missing deliverable file `docs/next_7_days.md` with date-specific day-by-day execution plan (Feb 13-19, 2026).
+- Implemented Hard-Cut Phase 1 (pixel policy + hard gates):
+  - Added strict render policy constant at `src/config/renderPolicy.ts` and wired `src/main.ts` to use strict pixel config (`antialias=false`, `pixelArt=true`, `roundPixels=true`, `resolution=1`).
+  - Added sprite coverage requirements and checker logic at `src/assets/coverageRequirements.ts`.
+  - Added coverage CLI gate `scripts/sprites/check-coverage.mjs`.
+  - Updated npm scripts: `sprites:validate` now chains manifest validation + coverage gate; added `sprites:coverage`.
+  - Added tests:
+    - `tests/render-policy.test.ts`
+    - `tests/sprites-coverage.test.ts`
+  - Extended state payload and smoke expectations with visual migration counters:
+    - `visuals.placeholderCount`
+    - `visuals.missingAtlasCount`
+    - `visuals.nonPixelFilteredCount`
+  - Added runtime visual snapshot provider in `src/scenes/Game.ts` via `getVisualDebugSnapshot()` and integrated in `src/main.ts` payload.
+- Validation after Phase 1 implementation:
+  - `npm run test` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes (visual counters present in payload).
+- Phase 2 blocker now enforced by tooling:
+  - `npm run sprites:validate` fails with explicit missing source/manifest coverage:
+    - Missing 10 enemy sheets (`enemy_rocket_bot`, `enemy_slicer_bot`, `enemy_armored_bot`, `enemy_shock_hopper`, `enemy_bouncer`, `enemy_mine_bot`, `enemy_frost_turret`, `enemy_laser_eye`, `enemy_drone`, `enemy_fly_trap`)
+    - Missing boss action sheets for 8 bosses (all except `sentinel_rook`)
+    - Missing manifest groups for `projectiles-*` and `effects-*` entries
+- Stop point reached intentionally per plan: blocked at asset completion gate before Phase 3+ hard cutover/deletion.
+- Adjusted Phase 2 asset policy per user request: if a source sheet is missing, derive one via deterministic color remap and note it in the repo.
+- Added derivation tooling + specs:
+  - `scripts/sprites/derive_color_variants.py`
+  - `scripts/sprites/derive_specs/enemies_missing.json`
+  - `scripts/sprites/derive_specs/bosses_missing_actions.json`
+  - `scripts/sprites/derive_specs/shield_drone_v2.json`
+  - Documentation note: `docs/derived_sprite_sources.md`
+- Generated derived source sheets:
+  - Enemies: created missing `assets/sprites/source/enemies/<enemy>_sheet_v1_20260213_210000.png` for all required enemy ids.
+  - Bosses: created missing `assets/sprites/source/bosses/<boss>_actions_sheet_v1_20260213_210000.png` for all required boss ids.
+- Phase 3 atlas build:
+  - Sliced all 12 enemies into runtime atlases under `assets/sprites/enemies/<typeKey>/` and auto-updated `assets/sprites/manifest.v1.json`.
+  - Added projectile/effect atlas entries by slicing `assets/sprites/source/projectiles/projectile_fx_sheet_v1_20260207_203656.png` into:
+    - `assets/sprites/projectiles/projectiles_core/`
+    - `assets/sprites/effects/effects_core/`
+- Gates:
+  - `npm run sprites:validate` now passes (manifest + coverage).
+  - `npm run test`, `npm run build`, `npm run test:smoke` pass after the new assets and manifest updates.
+- Enabled enemy framework defaults (`src/enemy/featureFlags.ts`) so real enemy entities spawn and animate by default.
+- Added default stage enemy markers for `metal` plus fallback so boss stages also spawn basic enemies (`src/enemy/EnemyLevelData.ts`).
+- Switched legacy player sprite spawn to atlas-backed texture/frame (`atlas_player_main`, `player_main/idle/000`) in `src/scenes/Game.ts`.
+- Updated `src/scenes/Preload.ts` to build `player-*` animations from `atlas_player_main` when present (procedural frames still exist as fallback for now).
+- Smoke verified state payload now shows enemies present and visuals counters at zero placeholders/missing atlases.
+- Migrated bullets/hazards/explosions to atlas-backed textures in `src/scenes/Game.ts`:
+  - Boss and player bullets now use `atlas_projectiles_core` frames (`projectiles_core/core/000` and `.../001`).
+  - Spikes hazards now use `atlas_effects_core` frame (`effects_core/core/004`).
+  - Enemy defeat explosion now uses `atlas_effects_core` frame with `dummy-explode` animation.
+  - Removed runtime dependency on `bossBullet` canvas texture; `ensurePlayerBulletTexture` now no-op.
+- Updated `src/scenes/Preload.ts` to create `dummy-explode` from `atlas_effects_core` when present, and removed `bossBullet` canvas texture creation.
+- Updated diagnostics keys to match atlas usage:
+  - `src/projectiles/diagnostics/EnemyBulletTap.ts`
+  - `src/boss/diagnostics/BossFireDiagnostics.ts`
+- Validation: `npm run test`, `npm run build`, `npm run test:smoke` pass.
+- Removed additional legacy runtime scaffolding and feature-toggle surfaces:
+  - Deleted `src/config/featureFlags.ts` and runtime usage in `src/main.ts`/`src/scenes/Game.ts`.
+  - Deleted `src/boss/framework/legacyAdapter.ts` and replaced with `src/boss/framework/bossDefinitionMapper.ts`.
+  - Deleted obsolete tests `tests/runtime-feature-flags.test.ts`, `tests/refactor-flags.test.ts`, and `tests/refactor-facades.test.ts`.
+  - Removed deprecated `enableNewPlayerController` and `enableEnemyFramework` fields from player/enemy feature flag schemas.
+- Hard-cut visual pipeline cleanup:
+  - Updated `scripts/sprites/rebuild_core_runtime_atlases.py` so `atlas_player_main` is generated from `assets/sprites/source/player/player_actions_sheet_alt01_20260207_200805.png` via deterministic bounding-rect extraction.
+  - Kept deterministic sentinel-rook hue-remap fallback only when player source sheet is missing; manifest notes now record fallback state explicitly.
+  - Regenerated runtime player/projectile/effects atlases and updated `assets/sprites/manifest.v1.json` player notes.
+- Visual validation:
+  - Verified served asset hash for `/assets/sprites/player/main/player_main.png` matches local rebuilt atlas.
+  - Verified in-game sprite now resolves to the blue main-character sheet (confirmed via zoomed smoke artifact inspection).
+  - `visuals.placeholderCount`, `visuals.missingAtlasCount`, and `visuals.nonPixelFilteredCount` remain healthy in smoke payloads.
+- Documentation drift cleanup:
+  - Updated `docs/boss-framework.md` to reference `bossDefinitionMapper` instead of removed `legacyAdapter`.
+  - Updated `docs/target_architecture.md` dependency diagram and migration bridge terminology to remove deleted legacy-adapter naming.
+- Quality gates:
+  - Full gate run succeeded: `npm run verify` (sprites validate/coverage, tests, typecheck/build, smoke).
+- Visual hard-cut follow-up completed to address remaining placeholder/runtime mismatch quality issues.
+- Added roster-driven atlas rebuild pipeline:
+  - New script: `scripts/sprites/rebuild_roster_runtime_atlases.py`.
+  - Rebuilds all 9 boss atlases and all 12 enemy atlases from `assets/sprites/source/bosses/boss_roster_sheet_v1_20260207_200224.png`.
+  - Uses deterministic component extraction + rigged frame synthesis.
+  - Boss atlases now emit grouped frames: `<bossId>/idle/*`, `<bossId>/move/*`, `<bossId>/shoot/*`.
+  - Enemy atlases now emit grouped frames: `<enemyId>/idle|run|attack|death/*`.
+  - Manifest notes updated for boss/enemy entries to explicitly document temporary synthesis source.
+- Upgraded core projectile/effect atlas generation to source-driven extraction:
+- Updated `scripts/sprites/rebuild_core_runtime_atlases.py`.
+- Completed the projectile/boss cleanup pass:
+  - Added typed boss fire controller: `src/boss/framework/BossProjectileController.ts`.
+  - Moved boss timer-loop fire, attack-driven projectile emission, spread generation, watchdog fallback, pause/resume handling, and trail-emitter lifecycle out of `src/scenes/Game.ts`.
+  - Added projectile hit-tracking helper: `src/projectiles/collision/projectileHitTracking.ts`.
+  - Updated `src/projectiles/collision/ProjectileCollisionRouter.ts` to own repeat-hit suppression, pierce decrement, and post-hit projectile repositioning.
+  - Added projectile dev helpers: `src/projectiles/diagnostics/ProjectileDevTools.ts`.
+  - Reduced `src/scenes/Game.ts` further so it wires projectile services instead of owning boss-fire and bullet-hit bookkeeping directly.
+  - Removed the remaining always-visible Arcade Physics debug overlays from normal play by hiding the debug graphic unless the explicit debug toggle is used.
+- Added tests:
+  - `tests/projectile-hit-tracking.test.ts`
+  - `tests/projectile-collision-router.test.ts`
+  - `tests/boss-projectile-controller.test.ts`
+- Verification after this pass:
+  - `npm run test` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes.
+  - Rechecked smoke screenshots:
+    - projectile clash renders without always-on debug hitboxes
+    - normal gameplay charge-shot screenshot renders without combat debug rectangles
+    - boss room activation screenshot renders without visible hitbox frames
+- Note: smoke had one transient failure on the `2-keyboard-enter-start` scenario during a rerun, but a clean rerun passed without code changes; latest smoke artifacts are green.
+- Follow-up cleanup pass after the main projectile/boss extraction:
+  - Removed duplicate projectile world-bounds handling in `src/scenes/Game.ts` and kept one shared `handleWorldBounds` path for projectile cleanup.
+  - Inlined the projectile collision-router callbacks into `installHitWires()` and deleted the extra scene wrapper methods.
+  - Fixed remaining projectile clash collider cleanup when boss combat actors are disabled.
+  - Re-exported projectile dev helpers from `src/projectiles/index.ts` so scene code can consume the projectile subsystem through one module boundary.
+  - Added direct tests for projectile dev helpers in `tests/projectile-dev-tools.test.ts`.
+- Verification after the follow-up cleanup:
+  - `npm run test` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes.
+- Final boss/projectile consolidation pass:
+  - Added `src/boss/framework/BossSceneEventBindings.ts` to own boss scene event wiring (`boss-phase-change`, `boss-attack`, `boss-music-start/stop`, `boss-damage`, `boss-defeated`) instead of keeping that block inline in `Game.ts`.
+  - Reduced `src/scenes/Game.ts` further by removing extra projectile overlap wrapper methods and folding collision-router handlers directly into hit-wire registration.
+  - Unified projectile world-bounds cleanup onto the single `handleWorldBounds` path.
+  - Added test coverage:
+    - `tests/boss-scene-event-bindings.test.ts`
+  - Re-ran the gates:
+    - `npm run test` passes.
+    - `npm run build` passes.
+    - `npm run test:smoke` passes after a retry; the long-standing intermittent `2-keyboard-enter-start` smoke flake can still appear sporadically, but the latest final smoke run is green.
+- Final low-risk cleanup tweaks applied after audit:
+  - Removed the duplicate projectile world-bounds event registration in `src/scenes/Game.ts`.
+  - Updated `disableProjectileGroups()` in `src/scenes/Game.ts` to use the shared `ProjectileSystem.recycle()` path first, so projectile trail emitters and pooled bullet lifecycle cleanup stay centralized.
+  - Final verification:
+    - `npm run test` passes.
+    - `npm run build` passes.
+    - `npm run test:smoke` passes.
+- Began projectile architecture refactor based on the projectile/physics roadmap:
+  - Added shared projectile contracts in `src/projectiles/types.ts`.
+  - Added registry + default registry builder in `src/projectiles/ProjectileRegistry.ts` and `src/projectiles/defaultRegistry.ts`.
+  - Added data-driven projectile definitions in `src/projectiles/definitions/coreProjectiles.ts`.
+  - Added first-pass shared runtime in `src/projectiles/ProjectileSystem.ts`.
+- Migrated player-fired runtime shots onto the shared projectile system:
+  - `src/scenes/Game.ts` now creates projectile pools through `ProjectileSystem`.
+  - Player runtime shot spawning now resolves projectile ids and uses the registry/system instead of scene-local behavior branches.
+  - Player projectile lifetime/wave/lob/boomerang updates moved out of `Game.ts` into the shared runtime.
+  - `recycleBullet` now delegates to `ProjectileSystem` first, so pooled cleanup is centralized.
+- Tightened debug visual policy so hitboxes/frame-data overlays are opt-in developer tooling instead of normal gameplay UI:
+  - Added `src/config/developerMode.ts`.
+  - `src/player/featureFlags.ts` now only enables debug hitboxes when developer mode and combat debug visuals are explicitly enabled.
+  - `src/enemy/featureFlags.ts` now gates enemy debug overlays behind the same developer mode policy.
+  - `src/config/debug.ts` now gates UI debug overlay with developer mode config.
+- Added test coverage for the new slice:
+  - `tests/projectile-registry.test.ts`
+  - `tests/developer-mode-config.test.ts`
+- Extended the shared projectile refactor to enemy/boss shots:
+  - Added enemy projectile definitions (`enemy_shot_basic`, `enemy_shot_frost`, `enemy_shot_shield`, `enemy_rocket_lob`, `enemy_mine_drop`, `enemy_beam_pulse`) into `src/projectiles/definitions/coreProjectiles.ts`.
+  - Extended `ProjectileSystem.spawn` with explicit velocity support so non-horizontal launches can still use the shared runtime.
+  - Updated `src/enemy/EnemyProjectiles.ts` to spawn via `ProjectileSystem` instead of directly creating/managing Arcade sprites.
+  - Updated enemy runtime context (`src/enemy/types.ts`) and `src/enemy/EnemyCombat.ts` so enemy AI uses the shared projectile system.
+  - Updated boss firing in `src/scenes/Game.ts` so boss shots also spawn through `ProjectileSystem` while keeping boss-specific trail FX and attack tagging.
+  - Removed leftover `styleBulletForOwner` scene helper after the shared system took over projectile visual setup.
+- Extracted projectile collision routing out of `Game.ts`:
+  - Added `src/projectiles/collision/ProjectileCollisionRouter.ts`.
+  - Moved player-bullet-vs-boss, enemy-bullet-vs-player, projectile-clash, and player-bullet-vs-enemy ownership/damage routing into the shared collision router.
+  - `src/scenes/Game.ts` now instantiates the router with local damage/recycle/debug callbacks instead of owning the overlap logic itself.
+  - Removed dead scene-local overlap helpers (`resolveBulletFromOverlap`, `resolveProjectileClash`) after the router took over.
+- Added focused projectile clash coverage + trimmed leftover projectile debug clutter:
+  - Added pure helper `src/projectiles/collision/projectileClash.ts` and test coverage in `tests/projectile-clash.test.ts`.
+  - Clash punch-through behavior is now covered directly for weak shots, charged shots, and pierce consumption.
+  - Removed boss-bullet HUD / first-spawn logging / bullet-texture startup log from `src/scenes/Game.ts` since they were leftover projectile-specific scene debug clutter.
+- Validation complete for this slice:
+  - `npm run test` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes.
+
+## Current follow-up suggestions
+- Next high-value step is collision extraction:
+  - Active overlap routing and clash tests are now in place; next cleanup is to move projectile-related dev helpers and diagnostics out of `Game.ts` and closer to `src/projectiles/`.
+  - After that, the next architectural step is probably shrinking boss-fire/timer/watchdog logic in `Game.ts` behind a dedicated boss combat/bullet service.
+- If you want frame-data overlays in local debugging, use:
+  - `VITE_DEVELOPER_MODE=true`
+  - `VITE_SHOW_COMBAT_DEBUG_VISUALS=true`
+  - optionally `VITE_ENABLE_DEBUG_HITBOXES=true` and/or `VITE_ENABLE_ENEMY_DEBUG=true`
+  - `atlas_projectiles_core` and `atlas_effects_core` now extract deterministic components from `assets/sprites/source/projectiles/projectile_fx_sheet_v1_20260207_203656.png`.
+  - Procedural dot/circle fallback now only used if source sheet is missing.
+- Runtime animation binding improvements:
+  - `src/scenes/Game.ts` boss placeholder animation builder now resolves grouped frame prefixes (`idle/move/shoot`) first, then index fallback.
+  - `src/bosses/BossController.ts` now resolves grouped atlas frames by state and no longer relies on brittle cumulative spritePlan offsets.
+- Added mission-wide visual validation tooling:
+  - New script: `scripts/mission-visual-sweep.mjs`.
+  - New npm script: `npm run test:visual-sweep`.
+  - Runs all 9 mission selections and captures per-boss screenshots/states under `output/mission-visual-sweep/`.
+- Kill/death draw validation:
+  - Verified `effects_core/core/000..003` frames are non-empty (used by enemy defeat explosion animation).
+  - Verified every enemy atlas has non-empty `death` frames (`enemy_* /death/000..005`).
+- Docs updated:
+  - `docs/derived_sprite_sources.md` now documents roster-based runtime synthesis in addition to hue-remap source derivation.
+- Quality gates:
+  - `npm run sprites:validate` passes.
+  - `npm run test:visual-sweep` passes.
+  - Full `npm run verify` passes (sprites validate/coverage, tests, build, smoke).
+- Implemented platform classification + collision module for gameplay entities:
+  - Added `src/physics/PlatformCollisionSystem.ts` with platform types (`solid`, `oneWay`, `passThrough`), one-way collision process checks, and actor/group attachment.
+- Completed the next progression/polish pass covering the remaining Phase 4 persistence gap plus Phase 5 menu/HUD/audio work:
+  - Added generated placeholder SFX service under `src/audio/` using Web Audio synthesis (`unlock`, `playSfx`, `stopAll`, debug state).
+  - Routed runtime/UI/player SFX through the new audio service by updating `src/player/VfxSfxRouter.ts`, scene menu flows, boss activation/defeat, pause/resume, and hit feedback in `src/scenes/Game.ts`.
+  - Added shared menu confirm/cancel binding helper in `src/input/menuInputBinder.ts` and normalized confirm/cancel handling across `Title`, `StageSelect`, `SystemMenu`, `VictoryModal`, `PauseScene`, `GameOverScene`, and `CompletionScene`.
+  - Fixed Stage Select `Esc` handling to use the same `keydown-ESC` path as the rest of the UI rather than mixing Phaser key callbacks with DOM-event assumptions.
+  - Registered compatibility scenes `Pause` and `GameOver` in `src/main.ts` so the polished menu paths are runtime-real instead of dead files.
+  - Finished save/load weapon restoration path:
+    - `Game` now marks `loadedFromSave` in debug state.
+    - `load_game` restores the active run with the expected stage, weapon, lives, HP, and weapon energy.
+    - `render_game_to_text` now exposes `audio` and `activeRun.loadedFromSave`.
+  - Compacted HUD layout in `src/ui/HUD.ts`:
+    - Added deterministic truncation for player/weapon/boss labels.
+    - Reduced top-of-screen crowding by separating player/boss naming from phase feedback and shrinking text/bar footprints.
+    - Added HUD weapon-name updates so restored/switching weapons are reflected consistently.
+  - Added/updated smoke scenarios:
+    - `12-load-save-restores-weapon-energy`
+    - `13-completion-return-flow`
+    - `14-menu-audio-and-input-stability`
+  - Hardened smoke harness assumptions:
+    - final-route completion now confirms the shared victory modal before waiting for `CompletionScene`
+    - GameOver smoke uses explicit scene-manager checks instead of assuming `render_game_to_text` will report overlay/compat scenes
+- Validation after this pass:
+  - `npm run typecheck` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes with scenarios 1-14 green.
+  - Visual spot-checks completed for:
+    - `output/web-game-smoke/12-load-save-restores-weapon-energy/shot-0.png`
+    - `output/web-game-smoke/13-completion-return-flow/shot-0.png`
+    - `output/web-game-smoke/14-menu-audio-and-input-stability/shot-0.png`
+- Remaining next-agent TODOs after this pass:
+  - Phase 5/6 remaining work: replace synthesized placeholder SFX with authored assets when available; add music routing later without changing the current SFX interface.
+  - Deepen HUD/presentation polish on the Stage Select card text and footer density; it is stable now but still visually busy when many stages are cleared.
+  - Continue Phase 6 coverage around save/load from inside `Game` via System Menu, plus any audio-specific assertions if a stronger browser-audio harness is added.
+  - Continue the larger audit plan with authored stage expansion, richer special-weapon identity, and balancing/checkpoint tuning.
+- Added real CC0 background music support on top of the existing synthesized SFX layer:
+  - Downloaded and added runtime music assets under `assets/audio/music/` for:
+    - `stage_select.ogg` (`8bit Action Stage Select` by MintoDog, CC0)
+    - `stage_loop.ogg` (`On the Offensive (CC0 Chiptune)` by bart, CC0)
+    - `boss_loop.ogg` (`Chiptune Battle Music` by Juhani Junkala, CC0)
+  - Added repo-side credits note: `assets/audio/credits/README.md`.
+  - Added audio manifest/config: `src/audio/musicLibrary.ts`.
+  - Extended `src/audio/PlaceholderAudioService.ts` to manage scene-driven BGM cues in addition to synthesized one-shot SFX.
+  - `Preload` now loads BGM assets; `Title`, `StageSelect`, `Game`, `GameOverScene`, and `CompletionScene` now request music cues through `AudioService`.
+  - Boss-room flow now swaps from stage BGM to boss BGM on activation, and BGM stops cleanly on victory/game over before transition.
+- Tightened navigation/polish exposed by the new music-flow validation:
+  - Fixed `returnToStageSelect()` in `src/core/navigation.ts` to use the scene plugin start path so `Game` does not linger visually beneath `StageSelect`.
+  - Adjusted menu-scene toast anchoring so stage-select victory toasts no longer collide with the header as severely as before.
+  - `render_game_to_text` audio payload now exposes the active/requested `musicCue` for deterministic automation.
+- Added new deterministic music regression coverage:
+  - `scripts/smoke-test.mjs` now includes `15-music-cue-flow`.
+  - The scenario verifies:
+    - `Title` requests `title`
+    - `StageSelect` requests `stage_select`
+    - stage gameplay requests `stage`
+    - boss activation requests `boss`
+    - victory stops music during the modal
+    - returning to `StageSelect` restores `stage_select`
+- Validation after the music pass:
+  - `npm run typecheck` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes with scenarios 1-15 green.
+  - Verified state artifact `output/web-game-smoke/15-music-cue-flow/state-0.json`.
+  - Visually reviewed `output/web-game-smoke/15-music-cue-flow/shot-0.png` to confirm the stage-select return now renders the correct scene.
+
+## Updated remaining high-value TODOs
+- Phase 5:
+  - Replace the synthesized placeholder SFX layer with authored retro SFX assets while keeping the current `AudioService` interface stable.
+  - Further calm Stage Select presentation density: the victory toast and preview text are functional but still visually busy.
+- Phase 6:
+  - Add stronger automation around in-game save/load via `SystemMenu`, not just Stage Select load.
+  - Add audio teardown/regression checks for long session transitions if browser audio behavior becomes flaky across vendors.
+- Broader gameplay plan still open:
+  - Expand each robot master stage into more authored segments with stronger hazard pacing and checkpoint balance.
+  - Keep tuning weapon identity, boss weakness readability, and stage fairness now that enemy streaming and BGM routing are stable.
+- Campaign-structure implementation started:
+  - Added `src/content/campaign.ts` with shipping campaign schema for tutorial, 8 robot masters, and final route.
+  - Added `src/content/weapons.ts` with save-backed weapon ordering/runtime metadata.
+  - Added new scenes `src/scenes/Title.ts` and `src/scenes/CompletionScene.ts`.
+  - Expanded `src/systems/Save.ts` to track tutorial clear, final clear, completion, and v2 active-run weapon state.
+  - Reworked `src/scenes/StageSelect.ts` and `src/scenes/stage-select/StageSelectLogic.ts` around the 8 robot masters, with tutorial (`T`) and final-route (`F`) entry points.
+  - Updated `src/scenes/Game.ts` to use campaign stage definitions for arena layout, hazards, enemy markers, checkpoints, save-backed weapons, weapon energy, and boss weakness damage.
+  - Rebuilt stale `GameOverScene`/`PauseScene` text paths to remove missing `hudFont` dependency.
+  - Updated smoke and mission-sweep automation to boot through the new title shell while still starting at `StageSelect` in automation.
+  - Validation complete after campaign slice: `npm run verify` and `npm run test:visual-sweep` pass.
+  - Added pure rule helper `src/physics/platformCollisionRules.ts` and tests `tests/platform-collision-rules.test.ts`.
+  - Wired `src/scenes/Game.ts` stage builder to use unified platform definitions and removed ad-hoc per-rectangle collider wiring.
+  - Added player drop-through input path (`Down + Jump`) with jump suppression hook via `NewPlayerRuntime.suppressJumpFor` and `PlayerController.suppressJumpFor`.
+  - Added main-floor protection for drop-through (`solid` floor remains non-droppable).
+  - Routed enemies/boss/player platform collision through the same platform system; removed duplicate per-enemy platform collider setup in `src/enemy/EnemySpawner.ts`.
+  - Set dev overlay defaults off (`_dev.on = false`) to reduce visual noise while validating collisions.
+- Validation:
+  - `npm run typecheck` passes.
+  - `npm run test` passes.
+  - `npm run test:smoke` passes.
+- Phase 3 follow-up completed:
+  - Extended `EnemyLevelMarker` with spawn/retire metadata and converted `EnemySpawner` to staged marker streaming instead of spawning all level enemies at once.
+  - Authored progression-driven enemy marker layouts across campaign stages so each stage now paces encounters across the route instead of front-loading a single pair of enemies.
+  - Added enemy stream debug payload/state (`enemySpawner.total/pending/active/retired`) and `stageDebug.setPlayerX(...)` / `stageDebug.enemyStream()` for deterministic gameplay checks.
+  - Added smoke scenario `9-enemy-streaming` to verify stages start partially populated and retire old enemies after forward progression.
+- Phase 4 / Phase 6 coverage follow-up:
+  - Extended `render_game_to_text` stage runtime payload with `stageId`.
+  - Added smoke scenario `10-final-route-unlock` that seeds save data, launches the final route from Stage Select with `F`, and verifies `omega_fortress` starts correctly.
+- Phase 4 weapon pass completed:
+  - Fixed a real boss-damage bug where player bullets were bypassing the weakness/damage pipeline and mutating boss HP directly.
+  - `Game.applyDamageToBoss(...)` now accepts weapon-context metadata so boss hits respect the actual projectile weapon/element instead of whatever is currently selected at impact time.
+  - Added visible boss weakness/resistance feedback on the phase label (`WEAKNESS HIT`, `RESISTED HIT`, `IMMUNE`).
+  - Added distinct projectile runtime behaviors through `src/content/weapons.ts` + `src/scenes/Game.ts`:
+    - `FlameSerpent`: wave shot
+    - `HydroLance`: piercing shot
+    - `QuakeKnuckle` / `AcidGlob`: lobbed arc shots
+    - `MagcutDisc`: boomerang return
+    - `FrostShatter`: piercing heavy shot
+  - Extended `render_game_to_text` with live `weaponEnergy`.
+  - Added smoke scenario `11-weapon-switch-energy` to prove save-backed weapon switching and energy consumption are live.
+- Validation after the latest Phase 3/4 coverage slice:
+  - `npm run test:smoke` passes with scenarios 1-11.
+  - `npm run build` passes.
+
+## Remaining high-value work
+- Phase 4:
+  - Add deterministic save/load coverage for weapon energy restoration and post-clear weapon unlock use in live gameplay.
+- Phase 5:
+  - Replace debug-only SFX hooks in `VfxSfxRouter` with actual playback and wire stage clear/game over/pause/boss hits.
+  - Normalize HUD text/layout so boss/player labels do not visually crowd in edge screenshots.
+  - Unify remaining stale UI/scene helpers and remove any paths no longer used.
+- Phase 6:
+  - Add progression smoke for full completion flow after final-route clear.
+  - Tune stage hazard fairness and boss telegraph pacing now that enemy streaming is stable.
+  - Continue extracting narrow responsibilities out of `Game.ts` where it reduces shutdown/state-branch risk.
+- Fixed boss-clear menu/input regression:
+  - `VictoryModal` now uses explicit scene-local keyboard bindings for Enter, NumpadEnter, Space, and Escape instead of a generic keydown listener.
+  - `InputActions` gained `flushTransientState(scene?)` and `confirmReleased()` to support clean menu/input handoff.
+  - `returnToStageSelect()` now routes through the global scene manager and can request a confirm-release handoff for `StageSelect`.
+  - `StageSelect` now uses explicit Enter/NumpadEnter handlers for menu confirm, re-arms confirm after a short post-return release window, and clears stale transition state on create.
+- Added deterministic regression coverage for boss defeat return flow:
+  - `scripts/smoke-test.mjs` now forces victory through `window.bossDebug.forceVictory()` and verifies:
+    - Enter closes the victory modal and returns to Stage Select.
+    - Numpad Enter closes the modal and returns to Stage Select.
+    - Escape closes the modal and returns to Stage Select.
+    - A fresh Enter on Stage Select launches the next mission after the return.
+  - Smoke artifacts now include:
+    - `output/web-game-smoke/4-boss-clear-enter-return`
+    - `output/web-game-smoke/5-boss-clear-numpad-return`
+    - `output/web-game-smoke/6-boss-clear-escape-return`
+- Hardened replay/scene-shutdown stability exposed by the new regression test:
+  - `PlatformCollisionSystem.clearStage()` no longer crashes when static groups are already half-destroyed.
+  - `EnemyEntity.destroy()` and `EnemySpawner.destroy()` no longer throw during scene teardown.
+  - `Game` shutdown now safely tears down physics listeners/colliders without aborting the next scene start.
+- Validation after the boss-clear fix:
+  - `npm run typecheck` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes, including the boss-clear return scenarios.
+- Continued Phase 2 / early Phase 3 runtime stabilization:
+  - Added deterministic respawn reset path across `NewPlayerRuntime`, `PlayerMotor`, and `PlayerCombat`.
+  - Respawn now clears dash/charge/hitstun state, restores HP cleanly, grants post-respawn i-frames, and respawns from the latest checkpoint instead of leaving stale combat state active.
+  - Added fall kill-plane handling for stages that allow pits (`allowFallOff`), so falling off a stage now reliably kills and respawns the player.
+  - Checkpoints now emit a short toast when crossed and are exposed in the debug state payload.
+- Replaced timer-based boss activation with stage-driven boss gate activation:
+  - Boss fight no longer unlocks on a fixed `1600ms` timer.
+  - Reaching the last authored checkpoint (boss gate) activates the boss encounter and reveals the boss HUD.
+  - Added fallback boss-gate threshold support plus debug hooks for deterministic automation.
+- Expanded deterministic smoke coverage:
+  - Added `7-boss-room-activation` to verify the boss encounter activates only after crossing the boss gate.
+  - Added `8-checkpoint-respawn` to verify checkpoint recovery restores HP/lives and respawns at the checkpoint with fresh i-frames.
+  - Added richer gameplay state payload in `render_game_to_text` (`playerState.lives`, `stageRuntime.checkpointIndex`, `stageRuntime.bossEncounterActive`).
+- Additional teardown hardening discovered by the new replay/respawn coverage:
+  - Guarded more `Game` shutdown listener teardown.
+  - Avoided enemy/platform teardown crashes from blocking scene restarts during replayed stage transitions.
+- Validation after this phase slice:
+  - `npm run typecheck` passes.
+  - `npm run build` passes.
+  - `npm run test:smoke` passes with 8 scenarios, including boss-clear return, boss-room activation, and checkpoint respawn.
+
+## Remaining high-value TODOs
+- Finish the broader audit-plan gameplay work:
+  - Expand each robot master stage from single-screen shell to short authored segments with real checkpoint pacing and more authored enemy streaming/despawn behavior.
+  - Add distinct special-weapon behaviors and stronger boss-weakness readability.
+  - Replace debug-only SFX behavior with lightweight real playback or synthesized fallback.
+- Continue scene/polish cleanup:
+  - Unify menu input handling across Title, Pause, Game Over, Completion, and Stage Clear under one helper instead of per-scene ad hoc bindings.
+  - Keep pruning teardown hazards in `Game.ts`; the new smoke scenario is good at flushing these out.
+  - Automated Playwright artifacts generated at `output/platform-collision-check*` / `output/platform-drop-check*` for platform behavior review.
+- Known follow-up:
+  - Automated drop-through sequence in scripted Playwright runs still needs tighter deterministic scripting to conclusively capture the drop transition frame in artifacts; manual in-browser check recommended for final feel tuning.
+- Collider-foot alignment tuning pass:
+  - Updated player standing collider to `{w:16,h:22,ox:16,oy:24}` and slide collider to `{w:20,h:14,ox:14,oy:32}` in `src/scenes/Game.ts` so sprite feet align with platform tops.
+  - Verified in canvas-rendered gameplay artifacts (`output/platform-alignment-check-2/`, `output/platform-alignment-drop-check/`) that platform lines no longer cut through player torso.
+  - Regression gates after alignment tuning:
+    - `npm run typecheck` pass
+    - `npm run test` pass
+    - `npm run test:smoke` pass
+- Follow-up gameplay/content pass completed:
+  - Added arena width support to `src/content/campaign.ts` and `src/scenes/Game.ts`, so stages are no longer hard-clamped to one screen.
+  - Added structured stage-extension patches for tutorial, all 8 robot masters, and the final route:
+    - wider routes
+    - later checkpoints
+    - more hazards
+    - more mid-platforms
+    - later enemy marker waves
+  - Result: stages now play as short authored side-scrolling routes instead of single-screen boss pre-rooms.
+- Added projectile-on-projectile interaction in `src/scenes/Game.ts`:
+  - player bullets now collide with hostile bullets
+  - normal shots cancel on contact
+  - stronger/charged/piercing shots can punch through and continue
+  - combat debug now records projectile-clash events as environment hits
+- Added deterministic debug helpers for the new runtime behavior:
+  - `window.stageDebug.spawnProjectileClash()`
+  - existing checkpoint helpers now prove traversal into later route segments
+- Expanded smoke coverage again:
+  - Replaced the old flaky charge-shot action-payload scenario with a deterministic browser-driven `3-enter-then-charge-shot`
+  - Added `16-projectile-clash`
+  - Added `17-extended-stage-scroll`
+  - Updated `8-checkpoint-respawn` to use widened-stage respawn expectations
+- Validation after the projectile/extended-stage pass:
+  - `npm run typecheck` passes
+  - `npm run test:smoke` passes with scenarios 1-17 green
+  - `npm run build` passes
+  - Verified artifacts:
+    - `output/web-game-smoke/16-projectile-clash/state-0.json`
+    - `output/web-game-smoke/17-extended-stage-scroll/state-0.json`
+    - `output/web-game-smoke/16-projectile-clash/shot-0.png`
+    - `output/web-game-smoke/17-extended-stage-scroll/shot-0.png`
+- Follow-up readability/fairness pass completed on 2026-03-06:
+  - Added visible projectile clash FX through the shared collision router path so bullet cancels and punch-through hits are readable in motion.
+  - Extended `window.stageDebug.spawnProjectileClash()` with a strong-shot mode for deterministic punch-through testing.
+  - Softened the harshest widened late-stage sequences in `volt_hopper`, `gale_vixen`, and `omega_fortress`:
+    - slower moving-platform timing
+    - later spike placement
+    - extra recovery checkpoints before boss gates
+  - Added smoke scenario `18-projectile-clash-survive` to verify strong player shots survive hostile projectile contact.
+- Route-balance and pickup pass completed on 2026-03-06:
+  - Added extra late-route checkpoints and more platform variation to the remaining robot-master stages that still had the lighter widened layout.
+  - Enabled real collectible enemy drops with health, ammo, and bonus recovery behavior instead of decorative drop sprites.
+  - Added deterministic stage debug hooks for pickup spawning and player damage so recovery can be smoke-tested.
+  - Added smoke scenario `19-pickup-recovery` to verify health and weapon-energy recovery in live gameplay.
+- Boss-room lock and stage-pressure pass completed on 2026-03-06:
+  - Added a real boss gate barrier that seals behind the player on encounter start and keeps boss-room respawns inside the arena instead of trapping the player outside the fight.
+  - Exposed boss-gate lock state in debug/state payloads for deterministic browser validation.
+  - Added extra gate-approach enemy markers to the rebalanced robot-master stages so late-route pressure varies more by stage.
+  - Added smoke scenario `20-boss-gate-lock` to verify the boss room physically locks after activation and prevents retreat.
+- Phase 6 cleanup pass 1 completed on 2026-03-06:
+  - Removed the unreachable legacy `WinScene`.
+  - Removed unused custom event-bus scaffolding in `src/core/EventBus.ts` and `src/core/GameEvents.ts`.
+  - Kept `src/events.ts` as a minimal compatibility shim because the boss-fire diagnostic tooling still imports it.
+  - Revalidated with `npm run typecheck`, `npm run test:smoke`, and `npm run build`.
+- Phase 6 regression expansion completed on 2026-03-06:
+  - Added smoke scenario `21-final-unlock-from-last-clear` to prove the final route unlocks from a live eighth boss clear, not just seeded save data.
+  - Added smoke scenario `22-boss-room-respawn` to verify death inside a sealed boss room respawns the player inside the locked arena with the fight still active.
+  - Verified `save.v1` updates from the live final-unlock path now include all 8 cleared robot masters plus the last granted weapon.
+  - Revalidated with `npm run typecheck`, `npm run test:smoke`, and `npm run build`.
+
+## Updated next-agent TODOs
+- Continue balancing the widened stages:
+  - checkpoint spacing
+  - hazard placement
+  - moving-platform timing
+  - enemy marker pressure
+- Keep pushing the broader audit plan:
+  - authored retro SFX replacement for the synthesized placeholder layer
+  - further Stage Select readability cleanup
+  - more `Game` responsibility extraction where it lowers transition/shutdown risk
+- Completed documentation and agent-scaffolding overhaul on 2026-03-06:
+  - Added top-level canonical docs: `AGENTS.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md`, `TESTING.md`.
+  - Rewrote `README.md` as a concise project entrypoint and linked it to canonical docs.
+  - Reorganized `docs/` into authority-based folders: `architecture/`, `content/`, `testing/`, `runbooks/`, `adr/`, `templates/`, `working/`, `archive/`.
+  - Promoted canonical docs:
+    - `docs/architecture/current-state.md`
+    - `docs/architecture/target-architecture.md`
+    - `docs/architecture/boss-framework.md`
+    - `docs/architecture/repo-map.md`
+    - `docs/testing/quality-gates.md`
+    - `docs/content/*`
+    - `docs/runbooks/*`
+  - Reclassified working docs:
+    - `docs/working/refactor-plan.md`
+    - `docs/working/implementation-spec.md`
+    - `docs/working/consultant-audit.md`
+  - Archived historical docs:
+    - `docs/archive/implementation-prompt-v2.md`
+    - `docs/archive/next-7-days.md`
+  - `docs/README.md` is now the authority map for current vs working vs historical docs.
+  - `progress.md` remains the canonical rolling handoff log; architecture/testing/truth now live in the new canonical docs instead of here.
+- Follow-up documentation pass completed on 2026-03-06:
+  - Added accepted ADRs:
+    - `docs/adr/0001-runtime-modularization.md`
+    - `docs/adr/0002-bundle-size-strategy.md`
+  - Updated canonical architecture/docs index links to include the new ADRs.
+  - Full validation completed successfully:
+    - `npm run verify` passed
+    - smoke artifacts written to `output/web-game-smoke`
+  - Bundle-size warning remains present during build and is intentionally tracked debt per ADR 0002, not a hidden or silenced warning.
+- Final docs consistency pass completed on 2026-03-06:
+  - Added status/owner/last-reviewed metadata headers to migrated canonical and working docs.
+  - Updated `docs/adr/README.md` to list accepted ADRs.
+  - Added documentation-overhaul summary to `CHANGES.md`.
+  - No additional runtime validation was needed after this final step because the follow-up edits were documentation-only and `npm run verify` had already passed immediately beforehand.
+- Added folder-level docs indexes on 2026-03-06 for better local navigation:
+  - `docs/architecture/README.md`
+  - `docs/content/README.md`
+  - `docs/testing/README.md`
+  - `docs/runbooks/README.md`
+  - `docs/working/README.md`
+  - `docs/archive/README.md`
+  - Updated `docs/README.md` to include these local indexes.
+  - No additional validation run was needed because this was a documentation-only follow-up after a successful `npm run verify`.
+- Added legacy doc-path compatibility stubs on 2026-03-06:
+  - Restored lightweight redirect files at the old flat `docs/*.md` paths for moved documents.
+  - This preserves historical references and bookmarks while keeping the new folder-based doc structure canonical.
+- Runtime hardening + late-stage fairness pass completed on 2026-03-06:
+  - Fixed `Save.isFinalRouteUnlocked()` to use the canonical campaign robot-master count instead of trusting raw `clearedBosses.length`.
+  - Normalized save-array persistence/loading so malformed duplicate weapon/stage IDs do not silently skew progression state.
+  - Cleared stale `activeRun` snapshots on boss clear and game over, preventing `Load Game` from resuming already-finished runs.
+  - Paused boss projectile spawning during respawn and flushed active projectile pools before/after respawn so sealed boss-room retries do not inherit stale hostile bullets.
+  - Added a debug-only hostile projectile spawn hook so respawn cleanup can be exercised deterministically in smoke coverage.
+  - Tuned the roughest late segments in `volt_hopper`, `gale_vixen`, `glacier_ronin`, and `omega_fortress`:
+    - slower moving-platform cycles
+    - slightly later spike placement
+    - slightly later gate-approach enemy timing
+  - Regression coverage expanded in-place:
+    - `tests/save-system.test.ts` now proves duplicate/non-robot clears do not unlock the final route
+    - smoke scenario `21-final-unlock-from-last-clear` now asserts `activeRun` is cleared
+    - smoke scenario `22-boss-room-respawn` now proves hostile bullets are flushed on respawn
+  - Validation after the hardening pass:
+    - `npm run typecheck`
+    - `npm run test -- tests/save-system.test.ts`
+    - `npm run build`
+    - `npm run test:smoke`
+- Authored SFX replacement pass completed on 2026-03-06:
+  - Replaced generated placeholder gameplay/menu SFX with CC0-authored retro audio assets while keeping the existing `AudioService.playSfx(key)` interface unchanged.
+  - Added curated SFX asset mapping in `src/audio/sfxLibrary.ts` and preloaded the new files through `src/scenes/Preload.ts`.
+  - Updated `src/audio/PlaceholderAudioService.ts` so it now prefers loaded authored assets and only falls back to synthesized Web Audio tones if an SFX file is unavailable.
+  - Added runtime SFX files under `assets/audio/sfx/` sourced from Kenney `UI Audio`, `Digital Audio`, and `Impact Sounds`.
+  - Expanded `assets/audio/credits/README.md` to document both music and SFX licensing/sources.
+  - Validation after the authored-audio pass:
+    - `npm run typecheck`
+    - `npm run build`
+    - `npm run test:smoke`
+- Boss-defeat crash fix + bundle split pass completed on 2026-03-10:
+  - Fixed a real lethal-hit crash in `src/scenes/Game.ts`:
+    - `applyDamageToBoss()` previously read `this.bossController.hp` after `applyDamage()`
+    - lethal hits can synchronously fire the boss-defeat event, which clears `this.bossController`
+    - post-hit logic now uses a stable local controller reference and skips duplicate victory-side effects once defeat teardown has started
+  - Updated the boss-clear smoke path in `scripts/smoke-test.mjs` to kill bosses through the real damage path (`bossDebug.damage(999)`) instead of only using the force-victory shortcut.
+  - Hardened the late smoke scenarios so the air-sword checks assert directly against deterministic frame-stepped state instead of relying on a transient polling window.
+  - Added low-risk Vite bundle splitting in `vite.config.ts`:
+    - separate `phaser`, `boss`, `content`, and `gameplay` chunks
+    - reduced the main app chunk substantially even though Phaser itself still remains the large tracked bundle
+  - Validation after the crash/bundle pass:
+    - `npm run typecheck`
+    - `npm run build`
+    - `npm run test:smoke`
+- Post-victory Stage Select manual-choice fix completed on 2026-03-10:
+  - Diagnosed a return-flow usability bug after boss clears:
+    - Stage Select focused the next uncleared boss on return
+    - confirm re-armed quickly after the modal handoff
+    - the next `Enter` could immediately redeploy that stage, which made the menu feel skipped/unselectable
+  - Updated `src/scenes/StageSelect.ts` so victory returns now require one deliberate selection action before confirm can launch a stage.
+    - arrow/page movement clears the guard
+    - first pointer click after return clears the guard and selects the slot without deploying
+    - a blocked immediate confirm now shows a short `Choose a stage, then confirm.` toast instead of silently redeploying
+  - Updated victory-return smoke coverage in `scripts/smoke-test.mjs` to assert the new contract:
+    - modal confirm returns to Stage Select
+    - first immediate confirm stays on Stage Select
+    - movement plus confirm launches the next stage
+  - Validation after the Stage Select return fix:
+    - `npm run typecheck`
+    - `npm run test:smoke`
+- Stage readability + boss room overhaul completed on 2026-03-06:
+  - Added typed stage background and boss-room layout contracts:
+    - `src/content/stageArenaLayout.ts`
+    - `src/content/stageBackgroundCatalog.ts`
+    - `src/content/campaign.ts` now assigns every mission a layered parallax background plus a canonical single-screen boss room.
+  - Downloaded and extracted permissive background layers into `assets/backgrounds/`:
+    - `Industrial Parallax Background` by `ansimuz` (`CC0`)
+    - `Parallax Backgrounds` by `Admurin` (`CC-BY 4.0`)
+    - attribution and source URLs recorded in `assets/backgrounds/README.md`
+  - Runtime changes:
+    - `src/scenes/Preload.ts` now loads background images.
+    - `src/scenes/Game.ts` now renders layered parallax backgrounds, locks the camera to the boss room during encounters, moves gate/activation logic to room-based coordinates, and respawns the player at the boss-room intro position.
+    - `src/bosses/BossController.ts` now clamps boss movement to room/world bounds instead of viewport width.
+    - `src/main.ts` debug payload now exposes `bossRoom` metadata and `backgroundLayerCount`.
+  - Automation changes:
+    - rewrote `scripts/mission-visual-sweep.mjs` to select missions deterministically, capture both `pre-boss` and `boss-room` artifacts, and assert boss-room camera lock plus boss movement staying inside room bounds
+  - Regression coverage:
+    - added `tests/stage-arena-layout.test.ts` for boss-room defaults, movement bounds, and camera bounds
+  - Documentation:
+    - updated `docs/content/assets.md` with the stage-background contract
+  - Validation after the overhaul:
+    - `npm run test`
+    - `npm run build`
+    - `npm run test:smoke`
+    - `npm run test:visual-sweep`
+    - `npm run verify`
+  - Remaining known debt:
+    - build still emits the existing large-bundle warning
+    - stage geometry is now cleaner and room-safe, but there is still more room for bespoke mission scripting and foreground dressing in a later pass
+- Player sword content + runtime coverage pass completed on 2026-03-10:
+  - Rebuilt `atlas_player_main` from `assets/sprites/source/player/player_full_combat_sheet_v1_20260207_201355.png` with dedicated groups for jump, fall, land, crouch, dash, charge, ground slash, air slash, hurt, death, and respawn states.
+  - Added explicit player atlas binding logic in `src/player/PlayerAtlasBindings.ts` so sword/jump/dash animations resolve to real atlas groups instead of generic `shoot`/`idle` fallbacks.
+  - Added file-backed gameplay SFX for `jump`, `land`, `dash`, `sword_swing`, `sword_hit`, `charge_start`, and `charge_loop`, and routed them through the existing audio service with authored-asset-first fallback behavior.
+  - Improved sword runtime observability:
+    - `src/player/NewPlayerRuntime.ts` now exposes active sword hitbox, animation key, and current frame in debug state.
+    - `src/main.ts` now includes `playerVisual` in `render_game_to_text`.
+    - `src/player/PlayerDebug.ts` now renders sword hitboxes in world space and prints slash direction.
+  - Fixed a real sword hitbox mirroring bug by stopping double-mirroring of signed sword offsets, so west-facing slashes stay on the left side of the player.
+  - Updated sword collision handling to use a shared pure helper (`src/player/swordCollision.ts`) and added direct regression tests for enemy range, boss range, and west-facing placement.
+  - Extended smoke coverage with new sword scenarios:
+    - `23-ground-sword-enemy`
+    - `24-air-sword-up`
+    - `25-air-sword-down`
+    - `26-boss-sword-hit`
+    - `27-moving-sword-align`
+  - Updated docs:
+    - `docs/content/sprites.md`
+    - `TESTING.md`
+  - Validation after the sword/content pass:
+    - `.venv/bin/python scripts/sprites/rebuild_core_runtime_atlases.py`
+    - `npm run test`
+    - `npm run build`
+    - `SMOKE_PORT=4174 npm run test:smoke`
+    - `SWEEP_PORT=4175 npm run test:visual-sweep`
+    - `npm run sprites:validate`
+    - `SMOKE_PORT=4174 npm run verify`
+  - Remaining known debt:
+    - the player atlas rebuild script depends on Pillow in the local `.venv`; system `python3` alone still does not have that dependency installed
+    - the source combat sheet is good enough for distinct poses, but some cropped frames are still derived from a painterly composite sheet rather than a clean hand-sliced production sprite sheet
+- Free source sprite-sheet replacement pass completed on 2026-03-10:
+  - Downloaded legally safe free art sources and committed curated source sheets plus attribution metadata:
+    - `assets/sprites/source/free-source-attribution.v1.json`
+    - `assets/sprites/source/bosses/boss_roster_sheet_free_v1_20260310_180000.png`
+    - `assets/sprites/source/projectiles/projectile_robotfree_objects_sheet_v1_20260310_180000.png`
+    - `assets/sprites/source/projectiles/effects_explosion03_sheet_v1_20260310_180000.png`
+    - `assets/sprites/source/projectiles/effects_ring95_sheet_v1_20260310_180000.png`
+    - `assets/sprites/source/projectiles/effects_aura38_sheet_v1_20260310_180000.png`
+  - Source provenance now records exact URLs, licenses, attribution text, local source paths, and runtime outputs for the new free-source intake.
+  - Reworked atlas rebuild scripts:
+    - `scripts/sprites/rebuild_roster_runtime_atlases.py` now prefers the new free composite roster sheet over the older synthetic roster source.
+    - `scripts/sprites/rebuild_core_runtime_atlases.py` now rebuilds `atlas_projectiles_core` and `atlas_effects_core` from curated free-source bullet/muzzle/explosion/ring/aura sheets before falling back to the previous synthetic extraction path.
+  - Runtime wiring:
+    - `src/player/VfxSfxRouter.ts` muzzle-frame selection was updated to match the new effect-atlas layout.
+    - Boss/enemy/projectile/effect atlas contracts remained stable, so gameplay IDs and animation keys did not need renaming.
+  - Visual result:
+    - projectile/effect atlases now use real downloaded source art instead of the prior generic generated dots/rings
+    - boss/enemy atlases now regenerate from a free-source mech roster sheet instead of the older synthetic source roster
+  - Documentation:
+    - updated `docs/content/sprites.md` with the free-source intake and rebuild workflow
+  - Validation after the free-source pass:
+    - `.venv/bin/python scripts/sprites/rebuild_core_runtime_atlases.py`
+    - `.venv/bin/python scripts/sprites/rebuild_roster_runtime_atlases.py`
+    - `npm run sprites:validate`
+    - `npm run test`
+    - `npm run build`
+    - `SMOKE_PORT=4184 npm run test:smoke`
+    - `SWEEP_PORT=4185 npm run test:visual-sweep`
+    - `SMOKE_PORT=4186 npm run verify`
+  - Remaining known debt:
+    - boss/enemy presentation is materially improved, but those atlases are still synthesized from one curated pose per roster slot; fully bespoke per-boss action strips would still be better
+    - special-weapon projectile variety is better than before, but several weapons still rely on hue/scale variants within the shared projectile atlas rather than one unique authored sheet per weapon

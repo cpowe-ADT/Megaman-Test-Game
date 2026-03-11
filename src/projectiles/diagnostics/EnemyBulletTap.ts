@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 
-export const ENEMY_BULLET_TEXTURE_KEY = 'bossBullet'
+export const ENEMY_BULLET_TEXTURE_KEY = 'atlas_projectiles_core'
 
 export type BulletSpawnEvent = {
   x: number
@@ -19,16 +19,6 @@ export function ensureBulletPlaceholder(scene: Phaser.Scene): void {
   if (scene.textures.exists(ENEMY_BULLET_TEXTURE_KEY)) {
     return
   }
-
-  const texture = scene.textures.createCanvas(ENEMY_BULLET_TEXTURE_KEY, 1, 1)
-  if (!texture) {
-    return
-  }
-
-  const ctx = texture.context
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, 1, 1)
-  texture.refresh()
 }
 
 function isArcadeSprite(value: unknown): value is Phaser.Physics.Arcade.Sprite {

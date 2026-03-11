@@ -16,14 +16,14 @@ export interface BossAttackLifecycleEvent {
   id: string
   attack: AttackPattern
   timestamp: number
-  mode: 'controller' | 'legacy'
+  mode: 'controller' | 'timer'
 }
 
 export interface BossProjectileSpawnedEvent {
   id: string
   attackName?: string
   timestamp: number
-  mode: 'controller' | 'legacy'
+  mode: 'controller' | 'timer'
   texture?: string
   groupSize?: { used: number; total: number }
 }
@@ -33,7 +33,7 @@ export interface BossCooldownResetEvent {
   attackName: string
   nextAvailableMs: number
   timestamp: number
-  mode?: 'controller' | 'legacy'
+  mode?: 'controller' | 'timer'
 }
 
 export interface BossAttackCompleteEvent {

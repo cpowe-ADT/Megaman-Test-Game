@@ -1,0 +1,255 @@
+{
+  "frames": {
+    "basalt_titan/idle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/idle/001": {
+      "frame": {
+        "x": 60,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/idle/002": {
+      "frame": {
+        "x": 120,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/idle/003": {
+      "frame": {
+        "x": 180,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/move/000": {
+      "frame": {
+        "x": 240,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/move/001": {
+      "frame": {
+        "x": 300,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/move/002": {
+      "frame": {
+        "x": 360,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/move/003": {
+      "frame": {
+        "x": 420,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/shoot/000": {
+      "frame": {
+        "x": 480,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/shoot/001": {
+      "frame": {
+        "x": 540,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/shoot/002": {
+      "frame": {
+        "x": 600,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    },
+    "basalt_titan/shoot/003": {
+      "frame": {
+        "x": 660,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 60,
+        "h": 56
+      },
+      "sourceSize": {
+        "w": 60,
+        "h": 56
+      }
+    }
+  },
+  "meta": {
+    "app": "codex.rebuild_roster_runtime_atlases",
+    "version": "1.0",
+    "image": "basalt_titan.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 720,
+      "h": 56
+    },
+    "scale": "1"
+  }
+}

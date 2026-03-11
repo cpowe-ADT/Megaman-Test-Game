@@ -1,0 +1,12 @@
+export { Registry } from './Registry'
+export { EnemyRegistry } from './EnemyRegistry'
+export { BossRegistry } from './BossRegistry'
+export { ProjectileRegistry } from './ProjectileRegistry'
+export { EffectRegistry } from './EffectRegistry'
+export { LevelRegistry } from './LevelRegistry'
+
+export type { EnemyConfigEntry } from './EnemyRegistry'
+export type { BossConfigEntry } from './BossRegistry'
+export type { ProjectileConfigEntry } from './ProjectileRegistry'
+export type { EffectConfigEntry } from './EffectRegistry'
+export type { LevelConfigEntry } from './LevelRegistry'

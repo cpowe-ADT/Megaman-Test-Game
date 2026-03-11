@@ -1,0 +1,255 @@
+{
+  "frames": {
+    "glacier_ronin/idle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/idle/001": {
+      "frame": {
+        "x": 50,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/idle/002": {
+      "frame": {
+        "x": 100,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/idle/003": {
+      "frame": {
+        "x": 150,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/move/000": {
+      "frame": {
+        "x": 200,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/move/001": {
+      "frame": {
+        "x": 250,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/move/002": {
+      "frame": {
+        "x": 300,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/move/003": {
+      "frame": {
+        "x": 350,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/shoot/000": {
+      "frame": {
+        "x": 400,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/shoot/001": {
+      "frame": {
+        "x": 450,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/shoot/002": {
+      "frame": {
+        "x": 500,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    },
+    "glacier_ronin/shoot/003": {
+      "frame": {
+        "x": 550,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 48
+      }
+    }
+  },
+  "meta": {
+    "app": "codex.rebuild_roster_runtime_atlases",
+    "version": "1.0",
+    "image": "glacier_ronin.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 600,
+      "h": 48
+    },
+    "scale": "1"
+  }
+}

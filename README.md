@@ -1,82 +1,78 @@
-# ⚡ Mega-Style Phaser Starter
+# Mega Man Game
 
-This repository now ships a compact [Phaser 3](https://phaser.io/) + TypeScript + Vite starter tailored for a retro boss-rush prototype. It focuses on fast iteration and zero external art dependencies so you can immediately run, tweak, and extend the sandbox.
+A Phaser 3 + TypeScript + Vite action-platformer prototype with a playable stage-select flow, boss encounters, a modularizing gameplay runtime, and local-first sprite/tooling pipelines.
 
-## Features
+## Current State
+- The game is playable and currently builds and tests cleanly.
+- The architecture is mid-refactor: reusable player, enemy, boss, combat, content, and asset modules exist, but `src/scenes/Game.ts` still owns too much of the runtime and remains under `@ts-nocheck`.
+- The production build currently emits a large-bundle warning. This is known debt, not an active build failure.
+- `progress.md` is the canonical running handoff log for ongoing work.
 
-- **Scene flow** covering boot → preload → stage select → gameplay.
-- **Generated sprite kit** with hand-crafted Megaman-style poses, buster shots, hazards, and a dummy foe — all drawn at runtime so no downloads are required.
-- **Stage select grid** with keyboard navigation across eight themed bosses.
-- **Combat-ready gameplay scene** featuring responsive movement, jump/fall/shoot/slide/hurt animations, buster projectiles, hazards, and a training dummy to demolish.
-- **Modern tooling** via Vite 5 and TypeScript 5 for hot-module reloading and type safety.
-
-## Getting Started
-
+## Quickstart
 ### Prerequisites
-- Node.js 18 or newer (LTS recommended)
-- npm, pnpm, or yarn (examples below use npm)
+- Node.js 18+
+- npm
 
-### Install & Run
-
+### Install and run
 ```bash
 npm install
 npm run dev
 ```
 
-Vite automatically opens your browser to the development server. Use the arrow keys to highlight a boss, press **Enter** to load the gameplay scene, then use the control map below once the stage loads.
+Optional macOS launchers:
+- `Open-MegaMan-Dev.command`
+- `Install-MegaMan-Launcher.command`
 
-### Default Controls
-
-| Action | Keys | Notes |
-| --- | --- | --- |
-| Move | Left / Right arrows | Horizontal acceleration with air control |
-| Confirm (menus) | **Enter** / **Numpad Enter** | Stage Select, pause overlays |
-| Jump | **Space** | Gameplay only, triggers while grounded |
-| Dash | **Z** | Short burst with cooldown |
-| Shoot / Charge | **X** | Hold to charge, release to fire higher-level shots |
-| Saber combo | **C** | Chains up to four swings |
-| Cycle weapon | **S** (hold **Shift** for reverse) | Quick swap through unlocked weapons |
-| Shoulder cycle | **L** / **R** | Optional rapid cycling |
-| Pause (coming soon) | **Esc** | Reserved for pause/menu overlay |
-
-Controls are wired through Phaser's keyboard system, so rebinding can be added later via scene-level helpers.
-
-> Stage Select ignores **Space** — only Enter (or Numpad Enter) confirms a mission. Space exclusively drives grounded jumping once you enter gameplay, while Escape is reserved for the upcoming pause overlay.
-
-### Build for Production
-
+## Core Commands
 ```bash
+npm run test
 npm run build
+npm run test:smoke
+npm run test:visual-sweep
+npm run verify
 ```
 
-The optimized build is emitted to `dist/`. You can preview it locally with:
+Command meanings and usage rules live in `TESTING.md`.
 
-```bash
-npm run preview
-```
+## Controls
+| Action | Keys |
+| --- | --- |
+| Move | Left / Right arrows |
+| Confirm | Enter / Numpad Enter |
+| Jump | Space |
+| Dash | Z |
+| Shoot / Charge | X |
+| Saber combo | C |
+| Cycle weapon | S (Shift reverses) |
+| Shoulder cycle | L / R |
+| Return / back | Esc |
 
-### Troubleshooting
+## Documentation
+- Agent workflow: `AGENTS.md`
+- Contribution rules: `CONTRIBUTING.md`
+- Testing policy: `TESTING.md`
+- Architecture summary: `ARCHITECTURE.md`
+- Documentation index and authority map: `docs/README.md`
 
-- If the dev server or HMR feels out of sync, run `npm run preview` to sanity-check the production build.
+## Repo Map
+- Runtime entry: `src/main.ts`
+- Scenes: `src/scenes/`
+- Player systems: `src/player/`
+- Enemy systems: `src/enemy/`
+- Boss systems: `src/boss/`, `src/bosses/`
+- Content and registries: `src/content/`
+- Asset manifest/runtime loading: `src/assets/`
+- Tests: `tests/`, `src/boss/__tests__/`
+- Tooling and smoke scripts: `scripts/`
 
-## Project Structure
+## Quality Gates Before Merge
+- Run `npm run test` for logic or scene-affecting work.
+- Run `npm run build` for any TypeScript/runtime integration work.
+- Run `npm run test:smoke` for gameplay, scene flow, UI/input, or automation-hook-sensitive work.
+- Run `npm run test:visual-sweep` for cross-mission visual and sprite-pipeline work.
+- Run `npm run verify` before merging substantive gameplay, tooling, content, or asset changes.
 
-```
-src/
-  main.ts            # Game bootstrap & Phaser configuration
-  scenes/
-    Boot.ts          # Seeds palette data and transitions into preload
-    Preload.ts       # Draws the runtime sprite kit and registers animations
-    StageSelect.ts   # Boss grid navigation and scene transition
-    Game.ts          # Combat sandbox with movement, hazards, and buster logic
-```
-
-## Asset Workflow & Packaging
-
-Guidelines for structuring sprite sheets, atlases, and other art deliverables live in [`docs/assets.md`](./docs/assets.md). It covers recommended folder layouts, JSON atlas examples, and notes on licensing when pulling fan-made Mega-style packs.
-
-To share a downloadable bundle, run `npm run build` and zip the generated `dist/` directory. The output only depends on static files, making it easy to host on itch.io, Netlify, GitHub Pages, or similar services.
-
-## License
-
-MIT
+## Known Risks
+- `src/scenes/Game.ts` is still the main complexity hotspot.
+- Mixed legacy/new runtime paths increase documentation-drift risk.
+- Historical planning docs exist; use `docs/README.md` to find the current source of truth.

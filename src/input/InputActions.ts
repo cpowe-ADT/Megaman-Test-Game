@@ -6,8 +6,8 @@ class InputActionsSingleton {
   private spaceKey?: Phaser.Input.Keyboard.Key
   private escKey?: Phaser.Input.Keyboard.Key
   private pendingNumpadConfirm = false
-  private readonly handleKeydown = (event: KeyboardEvent) => {
-    if (event.code === 'NumpadEnter' && !event.repeat) {
+  private readonly handleNumpadEnter = (event: KeyboardEvent) => {
+    if (!event.repeat) {
       this.pendingNumpadConfirm = true
     }
   }
@@ -25,8 +25,7 @@ class InputActionsSingleton {
     this.enterKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
     this.spaceKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
     this.escKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
-
-    keyboard.on('keydown', this.handleKeydown)
+    keyboard.on('keydown-NUMPAD_ENTER', this.handleNumpadEnter)
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       if (this.keyboard === keyboard) {
@@ -37,9 +36,23 @@ class InputActionsSingleton {
 
   confirmPressedOnce(): boolean {
     const fromEnter = this.enterKey ? Phaser.Input.Keyboard.JustDown(this.enterKey) : false
+    const fromSpace = this.spaceKey ? Phaser.Input.Keyboard.JustDown(this.spaceKey) : false
     const fromNumpad = this.pendingNumpadConfirm
     this.pendingNumpadConfirm = false
-    return fromEnter || fromNumpad
+    return fromEnter || fromSpace || fromNumpad
+  }
+
+  confirmReleased(): boolean {
+    return !this.enterKey?.isDown && !this.spaceKey?.isDown && !this.pendingNumpadConfirm
+  }
+
+  flushTransientState(scene?: Phaser.Scene): void {
+    const keyboard = scene?.input.keyboard ?? this.keyboard
+    try {
+      keyboard?.resetKeys()
+    } catch {
+      // Keyboard plugin may already be unavailable during teardown.
+    }
   }
 
   isDownJump(): boolean {
@@ -59,19 +72,29 @@ class InputActionsSingleton {
       return
     }
 
-    this.keyboard.off('keydown', this.handleKeydown)
-
-    if (this.enterKey) {
-      this.keyboard.removeKey(this.enterKey.keyCode)
+    try {
+      this.keyboard.resetKeys()
+    } catch {
+      // Keyboard plugin may already be torn down during scene swaps.
     }
 
-    if (this.spaceKey) {
-      this.keyboard.removeKey(this.spaceKey.keyCode)
+    try {
+      this.keyboard.off('keydown-NUMPAD_ENTER', this.handleNumpadEnter)
+    } catch {
+      // Keyboard plugin may already be torn down during scene swaps.
     }
 
-    if (this.escKey) {
-      this.keyboard.removeKey(this.escKey.keyCode)
-    }
+    const keys = [this.enterKey, this.spaceKey, this.escKey]
+    keys.forEach((key) => {
+      if (!key) {
+        return
+      }
+      try {
+        this.keyboard?.removeKey(key.keyCode)
+      } catch {
+        // no-op
+      }
+    })
 
     this.keyboard = undefined
     this.enterKey = undefined

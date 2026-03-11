@@ -1,82 +1,147 @@
 import Phaser from 'phaser'
+import AudioService from '../audio'
 import { ORDERED_BOSSES } from '../bosses/roster'
+import {
+  countClearedRobotMasters,
+  FINAL_STAGE_ID,
+  getCampaignStage,
+  getRobotMasterStages,
+  isFinalRouteUnlocked,
+  TUTORIAL_STAGE_ID
+} from '../content/campaign'
 import { DEBUG_UI } from '../config/debug'
+import { showToast } from '../core/navigation'
 import InputActions from '../input/InputActions'
-import { StageSelectLogic } from './stage-select/StageSelectLogic'
 import { Save, SaveData } from '../systems/Save'
 import { DebugOverlay } from '../ui/DebugOverlay'
+import type { SystemMenuAction } from './menu/systemMenuSelector'
+import { StageSelectLogic } from './stage-select/StageSelectLogic'
+import { resolveSlotClick, truncateLabel } from './stage-select/selectionContract'
 
 type SlotEntry = {
   rect: Phaser.GameObjects.Rectangle
   name: Phaser.GameObjects.Text
-  element: Phaser.GameObjects.Text
-  bossIndex: number | null
+  meta: Phaser.GameObjects.Text
+  badge: Phaser.GameObjects.Text
+  stageIndex: number | null
 }
 
-/**
- * Stage select layout guidelines:
- * 1. Always verify copy will fit inside its slot or preview panel before rendering.
- * 2. Auto-resize text when it exceeds its container and then reflow it with generous spacing.
- * 3. Keep a minimum 6px rhythm between stacked lines so captions never collide with borders.
- */
+type Layout = {
+  headerRect: Phaser.Geom.Rectangle
+  gridRect: Phaser.Geom.Rectangle
+  previewRect: Phaser.Geom.Rectangle
+  footerRect: Phaser.Geom.Rectangle
+  slotWidth: number
+  slotHeight: number
+  slotGapX: number
+  slotGapY: number
+}
+
+const COLUMNS = 3
+const ROWS = 3
+const PAGE_SIZE = COLUMNS * ROWS
+
+const FONT = {
+  title: '30px monospace',
+  subtitle: '10px monospace',
+  slotTitle: '10px monospace',
+  slotMeta: '8px monospace',
+  panelTitle: '10px monospace',
+  panelName: '16px monospace',
+  panelBody: '9px monospace',
+  footer: '9px monospace'
+}
+
+const COLOR = {
+  bgTop: 0x081429,
+  bgBottom: 0x040914,
+  panel: 0x0b1c3c,
+  panelInner: 0x07142a,
+  border: 0x4a8cff,
+  borderMuted: 0x2b5ca8,
+  clearedFill: 0x1b2130,
+  clearedStroke: 0x5a637a,
+  text: '#f5f8ff',
+  textMuted: '#9ec2ff',
+  textAccent: '#8bc6ff',
+  textCleared: '#a8b3c8'
+}
+
 export class StageSelect extends Phaser.Scene {
-  private index = 0
-  private currentPage = 0
+  private readonly logic = new StageSelectLogic()
+  private readonly columns = COLUMNS
+  private readonly rows = ROWS
+  private readonly pageSize = PAGE_SIZE
+  private readonly stages = getRobotMasterStages()
+
+  private layout?: Layout
   private slots: Phaser.Math.Vector2[] = []
   private slotEntries: SlotEntry[] = []
+
+  private index = 0
+  private currentPage = 0
+
+  public selectedBossId: string | null = null
+  public canConfirm = false
+  public confirmArmed = true
+
+  private saveData: SaveData = Save.load()
+
   private cursor?: Phaser.GameObjects.Rectangle
-  private bossNameText?: Phaser.GameObjects.Text
-  private elementText?: Phaser.GameObjects.Text
-  private infoText?: Phaser.GameObjects.Text
   private previewTitle?: Phaser.GameObjects.Text
-  private previewDescription?: Phaser.GameObjects.Text
+  private bossNameText?: Phaser.GameObjects.Text
+  private infoText?: Phaser.GameObjects.Text
+  private detailsText?: Phaser.GameObjects.Text
   private pageIndicator?: Phaser.GameObjects.Text
+  private footerStatus?: Phaser.GameObjects.Text
+  private toastHandle?: Phaser.GameObjects.Container
+
+  private requestedTransition: { scene: string; data: Record<string, unknown> } | null = null
+  private transitionRequestedAt = 0
+  private armConfirmAfterRelease = false
+  private confirmArmAvailableAt = 0
+  private manualSelectionRequired = false
+
   private debugOverlay?: DebugOverlay
   private debugToggleHandler?: () => void
   private preventScrollHandler?: (event: KeyboardEvent) => void
-  private readonly logic = new StageSelectLogic()
-  private saveData: SaveData = Save.load()
-  private requestedTransition: { scene: string; data: Record<string, unknown> } | null = null
-  private transitionRequestedAt = 0
-  private readonly columns = 3
-  private readonly rows = 3
-  private readonly pageSize = this.columns * this.rows
-  private panelWidth = 140
-  private cellWidth = 0
-  private readonly cellHeight = 56
-  private previewPanelBounds?: { top: number; height: number; width: number; x: number }
-  private snap(value: number): number {
-    return Math.round(value)
-  }
 
   constructor() {
     super('StageSelect')
   }
 
   create(): void {
+    AudioService.playMusic(this, 'stage_select')
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => AudioService.onSceneShutdown(this))
     this.saveData = Save.load()
+    this.requestedTransition = null
+    this.transitionRequestedAt = 0
+    this.armConfirmAfterRelease = false
+    this.confirmArmAvailableAt = 0
+    this.confirmArmed = true
+    this.manualSelectionRequired = false
     const { width, height } = this.scale
-    this.cameras.main.setBackgroundColor('#06090f')
 
+    this.cameras.main.setBackgroundColor('#050d1a')
+
+    this.layout = this.computeLayout(width, height)
     this.createBackdrop(width, height)
-    this.createHeader(width)
-    this.createPreviewPanel(width, height)
-    this.drawGrid(width, height)
-    this.createFooter(width, height)
+    this.createHeader()
+    this.createGrid()
+    this.createPreviewPanel()
+    this.createFooter()
 
     this.cursor = this.add
-      .rectangle(0, 0, this.cellWidth - 14, this.cellHeight - 18)
-      .setStrokeStyle(3, 0xffffff, 0.9)
+      .rectangle(0, 0, this.layout.slotWidth - 8, this.layout.slotHeight - 8)
+      .setStrokeStyle(2, 0xffffff, 0.95)
       .setFillStyle(0xffffff, 0)
-      .setDepth(3)
+      .setDepth(10)
 
     this.refreshPage()
-    this.updateCursor()
-    this.updatePreview()
-    this.logic.setIndex(this.index)
+    this.setSelection(this.index)
+    this.applyPostReturnState()
 
     this.registerKeyboardShortcuts()
-
     this.installScrollGuards()
     InputActions.init(this)
 
@@ -98,11 +163,13 @@ export class StageSelect extends Phaser.Scene {
   }
 
   update(): void {
-    if (InputActions.confirmPressedOnce()) {
-      this.confirm()
+    if (this.armConfirmAfterRelease && !this.confirmArmed) {
+      if (this.time.now >= this.confirmArmAvailableAt && InputActions.confirmReleased()) {
+        this.confirmArmed = true
+        this.armConfirmAfterRelease = false
+        this.confirmArmAvailableAt = 0
+      }
     }
-
-    const pendingTransition = this.requestedTransition
 
     if (DEBUG_UI) {
       this.debugOverlay?.update({
@@ -115,199 +182,271 @@ export class StageSelect extends Phaser.Scene {
       })
     }
 
-    if (pendingTransition) {
-      this.requestedTransition = null
-      this.transitionRequestedAt = 0
-      this.scene.start(pendingTransition.scene, pendingTransition.data)
-    }
+  }
+
+  private computeLayout(width: number, height: number): Layout {
+    const outerPad = 12
+    const headerHeight = 50
+    const footerHeight = 34
+    const contentGap = 8
+    const previewWidth = 174
+
+    const headerRect = new Phaser.Geom.Rectangle(outerPad, outerPad, width - outerPad * 2, headerHeight)
+    const footerRect = new Phaser.Geom.Rectangle(
+      outerPad,
+      height - outerPad - footerHeight,
+      width - outerPad * 2,
+      footerHeight
+    )
+
+    const contentTop = headerRect.bottom + contentGap
+    const contentBottom = footerRect.y - contentGap
+    const contentHeight = contentBottom - contentTop
+
+    const previewRect = new Phaser.Geom.Rectangle(width - outerPad - previewWidth, contentTop, previewWidth, contentHeight)
+    const gridRect = new Phaser.Geom.Rectangle(
+      outerPad,
+      contentTop,
+      previewRect.x - outerPad - contentGap,
+      contentHeight
+    )
+
+    const slotGapX = 8
+    const slotGapY = 10
+    const slotWidth = Math.floor((gridRect.width - slotGapX * (this.columns - 1)) / this.columns)
+    const slotHeight = Math.floor((gridRect.height - slotGapY * (this.rows - 1)) / this.rows)
+
+    return { headerRect, gridRect, previewRect, footerRect, slotWidth, slotHeight, slotGapX, slotGapY }
   }
 
   private createBackdrop(width: number, height: number): void {
-    this.add
-      .rectangle(width / 2, height / 2, width, height, 0x0d1424)
-      .setAlpha(0.95)
+    const top = this.add.rectangle(width / 2, height / 2, width, height, COLOR.bgTop, 1)
+    top.setDepth(-30)
 
-    this.add
-      .rectangle(width / 2, height / 2, width, height, 0x1a2847)
-      .setAlpha(0.35)
+    const stripe = this.add.rectangle(width / 2, height * 0.82, width, height * 0.45, COLOR.bgBottom, 0.9)
+    stripe.setDepth(-29)
 
-    this.add
-      .rectangle(width / 2, height - 48, width, 96, 0x03060c)
-      .setAlpha(0.35)
+    const scan = this.add.graphics()
+    scan.setDepth(-28)
+    scan.fillStyle(0x9ec2ff, 0.03)
+    for (let y = 0; y < height; y += 4) {
+      scan.fillRect(0, y, width, 1)
+    }
   }
 
-  private createHeader(width: number): void {
-    this.add
-      .rectangle(width / 2, 48, width - 64, 84, 0x101c33, 0.88)
-      .setStrokeStyle(2, 0x3a75c4, 0.6)
+  private createHeader(): void {
+    const layout = this.layout!
 
     this.add
-      .text(width / 2, 30, 'MISSION SELECT', {
-        fontFamily: 'monospace',
-        fontSize: '28px',
-        color: '#ffffff',
-        letterSpacing: 2
-      })
-      .setOrigin(0.5)
+      .rectangle(layout.headerRect.centerX, layout.headerRect.centerY, layout.headerRect.width, layout.headerRect.height, COLOR.panel, 0.88)
+      .setStrokeStyle(2, COLOR.border, 0.8)
 
     this.add
-      .text(width / 2, 68, 'Choose a Maverick to infiltrate their stronghold', {
-        fontFamily: 'monospace',
-        fontSize: '13px',
-        color: '#8fb8ff'
+      .text(layout.headerRect.centerX, layout.headerRect.y + 4, 'ROBOT MASTER SELECT', {
+        font: FONT.title,
+        color: COLOR.text,
+        letterSpacing: 1
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5, 0)
+
+    this.add
+      .text(layout.headerRect.centerX, layout.headerRect.bottom - 5, '8 robot masters • T tutorial • F final route', {
+        font: FONT.subtitle,
+        color: COLOR.textMuted,
+        align: 'center'
+      })
+      .setOrigin(0.5, 1)
   }
 
-  private createPreviewPanel(width: number, height: number): void {
-    const maxPanelWidth = Math.max(120, width - 96 - this.columns * 60)
-    const desiredPanelWidth = Phaser.Math.Clamp(width * 0.36, 120, 168)
-    this.panelWidth = this.snap(Math.min(desiredPanelWidth, maxPanelWidth))
-    const panelHeight = height - 72
-    const panelX = this.snap(width - this.panelWidth / 2 - 28)
-    const panelY = this.snap(height / 2 + 6)
-    const panelTop = this.snap(panelY - panelHeight / 2)
+  private createGrid(): void {
+    const layout = this.layout!
 
     this.add
-      .rectangle(panelX, panelY, this.panelWidth, panelHeight, 0x0c1324, 0.9)
-      .setStrokeStyle(2, 0x3a75c4, 0.6)
-
-    const titleY = this.snap(panelTop + 16)
-    this.previewPanelBounds = { top: panelTop, height: panelHeight, width: this.panelWidth, x: panelX }
-
-    this.previewTitle = this.add
-      .text(panelX, titleY, '', {
-        fontFamily: 'monospace',
-        fontSize: '15px',
-        color: '#8fb8ff',
-        align: 'center',
-        wordWrap: { width: this.panelWidth - 24 }
-      })
-      .setOrigin(0.5, 0)
-    this.registerSizing(this.previewTitle, 11)
-
-    const nameY = this.snap(titleY + 32)
-    this.bossNameText = this.add
-      .text(panelX, nameY, '', {
-        fontFamily: 'monospace',
-        fontSize: '18px',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      })
-      .setOrigin(0.5, 0)
-    this.registerSizing(this.bossNameText, 12)
-
-    const elementY = this.snap(nameY + 24)
-    this.elementText = this.add
-      .text(panelX, elementY, '', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#9ad'
-      })
-      .setOrigin(0.5, 0)
-    this.registerSizing(this.elementText, 10)
-
-    const descriptionY = this.snap(elementY + 24)
-    this.previewDescription = this.add
-      .text(panelX, descriptionY, '', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#c7d8ff',
-        align: 'center',
-        wordWrap: { width: this.panelWidth - 24 }
-      })
-      .setOrigin(0.5, 0)
-    this.registerSizing(this.previewDescription, 9)
-
-    const infoTop = this.snap(panelY + panelHeight / 2 - 52)
-    this.infoText = this.add
-      .text(panelX, infoTop, '', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#cbd3ff',
-        align: 'center',
-        wordWrap: { width: this.panelWidth - 24 }
-      })
-      .setOrigin(0.5, 0)
-    this.registerSizing(this.infoText, 9)
-  }
-
-  private drawGrid(width: number, height: number): void {
-    const gridWidth = width - this.panelWidth - 96
-    const computedCellWidth = Math.floor(gridWidth / this.columns)
-    this.cellWidth = Math.max(56, computedCellWidth)
-    const horizontalPadding = this.snap((gridWidth - this.cellWidth * this.columns) / 2)
-    const startX = this.snap(44 + horizontalPadding + this.cellWidth / 2)
-    const gridHeight = this.rows * this.cellHeight
-    const startY = this.snap(height / 2 - gridHeight / 2 + 12)
+      .rectangle(layout.gridRect.centerX, layout.gridRect.centerY, layout.gridRect.width, layout.gridRect.height, COLOR.panelInner, 0.7)
+      .setStrokeStyle(1, COLOR.borderMuted, 0.7)
 
     this.slots = []
     this.slotEntries = []
 
+    const startX = layout.gridRect.x + layout.slotWidth / 2
+    const startY = layout.gridRect.y + layout.slotHeight / 2
+
     for (let row = 0; row < this.rows; row += 1) {
       for (let col = 0; col < this.columns; col += 1) {
         const slotIndex = row * this.columns + col
-        const x = this.snap(startX + col * this.cellWidth)
-        const y = this.snap(startY + row * this.cellHeight)
+        const x = Math.round(startX + col * (layout.slotWidth + layout.slotGapX))
+        const y = Math.round(startY + row * (layout.slotHeight + layout.slotGapY))
 
         const rect = this.add
-          .rectangle(x, y, this.cellWidth - 18, this.cellHeight - 20, 0x1a2847, 0.28)
-          .setStrokeStyle(2, 0x3a75c4, 0.5)
-          .setData('slotIndex', slotIndex)
+          .rectangle(x, y, layout.slotWidth, layout.slotHeight, 0x0d2247, 0.5)
+          .setStrokeStyle(2, COLOR.borderMuted, 0.8)
           .setInteractive({ useHandCursor: true })
 
-        rect.on('pointerover', () => this.onSlotHover(slotIndex))
-        rect.on('pointerdown', () => this.confirm())
+        rect.on('pointerdown', () => this.handleSlotPointerDown(slotIndex))
 
         const name = this.add
-          .text(x, y - 12, '', {
-            fontFamily: 'monospace',
-            fontSize: '13px',
-            color: '#ffffff',
-            fontStyle: 'bold',
+          .text(x, y - 11, '', {
+            font: FONT.slotTitle,
+            color: COLOR.text,
             align: 'center'
           })
           .setOrigin(0.5, 0)
-        this.registerSizing(name, 11)
 
-        const element = this.add
-          .text(x, y + 8, '', {
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            color: '#9ad'
+        const meta = this.add
+          .text(x, y + 4, '', {
+            font: FONT.slotMeta,
+            color: COLOR.textAccent,
+            align: 'center',
+            wordWrap: { width: layout.slotWidth - 10, useAdvancedWrap: true }
           })
           .setOrigin(0.5, 0)
-        this.registerSizing(element, 9)
+
+        const badge = this.add
+          .text(x + layout.slotWidth / 2 - 5, y - layout.slotHeight / 2 + 3, '', {
+            font: FONT.slotMeta,
+            color: '#0b1220',
+            backgroundColor: '#d1d9e8',
+            padding: { x: 3, y: 1 }
+          })
+          .setOrigin(1, 0)
+          .setVisible(false)
 
         this.slots.push(new Phaser.Math.Vector2(x, y))
-        this.slotEntries.push({ rect, name, element, bossIndex: null })
+        this.slotEntries.push({ rect, name, meta, badge, stageIndex: null })
       }
     }
   }
 
-  private createFooter(width: number, height: number): void {
-    const footerY = height - 28
+  private createPreviewPanel(): void {
+    const layout = this.layout!
 
     this.add
-      .rectangle(width / 2, footerY, width - 160, 44, 0x091020, 0.8)
-      .setStrokeStyle(1, 0x3a75c4, 0.4)
+      .rectangle(
+        layout.previewRect.centerX,
+        layout.previewRect.centerY,
+        layout.previewRect.width,
+        layout.previewRect.height,
+        COLOR.panel,
+        0.9
+      )
+      .setStrokeStyle(2, COLOR.border, 0.85)
 
-    this.add
-      .text(width / 2, footerY - 10, '← ↑ → ↓ NAVIGATE   •   ENTER START   •   Q / E CHANGE PAGE', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#9acbff',
+    this.previewTitle = this.add
+      .text(layout.previewRect.centerX, layout.previewRect.y + 8, '', {
+        font: FONT.panelTitle,
+        color: COLOR.textAccent,
+        align: 'center',
+        wordWrap: { width: layout.previewRect.width - 20, useAdvancedWrap: true }
+      })
+      .setOrigin(0.5, 0)
+
+    this.bossNameText = this.add
+      .text(layout.previewRect.centerX, layout.previewRect.y + 24, '', {
+        font: FONT.panelName,
+        color: COLOR.text,
         align: 'center'
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5, 0)
 
-    this.pageIndicator = this.add
-      .text(width / 2, footerY + 12, '', {
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        color: '#8fb8ff'
+    this.infoText = this.add
+      .text(layout.previewRect.centerX, layout.previewRect.y + 50, '', {
+        font: FONT.panelBody,
+        color: COLOR.textMuted,
+        align: 'center',
+        wordWrap: { width: layout.previewRect.width - 18, useAdvancedWrap: true },
+        lineSpacing: 2
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5, 0)
+
+    this.detailsText = this.add
+      .text(layout.previewRect.centerX, layout.previewRect.y + 92, '', {
+        font: FONT.panelBody,
+        color: COLOR.text,
+        align: 'center',
+        wordWrap: { width: layout.previewRect.width - 18, useAdvancedWrap: true },
+        lineSpacing: 2
+      })
+      .setOrigin(0.5, 0)
+  }
+
+  private createFooter(): void {
+    const layout = this.layout!
+
+    this.add
+      .rectangle(layout.footerRect.centerX, layout.footerRect.centerY, layout.footerRect.width, layout.footerRect.height, COLOR.panel, 0.86)
+      .setStrokeStyle(1, COLOR.borderMuted, 0.8)
+
+    this.add
+      .text(layout.footerRect.centerX, layout.footerRect.y + 7, 'Arrows move • Click select • Enter deploy • T tutorial • F final route', {
+        font: FONT.footer,
+        color: COLOR.textMuted,
+        align: 'center'
+      })
+      .setOrigin(0.5, 0)
+
+    this.footerStatus = this.add
+      .text(layout.footerRect.centerX, layout.footerRect.bottom - 6, '', {
+        font: FONT.footer,
+        color: COLOR.textAccent,
+        align: 'center'
+      })
+      .setOrigin(0.5, 1)
+  }
+
+  private refreshPage(): void {
+    const totalPages = Math.max(1, Math.ceil(this.stages.length / this.pageSize))
+    this.currentPage = Phaser.Math.Clamp(this.currentPage, 0, totalPages - 1)
+    const start = this.currentPage * this.pageSize
+
+    this.slotEntries.forEach((slot, slotIndex) => {
+      const stage = this.stages[start + slotIndex]
+      if (!stage) {
+        slot.stageIndex = null
+        slot.rect.setVisible(false).disableInteractive()
+        slot.name.setVisible(false)
+        slot.meta.setVisible(false)
+        slot.badge.setVisible(false)
+        return
+      }
+
+      slot.stageIndex = start + slotIndex
+      slot.rect.setVisible(true).setInteractive({ useHandCursor: true })
+      slot.name.setVisible(true)
+      slot.meta.setVisible(true)
+
+      const bossEntry = ORDERED_BOSSES.find((entry) => entry.id === stage.bossId)
+      const stageId = stage.id
+      const weaponId = stage.rewardWeaponId ?? bossEntry?.blueprint.weaponReward?.id ?? stageId
+      const unlocked = this.saveData.weaponsUnlocked.includes(weaponId) ? 'UNLOCKED' : 'LOCKED'
+      const cleared = this.saveData.clearedBosses.includes(stageId)
+      const goCount = this.saveData.gameOverCounts[stageId] ?? 0
+
+      slot.name.setText(truncateLabel(stage.selectLabel, 12))
+      slot.name.setColor(cleared ? COLOR.textCleared : COLOR.text)
+      slot.meta.setText(`${cleared ? 'CLEARED' : unlocked}  •  GO:${goCount}`)
+      slot.meta.setColor(cleared ? '#8793ad' : unlocked === 'UNLOCKED' ? '#9ec2ff' : '#6f8cb8')
+      slot.badge.setText(cleared ? 'DEFEATED' : '')
+      slot.badge.setVisible(cleared)
+
+      this.layoutSlotText(slot)
+    })
+
+    const clearedRobotMasters = countClearedRobotMasters(this.saveData)
+    const finalState = this.saveData.gameCompleted
+      ? 'FINAL • COMPLETE'
+      : isFinalRouteUnlocked(this.saveData)
+        ? 'FINAL • READY (F)'
+        : `FINAL • LOCKED ${clearedRobotMasters}/8`
+    this.footerStatus?.setText(finalState)
+    this.updateSelectionVisuals()
+  }
+
+  private layoutSlotText(slot: SlotEntry): void {
+    const slotWidth = slot.rect.width
+    const slotHeight = slot.rect.height
+    slot.name.setPosition(slot.rect.x, slot.rect.y - 12)
+    slot.meta.setPosition(slot.rect.x, slot.rect.y + 4)
+    slot.badge.setPosition(slot.rect.x + slotWidth / 2 - 5, slot.rect.y - slotHeight / 2 + 3)
   }
 
   private registerKeyboardShortcuts(): void {
@@ -322,6 +461,76 @@ export class StageSelect extends Phaser.Scene {
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN)?.on('down', () => this.move(this.columns))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q)?.on('down', () => this.changePage(-1))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)?.on('down', () => this.changePage(1))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.T)?.on('down', () => this.launchCampaignStage(TUTORIAL_STAGE_ID))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F)?.on('down', () => this.launchFinalRoute())
+    const enterHandler = (event: KeyboardEvent) => {
+      event.preventDefault()
+      this.handleKeyboardConfirm()
+    }
+    const numpadEnterHandler = (event: KeyboardEvent) => {
+      event.preventDefault()
+      this.handleKeyboardConfirm()
+    }
+    const escHandler = (event: KeyboardEvent) => {
+      event.preventDefault()
+      if (!this.scene.isActive('SystemMenu')) {
+        AudioService.unlock()
+        AudioService.playSfx('ui_cancel')
+        this.scene.launch('SystemMenu', { sourceScene: 'StageSelect' })
+      }
+    }
+
+    keyboard.on('keydown-ENTER', enterHandler)
+    keyboard.on('keydown-NUMPAD_ENTER', numpadEnterHandler)
+    keyboard.on('keydown-SPACE', enterHandler)
+    keyboard.on('keydown-ESC', escHandler)
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      try {
+        keyboard.off('keydown-ENTER', enterHandler)
+        keyboard.off('keydown-NUMPAD_ENTER', numpadEnterHandler)
+        keyboard.off('keydown-SPACE', enterHandler)
+        keyboard.off('keydown-ESC', escHandler)
+      } catch {
+        // Keyboard plugin may already be torn down during scene shutdown.
+      }
+    })
+  }
+
+  onSystemMenuAction(action: SystemMenuAction): void {
+    if (action === 'back' || action === 'resume') {
+      return
+    }
+
+    if (action === 'load_game') {
+      const run = Save.loadActiveRun()
+      if (!run) {
+        this.toastHandle?.destroy(true)
+        this.toastHandle = showToast(this, 'No saved game found.', 1200)
+        return
+      }
+      this.scene.start('Game', {
+        bossId: run.bossId,
+        stageId: run.stageId,
+        loadFromSave: true
+      })
+      return
+    }
+
+    if (action === 'new_game') {
+      Save.startNewCampaign()
+      this.scene.start('Title')
+      return
+    }
+
+    if (action === 'clear_save') {
+      Save.clearAll()
+      this.saveData = Save.load()
+      this.refreshPage()
+      this.setSelection(0)
+      this.toastHandle?.destroy(true)
+      this.toastHandle = showToast(this, 'Save data cleared.', 1200)
+    }
   }
 
   private installScrollGuards(): void {
@@ -341,30 +550,74 @@ export class StageSelect extends Phaser.Scene {
     keyboard.on('keydown', handler)
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      keyboard.off('keydown', handler)
+      this.input.keyboard?.off('keydown', handler)
       if (this.preventScrollHandler === handler) {
         this.preventScrollHandler = undefined
       }
+      this.toastHandle?.destroy(true)
+      this.toastHandle = undefined
     })
   }
 
-  private onSlotHover(slotIndex: number): void {
-    const slot = this.slotEntries[slotIndex]
-    if (!slot || slot.bossIndex == null || slot.bossIndex === this.index) {
+  private move(delta: number): void {
+    const total = this.stages.length
+    if (total === 0) {
       return
     }
-    this.index = slot.bossIndex
-    this.logic.setIndex(this.index)
-    this.updateCursor()
-    this.updatePreview()
+
+    const next = (this.index + delta + total) % total
+    if (next !== this.index) {
+      AudioService.unlock()
+      AudioService.playSfx('ui_move')
+    }
+    this.manualSelectionRequired = false
+    this.setSelection(next)
   }
 
-  private move(delta: number): void {
-    const total = ORDERED_BOSSES.length
-    this.index = (this.index + delta + total) % total
+  private changePage(delta: number): void {
+    const totalPages = Math.max(1, Math.ceil(this.stages.length / this.pageSize))
+    this.currentPage = (this.currentPage + delta + totalPages) % totalPages
+    AudioService.unlock()
+    AudioService.playSfx('ui_move')
+    this.manualSelectionRequired = false
+
+    const start = this.currentPage * this.pageSize
+    const end = Math.min(start + this.pageSize - 1, this.stages.length - 1)
+    const next = Phaser.Math.Clamp(this.index, start, end)
+
+    this.refreshPage()
+    this.setSelection(next)
+  }
+
+  private handleSlotPointerDown(slotIndex: number): void {
+    const slot = this.slotEntries[slotIndex]
+    if (!slot || slot.stageIndex == null) {
+      return
+    }
+
+    const resolution = resolveSlotClick(this.index, slot.stageIndex)
+    AudioService.unlock()
+    if (this.manualSelectionRequired) {
+      AudioService.playSfx('ui_move')
+      this.manualSelectionRequired = false
+      this.setSelection(resolution.nextIndex)
+      return
+    }
+    AudioService.playSfx(resolution.shouldConfirm ? 'ui_confirm' : 'ui_move')
+    this.setSelection(resolution.nextIndex)
+
+    if (resolution.shouldConfirm) {
+      this.confirmSelection()
+    }
+  }
+
+  private setSelection(nextIndex: number): void {
+    this.index = Phaser.Math.Clamp(nextIndex, 0, Math.max(this.stages.length - 1, 0))
     this.logic.setIndex(this.index)
-    this.updateCursor()
+    this.ensurePageForIndex()
+    this.updateSelectionVisuals()
     this.updatePreview()
+    this.updateDebugSelectionState()
   }
 
   private ensurePageForIndex(): void {
@@ -375,307 +628,168 @@ export class StageSelect extends Phaser.Scene {
     }
   }
 
-  private refreshPage(): void {
-    const bosses = ORDERED_BOSSES
-    const totalPages = Math.max(1, Math.ceil(bosses.length / this.pageSize))
-    this.currentPage = Phaser.Math.Clamp(this.currentPage, 0, totalPages - 1)
-    const start = this.currentPage * this.pageSize
+  private updateSelectionVisuals(): void {
+    const selectedSlotIndex = this.slotEntries.findIndex((slot) => slot.stageIndex === this.index)
 
-    this.slotEntries.forEach((slot, slotIndex) => {
-      const entry = bosses[start + slotIndex]
-      if (!entry) {
-        slot.bossIndex = null
-        slot.rect.setVisible(false).disableInteractive()
-        slot.name.setVisible(false)
-        slot.element.setVisible(false)
+    this.slotEntries.forEach((slot) => {
+      if (slot.stageIndex == null) {
         return
       }
 
-      slot.bossIndex = start + slotIndex
+      const stage = this.stages[slot.stageIndex]
+      const entry = ORDERED_BOSSES.find((boss) => boss.id === stage?.bossId)
+      const primary = entry?.blueprint.theme.primary ?? COLOR.borderMuted
+      const isSelected = slot.stageIndex === this.index
+      const isCleared = stage ? this.saveData.clearedBosses.includes(stage.id) : false
       slot.rect
-        .setVisible(true)
-        .setStrokeStyle(2, entry.blueprint.theme.primary, 0.9)
-        .setFillStyle(entry.blueprint.theme.primary, 0.2)
-        .setInteractive({ useHandCursor: true })
-      slot.name.setVisible(true).setText(entry.blueprint.codename)
-      const stageId = entry.id
-      const weaponId = entry.blueprint.weaponReward?.id ?? stageId
-      const unlocked = this.saveData.weaponsUnlocked.includes(weaponId) ? '✓' : ' '
-      const gameOvers = this.saveData.gameOverCounts[stageId] ?? 0
-      const elementLabel = `${entry.blueprint.element.toUpperCase()}  [${unlocked}]  GOs:${gameOvers}`
-      slot.element.setVisible(true).setText(elementLabel)
-      this.layoutSlotEntry(slot)
+        .setStrokeStyle(
+          isSelected ? 2 : 1,
+          isSelected ? 0xffffff : isCleared ? COLOR.clearedStroke : primary,
+          isSelected ? 1 : 0.85
+        )
+        .setFillStyle(
+          isSelected ? (isCleared ? 0x3b465f : 0x2a57a6) : isCleared ? COLOR.clearedFill : 0x0d2247,
+          isSelected ? 0.6 : isCleared ? 0.65 : 0.5
+        )
     })
 
-    this.pageIndicator?.setText(`Page ${this.currentPage + 1} / ${totalPages}`)
-  }
-
-  private updateCursor(): void {
-    this.ensurePageForIndex()
-    if (!this.cursor) {
+    if (!this.cursor || selectedSlotIndex === -1) {
+      this.cursor?.setVisible(false)
       return
     }
 
-    const slotIndex = this.slotEntries.findIndex((slot) => slot.bossIndex === this.index)
-    if (slotIndex === -1) {
-      this.cursor.setVisible(false)
-      return
-    }
-
-    const slotPosition = this.slots[slotIndex]
-    if (!slotPosition) {
+    const slotPos = this.slots[selectedSlotIndex]
+    if (!slotPos) {
       this.cursor.setVisible(false)
       return
     }
 
     this.cursor.setVisible(true)
-    this.cursor.setPosition(this.snap(slotPosition.x), this.snap(slotPosition.y))
-    this.refreshInfo()
+    this.cursor.setPosition(slotPos.x, slotPos.y)
   }
 
-  private changePage(delta: number): void {
-    const totalPages = Math.max(1, Math.ceil(ORDERED_BOSSES.length / this.pageSize))
-    this.currentPage = (this.currentPage + delta + totalPages) % totalPages
+  private updatePreview(): void {
+    const stage = this.stages[this.index]
+    const entry = stage ? ORDERED_BOSSES.find((boss) => boss.id === stage.bossId) : null
+    if (!stage || !entry || !this.previewTitle || !this.bossNameText || !this.infoText || !this.detailsText) {
+      return
+    }
 
-    const start = this.currentPage * this.pageSize
-    const end = Math.min(start + this.pageSize - 1, ORDERED_BOSSES.length - 1)
-    this.index = Phaser.Math.Clamp(this.index, start, end)
-    this.logic.setIndex(this.index)
+    const blueprint = entry.blueprint
+    const reward = stage.rewardWeaponId ? blueprint.weaponReward : null
+    const goCount = this.saveData.gameOverCounts[stage.id] ?? 0
+    const isCleared = this.saveData.clearedBosses.includes(stage.id)
 
-    this.refreshPage()
-    this.updateCursor()
-    this.updatePreview()
+    this.previewTitle.setText(truncateLabel(stage.introCallout, 26))
+    this.bossNameText.setText(blueprint.codename)
+    this.infoText.setText(
+      `Element: ${blueprint.element}   Weak: ${entry.weakTo}\nArena: ${stage.arenaLabel}   Status: ${isCleared ? 'CLEARED' : 'ACTIVE'}`
+    )
+    this.detailsText.setText(
+      `Reward: ${truncateLabel(reward?.displayName ?? 'Tutorial intel', 20)}\n${truncateLabel(stage.description, 26)}\nGame Overs: ${goCount}`
+    )
   }
 
-  private confirm(): void {
+  private updateDebugSelectionState(): void {
+    const stage = this.stages[this.index]
+    this.selectedBossId = stage?.bossId ?? null
+    this.canConfirm = Boolean(stage)
+  }
+
+  private applyPostReturnState(): void {
+    const toastMessage = this.registry.get('ui.stageSelect.toast') as string | undefined
+    const focusBossId = this.registry.get('ui.stageSelect.focusBossId') as string | null | undefined
+    const requireConfirmRelease = Boolean(this.registry.get('ui.stageSelect.requireConfirmRelease'))
+    const returnReason = this.registry.get('ui.stageSelect.returnReason') as string | undefined
+
+    this.armConfirmAfterRelease = requireConfirmRelease
+    this.confirmArmed = !requireConfirmRelease
+    this.confirmArmAvailableAt = requireConfirmRelease ? this.time.now + 120 : 0
+    this.manualSelectionRequired = returnReason === 'victory'
+
+    if (focusBossId) {
+      const focusIndex = this.stages.findIndex((entry) => entry.id === focusBossId || entry.bossId === focusBossId)
+      if (focusIndex >= 0) {
+        const next = this.findNextUnclearedIndex(focusIndex)
+        this.setSelection(next ?? focusIndex)
+      }
+    }
+
+    if (toastMessage && toastMessage.trim().length > 0) {
+      this.toastHandle?.destroy(true)
+      this.toastHandle = showToast(this, toastMessage.trim(), 1800)
+    }
+
+    this.registry.remove('ui.stageSelect.toast')
+    this.registry.remove('ui.stageSelect.focusBossId')
+    this.registry.remove('ui.stageSelect.returnReason')
+    this.registry.remove('ui.stageSelect.requireConfirmRelease')
+  }
+
+  private findNextUnclearedIndex(fromIndex: number): number | null {
+    if (this.stages.length === 0) {
+      return null
+    }
+    for (let offset = 1; offset < this.stages.length; offset += 1) {
+      const index = (fromIndex + offset) % this.stages.length
+      const stageId = this.stages[index]?.id
+      if (stageId && !this.saveData.clearedBosses.includes(stageId)) {
+        return index
+      }
+    }
+    return null
+  }
+
+  private confirmSelection(): void {
     this.logic.setIndex(this.index)
     const transition = this.logic.confirm()
     if (!transition) {
       return
     }
 
-    const data = { ...(transition.data as Record<string, unknown>), stageId: transition.data.bossId }
+    AudioService.unlock()
+    AudioService.playSfx('ui_confirm')
+    this.startSceneTransition(transition.scene, transition.data as Record<string, unknown>)
+  }
 
-    this.requestedTransition = { scene: transition.scene, data }
+  private handleKeyboardConfirm(): void {
+    if (!this.confirmArmed || this.scene.isActive('SystemMenu')) {
+      return
+    }
+    if (this.manualSelectionRequired) {
+      this.manualSelectionRequired = false
+      this.toastHandle?.destroy(true)
+      this.toastHandle = showToast(this, 'Choose a stage, then confirm.', 900)
+      AudioService.playSfx('ui_move')
+      return
+    }
+    this.confirmSelection()
+  }
+
+  private launchCampaignStage(stageId: string): void {
+    const stage = getCampaignStage(stageId)
+    AudioService.unlock()
+    AudioService.playSfx('ui_confirm')
+    this.startSceneTransition('Game', {
+      stageId: stage.id,
+      bossId: stage.bossId,
+      runtimeBossConfigId: stage.runtimeBossConfigId
+    })
+  }
+
+  private launchFinalRoute(): void {
+    if (!isFinalRouteUnlocked(this.saveData)) {
+      this.toastHandle?.destroy(true)
+      AudioService.playSfx('ui_cancel')
+      this.toastHandle = showToast(this, 'Final route locked. Clear all 8 robot masters first.', 1400)
+      return
+    }
+    this.launchCampaignStage(FINAL_STAGE_ID)
+  }
+
+  private startSceneTransition(scene: string, data: Record<string, unknown>): void {
+    this.requestedTransition = { scene, data }
     this.transitionRequestedAt = performance.now()
-    if (!DEBUG_UI) {
-      // Immediately start the scene when debug overlay isn't intercepting for display.
-      const pending = this.requestedTransition
-      this.requestedTransition = null
-      this.transitionRequestedAt = 0
-      this.scene.start(pending.scene, data)
-    }
-  }
-
-  private refreshInfo(): void {
-    const entry = ORDERED_BOSSES[this.index]
-    if (!entry || !this.bossNameText || !this.elementText || !this.infoText) {
-      return
-    }
-
-    const blueprint = entry.blueprint
-    const reward = blueprint.weaponReward
-
-    this.bossNameText.setText(blueprint.codename)
-    this.elementText.setText(
-      `Type: ${blueprint.element}  •  Weak: ${entry.weakTo}  •  Resists: ${entry.strongAgainst}`
-    )
-    this.infoText.setText(`Arena: ${blueprint.arena}\nWeapon: ${reward.displayName}\n${reward.description}`)
-
-    this.layoutPreviewPanel()
-  }
-
-  private updatePreview(): void {
-    const entry = ORDERED_BOSSES[this.index]
-    if (!entry || !this.previewTitle || !this.previewDescription) {
-      return
-    }
-
-    const { blueprint } = entry
-    this.previewTitle.setText(blueprint.introCallout)
-    this.previewDescription.setText(
-      `Profile: ${blueprint.movementProfile.mobilityNotes}\nReward Tip: ${blueprint.weaponReward.tutorial}`
-    )
-
-    this.layoutPreviewPanel()
-  }
-
-  private registerSizing(text: Phaser.GameObjects.Text, minFontSize: number): void {
-    if (!text.getData('baseFontSize')) {
-      text.setData('baseFontSize', this.getCurrentFontSize(text))
-    }
-    text.setData('minFontSize', minFontSize)
-  }
-
-  private getCurrentFontSize(text: Phaser.GameObjects.Text): number {
-    const raw = text.style.fontSize
-    if (typeof raw === 'number') {
-      return raw
-    }
-    const parsed = parseFloat(raw ?? '12')
-    return Number.isFinite(parsed) ? parsed : 12
-  }
-
-  private getBaseFontSize(text: Phaser.GameObjects.Text): number {
-    const stored = text.getData('baseFontSize')
-    if (typeof stored === 'number') {
-      return stored
-    }
-    const current = this.getCurrentFontSize(text)
-    text.setData('baseFontSize', current)
-    return current
-  }
-
-  private getMinFontSize(text: Phaser.GameObjects.Text): number {
-    const stored = text.getData('minFontSize')
-    return typeof stored === 'number' ? stored : 8
-  }
-
-  private restoreBaseFontSize(text: Phaser.GameObjects.Text): void {
-    text.setFontSize(this.getBaseFontSize(text))
-  }
-
-  private fitTextWithinBounds(
-    text: Phaser.GameObjects.Text,
-    maxWidth: number,
-    maxHeight?: number
-  ): void {
-    this.restoreBaseFontSize(text)
-
-    const minFont = this.getMinFontSize(text)
-    let guard = 0
-    while (guard < 24 && text.displayWidth > maxWidth && this.getCurrentFontSize(text) > minFont) {
-      text.setFontSize(this.getCurrentFontSize(text) - 1)
-      guard += 1
-    }
-
-    if (typeof maxHeight === 'number') {
-      guard = 0
-      while (guard < 24 && text.displayHeight > maxHeight && this.getCurrentFontSize(text) > minFont) {
-        text.setFontSize(this.getCurrentFontSize(text) - 1)
-        guard += 1
-      }
-    }
-  }
-
-  private shrinkText(text: Phaser.GameObjects.Text, maxWidth: number): boolean {
-    const minFont = this.getMinFontSize(text)
-    const current = this.getCurrentFontSize(text)
-    if (current <= minFont) {
-      return false
-    }
-
-    text.setFontSize(current - 1)
-
-    let guard = 0
-    while (guard < 24 && text.displayWidth > maxWidth && this.getCurrentFontSize(text) > minFont) {
-      text.setFontSize(this.getCurrentFontSize(text) - 1)
-      guard += 1
-    }
-
-    return true
-  }
-
-  private positionPreviewTexts(
-    bounds: { top: number; height: number; width: number; x: number },
-    topPadding: number,
-    spacing: { tight: number; standard: number; roomy: number }
-  ): number {
-    if (!this.previewTitle || !this.bossNameText || !this.elementText || !this.previewDescription || !this.infoText) {
-      return bounds.top
-    }
-
-    let cursorY = bounds.top + topPadding
-
-    const applyPosition = (
-      text: Phaser.GameObjects.Text,
-      additionalSpacing: number
-    ): void => {
-      text.setX(bounds.x)
-      text.setY(this.snap(cursorY))
-      cursorY += text.displayHeight + additionalSpacing
-    }
-
-    applyPosition(this.previewTitle, spacing.standard)
-    applyPosition(this.bossNameText, spacing.tight)
-    applyPosition(this.elementText, spacing.standard)
-    applyPosition(this.previewDescription, spacing.roomy)
-    applyPosition(this.infoText, 0)
-
-    return cursorY
-  }
-
-  private layoutPreviewPanel(): void {
-    if (
-      !this.previewPanelBounds ||
-      !this.previewTitle ||
-      !this.bossNameText ||
-      !this.elementText ||
-      !this.previewDescription ||
-      !this.infoText
-    ) {
-      return
-    }
-
-    const bounds = this.previewPanelBounds
-    const innerWidth = bounds.width - 24
-
-    this.fitTextWithinBounds(this.previewTitle, innerWidth, 48)
-    this.fitTextWithinBounds(this.bossNameText, innerWidth, 40)
-    this.fitTextWithinBounds(this.elementText, innerWidth, 32)
-    this.fitTextWithinBounds(this.previewDescription, innerWidth, bounds.height * 0.35)
-    this.fitTextWithinBounds(this.infoText, innerWidth, bounds.height * 0.32)
-
-    const spacing = { tight: 6, standard: 12, roomy: 16 }
-    let iterations = 0
-    const maxBottom = bounds.top + bounds.height - 16
-
-    while (iterations < 12) {
-      const contentBottom = this.positionPreviewTexts(bounds, 16, spacing)
-      if (contentBottom <= maxBottom) {
-        break
-      }
-
-      if (this.shrinkText(this.infoText, innerWidth)) {
-        iterations += 1
-        continue
-      }
-
-      if (this.shrinkText(this.previewDescription, innerWidth)) {
-        iterations += 1
-        continue
-      }
-
-      break
-    }
-
-    this.positionPreviewTexts(bounds, 16, spacing)
-  }
-
-  private layoutSlotEntry(slot: SlotEntry): void {
-    const { rect, name, element } = slot
-    const innerWidth = this.cellWidth - 28
-
-    // [REGION: SELECT-FONT-FIX - BEGIN]
-    name.setScale(0.9)
-    element.setScale(0.82)
-    ;(name as any).maxWidth = innerWidth
-    ;(element as any).maxWidth = innerWidth
-    ;(name as any).setLetterSpacing?.(0)
-    ;(element as any).setLetterSpacing?.(0)
-    // [REGION: SELECT-FONT-FIX - END]
-
-    this.fitTextWithinBounds(name, innerWidth, this.cellHeight / 2)
-    this.fitTextWithinBounds(element, innerWidth, this.cellHeight / 2)
-
-    const spacing = 6
-    const totalHeight = name.displayHeight + spacing + element.displayHeight
-    const topY = rect.y - totalHeight / 2
-
-    name.setX(rect.x)
-    name.setY(this.snap(topY))
-
-    element.setX(rect.x)
-    element.setY(this.snap(topY + name.displayHeight + spacing))
+    this.scene.start(scene, data)
   }
 }

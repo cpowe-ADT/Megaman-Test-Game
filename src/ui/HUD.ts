@@ -7,11 +7,16 @@ export class HUD {
   private gWeapon: Phaser.GameObjects.Graphics
   private gBoss: Phaser.GameObjects.Graphics
   private tPlayer: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
+  private tWeapon: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tBoss: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tLives: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private playerSnapshot = { current: 0, max: 1 }
   private weaponSnapshot = { current: 0, max: 1 }
   private bossSnapshot = { current: 0, max: 1 }
+  private bossBarVisible = true
+  private playerName = 'PLAYER'
+  private weaponName = 'BUSTER'
+  private bossName = 'BOSS • ???'
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -69,17 +74,20 @@ export class HUD {
     this.gBoss = scene.add.graphics().setScrollFactor(0)
     this.root.add(this.gBoss)
 
-    this.tPlayer = mkText(20, 12, 'SENTINEL ROOK', 12)
+    this.tPlayer = mkText(20, 10, 'SENTINEL ROOK', 10)
     this.root.add(this.tPlayer)
 
-    this.tBoss = mkText(scene.scale.width - 20, 12, 'BOSS • ???', 12, 1, 0)
+    this.tWeapon = mkText(20, 34, 'WEAPON • BUSTER', 9)
+    this.root.add(this.tWeapon)
+
+    this.tBoss = mkText(scene.scale.width - 20, 10, 'BOSS • ???', 10, 1, 0)
     this.root.add(this.tBoss)
 
     this.tLives = mkText(
       scene.scale.width - 20,
       scene.scale.height - 12,
       'LIVES ×03',
-      12,
+      10,
       1,
       1
     )
@@ -87,8 +95,15 @@ export class HUD {
   }
 
   setNames(playerName: string, bossName: string): void {
-    this.tPlayer.setText(playerName.toUpperCase())
-    this.tBoss.setText(`BOSS • ${bossName.toUpperCase()}`)
+    this.playerName = this.truncateLabel(playerName.toUpperCase(), 16)
+    this.bossName = `BOSS • ${this.truncateLabel(bossName.toUpperCase(), 16)}`
+    this.tPlayer.setText(this.playerName)
+    this.tBoss.setText(this.bossName)
+  }
+
+  setWeaponName(weaponName: string): void {
+    this.weaponName = `WEAPON • ${this.truncateLabel(weaponName.toUpperCase(), 16)}`
+    this.tWeapon.setText(this.weaponName)
   }
 
   setLives(n: number): void {
@@ -113,26 +128,46 @@ export class HUD {
 
   updatePlayerHp(cur: number, max: number): void {
     this.playerSnapshot = { current: cur, max }
-    this.drawBar(this.gPlayer, 20, 26, 168, 10, max > 0 ? cur / max : 0)
+    this.drawBar(this.gPlayer, 20, 22, 156, 9, max > 0 ? cur / max : 0)
   }
 
   updateWeapon(cur: number, max: number): void {
     this.weaponSnapshot = { current: cur, max }
-    this.drawBar(this.gWeapon, 20, 40, 168, 8, max > 0 ? cur / max : 0)
+    this.drawBar(this.gWeapon, 20, 46, 156, 7, max > 0 ? cur / max : 0)
   }
 
   updateBossHp(cur: number, max: number): void {
     this.bossSnapshot = { current: cur, max }
-    const w = 190
+    const w = 176
     const x = this.scene.scale.width - (w + 20)
-    this.drawBar(this.gBoss, x, 26, w, 10, max > 0 ? cur / max : 0)
+    this.drawBar(this.gBoss, x, 22, w, 9, max > 0 ? cur / max : 0)
+    this.gBoss.setVisible(this.bossBarVisible)
+    this.tBoss.setVisible(this.bossBarVisible)
+  }
+
+  setBossBarVisible(visible: boolean): void {
+    this.bossBarVisible = visible
+    this.gBoss.setVisible(visible)
+    this.tBoss.setVisible(visible)
   }
 
   resize(): void {
-    this.tBoss.setPosition(this.scene.scale.width - 20, 12)
+    this.tBoss.setPosition(this.scene.scale.width - 20, 10)
     this.tLives.setPosition(this.scene.scale.width - 20, this.scene.scale.height - 12)
+    this.tPlayer.setPosition(20, 10)
+    this.tWeapon.setPosition(20, 34)
+    this.tPlayer.setText(this.playerName)
+    this.tWeapon.setText(this.weaponName)
+    this.tBoss.setText(this.bossName)
     this.updatePlayerHp(this.playerSnapshot.current, this.playerSnapshot.max)
     this.updateWeapon(this.weaponSnapshot.current, this.weaponSnapshot.max)
     this.updateBossHp(this.bossSnapshot.current, this.bossSnapshot.max)
+  }
+
+  private truncateLabel(text: string, maxChars: number): string {
+    if (text.length <= maxChars) {
+      return text
+    }
+    return `${text.slice(0, Math.max(1, maxChars - 1))}…`
   }
 }

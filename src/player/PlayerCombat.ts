@@ -1,0 +1,342 @@
+import Phaser from 'phaser'
+import type { PlayerFeatureFlags } from './featureFlags'
+import type { BlasterConfig, SwordConfig, DamageConfig, Direction8 } from './config'
+import type {
+  CombatSnapshot,
+  HitTier,
+  PlayerIntent,
+  PlayerRuntimeEvent,
+  ResolvedHitbox,
+  SpawnProjectileRequest
+} from './types'
+
+const FRAME_MS = 1000 / 60
+
+export function resolveEightDirection(
+  aim: { x: number; y: number },
+  facing: 1 | -1,
+  deadzone: number
+): Direction8 {
+  const xRaw = Math.abs(aim.x) < deadzone ? 0 : aim.x
+  const yRaw = Math.abs(aim.y) < deadzone ? 0 : aim.y
+  const x = xRaw === 0 && yRaw === 0 ? facing : xRaw
+  const y = yRaw
+
+  const horizontal = x >= 0 ? 'e' : 'w'
+  if (y === 0) {
+    return horizontal
+  }
+  if (y < 0) {
+    if (Math.abs(x) < deadzone) {
+      return 'n'
+    }
+    return (horizontal === 'e' ? 'ne' : 'nw') as Direction8
+  }
+  if (Math.abs(x) < deadzone) {
+    return 's'
+  }
+  return (horizontal === 'e' ? 'se' : 'sw') as Direction8
+}
+
+type DamageHooks = {
+  onDamageAccepted: (damage: number) => void
+  onKnockback: (vx: number, vy: number) => void
+}
+
+export class PlayerCombat {
+  private nextFireAt = 0
+  private charging = false
+  private chargeStartedAt = 0
+  private chargeLevel: 0 | 1 | 2 | 3 | 4 = 0
+
+  private slashDirection: Direction8 = 'e'
+  private slashPhase: 'startup' | 'active' | 'recovery' | null = null
+  private slashPhaseRemainingMs = 0
+  private slashGrounded = true
+  private slashHitboxFired = false
+
+  private iFramesRemainingMs = 0
+  private hitstunRemainingMs = 0
+  private hitstopRemainingFrames = 0
+  private pendingDamageTier: HitTier | undefined
+
+  private transientShotFired = false
+  private transientChargeReleased = false
+  private chargeCueLevel: 0 | 1 | 2 | 3 | 4 = 0
+
+  constructor(
+    private readonly player: Phaser.Physics.Arcade.Sprite,
+    private readonly flags: PlayerFeatureFlags,
+    private readonly blaster: BlasterConfig,
+    private readonly sword: SwordConfig,
+    private readonly damage: DamageConfig,
+    private readonly hooks: DamageHooks
+  ) {}
+
+  update(
+    intent: PlayerIntent,
+    now: number,
+    deltaMs: number,
+    facing: 1 | -1,
+    grounded: boolean,
+    dashing: boolean
+  ): { snapshot: CombatSnapshot; events: PlayerRuntimeEvent[] } {
+    const events: PlayerRuntimeEvent[] = []
+    this.transientShotFired = false
+    this.transientChargeReleased = false
+
+    this.iFramesRemainingMs = Math.max(0, this.iFramesRemainingMs - deltaMs)
+    this.hitstunRemainingMs = Math.max(0, this.hitstunRemainingMs - deltaMs)
+    this.nextFireAt = Math.max(this.nextFireAt, 0)
+
+    if (this.hitstopRemainingFrames > 0) {
+      this.hitstopRemainingFrames -= 1
+      return {
+        snapshot: this.createSnapshot(),
+        events
+      }
+    }
+
+    if (this.hitstunRemainingMs <= 0) {
+      this.pendingDamageTier = undefined
+    }
+
+    const canAct = this.hitstunRemainingMs <= 0
+
+    if (canAct) {
+      const canShoot = !dashing
+      if (canShoot && intent.shootPressed) {
+        if (this.flags.enableChargeShot) {
+          this.charging = true
+          this.chargeStartedAt = now
+          this.chargeLevel = 0
+          this.chargeCueLevel = 0
+          events.push({ type: 'vfx', key: 'fx_charge_aura_lv1' })
+          events.push({ type: 'sfx', key: 'charge_start' })
+        } else {
+          this.fireProjectile(events, 0, facing)
+        }
+      }
+
+      if (this.charging && intent.shootHeld) {
+        const nextChargeLevel = this.resolveChargeLevel(now - this.chargeStartedAt)
+        this.chargeLevel = nextChargeLevel
+        if (nextChargeLevel > 0 && nextChargeLevel > this.chargeCueLevel) {
+          this.chargeCueLevel = nextChargeLevel
+          events.push({ type: 'sfx', key: 'charge_loop' })
+        }
+      }
+
+      if (this.charging && intent.shootReleased) {
+        const level = this.flags.enableChargeShot ? this.resolveChargeLevel(now - this.chargeStartedAt) : 0
+        this.fireProjectile(events, level, facing)
+        this.charging = false
+        this.chargeLevel = 0
+        this.chargeCueLevel = 0
+        this.transientChargeReleased = true
+      }
+
+      const canSlash = this.flags.enableSword && !dashing
+      if (canSlash && intent.slashPressed && this.slashPhase == null) {
+        this.slashDirection = resolveEightDirection(intent.aim, facing, this.sword.aimDeadzone)
+        this.slashGrounded = grounded
+        this.slashPhase = 'startup'
+        this.slashPhaseRemainingMs = this.framesToMs(
+          this.getSwordWindow(grounded, this.slashDirection).startupFrames
+        )
+        this.slashHitboxFired = false
+        events.push({ type: 'vfx', key: `fx_sword_trail_dir_${this.slashDirection}` })
+        events.push({ type: 'sfx', key: 'sword_swing' })
+      }
+    }
+
+    this.updateSlashPhase(deltaMs, events)
+
+    return {
+      snapshot: this.createSnapshot(),
+      events
+    }
+  }
+
+  receiveDamage(damage: number, grounded: boolean, facing: 1 | -1, tier: HitTier = 'light'): boolean {
+    if (this.iFramesRemainingMs > 0) {
+      return false
+    }
+
+    this.hooks.onDamageAccepted(damage)
+    this.iFramesRemainingMs = this.damage.iFramesMs
+    this.hitstunRemainingMs = tier === 'heavy' ? this.damage.hitstunMs.heavy : this.damage.hitstunMs.light
+    this.pendingDamageTier = tier
+
+    const knockback = grounded ? this.damage.knockback.ground : this.damage.knockback.air
+    this.hooks.onKnockback(knockback.x * -facing, knockback.y)
+
+    if (this.flags.enableHitstop) {
+      this.hitstopRemainingFrames = tier === 'heavy' ? 4 : 2
+    }
+
+    if (this.blaster.chargeCancelOnHit) {
+      this.charging = false
+      this.chargeLevel = 0
+      this.chargeCueLevel = 0
+    }
+
+    return true
+  }
+
+  resetForRespawn(): void {
+    this.nextFireAt = 0
+    this.charging = false
+    this.chargeStartedAt = 0
+    this.chargeLevel = 0
+    this.slashDirection = 'e'
+    this.slashPhase = null
+    this.slashPhaseRemainingMs = 0
+    this.slashGrounded = true
+    this.slashHitboxFired = false
+    this.iFramesRemainingMs = 0
+    this.hitstunRemainingMs = 0
+    this.hitstopRemainingFrames = 0
+    this.pendingDamageTier = undefined
+    this.transientShotFired = false
+    this.transientChargeReleased = false
+    this.chargeCueLevel = 0
+  }
+
+  grantInvulnerability(ms: number): void {
+    this.iFramesRemainingMs = Math.max(this.iFramesRemainingMs, ms)
+    this.hitstunRemainingMs = 0
+    this.hitstopRemainingFrames = 0
+    this.pendingDamageTier = undefined
+  }
+
+  private createSnapshot(): CombatSnapshot {
+    return {
+      shotFired: this.transientShotFired,
+      chargeLevel: this.chargeLevel,
+      charging: this.charging,
+      chargeReleased: this.transientChargeReleased,
+      slashActive: this.slashPhase != null,
+      slashDirection: this.slashPhase != null ? this.slashDirection : undefined,
+      slashPhase: this.slashPhase ?? undefined,
+      hitstunRemainingMs: this.hitstunRemainingMs,
+      iFramesRemainingMs: this.iFramesRemainingMs,
+      hitstopRemainingFrames: this.hitstopRemainingFrames,
+      pendingDamageTier: this.pendingDamageTier
+    }
+  }
+
+  private updateSlashPhase(deltaMs: number, events: PlayerRuntimeEvent[]): void {
+    if (this.slashPhase == null) {
+      return
+    }
+
+    this.slashPhaseRemainingMs -= deltaMs
+    if (this.slashPhaseRemainingMs > 0) {
+      return
+    }
+
+    if (this.slashPhase === 'startup') {
+      this.slashPhase = 'active'
+      this.slashPhaseRemainingMs = this.framesToMs(
+        this.getSwordWindow(this.slashGrounded, this.slashDirection).activeFrames
+      )
+      if (!this.slashHitboxFired) {
+        const window = this.getSwordWindow(this.slashGrounded, this.slashDirection)
+        events.push({
+          type: 'hitbox',
+          request: {
+            shape: window.hitbox,
+            direction: this.slashDirection,
+            grounded: this.slashGrounded
+          }
+        })
+        events.push({ type: 'vfx', key: 'fx_hit_spark' })
+        if (this.flags.enableHitstop && window.hitstopFrames > 0) {
+          events.push({ type: 'hitstop', frames: window.hitstopFrames })
+        }
+        this.slashHitboxFired = true
+      }
+      return
+    }
+
+    if (this.slashPhase === 'active') {
+      this.slashPhase = 'recovery'
+      this.slashPhaseRemainingMs = this.framesToMs(
+        this.getSwordWindow(this.slashGrounded, this.slashDirection).recoveryFrames
+      )
+      return
+    }
+
+    this.slashPhase = null
+    this.slashPhaseRemainingMs = 0
+    this.slashHitboxFired = false
+  }
+
+  private fireProjectile(events: PlayerRuntimeEvent[], chargeLevel: 0 | 1 | 2 | 3 | 4, facing: 1 | -1): void {
+    if (this.player.scene.time.now < this.nextFireAt) {
+      return
+    }
+
+    const request: SpawnProjectileRequest =
+      chargeLevel === 0
+        ? {
+            type: 'pellet',
+            chargeLevel,
+            facing,
+            speed: this.blaster.pelletSpeed,
+            damage: this.blaster.pelletDamage,
+            scale: 1,
+            pierce: 0,
+            impactFxKey: 'fx_impact_small'
+          }
+        : {
+            type: 'charge',
+            chargeLevel,
+            facing,
+            speed: this.blaster.perLevelProjectile[chargeLevel].speed,
+            damage: this.blaster.perLevelProjectile[chargeLevel].damage,
+            scale: this.blaster.perLevelProjectile[chargeLevel].size,
+            pierce: this.blaster.perLevelProjectile[chargeLevel].pierce,
+            impactFxKey: this.blaster.perLevelProjectile[chargeLevel].impactFxKey
+          }
+
+    this.nextFireAt = this.player.scene.time.now + this.blaster.fireRateMs
+    this.transientShotFired = true
+
+    events.push({ type: 'projectile', request })
+    events.push({ type: 'vfx', key: 'fx_muzzle_small' })
+    events.push({ type: 'sfx', key: chargeLevel > 0 ? `shot_charge_lv${chargeLevel}` : 'shot_basic' })
+
+    if (this.flags.enableChargeShot && chargeLevel > 0) {
+      this.charging = false
+      this.chargeLevel = 0
+      this.chargeCueLevel = 0
+    }
+
+    if (this.flags.enableChargeShot && this.blaster.chargeCancelOnSlash && this.slashPhase != null) {
+      this.charging = false
+      this.chargeLevel = 0
+      this.chargeCueLevel = 0
+    }
+
+    this.player.setFlipX(facing === -1)
+  }
+
+  private resolveChargeLevel(heldMs: number): 0 | 1 | 2 | 3 | 4 {
+    const [l1, l2, l3, l4] = this.blaster.chargeThresholdsMs
+    if (heldMs >= l4) return 4
+    if (heldMs >= l3) return 3
+    if (heldMs >= l2) return 2
+    if (heldMs >= l1) return 1
+    return 0
+  }
+
+  private getSwordWindow(grounded: boolean, direction: Direction8) {
+    return grounded ? this.sword.windows.ground[direction] : this.sword.windows.air[direction]
+  }
+
+  private framesToMs(frames: number): number {
+    return Math.max(FRAME_MS, frames * FRAME_MS)
+  }
+}

@@ -1,0 +1,255 @@
+{
+  "frames": {
+    "tide_reaver/idle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/idle/001": {
+      "frame": {
+        "x": 52,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/idle/002": {
+      "frame": {
+        "x": 104,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/idle/003": {
+      "frame": {
+        "x": 156,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/move/000": {
+      "frame": {
+        "x": 208,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/move/001": {
+      "frame": {
+        "x": 260,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/move/002": {
+      "frame": {
+        "x": 312,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/move/003": {
+      "frame": {
+        "x": 364,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/shoot/000": {
+      "frame": {
+        "x": 416,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/shoot/001": {
+      "frame": {
+        "x": 468,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/shoot/002": {
+      "frame": {
+        "x": 520,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    },
+    "tide_reaver/shoot/003": {
+      "frame": {
+        "x": 572,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 52,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 52,
+        "h": 50
+      }
+    }
+  },
+  "meta": {
+    "app": "codex.rebuild_roster_runtime_atlases",
+    "version": "1.0",
+    "image": "tide_reaver.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 624,
+      "h": 50
+    },
+    "scale": "1"
+  }
+}

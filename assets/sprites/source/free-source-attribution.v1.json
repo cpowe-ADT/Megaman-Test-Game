@@ -1,0 +1,72 @@
+{
+  "version": "1",
+  "generatedAt": "2026-03-10T18:00:00-05:00",
+  "entries": [
+    {
+      "id": "boss-enemy-free-roster",
+      "family": "bosses-enemies",
+      "sourceUrl": "https://opengameart.org/content/mech-designs",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Mech Designs by AntumDeluge / contributors as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/bosses/boss_roster_sheet_free_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/*.png",
+        "assets/sprites/bosses/*.json",
+        "assets/sprites/enemies/*/*.png",
+        "assets/sprites/enemies/*/*.atlas.json"
+      ],
+      "notes": "Composite free roster sheet built from downloaded mech GIFs and palette-shifted per-slot variants for deterministic atlas generation."
+    },
+    {
+      "id": "projectile-robotfree-objects",
+      "family": "projectiles",
+      "sourceUrl": "https://opengameart.org/content/robot-2d-sprites",
+      "license": "CC-BY 3.0",
+      "attribution": "OpenGameArt: Robot 2D Sprites by azrielantistier.",
+      "localSourcePath": "assets/sprites/source/projectiles/projectile_robotfree_objects_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.atlas.json",
+        "assets/sprites/effects/effects_core/effects_core.png",
+        "assets/sprites/effects/effects_core/effects_core.atlas.json"
+      ],
+      "notes": "Curated object strip assembled from RobotFree bullet and muzzle sprites."
+    },
+    {
+      "id": "effects-explosion03",
+      "family": "effects",
+      "sourceUrl": "https://opengameart.org/content/16x16-explosion-animation",
+      "license": "CC-BY 4.0",
+      "attribution": "OpenGameArt: 16x16 Explosion Animation by bluecarrot16 / qubodup as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/projectiles/effects_explosion03_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/effects/effects_core/effects_core.png",
+        "assets/sprites/effects/effects_core/effects_core.atlas.json"
+      ]
+    },
+    {
+      "id": "effects-ring95",
+      "family": "effects",
+      "sourceUrl": "https://opengameart.org/content/magic-effect",
+      "license": "CC-BY 4.0",
+      "attribution": "OpenGameArt: Magic Effect by Cainos / bluecarrot16 as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/projectiles/effects_ring95_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "assets/sprites/effects/effects_core/effects_core.png"
+      ]
+    },
+    {
+      "id": "effects-aura38",
+      "family": "effects",
+      "sourceUrl": "https://opengameart.org/content/magic-effect",
+      "license": "CC-BY 4.0",
+      "attribution": "OpenGameArt: Magic Effect by Cainos / bluecarrot16 as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/projectiles/effects_aura38_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "assets/sprites/effects/effects_core/effects_core.png"
+      ]
+    }
+  ]
+}

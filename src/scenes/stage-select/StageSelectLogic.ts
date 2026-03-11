@@ -1,9 +1,9 @@
-import { ORDERED_BOSSES } from '../../bosses/roster'
+import { getRobotMasterStages } from '../../content/campaign'
 import { BossId } from '../../bosses/types'
 
 export type StageSelectTransition = {
   scene: 'Game'
-  data: { bossId: BossId }
+  data: { stageId: string; bossId: BossId; runtimeBossConfigId?: string }
 }
 
 export class StageSelectLogic {
@@ -14,12 +14,19 @@ export class StageSelectLogic {
   }
 
   confirm(): StageSelectTransition | null {
-    const entry = ORDERED_BOSSES[this.index]
-    if (!entry) {
+    const stage = getRobotMasterStages()[this.index]
+    if (!stage) {
       return null
     }
 
-    const transition: StageSelectTransition = { scene: 'Game', data: { bossId: entry.id } }
+    const transition: StageSelectTransition = {
+      scene: 'Game',
+      data: {
+        stageId: stage.id,
+        bossId: stage.bossId,
+        runtimeBossConfigId: stage.runtimeBossConfigId
+      }
+    }
     return transition
   }
 }

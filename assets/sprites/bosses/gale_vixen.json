@@ -1,0 +1,255 @@
+{
+  "frames": {
+    "gale_vixen/idle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/idle/001": {
+      "frame": {
+        "x": 46,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/idle/002": {
+      "frame": {
+        "x": 92,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/idle/003": {
+      "frame": {
+        "x": 138,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/move/000": {
+      "frame": {
+        "x": 184,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/move/001": {
+      "frame": {
+        "x": 230,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/move/002": {
+      "frame": {
+        "x": 276,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/move/003": {
+      "frame": {
+        "x": 322,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/shoot/000": {
+      "frame": {
+        "x": 368,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/shoot/001": {
+      "frame": {
+        "x": 414,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/shoot/002": {
+      "frame": {
+        "x": 460,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    },
+    "gale_vixen/shoot/003": {
+      "frame": {
+        "x": 506,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 46
+      }
+    }
+  },
+  "meta": {
+    "app": "codex.rebuild_roster_runtime_atlases",
+    "version": "1.0",
+    "image": "gale_vixen.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 552,
+      "h": 46
+    },
+    "scale": "1"
+  }
+}

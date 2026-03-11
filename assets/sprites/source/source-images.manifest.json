@@ -1,0 +1,138 @@
+{
+  "namingConvention": "<category>_<subject>_sheet_<variant>_<yyyymmdd>_<hhmmss>.png",
+  "sourceDir": "/Users/thristannewman/Downloads",
+  "copiedCount": 14,
+  "skippedCount": 0,
+  "missingCount": 0,
+  "copied": [
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_02_24 PM.png",
+      "dest": "assets/sprites/source/bosses/boss_roster_sheet_v1_20260207_200224.png",
+      "notes": "Boss+enemy reference roster sheet",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_02_24 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/bosses/boss_roster_sheet_v1_20260207_200224.png",
+      "sha1": "cd6073869d8612499fc33599075e819cb25ac48f",
+      "copiedAt": "2026-02-08T02:05:16.697Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_04_37 PM.png",
+      "dest": "assets/sprites/source/bosses/boss_roster_sheet_alt01_20260207_200437.png",
+      "notes": "Roster variant",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_04_37 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/bosses/boss_roster_sheet_alt01_20260207_200437.png",
+      "sha1": "cd6073869d8612499fc33599075e819cb25ac48f",
+      "copiedAt": "2026-02-08T02:05:16.704Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_05_58 PM.png",
+      "dest": "assets/sprites/source/bosses/boss_roster_sheet_alt02_20260207_200558.png",
+      "notes": "Roster variant",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_05_58 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/bosses/boss_roster_sheet_alt02_20260207_200558.png",
+      "sha1": "cd6073869d8612499fc33599075e819cb25ac48f",
+      "copiedAt": "2026-02-08T02:05:16.712Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_06_00 PM.png",
+      "dest": "assets/sprites/source/player/player_actions_sheet_v1_20260207_200600.png",
+      "notes": "Player action sheet",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_06_00 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/player/player_actions_sheet_v1_20260207_200600.png",
+      "sha1": "4f9b8637ef4710edda79789950a2f3047a3b13ba",
+      "copiedAt": "2026-02-08T02:05:16.718Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_08_05 PM.png",
+      "dest": "assets/sprites/source/player/player_actions_sheet_alt01_20260207_200805.png",
+      "notes": "Player action variant",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_08_05 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/player/player_actions_sheet_alt01_20260207_200805.png",
+      "sha1": "03d4aa009fa6d5a4d2bfa0b3756182cbba5219d5",
+      "copiedAt": "2026-02-08T02:05:16.726Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_10_17 PM.png",
+      "dest": "assets/sprites/source/bosses/sentinel_rook_actions_sheet_v1_20260207_201017.png",
+      "notes": "Sentinel Rook action sheet",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_10_17 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/bosses/sentinel_rook_actions_sheet_v1_20260207_201017.png",
+      "sha1": "03d4aa009fa6d5a4d2bfa0b3756182cbba5219d5",
+      "copiedAt": "2026-02-08T02:05:16.732Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_13_55 PM.png",
+      "dest": "assets/sprites/source/player/player_full_combat_sheet_v1_20260207_201355.png",
+      "notes": "Player+projectile combined sheet",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_13_55 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/player/player_full_combat_sheet_v1_20260207_201355.png",
+      "sha1": "281891b132cd1c4b7846743db72b993befee026c",
+      "copiedAt": "2026-02-08T02:05:16.740Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_21_15 PM.png",
+      "dest": "assets/sprites/source/enemies/enemy_gunner_bot_sheet_v1_20260207_202115.png",
+      "notes": "Green mech enemy sheet",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_21_15 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/enemies/enemy_gunner_bot_sheet_v1_20260207_202115.png",
+      "sha1": "281891b132cd1c4b7846743db72b993befee026c",
+      "copiedAt": "2026-02-08T02:05:16.747Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_23_14 PM.png",
+      "dest": "assets/sprites/source/enemies/enemy_shield_drone_sheet_v1_20260207_202314.png",
+      "notes": "Shield drone enemy sheet",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_23_14 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/enemies/enemy_shield_drone_sheet_v1_20260207_202314.png",
+      "sha1": "6ba3d3272b72f82af91cff82aca39648d27af635",
+      "copiedAt": "2026-02-08T02:05:16.755Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_36_43 PM.png",
+      "dest": "assets/sprites/source/enemies/enemy_shield_drone_sheet_alt01_20260207_203643.png",
+      "notes": "Shield drone variant",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_36_43 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/enemies/enemy_shield_drone_sheet_alt01_20260207_203643.png",
+      "sha1": "487eca52470175f4b07318593357a7324194fe55",
+      "copiedAt": "2026-02-08T02:05:16.760Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_36_46 PM.png",
+      "dest": "assets/sprites/source/enemies/enemy_gunner_bot_sheet_alt01_20260207_203646.png",
+      "notes": "Green mech variant",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_36_46 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/enemies/enemy_gunner_bot_sheet_alt01_20260207_203646.png",
+      "sha1": "7cbeb051ee63116709d7abab1c0f88ad5c198d96",
+      "copiedAt": "2026-02-08T02:05:16.768Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_36_56 PM.png",
+      "dest": "assets/sprites/source/projectiles/projectile_fx_sheet_v1_20260207_203656.png",
+      "notes": "Projectile and impact FX sheet",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_36_56 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/projectiles/projectile_fx_sheet_v1_20260207_203656.png",
+      "sha1": "6ba3d3272b72f82af91cff82aca39648d27af635",
+      "copiedAt": "2026-02-08T02:05:16.774Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_38_47 PM.png",
+      "dest": "assets/sprites/source/enemies/enemy_rock_cluster_sheet_v1_20260207_203847.png",
+      "notes": "Rock crawler/turret cluster",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_38_47 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/enemies/enemy_rock_cluster_sheet_v1_20260207_203847.png",
+      "sha1": "80fd9627cd045cafca63b49262890eb95de5d39f",
+      "copiedAt": "2026-02-08T02:05:16.783Z"
+    },
+    {
+      "source": "ChatGPT Image Feb 7, 2026 at 08_48_57 PM.png",
+      "dest": "assets/sprites/source/enemies/enemy_laser_turret_sheet_v1_20260207_204857.png",
+      "notes": "Laser turret variants",
+      "sourceAbsolute": "/Users/thristannewman/Downloads/ChatGPT Image Feb 7, 2026 at 08_48_57 PM.png",
+      "destAbsolute": "/Users/thristannewman/Desktop/MEGAMAN GAME/assets/sprites/source/enemies/enemy_laser_turret_sheet_v1_20260207_204857.png",
+      "sha1": "8de911359b08d58378d6c77d3b13c32bf0d8f2da",
+      "copiedAt": "2026-02-08T02:05:16.790Z"
+    }
+  ],
+  "skipped": [],
+  "missing": [],
+  "generatedAt": "2026-02-08T02:05:16.790Z"
+}

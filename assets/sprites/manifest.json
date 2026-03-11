@@ -1,0 +1,391 @@
+{
+  "version": "1",
+  "generatedAt": "2026-02-13",
+  "entries": [
+    {
+      "id": "boss-sentinel-rook",
+      "bossId": "sentinel_rook",
+      "atlasKey": "atlas_sentinel_rook",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/sentinel_rook.png",
+        "runtimeData": "/assets/sprites/bosses/sentinel_rook.json",
+        "localImagePath": "assets/sprites/bosses/sentinel_rook.png",
+        "localDataPath": "assets/sprites/bosses/sentinel_rook.json"
+      },
+      "notes": "Generated local placeholder atlas. Replace with production export when available."
+    },
+    {
+      "id": "boss-pyro-maw",
+      "bossId": "pyro_maw",
+      "atlasKey": "atlas_pyro_maw",
+      "frame": {
+        "width": 56,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/pyro_maw.png",
+        "runtimeData": "/assets/sprites/bosses/pyro_maw.json",
+        "localImagePath": "assets/sprites/bosses/pyro_maw.png",
+        "localDataPath": "assets/sprites/bosses/pyro_maw.json"
+      }
+    },
+    {
+      "id": "boss-tide-reaver",
+      "bossId": "tide_reaver",
+      "atlasKey": "atlas_tide_reaver",
+      "frame": {
+        "width": 52,
+        "height": 50
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/tide_reaver.png",
+        "runtimeData": "/assets/sprites/bosses/tide_reaver.json",
+        "localImagePath": "assets/sprites/bosses/tide_reaver.png",
+        "localDataPath": "assets/sprites/bosses/tide_reaver.json"
+      }
+    },
+    {
+      "id": "boss-volt-hopper",
+      "bossId": "volt_hopper",
+      "atlasKey": "atlas_volt_hopper",
+      "frame": {
+        "width": 48,
+        "height": 46
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/volt_hopper.png",
+        "runtimeData": "/assets/sprites/bosses/volt_hopper.json",
+        "localImagePath": "assets/sprites/bosses/volt_hopper.png",
+        "localDataPath": "assets/sprites/bosses/volt_hopper.json"
+      }
+    },
+    {
+      "id": "boss-basalt-titan",
+      "bossId": "basalt_titan",
+      "atlasKey": "atlas_basalt_titan",
+      "frame": {
+        "width": 60,
+        "height": 56
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/basalt_titan.png",
+        "runtimeData": "/assets/sprites/bosses/basalt_titan.json",
+        "localImagePath": "assets/sprites/bosses/basalt_titan.png",
+        "localDataPath": "assets/sprites/bosses/basalt_titan.json"
+      }
+    },
+    {
+      "id": "boss-ferro-blade",
+      "bossId": "ferro_blade",
+      "atlasKey": "atlas_ferro_blade",
+      "frame": {
+        "width": 50,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/ferro_blade.png",
+        "runtimeData": "/assets/sprites/bosses/ferro_blade.json",
+        "localImagePath": "assets/sprites/bosses/ferro_blade.png",
+        "localDataPath": "assets/sprites/bosses/ferro_blade.json"
+      }
+    },
+    {
+      "id": "boss-mire-wraith",
+      "bossId": "mire_wraith",
+      "atlasKey": "atlas_mire_wraith",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/mire_wraith.png",
+        "runtimeData": "/assets/sprites/bosses/mire_wraith.json",
+        "localImagePath": "assets/sprites/bosses/mire_wraith.png",
+        "localDataPath": "assets/sprites/bosses/mire_wraith.json"
+      }
+    },
+    {
+      "id": "boss-gale-vixen",
+      "bossId": "gale_vixen",
+      "atlasKey": "atlas_gale_vixen",
+      "frame": {
+        "width": 46,
+        "height": 46
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/gale_vixen.png",
+        "runtimeData": "/assets/sprites/bosses/gale_vixen.json",
+        "localImagePath": "assets/sprites/bosses/gale_vixen.png",
+        "localDataPath": "assets/sprites/bosses/gale_vixen.json"
+      }
+    },
+    {
+      "id": "boss-glacier-ronin",
+      "bossId": "glacier_ronin",
+      "atlasKey": "atlas_glacier_ronin",
+      "frame": {
+        "width": 50,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/glacier_ronin.png",
+        "runtimeData": "/assets/sprites/bosses/glacier_ronin.json",
+        "localImagePath": "assets/sprites/bosses/glacier_ronin.png",
+        "localDataPath": "assets/sprites/bosses/glacier_ronin.json"
+      }
+    },
+    {
+      "id": "enemies-enemy_gunner_bot",
+      "atlasKey": "atlas_enemy_gunner_bot",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.png",
+        "localDataPath": "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "player-player_main",
+      "atlasKey": "atlas_player_main",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/player/main/player_main.png",
+        "runtimeData": "/assets/sprites/player/main/player_main.atlas.json",
+        "localImagePath": "assets/sprites/player/main/player_main.png",
+        "localDataPath": "assets/sprites/player/main/player_main.atlas.json"
+      },
+      "notes": "Generated from source/player/player_actions_sheet_alt01_20260207_200805.png via deterministic bounding-rect extraction."
+    },
+    {
+      "id": "enemies-enemy_rocket_bot",
+      "atlasKey": "atlas_enemy_rocket_bot",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.png",
+        "localDataPath": "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_slicer_bot",
+      "atlasKey": "atlas_enemy_slicer_bot",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.png",
+        "localDataPath": "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_armored_bot",
+      "atlasKey": "atlas_enemy_armored_bot",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.png",
+        "localDataPath": "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_shock_hopper",
+      "atlasKey": "atlas_enemy_shock_hopper",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.png",
+        "localDataPath": "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_bouncer",
+      "atlasKey": "atlas_enemy_bouncer",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_bouncer/enemy_bouncer.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_bouncer/enemy_bouncer.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.png",
+        "localDataPath": "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_mine_bot",
+      "atlasKey": "atlas_enemy_mine_bot",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.png",
+        "localDataPath": "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_frost_turret",
+      "atlasKey": "atlas_enemy_frost_turret",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.png",
+        "localDataPath": "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_laser_eye",
+      "atlasKey": "atlas_enemy_laser_eye",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.png",
+        "localDataPath": "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_drone",
+      "atlasKey": "atlas_enemy_drone",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_drone/enemy_drone.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_drone/enemy_drone.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_drone/enemy_drone.png",
+        "localDataPath": "assets/sprites/enemies/enemy_drone/enemy_drone.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_fly_trap",
+      "atlasKey": "atlas_enemy_fly_trap",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.png",
+        "localDataPath": "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "enemies-enemy_shield_drone",
+      "atlasKey": "atlas_enemy_shield_drone",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.png",
+        "runtimeData": "/assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.atlas.json",
+        "localImagePath": "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.png",
+        "localDataPath": "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.atlas.json"
+      },
+      "notes": "Generated from sentinel_rook pixel template via deterministic hue remap. Replace with bespoke enemy sheets when available."
+    },
+    {
+      "id": "projectiles-projectiles_core",
+      "atlasKey": "atlas_projectiles_core",
+      "frame": {
+        "width": 20,
+        "height": 20
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "runtimeData": "/assets/sprites/projectiles/projectiles_core/projectiles_core.atlas.json",
+        "localImagePath": "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "localDataPath": "assets/sprites/projectiles/projectiles_core/projectiles_core.atlas.json"
+      },
+      "notes": "Generated deterministic pixel projectile atlas (v2 placeholder)."
+    },
+    {
+      "id": "effects-effects_core",
+      "atlasKey": "atlas_effects_core",
+      "frame": {
+        "width": 20,
+        "height": 20
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/effects/effects_core/effects_core.png",
+        "runtimeData": "/assets/sprites/effects/effects_core/effects_core.atlas.json",
+        "localImagePath": "assets/sprites/effects/effects_core/effects_core.png",
+        "localDataPath": "assets/sprites/effects/effects_core/effects_core.atlas.json"
+      },
+      "notes": "Generated deterministic pixel effects atlas (v2 placeholder)."
+    }
+  ]
+}

@@ -23,7 +23,7 @@ import {
 } from '../src/events'
 
 export type ProbeOutcome = {
-  mode: 'controller' | 'legacy'
+  mode: 'controller' | 'timer'
   passed: boolean
   shots: number
   firstShotMs?: number
@@ -95,7 +95,7 @@ const PROBE_BOSS_BLUEPRINT: BossBlueprint = {
   }
 }
 
-const MODE_SEQUENCE: Array<'controller' | 'legacy'> = ['controller', 'legacy']
+const MODE_SEQUENCE: Array<'controller' | 'timer'> = ['controller', 'timer']
 
 interface ProbeRuntime {
   outcome: ProbeOutcome
@@ -141,10 +141,10 @@ export class BossFireProbeScene extends Phaser.Scene {
   private modeIndex = 0
   private runtime?: ProbeRuntime
   private projectileGroup?: Phaser.Physics.Arcade.Group
-  private spawnProjectile!: (attackName: string, mode: 'controller' | 'legacy') => Phaser.GameObjects.GameObject | null
-  private results: Record<'controller' | 'legacy', ProbeOutcome | undefined> = {
+  private spawnProjectile!: (attackName: string, mode: 'controller' | 'timer') => Phaser.GameObjects.GameObject | null
+  private results: Record<'controller' | 'timer', ProbeOutcome | undefined> = {
     controller: undefined,
-    legacy: undefined
+    timer: undefined
   }
 
   constructor() {
@@ -168,7 +168,7 @@ export class BossFireProbeScene extends Phaser.Scene {
   private setupProjectileFactory(diagnostics: BossProjectileDiagnosticsState): void {
     const spawnCore = (
       attackName: string,
-      mode: 'controller' | 'legacy'
+      mode: 'controller' | 'timer'
     ): Phaser.GameObjects.GameObject | null => {
       if (!this.projectileGroup) {
         return null
@@ -232,14 +232,18 @@ export class BossFireProbeScene extends Phaser.Scene {
     )
   }
 
-  private prepareMode(mode: 'controller' | 'legacy'): void {
+  private prepareMode(mode: 'controller' | 'timer'): void {
     if (!this.textures.exists(BOSS_BULLET_TEXTURE_KEY)) {
       const tex = this.textures.createCanvas(BOSS_BULLET_TEXTURE_KEY, 4, 4)
-      const canvas = tex.getSourceImage() as HTMLCanvasElement
-      const ctx = canvas.getContext('2d')!
-      ctx.fillStyle = '#60a5fa'
-      ctx.fillRect(0, 0, 4, 4)
-      tex.refresh()
+      if (tex) {
+        const canvas = tex.getSourceImage() as HTMLCanvasElement
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.fillStyle = '#60a5fa'
+          ctx.fillRect(0, 0, 4, 4)
+          tex.refresh()
+        }
+      }
     }
 
     const diagnostics = ensurePlaceholderTexture(this)
@@ -365,11 +369,11 @@ export class BossFireProbeScene extends Phaser.Scene {
           id: PROBE_BOSS_BLUEPRINT.id,
           attack,
           timestamp: this.time.now,
-          mode: 'legacy'
+          mode: 'timer'
         }
         emitBossEvent(EVENTS.BOSS_ENTERED_ATTACK, payload)
         this.time.delayedCall(attack.telegraph.telegraphMs, () => {
-          this.executeAttack(attack.name, 'legacy')
+          this.executeAttack(attack.name, 'timer')
           const completePayload: BossAttackCompleteEvent = {
             id: PROBE_BOSS_BLUEPRINT.id,
             attackName: attack.name,
@@ -384,17 +388,17 @@ export class BossFireProbeScene extends Phaser.Scene {
             attackName: attack.name,
             nextAvailableMs: attack.cooldownMs,
             timestamp: this.time.now,
-            mode: 'legacy'
+            mode: 'timer'
           }
           emitBossEvent(EVENTS.BOSS_COOLDOWN_RESET, cooldownPayload)
         })
       }
     })
-    this.runtime.notes.push('legacy loop armed')
+    this.runtime.notes.push('timer loop armed')
     this.runtime.loopTimer = timer
   }
 
-  private executeAttack(attackName: string, mode: 'controller' | 'legacy'): void {
+  private executeAttack(attackName: string, mode: 'controller' | 'timer'): void {
     this.spawnProjectile(attackName, mode)
   }
 
@@ -440,7 +444,7 @@ export class BossFireProbeScene extends Phaser.Scene {
     }
   }
 
-  private finishMode(mode: 'controller' | 'legacy'): void {
+  private finishMode(mode: 'controller' | 'timer'): void {
     if (!this.runtime || this.runtime.outcome.mode !== mode) {
       return
     }
@@ -516,25 +520,25 @@ export class BossFireProbeScene extends Phaser.Scene {
       shots: 0,
       suspects: ['no_result']
     }
-    const legacy = this.results.legacy ?? {
-      mode: 'legacy',
+    const timer = this.results.timer ?? {
+      mode: 'timer',
       passed: false,
       shots: 0,
       suspects: ['no_result']
     }
-    console.table([controller, legacy])
-    const overall = controller.passed && legacy.passed ? 'PASS' : 'FAIL'
+    console.table([controller, timer])
+    const overall = controller.passed && timer.passed ? 'PASS' : 'FAIL'
     console.log(
       `[BOSS_PROBE] mode=controller passed=${controller.passed} shots=${controller.shots}` +
         (controller.firstShotMs != null ? ` firstShotMs=${controller.firstShotMs}` : '')
     )
     console.log(
-      `[BOSS_PROBE] mode=legacy     passed=${legacy.passed} shots=${legacy.shots}` +
-        (legacy.firstShotMs != null ? ` firstShotMs=${legacy.firstShotMs}` : '')
+      `[BOSS_PROBE] mode=timer      passed=${timer.passed} shots=${timer.shots}` +
+        (timer.firstShotMs != null ? ` firstShotMs=${timer.firstShotMs}` : '')
     )
     const summary = {
       controller,
-      legacy,
+      timer,
       overall
     }
     console.log(`BOSS_PROBE_RESULT=${JSON.stringify(summary)}`)
