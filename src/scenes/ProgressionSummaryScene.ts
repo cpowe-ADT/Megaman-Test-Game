@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import InputActions from '../input/InputActions'
 import { showToast } from '../core/navigation'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
 import {
@@ -200,16 +201,11 @@ export class ProgressionSummaryScene extends Phaser.Scene {
       void this.uploadTransport()
     }
 
-    this.input.keyboard?.on('keydown-C', copyHandler)
-    this.input.keyboard?.on('keydown-D', downloadHandler)
-    this.input.keyboard?.on('keydown-V', pasteHandler)
-    this.input.keyboard?.on('keydown-U', uploadHandler)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.input.keyboard?.off('keydown-C', copyHandler)
-      this.input.keyboard?.off('keydown-D', downloadHandler)
-      this.input.keyboard?.off('keydown-V', pasteHandler)
-      this.input.keyboard?.off('keydown-U', uploadHandler)
-    })
+    const actions = InputActions.forScene(this)
+    actions.onPressed('copyProgression', copyHandler)
+    actions.onPressed('downloadProgression', downloadHandler)
+    actions.onPressed('pasteProgression', pasteHandler)
+    actions.onPressed('uploadProgression', uploadHandler)
   }
 
   private addActionButton(

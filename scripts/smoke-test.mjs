@@ -4,6 +4,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { chromium } from 'playwright'
 import { assertPelletHitEvidence } from './smoke/assert-pellet-hit.mjs'
+import { runInputLifecycleScenario } from './smoke/input-lifecycle.mjs'
 
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT ?? 4173)
@@ -3374,6 +3375,9 @@ async function main() {
     )
     await executeSmokeScenario(summary, '14-completion-return-flow', () =>
       runCompletionReturnScenario('14-completion-return-flow')
+    )
+    await executeSmokeScenario(summary, '13e-input-source-lifecycle', () =>
+      runInputLifecycleScenario('13e-input-source-lifecycle', { openGameplayPage, closeGameplayPage, readState, waitForState, waitForPageCheck, advanceFrames, tapKey, titleUrl })
     )
     await executeSmokeScenario(summary, '15-menu-audio-and-input-stability', () =>
       runMenuAudioInputScenario('15-menu-audio-and-input-stability')

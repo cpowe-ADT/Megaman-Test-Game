@@ -42,6 +42,7 @@ Before considering a broader release or handoff complete:
 - `npm run verify` passes.
 - Any new content/schema changes validate cleanly.
 - Smoke automation reflects actual runtime behavior and writes `output/web-game-smoke/summary.json` with truthful per-scenario status.
+- Input lifecycle smoke must retain fast taps, keep held confirmation unarmed through scene return, isolate modal underlays, preserve fresh controls after repeated pause/resume, and restore debug hooks on Game reentry. Opening pause cancels pending charge without a deferred shot or damage-protection reset.
 - Saber-direction smoke must keep the locked animation direction, mirrored sprite facing, trail, and active hitbox aligned even if locomotion reverses during startup.
 - Projectile lifecycle smoke must prove that a deliberately stopped standard shot is recycled instead of remaining active and visible.
 - Short-enemy pellet smoke must retain the same live mine bot at 5→4 HP and attribute exactly one damage to one uncharged Buster shot; missing targets, charged shots, and unrelated damage must fail its evidence check.

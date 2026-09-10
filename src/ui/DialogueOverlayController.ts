@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import InputActions from '../input/InputActions'
 import {
   DialoguePlayback,
   type DialoguePlaybackLine,
@@ -49,25 +50,18 @@ export class DialogueOverlayController {
     this.container = scene.add.container(0, 0, [dim, panel, accent, this.speakerText, this.bodyText, this.progressText])
     this.container.setScrollFactor(0).setDepth(20000).setVisible(false)
 
-    const advanceHandler = (event: KeyboardEvent) => {
-      if (!this.isActive()) return
-      if (event.repeat || this.scene.time.now < this.nextAdvanceAtMs) return
-      event.preventDefault()
-      event.stopPropagation()
+    const advanceHandler = () => {
+      if (!this.isActive() || this.scene.time.now < this.nextAdvanceAtMs) return
       this.advance()
     }
     const pointerHandler = () => {
       if (this.isActive() && this.scene.time.now >= this.nextAdvanceAtMs) this.advance()
     }
-    scene.input.keyboard?.on('keydown-ENTER', advanceHandler)
-    scene.input.keyboard?.on('keydown-NUMPAD_ENTER', advanceHandler)
-    scene.input.keyboard?.on('keydown-SPACE', advanceHandler)
+    const unbindAdvance = InputActions.forScene(scene).onPressed('confirm', advanceHandler)
     panel.setInteractive({ useHandCursor: true })
     panel.on('pointerdown', pointerHandler)
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      scene.input.keyboard?.off('keydown-ENTER', advanceHandler)
-      scene.input.keyboard?.off('keydown-NUMPAD_ENTER', advanceHandler)
-      scene.input.keyboard?.off('keydown-SPACE', advanceHandler)
+      unbindAdvance()
       panel.off('pointerdown', pointerHandler)
       this.destroy()
     })

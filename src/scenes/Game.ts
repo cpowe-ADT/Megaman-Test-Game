@@ -40,7 +40,7 @@ import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP, getGameplayWorldBounds }
 import { STRICT_PIXEL_RENDER_POLICY } from '../config/renderPolicy'
 import { returnToStageSelect, showToast } from '../core/navigation'
 import { DigitalButtonPad } from '../input/DigitalButtonPad'
-import InputActions from '../input/InputActions'
+import InputActions, { type SceneInputActions } from '../input/InputActions'
 import { NewPlayerRuntime } from '../player/NewPlayerRuntime'
 import { applyPlayerBodyProfile } from '../player/PlayerBodyProfiles'
 import { PLAYER_GAMEPLAY_CONFIG, resolvePlayerPhysicsLimits } from '../player/config'
@@ -114,15 +114,7 @@ interface GameData {
   bossId: BossId
 }
 
-type ActionKeyMap = {
-  dash: Phaser.Input.Keyboard.Key
-  shoot: Phaser.Input.Keyboard.Key
-  saber: Phaser.Input.Keyboard.Key
-  cycleForward: Phaser.Input.Keyboard.Key
-  shoulderPrev: Phaser.Input.Keyboard.Key
-  shoulderNext: Phaser.Input.Keyboard.Key
-  modifier: Phaser.Input.Keyboard.Key
-}
+
 
 type BossArtVisuals = {
   atlasKey: string
@@ -130,9 +122,8 @@ type BossArtVisuals = {
 }
 
 export class Game extends Phaser.Scene {
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
+  private actions!: SceneInputActions
   private player!: Phaser.Physics.Arcade.Sprite
-  private actionKeys!: ActionKeyMap
   private playerBullets!: Phaser.Physics.Arcade.Group
   private bossBullets!: Phaser.Physics.Arcade.Group
   private projectileRegistry!: ProjectileRegistry
@@ -337,11 +328,8 @@ export class Game extends Phaser.Scene {
   private newPlayerRuntime?: NewPlayerRuntime
   private enemySpawner?: EnemySpawner
   private debugToggleHandler?: () => void
-  private preventScrollHandler?: (event: KeyboardEvent) => void
   private pauseOverlay?: Phaser.GameObjects.Container
   private paused = false
-  private jumpKey?: Phaser.Input.Keyboard.Key
-  private dropJumpHeld = false
   private playerMaxHp = 0
   private playerHp = 0
   private weaponEnergy = { current: 28, max: 28 }
@@ -1070,10 +1058,8 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    const jumpHeld = Boolean(this.jumpKey?.isDown)
-    const jumpPressed = jumpHeld && !this.dropJumpHeld
-    this.dropJumpHeld = jumpHeld
-    if (!jumpPressed || !this.cursors.down?.isDown) {
+    const input = this.actions.snapshot()
+    if (!input.jump.pressed || !input.aimDown.held) {
       return
     }
 
@@ -1452,16 +1438,15 @@ export class Game extends Phaser.Scene {
       arcadeWorld.debugGraphic?.setVisible?.(arcadeWorld.drawDebug)
     }
 
-    const keyboard = this.input.keyboard
-    if (keyboard) {
-      keyboard.on('keydown-BACKTICK', toggleOverlay)
-      keyboard.on('keydown-D', handleDump)
-      keyboard.on('keydown-BACKSLASH', handlePhysics)
+    if (this.actions) {
+      this.actions.onPressed('debugOverlay', toggleOverlay)
+      this.actions.onPressed('debugDump', handleDump)
+      this.actions.onPressed('debugPhysics', handlePhysics)
 
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        this.input.keyboard?.off('keydown-BACKTICK', toggleOverlay)
-        this.input.keyboard?.off('keydown-D', handleDump)
-        this.input.keyboard?.off('keydown-BACKSLASH', handlePhysics)
+        this._dev.initOnce = false
+        this._dev.entries.clear()
+        this._dev.tick = 0
         if (AUTOMATION.enabled) {
           if ((window as any).dump === dump) {
             delete (window as any).dump
@@ -1678,7 +1663,6 @@ export class Game extends Phaser.Scene {
       this.victoryModal?.destroy()
       this.victoryModal = undefined
       this.setPaused(false)
-      this.dropJumpHeld = false
     })
 
     const manager = this.scene.manager
@@ -1689,6 +1673,8 @@ export class Game extends Phaser.Scene {
       this.scene.add('GameOver', GameOverScene, false)
     }
 
+    this.actions = InputActions.forScene(this)
+    this.actions.deferGameplayWhile(() => this.hitstopRemainingFrames > 0)
     this.devInit()
     const loadFromSave = Boolean((data as any)?.loadFromSave)
     this.loadedFromSave = loadFromSave
@@ -1726,24 +1712,13 @@ export class Game extends Phaser.Scene {
     this.victoryModal?.destroy()
     this.victoryModal = undefined
 
-    InputActions.init(this)
     AudioService.playMusic(this, stage.id === FINAL_STAGE_ID ? 'final' : 'stage')
     const unlockAudio = () => AudioService.unlock()
-    this.input.keyboard?.once('keydown', unlockAudio)
     this.input.once('pointerdown', unlockAudio)
-    this.installScrollGuards()
     this.createPauseOverlay(width, height)
     this.dialogueOverlay = new DialogueOverlayController(this)
 
-    const escHandler = (event: KeyboardEvent) => {
-      event.preventDefault()
-      if (this.dialogueOverlay?.isActive()) {
-        this.dialogueOverlay.skip()
-        return
-      }
-      this.openSystemMenu()
-    }
-    this.input.keyboard?.on('keydown-ESC', escHandler)
+    this.actions.onPressed('pause', () => this.openSystemMenu())
     const resumeHandler = () => {
       this.setPaused(false)
       this.bossProjectileController?.onPauseChanged(false)
@@ -1758,7 +1733,6 @@ export class Game extends Phaser.Scene {
     this.physics.world.on('resume', physicsResumeHandler)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       AudioService.onSceneShutdown(this)
-      this.input.keyboard?.off('keydown-ESC', escHandler)
       this.events?.off?.(Phaser.Scenes.Events.RESUME, resumeHandler)
       this.events?.off?.(Phaser.Scenes.Events.WAKE, wakeHandler)
       this.physics?.world?.off?.('pause', physicsPauseHandler)
@@ -1766,16 +1740,7 @@ export class Game extends Phaser.Scene {
       this.dialogueOverlay = undefined
     })
 
-    if (this.input.keyboard) {
-      this.debugToggleHandler = () => this.debugOverlay?.toggle()
-      this.input.keyboard.on('keydown-BACKTICK', this.debugToggleHandler)
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        if (this.debugToggleHandler) {
-          this.input.keyboard?.off('keydown-BACKTICK', this.debugToggleHandler)
-          this.debugToggleHandler = undefined
-        }
-      })
-    }
+    this.actions.onPressed('debugOverlay', () => this.debugOverlay?.toggle())
 
     if (DEBUG_UI) {
       this.debugOverlay = new DebugOverlay(this)
@@ -1783,7 +1748,6 @@ export class Game extends Phaser.Scene {
     }
 
     this.jumpController.reset()
-    this.dropJumpHeld = false
     this.bossName = bossCodename
     this.bossHp = { current: bossMaxHp, max: bossMaxHp }
     this.weapons = buildWeaponOrder(this.progressionSave.weaponsUnlocked)
@@ -1986,14 +1950,13 @@ export class Game extends Phaser.Scene {
 
     this.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.handleWorldBounds)
 
-    this.cursors = this.input.keyboard!.createCursorKeys()
-    this.initializeActionKeys()
     this.virtualButtons = new DigitalButtonPad()
+    this.actions.setTouchSource(this.virtualButtons)
     this.touchControls?.destroy()
     this.touchControls = undefined
     if (this.playerFeatureFlags.enableTouchControls && GameplayTouchControls.shouldEnable()) {
       this.touchControls = new GameplayTouchControls(this, this.virtualButtons, {
-        onPause: () => this.openSystemMenu()
+        onPause: () => this.actions.pulse('pause')
       })
       this.touchControls.setVisible(true)
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -2004,8 +1967,7 @@ export class Game extends Phaser.Scene {
     this.newPlayerRuntime = new NewPlayerRuntime(
       this,
       this.player,
-      this.cursors,
-      this.actionKeys,
+      this.actions,
       this.playerFeatureFlags,
       {
         setAnimation: (key) => this.setPlayerAnimation(key),
@@ -2091,7 +2053,7 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    if (!this.player || !this.cursors) {
+    if (!this.player || !this.actions) {
       const now = this.time.now
       this.bossUpdate(now)
       this.enemySpawner?.update(now, delta)
@@ -2234,54 +2196,13 @@ export class Game extends Phaser.Scene {
 
     this.paused = paused
     if (paused) {
+      this.newPlayerRuntime?.cancelPendingCharge()
       this.physics.world.pause()
     } else {
       this.physics.world.resume()
     }
 
     this.pauseOverlay?.setVisible(paused)
-  }
-
-  private installScrollGuards(): void {
-    const keyboard = this.input.keyboard
-    if (!keyboard || this.preventScrollHandler) {
-      return
-    }
-
-    const blockedCodes = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
-    const handler = (event: KeyboardEvent) => {
-      if (blockedCodes.has(event.code)) {
-        event.preventDefault()
-      }
-    }
-
-    this.preventScrollHandler = handler
-    keyboard.on('keydown', handler)
-
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.input.keyboard?.off('keydown', handler)
-      if (this.preventScrollHandler === handler) {
-        this.preventScrollHandler = undefined
-      }
-    })
-  }
-
-  private initializeActionKeys(): void {
-    const keyboard = this.input.keyboard
-    if (!keyboard) {
-      throw new Error('Keyboard input not available')
-    }
-
-    this.actionKeys = {
-      dash: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z),
-      shoot: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X),
-      saber: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C),
-      cycleForward: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      shoulderPrev: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q),
-      shoulderNext: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
-      modifier: keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
-    }
-    this.jumpKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
   }
 
   private initializeHud(): void {
@@ -2322,14 +2243,11 @@ export class Game extends Phaser.Scene {
   }
 
   private handleWeaponCycling(): void {
-    if (
-      Phaser.Input.Keyboard.JustDown(this.actionKeys.cycleForward) ||
-      Phaser.Input.Keyboard.JustDown(this.actionKeys.shoulderNext)
-    ) {
+    if (this.actions.snapshot().weaponNext.pressed) {
       this.changeWeapon(1)
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.actionKeys.shoulderPrev)) {
+    if (this.actions.snapshot().weaponPrev.pressed) {
       this.changeWeapon(-1)
     }
   }

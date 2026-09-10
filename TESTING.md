@@ -31,6 +31,7 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
 ## Current Test Surface
 - `tests/`
   - Logic, contracts, scene flow, save systems, render policy, platform rules, sprite validation, debug-state helpers
+  - `tests/input-actions.test.ts` covers aggregated source edges, fast taps, immutable snapshots, hitstop queues/ownership, aliases, and persisted partial remaps
   - Dialogue schema/resolver coverage plus pure playback advance/skip parity
   - `tests/state-snapshot.test.ts` owns the shape/clamping contract for `combatDebug.player` feel traces
 - `src/boss/__tests__/`
@@ -38,6 +39,8 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
 - `scripts/smoke-test.mjs`
   - Browser smoke validation and artifact capture
   - Starts a dedicated Vite smoke server with HMR/watch reloads disabled for deterministic long-run scenarios
+  - `13e-input-source-lifecycle` covers repeated pause/resume, pending-charge cancellation, fast menu taps, held Enter/Escape across nested menu return, held/repeated Numpad confirmation, modal underlay isolation, and debug hooks across Game shutdown/reentry
+  - Required movement/touch scenarios `13d-movement-feel` and `4c-touch-controls` remain unchanged
   - Includes player sword coverage for grounded slash, air slash, boss slash, moving-slash alignment, and west-facing pose/hitbox alignment after locomotion reverses
   - Includes an uncharged Buster regression against the shortest ground enemy so pellet-height hit detection cannot silently regress
   - Scenario `29-pellet-hits-short-enemy` requires the same live mine bot at exactly 5→4 HP, one uncharged Buster shot, and an accepted one-damage player bullet hit; its `pellet-evidence.json` retains identity, damage, and body geometry so despawns cannot masquerade as hits

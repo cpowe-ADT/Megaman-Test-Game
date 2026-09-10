@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import InputActions from '../input/InputActions'
 
 type ReturnToStageSelectOptions = {
   reason?: string
@@ -8,6 +9,7 @@ type ReturnToStageSelectOptions = {
 }
 
 function safeResetInput(scene: Phaser.Scene): void {
+  InputActions.flushTransientState(scene)
   try {
     scene.input.keyboard?.resetKeys()
   } catch {

@@ -2,11 +2,11 @@
 
 ## Status: PARTIAL (list what is missing and why)
 
-Phase 1.0 is in progress. Craig approved STOP 1.0 and the baseline checkpoint is committed; the CI slice is implemented and locally validated. Phases 1.0b–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
+Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is complete with gates and review green in the EVAL-P1-010 commit containing this handoff; phases 1.1–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 
 ## Branch and final commit
 
-Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. Final prompt commit: pending; CI and later slices remain.
+Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: the `refactor: unify scene input actions (EVAL-P1-010)` commit containing this handoff; its exact SHA is printed at STOP 1.0b and will be pinned by the next slice. Final prompt commit: pending; later slices remain.
 
 ## What changed (by area, with file paths)
 
@@ -47,7 +47,7 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 - Engineer: opened `output/phase-1-0/focused-pellet-smoke/29-pellet-hits-short-enemy/shot-0.png`; the standing player and short green enemy are visible above the floor, with impact feedback between them and clear HUD separation.
 - Engineer: separately ran the repository develop-web-game client because its legacy smoke wrapper is no longer registered; opened `output/phase-1-0/skill-client/shot-0.png`, a clean 448×252 Pyro view with visible flame hazards, platforms, pickups, and the standing player.
 - Engineer: opened all seven final smoke contact sheets (`smoke-01.png` through `smoke-07.png`): weapon and HUD states remain readable, player/enemy/saber captures are visible, and the existing long touch-button overlay, truncated Stage Select titles, and checkpoint toasts remain clearly identifiable debt. `output/phase-1-0/contact-sheet-manifest.txt` indexes every sheet, including all 40 initial and all 40 final smoke captures.
-- Final pellet geometry: the live projectile sensor spans y=181–235 (14×54), overlapping the mine bot's y=226–236 hurtbox; its visible art spans y=198–218 above the floor at y=236. The same identified enemy ends at 4 HP after one accepted uncharged hit. Evidence: `output/web-game-smoke/29-pellet-hits-short-enemy/pellet-evidence.json`.
+- Final pellet geometry: the live projectile sensor spans y=181–235 (14×54), overlapping the mine bot's y=226–236 hurtbox; its visible art spans y=198–218 above the floor at y=236. The same identified enemy ends at 4 HP after one accepted uncharged hit. Evidence: `output/phase-1-0/final-smoke/29-pellet-hits-short-enemy/pellet-evidence.json`.
 - Checkpoint manifest: `output/phase-1-0/checkpoint-candidates.json` lists 108 modified tracked files (the original 107 plus the AGENTS automation wording correction) and 118 untracked project files. Complete path lists and the unapplied `proposed-gitignore.patch` are beside it.
 
 ### Phase 1.0 CI design memo — EVAL-P1-002
@@ -77,8 +77,45 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 - Isolating automatic type discovery to an empty repository-local type root reproduced seven errors (`fs`, `path`, and `process` declarations missing), exit 2; evidence is `output/phase-1-0/19-ci-node-types-red.log`.
 - Engineer correction: declare and lock `@types/node` for Node 22, then typecheck with only repository-local types before rerunning `npm run ci`. This closes a clean-runner dependency gap without changing gameplay.
 
+### Phase 1.0b design memo — EVAL-P1-010
+
+- Understand: combine keyboard and touch into one action state while preserving existing controls and menu behavior.
+- Understand: migrate scene/player consumers onto per-scene adapters and prove held-input ownership across overlays and transitions.
+- Director intent: preserve the 448×252 layout and all visible controls; this slice changes input ownership, not presentation.
+- Actions: moveLeft, moveRight, aimUp, aimDown, jump, dash, shoot, saber, weaponPrev, weaponNext, pause, confirm, cancel.
+- Defaults remain arrows, Space jump, Z dash, X shoot, C saber, D/E next weapon, Q previous, Enter/Numpad Enter/Space confirm, and Esc back.
+- Preserve existing supplemental menu, progression-transport, checkpoint, tutorial/final, and debug shortcuts through named central bindings.
+- Merge source-held values before deriving edges: a second source cannot retrigger an action or release it while another source holds.
+- Compute one immutable action snapshot per game frame; every gameplay consumer reads that same snapshot.
+- Preserve opposed-axis cancellation, eight-direction aim, and Down+Jump drop-through with second-jump suppression.
+- Preserve physical key state across transitions: held Numpad Enter cannot rearm Stage Select until its actual release.
+- Give only the top active input surface callbacks; SystemMenu leaves its underlying Phaser scene active, so isActive alone is insufficient.
+- Preserve Esc dialogue-skip priority and prevent the same press from closing a newly opened menu; resume cannot synthesize action presses.
+- Keep audio unlocking and browser-scroll prevention at the input adapter edge and preserve pointer controls and touch automation hooks.
+- Settings seam: a validated settings.v1 bindings store preserves future fields; full settings/options arrive later, with no remap UI or gamepad now.
+- Files: src/input/ActionState.ts, InputActions.ts, menuInputBinder.ts, src/systems/Settings.ts, player controller/runtime, scene bindings, dialogue presenter, navigation reset, tests, and smoke tooling/docs.
+- Red first: pure reducer/settings tests for source handoff, aliases, held/released edges, frame reuse, modal reactivation, and persisted remaps; missing modules fail before implementation.
+- Focused browser acceptance: unchanged 13d movement and 4c touch scenarios, repeated overlay pause/resume, and physical held-Numpad confirm rearming.
+- Full gates: tests, build, sprite validation, full smoke, and a separate develop-web-game client run with retained JSON/PNG evidence.
+- Review: root and QA inspect the input ownership seams and every produced screenshot before the slice commit.
+- Budget: Game.ts must shrink; no new @ts-nocheck. Record EVAL-P1-010 and stop before Phase 1.1.
+
+### Phase 1.0b implementation and review
+
+- `src/input/ActionState.ts` owns pure aggregated held/pressed/released state and immutable frame snapshots. `InputActions.ts` owns per-game physical keyboard state and per-scene adapters; scene/player consumers now read named actions. Supplemental shortcuts remain centralized.
+- `DigitalButtonPad` reports before/after changes without altering its public touch hooks. Fast keyboard/touch taps latch edges between render frames, and overlapping sources cannot retrigger or release an already-held union.
+- `src/systems/Settings.ts` persists validated bindings in `settings.v1`; partial remaps preserve earlier remaps and future settings fields. No remap UI or gamepad was added.
+- QA/Orchestrator found and Engineer fixed fast-tap loss, partial-remap replacement, stale held edges across paused-scene resume, and a charge release lost under an overlay. Gameplay charge cancellation now updates its cached diagnostic fields immediately.
+- Red evidence: missing modules first; then three focused failures for fast taps, partial remaps, and charge cancellation. A fixture used the wrong iframe field in `05-review-regressions-green.log`; the corrected fixture passed in `08-focused-tests.log`. Logs 11/12 used an unavailable tsx loader and are failed command attempts, not gate passes; the actual hitstop red is the captured browser failure/trace.
+- Unchanged touch scenario 4c failed because dash pressed at frame 333 during hitstop=2 was consumed before the grounded motor update at 335. `touch-trace.json` proves that boundary; gameplay edges now wait through hitstop, while pause/menu callbacks remain live and ownership changes discard pending gameplay edges. Movement tuning is unchanged.
+- `scripts/smoke/input-lifecycle.mjs` adds scenario 13e with three pause/charge/movement cycles, fast menu taps, nested held-Escape return, held/repeated Numpad StageSelect rearming, modal underlay isolation, and held-Enter Controls→Title return. Scenarios 13d and 4c are unchanged.
+- The first lifecycle attempt had an incorrect fixture path (`paused` versus `playerState.paused`), preserved under `lifecycle-fixture-failure`. The next run exposed `_dev.initOnce` surviving Game shutdown: cleared hooks failed to reinstall on reentry. The existing shutdown callback now resets initialization and stale debug entries; the unchanged hook assertion passes.
+- Orchestrator independently inspected all five focused-green and four lifecycle-green PNGs plus earlier failure captures. Evidence shows HP 8 preserved, paused iframe values unchanged, shots unchanged on resume then fresh shots 0→1→2→3, and held Numpad unarmed/nonpending until release. Engineer opened all 13 focused/failure/lifecycle images through three contact sheets indexed in `output/phase-1-0b/focused-contact-manifest.txt`.
+- Visible outcome: readable selected menu rows, Title, player/shot, and separated HUD. Existing oversized touch controls, StageSelect truncation/toast/preview overflow, fade captures, and private branding remain future-phase debt. No new art or layout change belongs to this slice.
+
 ## Decisions made (each with the reason and what it forecloses)
 
+- Proposed input decision for STOP 1.0b: cancel only the pending charge when opening the system menu; require a fresh trigger after resume. This avoids deferred firing or a stuck charge without resetting health, cooldowns, or invulnerability. It forecloses banking a charge through pause; Craig can revise this at the STOP.
 - No runtime sensor adjustment: the existing 14×54 Buster sensor demonstrably damages the shortest enemy; changing it without a current failure could regress platform/world-bound behavior.
 - Stronger test evidence: missing targets and other damage sources must fail, so a green smoke result proves actual uncharged pellet contact.
 - Craig approved STOP 1.0 verbatim: "approved yes commit it and you remeber i want oen tha tworks on graphics where you use your chat gpt image or editign skils to create ebtter vwtor files and  asytem doto doi it if you ahve to pgoram somethign to do it you can".
@@ -111,10 +148,10 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 | `SMOKE_ONLY=29-pellet-hits-short-enemy npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1 pass, 37 filter skips, exit 0 | `output/phase-1-0/08-focused-pellet-smoke.log`; `output/phase-1-0/focused-pellet-smoke/summary.json` | `35a1fba` |
 | `npm run test` (final) | `Test summary: 12 passed, 0 failed`; `# pass 185`; `# fail 0`; exit 0 | `output/phase-1-0/09-final-test.log` | `35a1fba` |
 | `npm run build` (final) | `✓ built in 3.48s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0/10-final-build.log` | `35a1fba` |
-| `npm run test:smoke` (final) | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; `Full smoke summary: 38/38 pass, 0 fail, 0 skipped.`; exit 0 | `output/phase-1-0/11-final-smoke.log`; `output/web-game-smoke/summary.json` | `35a1fba` |
+| `npm run test:smoke` (final) | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; `Full smoke summary: 38/38 pass, 0 fail, 0 skipped.`; exit 0 | `output/phase-1-0/11-final-smoke.log`; `output/phase-1-0/final-smoke/summary.json` | `35a1fba` |
 | Repository develop-web-game client + artifact check | `Skill client artifacts valid: Game state, shot-0.png, 0 browser-error files.`; exit 0 | `output/phase-1-0/12-skill-client.log`; `output/phase-1-0/skill-client/` | `35a1fba` |
 
-- `EVAL-P1-002`: PASS locally; CI implementation commit contains this row, and its exact SHA will be recorded by the next slice. Remote run URL awaits Craig’s push. Remaining prompt-01 evals: PENDING.
+- `EVAL-P1-002`: PASS locally at `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Remote run URL awaits Craig’s push. Remaining prompt-01 evals: PENDING.
 
 ### CI evidence — EVAL-P1-002
 
@@ -128,6 +165,28 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 
 - QA and Orchestrator reviewed the workflow and clean-resolution repair; no remaining local CI blocker. No new gameplay screenshots were produced for CI-only changes; Phase 1.0 baseline capture sets remain intact.
 - Graphics-production inputs to preserve for prompt 03: extend `scripts/sprites/build-image-prompts.mjs`, `tools/sprites/intake-chatgpt-images.mjs`, `tools/sprites/slice_sheet_to_atlas.py`, and `docs/content/sprite-imagegen.md`. Record explicit repository input paths, recipes, prompt/edit lineage, hashes, source files, and licensing; use deterministic cleanup, slicing, Phaser atlas generation, and pinned SVG rasterization with native 448×252 checks. Existing reviews remain STOP 3.1 (style/pipeline, boss-cell and tile-strip pilot), 3.3a (action sheets), 3.4 (hero), and 3.5 (logo/UI). No art has been produced in this slice.
+
+### Input evidence — EVAL-P1-010
+
+| Command / check | Result line / exit | Artifact | Commit |
+| --- | --- | --- | --- |
+| Initial pure input tests | Missing `src/input/ActionState.ts`; exit 1, expected red | `output/phase-1-0b/01-input-red.log` | input slice |
+| Focused review regressions before fixes | `# pass 13`; `# fail 3`; exit 1 | `output/phase-1-0b/04-review-regressions-red.log` | input slice |
+| Initial focused smoke | `Timed out waiting for state condition (touch dash to engage) after 3000ms`; exit 1 | `output/phase-1-0b/07-focused-smoke.log`; `focused-failure-1/summary.json`; `touch-trace.json` in the same phase directory | input slice |
+| `node --loader ./tools/ts-node-loader.mjs --test tests/input-actions.test.ts tests/player-combat.test.ts` | `# pass 19`; `# fail 0`; exit 0 | `output/phase-1-0b/18-final-focused-tests.log` | input slice |
+| `SMOKE_ONLY=4c-touch-controls,6-boss-clear-numpad-return,13d-movement-feel,15-menu-audio-and-input-stability npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 4 pass, 34 filter skips, exit 0 | `output/phase-1-0b/13-focused-smoke.log`; `output/phase-1-0b/focused-touch-green/summary.json` | input slice |
+| `SMOKE_ONLY=13e-input-source-lifecycle npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1 pass, 38 filter skips, exit 0 | `output/phase-1-0b/17-lifecycle-smoke.log`; `output/phase-1-0b/lifecycle-green/summary.json` | input slice |
+| `npm run test` | `Test summary: 12 passed, 0 failed`; `# pass 198`; `# fail 0`; exit 0 | `output/phase-1-0b/19-full-test.log` | input slice |
+| `npm run build` | `✓ built in 3.43s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0b/20-full-build.log` | input slice |
+| `npm run sprites:validate` | `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`; `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`; exit 0 | `output/phase-1-0b/21-sprites-validate.log` | input slice |
+| `npm run test:smoke` | `Full smoke summary: 39/39 pass, 0 fail, 0 skipped.`; exit 0 | `output/phase-1-0b/22-full-smoke.log`; `output/phase-1-0b/full-smoke/summary.json` | input slice |
+| Repository develop-web-game client and artifact assertion | `Skill client artifacts valid: Game state, shot-0.png, 0 browser-error files; player=(81,214), shots=1.`; exit 0 | `output/phase-1-0b/24-skill-client.log`; `output/phase-1-0b/skill-client/` | input slice |
+| Source budget and required smoke audit | `Scene input audit PASS: 0 scene-owned raw key reads across src/scenes/.`; `Game size audit PASS: 3846 lines (baseline 3928; net -82).`; required 4c/13d source unchanged; only existing suppression; exit 0 | `output/phase-1-0b/25-source-audit.log` | input slice |
+
+- The first separate skill client completed but captured StageSelect; this failed its Game-state assertion and is preserved in `skill-client-initial/` with `23-skill-client.log`. Extending startup and sending a second explicit confirm burst produced the final Game capture; no runtime change was made for client readiness.
+- Engineer opened all 44 final smoke PNGs through eight native-cell sheets (`output/phase-1-0b/contact-sheets/final-01.png` through `final-08.png`), plus the original charge-shot capture and both native skill PNGs. Dialogue, menu selection, weapon/saber shots, actor position, and separated HUD remain visible; known toast/title/touch/private-art debt is unchanged. Full PNG index: `output/phase-1-0b/final-contact-manifest.txt`.
+- QA closed final source review; Orchestrator and Director opened all eight final contact sheets covering all 44 PNGs, inspected the full 39-pass summary, and found no new input-related visual blocker. The whole final browser tree is preserved in `output/phase-1-0b/full-smoke/`; the contact manifest records original capture paths with identical preserved copies there. EVAL-P1-010 is PASS in the input commit containing this row.
+- No new multi-mission visuals, atlas, or boss presentation changed, so the already-inspected ten-mission baseline sweep remains the relevant visual evidence. The full verify components (sprites, tests, build, smoke) all passed separately for this input slice.
 
 ## Open risks and known debt
 

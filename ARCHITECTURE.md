@@ -25,6 +25,13 @@ The repo is mid-transition from a scene-owned prototype into a more modular runt
 - Attack facing is snapshotted at windup and shared by the boss sprite, motion, and projectile controller. Projectiles arm after the authored telegraph instead of starting dash or damage behavior at attack selection time.
 - Browser automation and validation tooling live in `scripts/` and depend on stable runtime hooks.
 
+## Input and Settings
+`src/input/ActionState.ts` derives one immutable held/pressed/released snapshot per frame from the combined keyboard and touch sources. `InputActions.ts` owns a physical keyboard hub per game and an adapter per scene; only the top active input surface receives actions, including when its underlay remains active. Fast taps are latched between frames. Pause/resume and scene handoffs retain physical held state so a held confirmation cannot launch the next screen.
+
+Scenes and the player controller consume named actions; keyboard aliases and supplemental menu/debug shortcuts stay at the adapter boundary. `DigitalButtonPad` retains its touch/automation interface. Gameplay edges wait through hitstop, but switching input ownership discards that queue. Opening the system menu cancels only a pending charge without firing; health, damage protection, cooldowns, and movement tuning are preserved. A fresh trigger starts the next charge after resume.
+
+`src/systems/Settings.ts` validates and persists bindings in `settings.v1`, merges partial binding changes, falls back safely for malformed data, and preserves other settings fields for the options slice. Rebinding UI and gamepad input remain prompt 04 work.
+
 ## Known Architectural Debt
 - `src/scenes/Game.ts` is still the main complexity hotspot and remains under `@ts-nocheck`.
 - The runtime currently mixes older scene-owned logic with newer subsystem modules.

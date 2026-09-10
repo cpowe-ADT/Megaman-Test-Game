@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { type SceneInputActions } from '../input/InputActions'
 import type { DigitalButtonPad } from '../input/DigitalButtonPad'
 import { AnimationManifest } from './AnimationManifest'
 import { PlayerAnimator } from './PlayerAnimator'
@@ -23,12 +24,6 @@ import type {
   ResolvedHitbox,
   SpawnProjectileRequest
 } from './types'
-
-type ActionKeys = {
-  dash: Phaser.Input.Keyboard.Key
-  shoot: Phaser.Input.Keyboard.Key
-  saber: Phaser.Input.Keyboard.Key
-}
 
 type RuntimeHooks = {
   setAnimation: (key: string) => void
@@ -66,18 +61,18 @@ export class NewPlayerRuntime {
   private lastDamageTier: HitTier | 'none' = 'none'
   private lastKnockback = { x: 0, y: 0 }
   private destroyed = false
+  private removeDebugInput?: () => void
   private readonly debugToggleHandler = () => this.debug.toggle()
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly player: Phaser.Physics.Arcade.Sprite,
-    cursors: Phaser.Types.Input.Keyboard.CursorKeys,
-    actionKeys: ActionKeys,
+    actions: SceneInputActions,
     private readonly flags: PlayerFeatureFlags,
     private readonly hooks: RuntimeHooks,
     private readonly virtualButtons?: DigitalButtonPad
   ) {
-    this.controller = new PlayerController(scene, cursors, actionKeys, virtualButtons)
+    this.controller = new PlayerController(scene, actions)
     this.motor = new PlayerMotor(player, PLAYER_GAMEPLAY_CONFIG.movement, PLAYER_GAMEPLAY_CONFIG.dash)
     this.combat = new PlayerCombat(
       player,
@@ -113,7 +108,7 @@ export class NewPlayerRuntime {
       this.debug.toggle(true)
     }
 
-    this.scene.input.keyboard?.on('keydown-F2', this.debugToggleHandler)
+    this.removeDebugInput = actions.onPressed('debugPlayer', this.debugToggleHandler)
   }
 
   update(now: number, deltaMs: number): void {
@@ -199,9 +194,16 @@ export class NewPlayerRuntime {
       return
     }
     this.destroyed = true
-    this.scene.input.keyboard?.off('keydown-F2', this.debugToggleHandler)
+    this.removeDebugInput?.()
     this.vfxSfx.destroy()
     this.debug.destroy()
+  }
+
+  cancelPendingCharge(): void {
+    this.combat.cancelPendingCharge()
+    if (this.lastCombatSnapshot) {
+      this.lastCombatSnapshot = { ...this.lastCombatSnapshot, charging: false, chargeLevel: 0, chargeElapsedMs: 0 }
+    }
   }
 
   suppressJumpFor(ms: number): void {

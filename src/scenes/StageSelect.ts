@@ -123,7 +123,6 @@ export class StageSelect extends Phaser.Scene {
 
   private debugOverlay?: DebugOverlay
   private debugToggleHandler?: () => void
-  private preventScrollHandler?: (event: KeyboardEvent) => void
 
   constructor() {
     super('StageSelect')
@@ -162,19 +161,9 @@ export class StageSelect extends Phaser.Scene {
     this.events.on(Phaser.Scenes.Events.RESUME, this.refreshFromSave, this)
 
     this.registerKeyboardShortcuts()
-    this.installScrollGuards()
     InputActions.init(this)
 
-    if (this.input.keyboard) {
-      this.debugToggleHandler = () => this.debugOverlay?.toggle()
-      this.input.keyboard.on('keydown-BACKTICK', this.debugToggleHandler)
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        if (this.debugToggleHandler) {
-          this.input.keyboard?.off('keydown-BACKTICK', this.debugToggleHandler)
-          this.debugToggleHandler = undefined
-        }
-      })
-    }
+    InputActions.forScene(this).onPressed('debugOverlay', () => this.debugOverlay?.toggle())
 
     if (DEBUG_UI) {
       this.debugOverlay = new DebugOverlay(this)
@@ -184,7 +173,7 @@ export class StageSelect extends Phaser.Scene {
 
   update(): void {
     if (this.armConfirmAfterRelease && !this.confirmArmed) {
-      if (this.time.now >= this.confirmArmAvailableAt && InputActions.confirmReleased()) {
+      if (this.time.now >= this.confirmArmAvailableAt && InputActions.forScene(this).confirmReleased()) {
         this.confirmArmed = true
         this.armConfirmAfterRelease = false
         this.confirmArmAvailableAt = 0
@@ -484,53 +473,28 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private registerKeyboardShortcuts(): void {
-    const keyboard = this.input.keyboard
-    if (!keyboard) {
-      return
-    }
-
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)?.on('down', () => this.move(-1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)?.on('down', () => this.move(1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP)?.on('down', () => this.move(-this.columns))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN)?.on('down', () => this.move(this.columns))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q)?.on('down', () => this.changePage(-1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)?.on('down', () => this.changePage(1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L)?.on('down', () => this.cycleCheckpoint(1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R)?.on('down', () => this.cycleCheckpoint(-1))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.T)?.on('down', () => this.launchCampaignStage(TUTORIAL_STAGE_ID))
-    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F)?.on('down', () => this.launchFinalRoute())
-    const enterHandler = (event: KeyboardEvent) => {
-      event.preventDefault()
-      this.handleKeyboardConfirm()
-    }
-    const numpadEnterHandler = (event: KeyboardEvent) => {
-      event.preventDefault()
-      this.handleKeyboardConfirm()
-    }
-    const escHandler = (event: KeyboardEvent) => {
-      event.preventDefault()
+    const actions = InputActions.forScene(this)
+    actions.onPressed('moveLeft', () => this.move(-1))
+    actions.onPressed('moveRight', () => this.move(1))
+    actions.onPressed('aimUp', () => this.move(-this.columns))
+    actions.onPressed('aimDown', () => this.move(this.columns))
+    actions.onPressed('pagePrev', () => this.changePage(-1))
+    actions.onPressed('pageNext', () => this.changePage(1))
+    actions.onPressed('checkpointNext', () => this.cycleCheckpoint(1))
+    actions.onPressed('checkpointPrev', () => this.cycleCheckpoint(-1))
+    actions.onPressed('tutorial', () => this.launchCampaignStage(TUTORIAL_STAGE_ID))
+    actions.onPressed('finalRoute', () => this.launchFinalRoute())
+    actions.onPressed('confirm', () => this.handleKeyboardConfirm())
+    actions.onPressed('cancel', () => {
       if (!this.scene.isActive('SystemMenu')) {
-        AudioService.unlock()
         AudioService.playSfx('ui_cancel')
         this.scene.launch('SystemMenu', { sourceScene: 'StageSelect' })
       }
-    }
-
-    keyboard.on('keydown-ENTER', enterHandler)
-    keyboard.on('keydown-NUMPAD_ENTER', numpadEnterHandler)
-    keyboard.on('keydown-SPACE', enterHandler)
-    keyboard.on('keydown-ESC', escHandler)
-
+    })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.events.off(Phaser.Scenes.Events.RESUME, this.refreshFromSave, this)
-      try {
-        keyboard.off('keydown-ENTER', enterHandler)
-        keyboard.off('keydown-NUMPAD_ENTER', numpadEnterHandler)
-        keyboard.off('keydown-SPACE', enterHandler)
-        keyboard.off('keydown-ESC', escHandler)
-      } catch {
-        // Keyboard plugin may already be torn down during scene shutdown.
-      }
+      this.toastHandle?.destroy(true)
+      this.toastHandle = undefined
     })
   }
 
@@ -576,32 +540,6 @@ export class StageSelect extends Phaser.Scene {
     this.setSelection(this.index)
     this.updatePreview()
     this.updateDebugSelectionState()
-  }
-
-  private installScrollGuards(): void {
-    const keyboard = this.input.keyboard
-    if (!keyboard || this.preventScrollHandler) {
-      return
-    }
-
-    const blockedCodes = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
-    const handler = (event: KeyboardEvent) => {
-      if (blockedCodes.has(event.code)) {
-        event.preventDefault()
-      }
-    }
-
-    this.preventScrollHandler = handler
-    keyboard.on('keydown', handler)
-
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.input.keyboard?.off('keydown', handler)
-      if (this.preventScrollHandler === handler) {
-        this.preventScrollHandler = undefined
-      }
-      this.toastHandle?.destroy(true)
-      this.toastHandle = undefined
-    })
   }
 
   private move(delta: number): void {

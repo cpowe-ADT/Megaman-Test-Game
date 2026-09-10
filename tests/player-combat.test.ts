@@ -172,3 +172,17 @@ test('PlayerCombat accepts damage after i-frames expire and supports fatal bypas
   )
   assert.deepEqual(damageAccepted, [1, 1, 8])
 })
+
+test('modal charge cancellation leaves invulnerability intact and produces no deferred shot', () => {
+  const { combat } = createCombat({ chargeShot: true })
+  combat.grantInvulnerability(1000)
+  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 0, 0, 1, true, false)
+  combat.cancelPendingCharge()
+  const resumed = combat.update(createIntent({ shootReleased: true }), 800, 0, 1, true, false)
+  assert.equal(resumed.snapshot.charging, false)
+  assert.equal(resumed.snapshot.iFramesRemainingMs, 1000)
+  assert.equal(projectileEvents(resumed.events).length, 0)
+  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 900, 0, 1, true, false)
+  const next = combat.update(createIntent({ shootReleased: true }), 950, 0, 1, true, false)
+  assert.equal(projectileEvents(next.events).length, 1)
+})

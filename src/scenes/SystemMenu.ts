@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import AudioService from '../audio'
+import InputActions from '../input/InputActions'
 import { showToast } from '../core/navigation'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
 import { Save } from '../systems/Save'
@@ -85,18 +86,15 @@ export class SystemMenu extends Phaser.Scene {
   }
 
   private registerInput(): void {
-    const keyboard = this.input.keyboard
-    if (!keyboard) {
-      return
-    }
+    const actions = InputActions.forScene(this)
 
-    keyboard.on('keydown-UP', () => {
+    actions.onPressed('aimUp', () => {
       AudioService.unlock()
       AudioService.playSfx('ui_move')
       this.index = selectMenuIndex(this.index, -1, this.options.length)
       this.updateCursor()
     })
-    keyboard.on('keydown-DOWN', () => {
+    actions.onPressed('aimDown', () => {
       AudioService.unlock()
       AudioService.playSfx('ui_move')
       this.index = selectMenuIndex(this.index, 1, this.options.length)

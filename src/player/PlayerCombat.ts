@@ -208,6 +208,14 @@ export class PlayerCombat {
     return { accepted: true, events }
   }
 
+  cancelPendingCharge(): void {
+    this.charging = false
+    this.chargeStartedAt = 0
+    this.chargeLevel = 0
+    this.chargeCueLevel = 0
+    this.chargeElapsedMs = 0
+  }
+
   resetForRespawn(): void {
     this.nextFireAt = 0
     this.charging = false

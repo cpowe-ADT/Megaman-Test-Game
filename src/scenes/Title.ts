@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import AudioService from '../audio'
+import InputActions from '../input/InputActions'
 import { countClearedRobotMasters, getCampaignStage, TUTORIAL_STAGE_ID } from '../content/campaign'
 import { AUTOMATION } from '../config/automation'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
@@ -152,12 +153,8 @@ export class Title extends Phaser.Scene {
       this.startTutorial()
     }
     const controlsHandler = () => this.openControls()
-    this.input.keyboard?.on('keydown-N', newCampaignHandler)
-    this.input.keyboard?.on('keydown-C', controlsHandler)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.input.keyboard?.off('keydown-N', newCampaignHandler)
-      this.input.keyboard?.off('keydown-C', controlsHandler)
-    })
+    InputActions.forScene(this).onPressed('newCampaign', newCampaignHandler)
+    InputActions.forScene(this).onPressed('controls', controlsHandler)
   }
 
   private openControls(): void {
