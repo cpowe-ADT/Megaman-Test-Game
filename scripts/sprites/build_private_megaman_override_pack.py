@@ -8,7 +8,7 @@ from collections import Counter, deque
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -77,6 +77,9 @@ def determine_background_color(image: Image.Image) -> Tuple[int, int, int]:
     return Counter(rgb_samples).most_common(1)[0][0]
 
 
+HIGHLIGHT_BOX_COLOR: Tuple[int, int, int] = (84, 165, 75)
+
+
 def keyed_transparent(image: Image.Image) -> Image.Image:
     rgba = image.convert("RGBA")
     bg = determine_background_color(rgba)
@@ -114,6 +117,14 @@ def keyed_transparent(image: Image.Image) -> Image.Image:
         queue.append((x - 1, y))
         queue.append((x, y + 1))
         queue.append((x, y - 1))
+
+    # Some sheets draw a flat green highlight box behind certain frames; the flood fill never reaches
+    # it because sprites enclose it. Key that exact green everywhere (tight tolerance, flat color).
+    for y in range(out.height):
+        for x in range(out.width):
+            pixel = pixels[x, y]
+            if pixel[3] and close_enough(pixel, HIGHLIGHT_BOX_COLOR, tolerance=8):
+                pixels[x, y] = (0, 0, 0, 0)
 
     return out
 
@@ -436,8 +447,13 @@ def replace_player_group(
     for position, component_index in enumerate(group_spec["indices"]):
         if position >= len(target_names):
             break
+        component = components[component_index]
+        if group_spec.get("flipX"):
+            # Some rows of the ripped sheet (the dash set) are stored facing left; the runtime flips
+            # by facing, so mirror them here to match the right-facing convention of every other pose.
+            component = ImageOps.mirror(component)
         frame_images[target_names[position]] = render_to_frame(
-            components[component_index],
+            component,
             frame_w=PLAYER_FRAME_W,
             frame_h=PLAYER_FRAME_H,
             baseline_y=PLAYER_BASELINE_Y,

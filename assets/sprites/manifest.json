@@ -1,14 +1,14 @@
 {
   "version": "1",
-  "generatedAt": "2026-03-13",
+  "generatedAt": "2026-09-10",
   "entries": [
     {
       "id": "boss-sentinel-rook",
       "bossId": "sentinel_rook",
       "atlasKey": "atlas_sentinel_rook",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -17,15 +17,15 @@
         "localImagePath": "assets/sprites/bosses/sentinel_rook.png",
         "localDataPath": "assets/sprites/bosses/sentinel_rook.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_sentinel_rook_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-pyro-maw",
       "bossId": "pyro_maw",
       "atlasKey": "atlas_pyro_maw",
       "frame": {
-        "width": 56,
-        "height": 48
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -34,15 +34,15 @@
         "localImagePath": "assets/sprites/bosses/pyro_maw.png",
         "localDataPath": "assets/sprites/bosses/pyro_maw.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_pyro_maw_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-tide-reaver",
       "bossId": "tide_reaver",
       "atlasKey": "atlas_tide_reaver",
       "frame": {
-        "width": 52,
-        "height": 50
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -51,15 +51,15 @@
         "localImagePath": "assets/sprites/bosses/tide_reaver.png",
         "localDataPath": "assets/sprites/bosses/tide_reaver.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_tide_reaver_sheet_hf_v1_20260910_b.png."
     },
     {
       "id": "boss-volt-hopper",
       "bossId": "volt_hopper",
       "atlasKey": "atlas_volt_hopper",
       "frame": {
-        "width": 48,
-        "height": 46
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -68,15 +68,15 @@
         "localImagePath": "assets/sprites/bosses/volt_hopper.png",
         "localDataPath": "assets/sprites/bosses/volt_hopper.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_volt_hopper_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-basalt-titan",
       "bossId": "basalt_titan",
       "atlasKey": "atlas_basalt_titan",
       "frame": {
-        "width": 60,
-        "height": 56
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -85,15 +85,15 @@
         "localImagePath": "assets/sprites/bosses/basalt_titan.png",
         "localDataPath": "assets/sprites/bosses/basalt_titan.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_basalt_titan_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-ferro-blade",
       "bossId": "ferro_blade",
       "atlasKey": "atlas_ferro_blade",
       "frame": {
-        "width": 50,
-        "height": 48
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -102,15 +102,15 @@
         "localImagePath": "assets/sprites/bosses/ferro_blade.png",
         "localDataPath": "assets/sprites/bosses/ferro_blade.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_ferro_blade_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-mire-wraith",
       "bossId": "mire_wraith",
       "atlasKey": "atlas_mire_wraith",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -119,15 +119,15 @@
         "localImagePath": "assets/sprites/bosses/mire_wraith.png",
         "localDataPath": "assets/sprites/bosses/mire_wraith.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_mire_wraith_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-gale-vixen",
       "bossId": "gale_vixen",
       "atlasKey": "atlas_gale_vixen",
       "frame": {
-        "width": 46,
-        "height": 46
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -136,15 +136,15 @@
         "localImagePath": "assets/sprites/bosses/gale_vixen.png",
         "localDataPath": "assets/sprites/bosses/gale_vixen.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_gale_vixen_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-glacier-ronin",
       "bossId": "glacier_ronin",
       "atlasKey": "atlas_glacier_ronin",
       "frame": {
-        "width": 50,
-        "height": 48
+        "width": 64,
+        "height": 64
       },
       "status": "ready",
       "source": {
@@ -153,7 +153,7 @@
         "localImagePath": "assets/sprites/bosses/glacier_ronin.png",
         "localDataPath": "assets/sprites/bosses/glacier_ronin.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_glacier_ronin_sheet_hf_v1_20260910.png."
     },
     {
       "id": "boss-omega-core",
@@ -170,7 +170,7 @@
         "localImagePath": "assets/sprites/bosses/omega_core.png",
         "localDataPath": "assets/sprites/bosses/omega_core.json"
       },
-      "notes": "Original Omega Core pixel-art source generated with the built-in image-generation workflow, chroma-keyed locally, and assembled into deterministic idle/move/shoot frames."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_omega_core_sheet_hf_v1_20260910.png."
     },
     {
       "id": "enemies-enemy_gunner_bot",

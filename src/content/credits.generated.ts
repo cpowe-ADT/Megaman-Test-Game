@@ -20,5 +20,15 @@ export const ASSET_CREDITS: readonly string[] = [
   "Art: OpenGameArt: Mech Designs by AntumDeluge / contributors as listed on the source page. (CC0)",
   "Art: OpenGameArt: Robot 2D Sprites by azrielantistier. (CC-BY 3.0)",
   "Art: OpenGameArt: 16x16 Explosion Animation by bluecarrot16 / qubodup as listed on the source page. (CC-BY 4.0)",
-  "Art: OpenGameArt: Magic Effect by Cainos / bluecarrot16 as listed on the source page. (CC-BY 4.0)"
+  "Art: OpenGameArt: Magic Effect by Cainos / bluecarrot16 as listed on the source page. (CC-BY 4.0)",
+  "Art: Original Tide Reaver art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Sentinel Rook art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Pyro Maw art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Volt Hopper art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Basalt Titan art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Ferro Blade art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Mire Wraith art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Gale Vixen art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Glacier Ronin art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Omega Core art, generated with Higgsfield (gpt_image_2) for this project (original-generated)"
 ]

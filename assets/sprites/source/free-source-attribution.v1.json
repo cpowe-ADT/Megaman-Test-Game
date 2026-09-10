@@ -185,6 +185,136 @@
         "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
         "assets/sprites/effects/effects_core/effects_core.png"
       ]
+    },
+    {
+      "id": "boss-tide-reaver-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Tide Reaver art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_tide_reaver_sheet_hf_v1_20260910_b.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/tide_reaver.png",
+        "assets/sprites/bosses/tide_reaver.json"
+      ],
+      "notes": "Variant a kept beside it as an alternate. Cut with scripts/sprites/hf_sheet_to_atlas.py. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-sentinel-rook-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Sentinel Rook art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_sentinel_rook_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/sentinel_rook.png",
+        "assets/sprites/bosses/sentinel_rook.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 2e7dbc9b-9959-4c8d-b657-c33aca77f4c8. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-pyro-maw-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Pyro Maw art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_pyro_maw_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/pyro_maw.png",
+        "assets/sprites/bosses/pyro_maw.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 17b82743-3547-487c-b71f-2a58e08fd872. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-volt-hopper-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Volt Hopper art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_volt_hopper_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/volt_hopper.png",
+        "assets/sprites/bosses/volt_hopper.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 756a25cf-96db-4ad2-8de8-d88df727c625. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-basalt-titan-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Basalt Titan art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_basalt_titan_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/basalt_titan.png",
+        "assets/sprites/bosses/basalt_titan.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b9ff4612-9409-4462-a736-1db6b01270d5. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-ferro-blade-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Ferro Blade art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_ferro_blade_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/ferro_blade.png",
+        "assets/sprites/bosses/ferro_blade.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 1c731281-78f6-485b-afd8-7d1841a141e2. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-mire-wraith-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Mire Wraith art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_mire_wraith_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/mire_wraith.png",
+        "assets/sprites/bosses/mire_wraith.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job ca5cb1d7-b07c-4b15-bd9d-8b8065383049. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-gale-vixen-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Gale Vixen art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_gale_vixen_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/gale_vixen.png",
+        "assets/sprites/bosses/gale_vixen.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 925e5d54-7062-47a3-ba15-922c529ea51f. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-glacier-ronin-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Glacier Ronin art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_glacier_ronin_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/glacier_ronin.png",
+        "assets/sprites/bosses/glacier_ronin.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b239060e-ed9c-49fd-a141-e570bc4f902a. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-omega-core-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Omega Core art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_omega_core_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/omega_core.png",
+        "assets/sprites/bosses/omega_core.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 91be13e3-4710-49ba-9add-a362db9ce859. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
     }
   ]
 }
