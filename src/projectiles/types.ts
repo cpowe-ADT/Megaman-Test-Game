@@ -25,6 +25,11 @@ export type ProjectileVisualConfig = {
   flipXWithDirection?: boolean
 }
 
+export type ProjectileHitboxConfig = {
+  width: number
+  height: number
+}
+
 export type ProjectileDefinition = {
   id: string
   owner: ProjectileOwner
@@ -35,6 +40,7 @@ export type ProjectileDefinition = {
   maxVelocityX: number
   maxVelocityY: number
   visual: ProjectileVisualConfig
+  hitbox?: ProjectileHitboxConfig
   behavior: ProjectileBehavior
   hitPolicy: ProjectileHitPolicy
 }

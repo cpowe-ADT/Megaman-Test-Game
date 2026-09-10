@@ -1,5 +1,6 @@
 import { BOSS_ROSTER } from '../bosses/roster'
 import type { Element, WeaponId } from '../bosses/types'
+import { resolveBalancedWeaponEnergyCost } from './weaponEnergyEconomy'
 
 export type WeaponRuntimeId = 'Buster' | WeaponId
 
@@ -123,17 +124,21 @@ export const BUSTER_WEAPON_CONFIG: WeaponRuntimeConfig = {
 }
 
 export const SPECIAL_WEAPON_ORDER: WeaponRuntimeId[] = Object.values(BOSS_ROSTER)
-  .map((blueprint) => blueprint.weaponReward.id)
+  .map((blueprint) => blueprint.weaponReward?.id)
+  .filter((id): id is WeaponId => Boolean(id))
   .filter((id) => id !== 'ArcSlash') as WeaponRuntimeId[]
 
 const SPECIAL_WEAPONS = Object.values(BOSS_ROSTER).reduce<Partial<Record<WeaponRuntimeId, WeaponRuntimeConfig>>>((acc, blueprint) => {
   const reward = blueprint.weaponReward
+  if (!reward) {
+    return acc
+  }
   const overrides = SPECIAL_WEAPON_OVERRIDES[reward.id] ?? {}
   acc[reward.id] = {
     id: reward.id,
     displayName: reward.displayName,
     element: reward.element,
-    energyCost: reward.energyCost,
+    energyCost: resolveBalancedWeaponEnergyCost(reward.energyCost),
     maxEnergy: reward.maxEnergy,
     damage: overrides.damage ?? 2,
     speed: overrides.speed ?? 300,

@@ -4,6 +4,8 @@ export type PlayerFeatureFlags = {
   enableSword: boolean
   enableChargeShot: boolean
   enableAirDash: boolean
+  enableWallSlideJump: boolean
+  enableTouchControls: boolean
   enableHitstop: boolean
   enableDebugHitboxes: boolean
 }
@@ -26,6 +28,8 @@ export const DEFAULT_PLAYER_FEATURE_FLAGS: PlayerFeatureFlags = {
   enableSword: true,
   enableChargeShot: true,
   enableAirDash: true,
+  enableWallSlideJump: true,
+  enableTouchControls: true,
   enableHitstop: true,
   enableDebugHitboxes: false
 }
@@ -55,6 +59,14 @@ export function resolvePlayerFeatureFlags(
       DEFAULT_PLAYER_FEATURE_FLAGS.enableChargeShot
     ),
     enableAirDash: readBool(get('VITE_ENABLE_AIR_DASH'), DEFAULT_PLAYER_FEATURE_FLAGS.enableAirDash),
+    enableWallSlideJump: readBool(
+      get('VITE_ENABLE_WALL_SLIDE_JUMP'),
+      DEFAULT_PLAYER_FEATURE_FLAGS.enableWallSlideJump
+    ),
+    enableTouchControls: readBool(
+      get('VITE_ENABLE_TOUCH_CONTROLS'),
+      DEFAULT_PLAYER_FEATURE_FLAGS.enableTouchControls
+    ),
     enableHitstop: readBool(get('VITE_ENABLE_HITSTOP'), DEFAULT_PLAYER_FEATURE_FLAGS.enableHitstop),
     enableDebugHitboxes:
       developerMode.showCombatDebugVisuals &&

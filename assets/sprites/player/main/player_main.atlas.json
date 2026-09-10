@@ -360,9 +360,49 @@
         "h": 48
       }
     },
-    "player_main/land/000": {
+    "player_main/wall_slide/000": {
       "frame": {
         "x": 96,
+        "y": 96,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "player_main/wall_jump/000": {
+      "frame": {
+        "x": 144,
+        "y": 96,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "player_main/land/000": {
+      "frame": {
+        "x": 192,
         "y": 96,
         "w": 48,
         "h": 48
@@ -382,7 +422,7 @@
     },
     "player_main/dash_start/000": {
       "frame": {
-        "x": 144,
+        "x": 240,
         "y": 96,
         "w": 48,
         "h": 48
@@ -402,7 +442,7 @@
     },
     "player_main/dash_loop/000": {
       "frame": {
-        "x": 192,
+        "x": 288,
         "y": 96,
         "w": 48,
         "h": 48
@@ -422,7 +462,7 @@
     },
     "player_main/dash_end/000": {
       "frame": {
-        "x": 240,
+        "x": 336,
         "y": 96,
         "w": 48,
         "h": 48
@@ -442,8 +482,8 @@
     },
     "player_main/airdash_start/000": {
       "frame": {
-        "x": 288,
-        "y": 96,
+        "x": 0,
+        "y": 144,
         "w": 48,
         "h": 48
       },
@@ -462,8 +502,8 @@
     },
     "player_main/airdash_loop/000": {
       "frame": {
-        "x": 336,
-        "y": 96,
+        "x": 48,
+        "y": 144,
         "w": 48,
         "h": 48
       },
@@ -482,7 +522,7 @@
     },
     "player_main/airdash_end/000": {
       "frame": {
-        "x": 0,
+        "x": 96,
         "y": 144,
         "w": 48,
         "h": 48
@@ -502,7 +542,7 @@
     },
     "player_main/shoot_ground/000": {
       "frame": {
-        "x": 48,
+        "x": 144,
         "y": 144,
         "w": 48,
         "h": 48
@@ -522,7 +562,7 @@
     },
     "player_main/shoot_ground/001": {
       "frame": {
-        "x": 96,
+        "x": 192,
         "y": 144,
         "w": 48,
         "h": 48
@@ -542,7 +582,7 @@
     },
     "player_main/shoot_run/000": {
       "frame": {
-        "x": 144,
+        "x": 240,
         "y": 144,
         "w": 48,
         "h": 48
@@ -562,7 +602,7 @@
     },
     "player_main/shoot_run/001": {
       "frame": {
-        "x": 192,
+        "x": 288,
         "y": 144,
         "w": 48,
         "h": 48
@@ -582,7 +622,7 @@
     },
     "player_main/shoot_air/000": {
       "frame": {
-        "x": 240,
+        "x": 336,
         "y": 144,
         "w": 48,
         "h": 48
@@ -602,8 +642,8 @@
     },
     "player_main/dash_shoot/000": {
       "frame": {
-        "x": 288,
-        "y": 144,
+        "x": 0,
+        "y": 192,
         "w": 48,
         "h": 48
       },
@@ -622,8 +662,8 @@
     },
     "player_main/charge_start/000": {
       "frame": {
-        "x": 336,
-        "y": 144,
+        "x": 48,
+        "y": 192,
         "w": 48,
         "h": 48
       },
@@ -642,7 +682,7 @@
     },
     "player_main/charge_hold/000": {
       "frame": {
-        "x": 0,
+        "x": 96,
         "y": 192,
         "w": 48,
         "h": 48
@@ -662,7 +702,7 @@
     },
     "player_main/charge_hold/001": {
       "frame": {
-        "x": 48,
+        "x": 144,
         "y": 192,
         "w": 48,
         "h": 48
@@ -682,7 +722,7 @@
     },
     "player_main/charge_release_lv1/000": {
       "frame": {
-        "x": 96,
+        "x": 192,
         "y": 192,
         "w": 48,
         "h": 48
@@ -702,7 +742,7 @@
     },
     "player_main/charge_release_lv2/000": {
       "frame": {
-        "x": 144,
+        "x": 240,
         "y": 192,
         "w": 48,
         "h": 48
@@ -722,7 +762,7 @@
     },
     "player_main/charge_release_lv3/000": {
       "frame": {
-        "x": 192,
+        "x": 288,
         "y": 192,
         "w": 48,
         "h": 48
@@ -742,7 +782,7 @@
     },
     "player_main/charge_release_lv4/000": {
       "frame": {
-        "x": 240,
+        "x": 336,
         "y": 192,
         "w": 48,
         "h": 48
@@ -762,8 +802,8 @@
     },
     "player_main/slash_ground_e/000": {
       "frame": {
-        "x": 288,
-        "y": 192,
+        "x": 0,
+        "y": 240,
         "w": 48,
         "h": 48
       },
@@ -782,8 +822,8 @@
     },
     "player_main/slash_ground_ne/000": {
       "frame": {
-        "x": 336,
-        "y": 192,
+        "x": 48,
+        "y": 240,
         "w": 48,
         "h": 48
       },
@@ -802,7 +842,7 @@
     },
     "player_main/slash_ground_n/000": {
       "frame": {
-        "x": 0,
+        "x": 96,
         "y": 240,
         "w": 48,
         "h": 48
@@ -822,7 +862,7 @@
     },
     "player_main/slash_ground_se/000": {
       "frame": {
-        "x": 48,
+        "x": 144,
         "y": 240,
         "w": 48,
         "h": 48
@@ -842,7 +882,7 @@
     },
     "player_main/slash_ground_s/000": {
       "frame": {
-        "x": 96,
+        "x": 192,
         "y": 240,
         "w": 48,
         "h": 48
@@ -862,7 +902,7 @@
     },
     "player_main/slash_air_e/000": {
       "frame": {
-        "x": 144,
+        "x": 240,
         "y": 240,
         "w": 48,
         "h": 48
@@ -882,7 +922,7 @@
     },
     "player_main/slash_air_ne/000": {
       "frame": {
-        "x": 192,
+        "x": 288,
         "y": 240,
         "w": 48,
         "h": 48
@@ -902,7 +942,7 @@
     },
     "player_main/slash_air_n/000": {
       "frame": {
-        "x": 240,
+        "x": 336,
         "y": 240,
         "w": 48,
         "h": 48
@@ -922,46 +962,6 @@
     },
     "player_main/slash_air_se/000": {
       "frame": {
-        "x": 288,
-        "y": 240,
-        "w": 48,
-        "h": 48
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 48,
-        "h": 48
-      },
-      "sourceSize": {
-        "w": 48,
-        "h": 48
-      }
-    },
-    "player_main/slash_air_s/000": {
-      "frame": {
-        "x": 336,
-        "y": 240,
-        "w": 48,
-        "h": 48
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 48,
-        "h": 48
-      },
-      "sourceSize": {
-        "w": 48,
-        "h": 48
-      }
-    },
-    "player_main/hurt_light/000": {
-      "frame": {
         "x": 0,
         "y": 288,
         "w": 48,
@@ -980,7 +980,7 @@
         "h": 48
       }
     },
-    "player_main/hurt_heavy/000": {
+    "player_main/slash_air_s/000": {
       "frame": {
         "x": 48,
         "y": 288,
@@ -1000,7 +1000,7 @@
         "h": 48
       }
     },
-    "player_main/knockdown/000": {
+    "player_main/hurt_light/000": {
       "frame": {
         "x": 96,
         "y": 288,
@@ -1020,7 +1020,7 @@
         "h": 48
       }
     },
-    "player_main/getup/000": {
+    "player_main/hurt_heavy/000": {
       "frame": {
         "x": 144,
         "y": 288,
@@ -1040,7 +1040,7 @@
         "h": 48
       }
     },
-    "player_main/death/000": {
+    "player_main/knockdown/000": {
       "frame": {
         "x": 192,
         "y": 288,
@@ -1060,7 +1060,7 @@
         "h": 48
       }
     },
-    "player_main/death/001": {
+    "player_main/getup/000": {
       "frame": {
         "x": 240,
         "y": 288,
@@ -1080,7 +1080,7 @@
         "h": 48
       }
     },
-    "player_main/respawn/000": {
+    "player_main/death/000": {
       "frame": {
         "x": 288,
         "y": 288,
@@ -1100,7 +1100,7 @@
         "h": 48
       }
     },
-    "player_main/respawn/001": {
+    "player_main/death/001": {
       "frame": {
         "x": 336,
         "y": 288,
@@ -1120,9 +1120,49 @@
         "h": 48
       }
     },
-    "player_main/respawn/002": {
+    "player_main/respawn/000": {
       "frame": {
         "x": 0,
+        "y": 336,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "player_main/respawn/001": {
+      "frame": {
+        "x": 48,
+        "y": 336,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "player_main/respawn/002": {
+      "frame": {
+        "x": 96,
         "y": 336,
         "w": 48,
         "h": 48

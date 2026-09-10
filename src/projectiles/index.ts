@@ -15,6 +15,12 @@ export {
   PROJECTILES_ATLAS_KEY,
   resolvePlayerProjectileId
 } from './definitions/coreProjectiles'
+export {
+  canAffordPlayerShot,
+  energyAfterPlayerShot,
+  resolvePlayerShot
+} from './playerShot'
+export type { PlayerShotIntent, ResolvedPlayerShot } from './playerShot'
 export type {
   ProjectileBehavior,
   ProjectileDefinition,

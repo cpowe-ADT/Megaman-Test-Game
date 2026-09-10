@@ -32,6 +32,8 @@ This repository uses an authority-based documentation structure. Start here when
 - `src/enemy/`: enemy framework and debug/runtime helpers
 - `src/boss/`, `src/bosses/`: boss framework, config, controller integration
 - `src/content/`: registries, campaign data, enemy content
+- `src/content/dialogue/`, `src/narrative/`: validated story content and pure dialogue playback
+- `src/ui/DialogueOverlayController.ts`: blocking in-game dialogue presentation adapter
 - `src/assets/`: sprite-manifest types, validation, loading helpers
 - `tests/`, `src/boss/__tests__/`: automated regression tests
 - `scripts/`: smoke, visual sweep, sprite tooling, import/validation helpers
@@ -69,10 +71,16 @@ This repository uses an authority-based documentation structure. Start here when
 ## Working Docs
 | Path | Status | Purpose |
 | --- | --- | --- |
+| `docs/working/full-game-audit.md` | working | Phase 1 progression/save/stage-select contract audit |
+| `docs/working/full-game-sprint-plan.md` | working | Active sprint targets, feel specs, trace contracts, and follow-up risks |
 | `docs/working/refactor-plan.md` | working | Large phased refactor plan and rollback thinking |
 | `docs/working/implementation-spec.md` | working | Feature-specific implementation checklist and prompt context |
 | `docs/working/consultant-audit.md` | working | UX and pipeline audit findings |
+| `docs/working/orchestrated-completion-audit.md` | working | Five-persona completion audit, ticket backlog, and three-shot execution plan |
+| `docs/working/supervised-game-completion-plan.md` | working | Current supervised, staged plan for save, combat, content, story, visual, and release completion |
+| `docs/working/boss-animation-and-fight-rebuild-plan.md` | working | Code-based plan for grounded/intentional-aerial boss motion, action-specific animation, original sprite production, fight strategy, and arena dynamics |
 | `docs/working/README.md` | canonical | repo | Local index and usage rules for working docs |
+| `docs/prompts/README.md` | working | Completion prompt package: orchestrator charter, four build prompts, eval ledger, handoffs. Start here to finish the game. |
 
 ## Historical Docs
 | Path | Status | Replacement / Context |

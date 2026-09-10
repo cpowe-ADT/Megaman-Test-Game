@@ -45,9 +45,9 @@ export class TimedAttackModule implements IAttack {
       this.emittedActiveSpawn = true
       return {
         phase: 'active',
-        spawnedHitbox: firstActive && this.definition.type === 'melee',
+        spawnedHitbox: firstActive && (this.definition.type === 'melee' || this.definition.type === 'dash'),
         spawnedProjectile: firstActive && this.definition.type === 'projectile',
-        spawnedHazard: firstActive && this.definition.type === 'hazard'
+        spawnedHazard: firstActive && (this.definition.type === 'hazard' || this.definition.type === 'slam')
       }
     }
 

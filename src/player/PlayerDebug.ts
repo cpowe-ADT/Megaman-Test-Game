@@ -40,9 +40,9 @@ export class PlayerDebug {
     }
 
     this.text.setText([
-      `locomotion grounded=${motor.grounded} dash=${motor.dashing} airDash=${motor.airDashing}`,
+      `locomotion grounded=${motor.grounded} dash=${motor.dashing} airDash=${motor.airDashing} wall=${motor.wallSliding ? motor.wallSide : 0} wallJump=${motor.wallJumping}`,
       `timers coyote=${Math.round(motor.coyoteRemainingMs)} buffer=${Math.round(motor.jumpBufferRemainingMs)} dashCd=${Math.round(motor.dashCooldownRemainingMs)}`,
-      `combat charge=${combat.chargeLevel} charging=${combat.charging} slash=${combat.slashPhase ?? '-'} dir=${combat.slashDirection ?? '-'} iframes=${Math.round(combat.iFramesRemainingMs)}`
+      `combat charge=${combat.chargeLevel} ms=${Math.round(combat.chargeElapsedMs)} charging=${combat.charging} slash=${combat.slashPhase ?? '-'} dir=${combat.slashDirection ?? '-'} iframes=${Math.round(combat.iFramesRemainingMs)}`
     ])
 
     this.gfx.clear()

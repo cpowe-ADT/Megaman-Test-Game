@@ -17,6 +17,7 @@ type BossProjectileControllerOptions = {
   getPlayerPosition: () => { x: number; y: number } | null
   getBossOrigin: () => BossProjectileOrigin | null
   getBossMovementBody: () => Phaser.Physics.Arcade.Body | undefined
+  getBossAttackFacing?: () => 1 | -1
   getTrailTint: () => number
   createTrailEmitter: (bullet: Phaser.Physics.Arcade.Sprite) => Phaser.GameObjects.Particles.ParticleEmitter | null
   registerProjectile?: (bullet: Phaser.Physics.Arcade.Sprite, kind: string) => void
@@ -29,12 +30,22 @@ type BossProjectileControllerOptions = {
 }
 
 type BossBulletConfig = {
+  projectileId?: string
   speed: number
   damage: number
   angle?: number
   tint?: number
   label?: string
   direction?: 1 | -1
+  velocityY?: number
+  scale?: number
+}
+
+type PendingBossAttack = {
+  attack: AttackPattern
+  attackData?: any
+  executeAt: number
+  direction: 1 | -1
 }
 
 export function buildBossSpreadAngles(count: number, spread: number): number[] {
@@ -72,6 +83,8 @@ export class BossProjectileController {
   private attackFirstLogEmitted = false
   private restoreWalkAt = 0
   private pausedTrailEmitters: Phaser.GameObjects.Particles.ParticleEmitter[] = []
+  private pendingAttacks: PendingBossAttack[] = []
+  private lockedAttackDirection: 1 | -1 | null = null
 
   constructor(private readonly options: BossProjectileControllerOptions) {}
 
@@ -84,6 +97,9 @@ export class BossProjectileController {
       this.restoreWalkAt = 0
       this.options.restoreWalkAnimation?.()
     }
+
+
+    this.executePendingAttacks(now)
 
     if (!this.options.isControllerDriven()) {
       this.maybeFireTimerLoop(now)
@@ -109,6 +125,8 @@ export class BossProjectileController {
     this.bossWatchdogCooldownUntil = 0
     this.restoreWalkAt = 0
     this.attackFirstLogEmitted = false
+    this.pendingAttacks = []
+    this.lockedAttackDirection = null
     this.resumeTrailEmitters()
   }
 
@@ -135,6 +153,35 @@ export class BossProjectileController {
     if (!isOriginActive(origin)) {
       return
     }
+
+    const playerPosition = this.options.getPlayerPosition()
+    const direction =
+      this.options.getBossAttackFacing?.() ??
+      (playerPosition && playerPosition.x < origin.x ? -1 : 1)
+    this.pendingAttacks.push({
+      attack,
+      attackData,
+      executeAt: now + Math.max(0, attack.telegraph.telegraphMs),
+      direction
+    })
+  }
+
+  private executePendingAttacks(now: number): void {
+    if (this.pendingAttacks.length === 0) {
+      return
+    }
+    const due = this.pendingAttacks.filter((entry) => entry.executeAt <= now)
+    this.pendingAttacks = this.pendingAttacks.filter((entry) => entry.executeAt > now)
+    due.forEach((entry) => this.executeBossAttack(entry))
+  }
+
+  private executeBossAttack(pending: PendingBossAttack): void {
+    const { attack, attackData, direction } = pending
+    const origin = this.options.getBossOrigin()
+    if (!isOriginActive(origin) || !this.options.isEncounterActive()) {
+      return
+    }
+    this.lockedAttackDirection = direction
 
     const isProjectileAttack =
       attack.state === 'shoot' ||
@@ -257,22 +304,87 @@ export class BossProjectileController {
         break
       case 'fire_orb':
         this.spawnBossBullet(origin, attack, {
+          projectileId: 'boss_fire_orb',
           speed: 180,
           damage: 2,
+          velocityY: -170,
+          scale: 1.7,
           tint: this.options.getTrailTint()
         })
         break
       case 'arc_shards':
+      case 'flame_cone':
+      case 'freeze_cone':
+      case 'dart_spread':
+      case 'boulder_radial':
         this.spawnConfigurableSpread(origin, attack, attackData)
         break
       case 'ground_slam_hazard':
+      case 'short_quake':
+      case 'ground_shockwave':
+      case 'burn_puddle':
+      case 'charge_mine':
+      case 'splash_pillar':
+      case 'stone_pillar':
+      case 'magnet_node':
+      case 'acid_trail':
+      case 'vapor_pod':
+      case 'tornado_pillar':
+      case 'icicle_fall':
         this.options.spawnGroundSlamHazard(origin, attackData)
         break
       case 'dash_strike':
         this.spawnDashStrike(origin, attackData)
         break
+      case 'wind_hitbox':
+        this.spawnBossBullet(origin, attack, {
+          speed: Number(attackData?.params?.dashSpeed ?? 240),
+          damage: Number(attackData?.hit?.damageAmount ?? 2)
+        })
+        break
+      case 'water_lance':
+        this.spawnBossBullet(origin, attack, {
+          projectileId: 'boss_water_lance',
+          speed: Number(attackData?.params?.projectileSpeed ?? 285),
+          damage: Number(attackData?.hit?.damageAmount ?? 1),
+          scale: 1.45,
+          tint: this.options.getTrailTint()
+        })
+        break
+      case 'vertical_bolt':
+      case 'static_orb':
+        this.spawnBossBullet(origin, attack, {
+          projectileId: 'boss_static_orb',
+          speed: Number(attackData?.params?.projectileSpeed ?? 220),
+          damage: Number(attackData?.hit?.damageAmount ?? 1),
+          scale: 1.4,
+          tint: this.options.getTrailTint()
+        })
+        break
+      case 'mag_disc':
+        this.spawnBossBullet(origin, attack, {
+          projectileId: 'boss_mag_disc',
+          speed: Number(attackData?.params?.projectileSpeed ?? 250),
+          damage: Number(attackData?.hit?.damageAmount ?? 2),
+          scale: 1.45,
+          tint: this.options.getTrailTint()
+        })
+        break
+      case 'acid_glob':
+        this.spawnBossBullet(origin, attack, {
+          projectileId: 'boss_acid_glob',
+          speed: Number(attackData?.params?.projectileSpeed ?? 165),
+          damage: Number(attackData?.hit?.damageAmount ?? 2),
+          velocityY: -160,
+          scale: 1.55,
+          tint: this.options.getTrailTint()
+        })
+        break
       default:
-        this.spawnBossBullet(origin, attack, { speed: 240, damage: 1 })
+        this.spawnBossBullet(origin, attack, {
+          speed: Number(attackData?.params?.projectileSpeed ?? 240),
+          damage: Number(attackData?.hit?.damageAmount ?? 1)
+        })
         break
     }
   }
@@ -282,24 +394,26 @@ export class BossProjectileController {
     attack: AttackPattern,
     attackData?: any
   ): void {
-    const count = Number(attackData?.params?.count ?? 3)
-    const speed = Number(attackData?.params?.projectileSpeed ?? 240)
-    const spread = Number(attackData?.params?.spread ?? 0.32)
+    const spawnId = String(attack?.spawns?.find((id) =>
+      ['arc_shards', 'flame_cone', 'freeze_cone', 'dart_spread', 'boulder_radial'].includes(id)
+    ) ?? '')
+    const count = spawnId === 'flame_cone' ? 5 : Number(attackData?.params?.count ?? 3)
+    const speed = spawnId === 'flame_cone' ? 190 : Number(attackData?.params?.projectileSpeed ?? 240)
+    const spread = spawnId === 'flame_cone' ? 0.24 : Number(attackData?.params?.spread ?? 0.32)
     const damage = Number(attackData?.hit?.damageAmount ?? 1)
 
     buildBossSpreadAngles(count, spread).forEach((angle) => {
-      this.spawnBossBullet(origin, attack, { speed, damage, angle })
+      this.spawnBossBullet(origin, attack, {
+        projectileId: spawnId === 'arc_shards' ? 'boss_arc_shard' : undefined,
+        speed,
+        damage,
+        angle,
+        scale: spawnId === 'flame_cone' ? 1.35 : 1.2
+      })
     })
   }
 
   private spawnDashStrike(origin: BossProjectileOrigin, attackData?: any): void {
-    const body = this.options.getBossMovementBody()
-    const playerPosition = this.options.getPlayerPosition()
-    if (body && playerPosition) {
-      const direction = playerPosition.x < origin.x ? -1 : 1
-      body.setVelocityX(direction * Number(attackData?.params?.dashSpeed ?? 260))
-    }
-
     this.spawnBossBullet(origin, undefined, {
       speed: Number(attackData?.params?.dashSpeed ?? 240),
       damage: Number(attackData?.hit?.damageAmount ?? 2)
@@ -316,26 +430,29 @@ export class BossProjectileController {
       return null
     }
 
-    const direction = config.direction ?? (playerPosition.x < origin.x ? -1 : 1)
+    const direction = config.direction ?? this.lockedAttackDirection ?? (playerPosition.x < origin.x ? -1 : 1)
     const spawnX = origin.x + 12 * direction
     const spawnY = origin.y - 6
     const attackName = attack?.name ?? config.label ?? 'unknown'
     const baseAngle = direction === -1 ? Math.PI : 0
     const travelAngle = baseAngle + (config.angle ?? 0)
     const velocityX = Math.cos(travelAngle) * config.speed
-    const velocityY = Math.sin(travelAngle) * config.speed
+    const velocityY = config.velocityY ?? Math.sin(travelAngle) * config.speed
 
     const bullet = this.options.projectileSystem.spawn({
-      id: 'enemy_basic_shot',
+      id: config.projectileId ?? 'enemy_basic_shot',
       x: spawnX,
       y: spawnY,
       direction,
       speed: config.speed,
       damage: config.damage,
+      scale: config.scale,
       tint: config.tint ?? this.options.getTrailTint(),
       velocity: { x: velocityX, y: velocityY },
       metadata: {
         attack: attackName,
+        sourceType: 'boss_projectile',
+        sourceId: attackName,
         ignoreBossUntil: this.options.getNow() + 120
       }
     })

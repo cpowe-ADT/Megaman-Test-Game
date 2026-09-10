@@ -6,12 +6,16 @@ import { Title } from './scenes/Title'
 import { StageSelect } from './scenes/StageSelect'
 import { Game } from './scenes/Game'
 import { SystemMenu } from './scenes/SystemMenu'
+import { ControlsScene } from './scenes/ControlsScene'
+import { ProgressionSummaryScene } from './scenes/ProgressionSummaryScene'
 import GameOverScene from './scenes/GameOverScene'
 import PauseScene from './scenes/PauseScene'
 import { CompletionScene } from './scenes/CompletionScene'
+import { AUTOMATION } from './config/automation'
 import { STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
 import { resolvePlayerFeatureFlags } from './player/featureFlags'
 import { summarizeSpriteKinematics } from './tools/debug/StateSnapshot'
+import { getStageContentRetentionReport } from './content/campaign'
 
 const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
 const rendererType = query?.get('renderer') === 'canvas' ? Phaser.CANVAS : Phaser.AUTO
@@ -41,7 +45,7 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   pixelArt: STRICT_PIXEL_RENDER_POLICY.pixelArt,
-  scene: [Boot, Preload, Title, StageSelect, Game, SystemMenu, PauseScene, GameOverScene, CompletionScene]
+  scene: [Boot, Preload, Title, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, PauseScene, GameOverScene, CompletionScene]
 }
 
 ;(config as any).resolution = runtimeResolution
@@ -139,12 +143,32 @@ type SceneWithOptionalState = Phaser.Scene & {
   currentPage?: number
   requestedTransition?: unknown
   selectedBossId?: string | null
+  selectedCheckpointId?: string | null
+  selectedWeaknessLabel?: string | null
+  selectedRewardLabel?: string | null
+  finalGateText?: string | null
   canConfirm?: boolean
   confirmArmed?: boolean
+  debugSummary?: {
+    sourceScene: string
+    seed: string
+    checkedLocations: number
+    receivedItems: string[]
+    unlockedStages: string[]
+    checkpoints: number
+    finalGateText: string
+  } | null
+  progressionSave?: {
+    stageAccessUnlocked?: string[]
+    collectedChecks?: string[]
+    pendingProgressionItems?: Array<{ itemId: string; amount: number }>
+  }
   getNewPlayerDebugState?: () => Record<string, unknown> | null
   getCombatDebugSnapshot?: () => Record<string, unknown> | null
   getVisualDebugSnapshot?: () => Record<string, unknown> | null
+  getWeaponEnergyDebugState?: () => Record<string, unknown>
   activeBossRoom?: { x: number; width: number; playerIntroX: number; bossSpawnX: number }
+  touchControls?: { isVisible?: () => boolean }
 }
 
 function getActiveScene(targetGame: Phaser.Game): SceneWithOptionalState | undefined {
@@ -173,6 +197,8 @@ function inferNonPixelFilteredCount(targetGame: Phaser.Game): number {
 
 function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
   const scene = getActiveScene(targetGame)
+  const activeScenes = targetGame.scene.getScenes(true) as SceneWithOptionalState[]
+  const progressionSummaryScene = activeScenes.find((activeScene) => activeScene.scene.key === 'ProgressionSummary')
   if (!scene) {
     return {
       coordinateSystem: 'origin=(top-left), +x=right, +y=down',
@@ -184,8 +210,13 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     coordinateSystem: 'origin=(top-left), +x=right, +y=down',
     scene: scene.scene.key,
+    activeScenes: activeScenes.map((activeScene) => activeScene.scene.key),
     ready: true,
     timeMs: Math.round(scene.time?.now ?? 0)
+  }
+
+  if (progressionSummaryScene) {
+    payload.progressionSummary = progressionSummaryScene.debugSummary ?? null
   }
 
   if (scene.scene.key === 'StageSelect') {
@@ -194,6 +225,10 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
       page: scene.currentPage ?? 0,
       transitionPending: Boolean(scene.requestedTransition),
       selectedBossId: scene.selectedBossId ?? null,
+      selectedCheckpointId: scene.selectedCheckpointId ?? null,
+      weaknessLabel: scene.selectedWeaknessLabel ?? null,
+      rewardLabel: scene.selectedRewardLabel ?? null,
+      finalGateText: scene.finalGateText ?? null,
       canConfirm: Boolean(scene.canConfirm),
       confirmArmed: Boolean(scene.confirmArmed ?? true)
     }
@@ -206,23 +241,34 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
       maxHp: scene.playerMaxHp ?? null,
       paused: Boolean(scene.paused),
       weapon: scene.weapons?.[scene.currentWeaponIndex ?? 0] ?? null,
-      lives: scene.playerLives ?? null
+      lives: scene.playerLives ?? null,
+      virtualControlsVisible: Boolean((scene as any).touchControls?.isVisible?.())
     }
     payload.playerVisual = {
       animationKey: scene.player?.anims?.currentAnim?.key ?? null,
       frameName: String(scene.player?.frame?.name ?? '')
     }
     payload.weaponEnergy = scene.weaponEnergy ?? null
+    payload.weaponRecharge = scene.getWeaponEnergyDebugState?.() ?? null
     payload.activeRun = {
       loadedFromSave: Boolean(scene.loadedFromSave)
+    }
+    payload.progression = {
+      unlockedStages: scene.progressionSave?.stageAccessUnlocked ?? [],
+      collectedChecks: scene.progressionSave?.collectedChecks?.length ?? 0,
+      pendingItems: scene.progressionSave?.pendingProgressionItems ?? [],
+      selectedCheckpointId: (scene as any).currentCheckpointId ?? null
     }
     payload.bossState = {
       name: scene.bossName ?? null,
       phase: scene.currentPhaseName ?? '',
-      hp: scene.bossHp ?? null
+      hp: scene.bossHp ?? null,
+      legacyActorPresent: Boolean((scene as any).bossBody),
+      runtime: (scene as any).bossController?.getDebugState?.() ?? null
     }
     payload.stageRuntime = {
       stageId: scene.activeStageId ?? null,
+      contentRetention: getStageContentRetentionReport(scene.activeStageId ?? ''),
       checkpointIndex: scene.currentCheckpointIndex ?? 0,
       bossEncounterActive: Boolean(scene.bossEncounterActive),
       bossGateLocked: Boolean((scene as any).bossGateLocked),
@@ -239,6 +285,15 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     }
     payload.victory = {
       modalOpen: Boolean((scene as any).victoryModal?.isOpen?.())
+    }
+    payload.dialogue = (scene as any).dialogueOverlay?.getDebugState?.() ?? {
+      active: false,
+      lineIndex: 0,
+      lineCount: 0,
+      sequenceId: null,
+      speakerId: null,
+      speakerName: null,
+      text: null
     }
     payload.projectiles = {
       playerActive: scene.playerBullets?.getTotalUsed?.() ?? 0,
@@ -285,7 +340,6 @@ function installDebugHooks(targetGame: Phaser.Game): void {
   }
 
   const debugWindow = window as DebugWindow
-  debugWindow.__phaserGame = targetGame
   debugWindow.render_game_to_text = () => JSON.stringify(createStatePayload(targetGame))
   debugWindow.advanceTime = async (ms: number) => {
     const frameMs = 1000 / 60
@@ -302,6 +356,11 @@ function installDebugHooks(targetGame: Phaser.Game): void {
       }
       window.requestAnimationFrame(step)
     })
+  }
+  if (AUTOMATION.enabled) {
+    debugWindow.__phaserGame = targetGame
+  } else {
+    delete debugWindow.__phaserGame
   }
 }
 

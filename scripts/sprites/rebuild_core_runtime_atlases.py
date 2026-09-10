@@ -32,6 +32,34 @@ EFFECT_JSON_PATH = ROOT / "assets/sprites/effects/effects_core/effects_core.atla
 
 PLAYER_OUTPUT_FRAME_W = 48
 PLAYER_OUTPUT_FRAME_H = 48
+PLAYER_BASELINE_Y = 46
+
+DEFAULT_PLAYER_POSE_LAYOUT: Dict[str, int] = {
+    "target_height": 40,
+    "baseline_y": PLAYER_BASELINE_Y,
+    "max_width": PLAYER_OUTPUT_FRAME_W - 4,
+    "offset_x": 0,
+}
+
+PLAYER_POSE_LAYOUTS: Dict[str, Dict[str, int]] = {
+    "crouch_in": {"target_height": 34},
+    "crouch_hold": {"target_height": 30},
+    "crouch_out": {"target_height": 34},
+    "land": {"target_height": 38},
+    "wall_slide": {"target_height": 40, "max_width": 34, "offset_x": -4},
+    "wall_jump": {"target_height": 40, "max_width": 40, "offset_x": 3},
+    "dash_start": {"target_height": 34},
+    "dash_loop": {"target_height": 30},
+    "dash_end": {"target_height": 34},
+    "airdash_start": {"target_height": 34},
+    "airdash_loop": {"target_height": 34},
+    "airdash_end": {"target_height": 34},
+    "dash_shoot": {"target_height": 34},
+    "knockdown": {"target_height": 32, "baseline_y": PLAYER_BASELINE_Y - 2},
+    "getup": {"target_height": 34},
+    "death": {"target_height": 34, "baseline_y": PLAYER_BASELINE_Y - 2},
+    "respawn": {"target_height": 36},
+}
 
 PLAYER_POSE_BOXES: Dict[str, List[Tuple[int, int, int, int, bool]]] = {
     "idle": [(16, 132, 86, 116, False), (100, 132, 86, 116, False), (184, 132, 86, 116, False), (268, 132, 86, 116, False)],
@@ -44,6 +72,8 @@ PLAYER_POSE_BOXES: Dict[str, List[Tuple[int, int, int, int, bool]]] = {
     "jump_rise": [(688, 132, 92, 116, False)],
     "jump_apex": [(772, 132, 96, 116, False)],
     "fall": [(940, 132, 84, 116, False)],
+    "wall_slide": [(940, 132, 84, 116, False)],
+    "wall_jump": [(604, 132, 90, 116, False)],
     "land": [(856, 252, 88, 112, False)],
     "dash_start": [(16, 252, 94, 112, False)],
     "dash_loop": [(100, 252, 94, 112, False)],
@@ -214,6 +244,7 @@ def build_atlas_payload(
 
 def extract_player_pose_frame(
     source_image: Image.Image,
+    pose_group: str,
     pose: Tuple[int, int, int, int, bool],
     alpha_threshold: int = 20,
     min_component_area: int = 80,
@@ -276,14 +307,21 @@ def extract_player_pose_frame(
     if mirror:
         sprite = sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 
-    scale = min(PLAYER_OUTPUT_FRAME_W / sprite.width, PLAYER_OUTPUT_FRAME_H / sprite.height)
+    layout = dict(DEFAULT_PLAYER_POSE_LAYOUT)
+    layout.update(PLAYER_POSE_LAYOUTS.get(pose_group, {}))
+    target_height = max(1, int(layout["target_height"]))
+    baseline_y = int(layout["baseline_y"])
+    max_width = max(1, int(layout["max_width"]))
+    offset_x = int(layout["offset_x"])
+
+    scale = min(target_height / sprite.height, max_width / sprite.width)
     scaled_w = max(1, int(round(sprite.width * scale)))
     scaled_h = max(1, int(round(sprite.height * scale)))
     scaled = sprite.resize((scaled_w, scaled_h), Image.Resampling.NEAREST)
 
     frame = Image.new("RGBA", (PLAYER_OUTPUT_FRAME_W, PLAYER_OUTPUT_FRAME_H), (0, 0, 0, 0))
-    paste_x = (PLAYER_OUTPUT_FRAME_W - scaled_w) // 2
-    paste_y = PLAYER_OUTPUT_FRAME_H - scaled_h
+    paste_x = max(0, min(PLAYER_OUTPUT_FRAME_W - scaled_w, ((PLAYER_OUTPUT_FRAME_W - scaled_w) // 2) + offset_x))
+    paste_y = max(0, min(PLAYER_OUTPUT_FRAME_H - scaled_h, baseline_y - scaled_h))
     frame.paste(scaled, (paste_x, paste_y), scaled)
     return frame
 
@@ -298,7 +336,7 @@ def rebuild_player_atlas_from_source() -> bool:
     for group, poses in PLAYER_POSE_BOXES.items():
         for local_index, pose in enumerate(poses):
             names.append(f"player_main/{group}/{local_index:03d}")
-            frames.append(extract_player_pose_frame(source_image, pose))
+            frames.append(extract_player_pose_frame(source_image, group, pose))
 
     cols = 8
     rows = (len(frames) + cols - 1) // cols

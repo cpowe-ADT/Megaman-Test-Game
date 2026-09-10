@@ -51,6 +51,7 @@ export class BossBase implements IBoss {
       firstPhaseUnlocks.forEach((id) => initialUnlocks.add(id))
     }
     this.attackController.setUnlockedAttacks([...initialUnlocks])
+    this.attackController.setSelectionDeck(this.phaseController.currentPhase.patternDeck ?? [])
   }
 
   get state() {
@@ -63,6 +64,10 @@ export class BossBase implements IBoss {
 
   get currentPhase() {
     return this.phaseController.currentPhase
+  }
+
+  get activeAttackId(): string | undefined {
+    return this.attackController.activeAttackId
   }
 
   get hpSnapshot(): { current: number; max: number } {
@@ -97,6 +102,7 @@ export class BossBase implements IBoss {
     if (phaseTransition && this.stateMachine.state !== 'DEAD') {
       this.attackController.unlockAttacks(phaseTransition.phase.unlockAttacks ?? [])
       this.attackController.setWeightOverrides(phaseTransition.phase.attackWeightOverrides ?? {})
+      this.attackController.setSelectionDeck(phaseTransition.phase.patternDeck ?? [])
       this.phaseTransitionRemainingMs = phaseTransition.phase.transitionLockMs ?? 420
       this.stateMachine.tryTransition('PHASE_TRANSITION')
       this.hooks.onPhaseChanged?.(phaseTransition.current, phaseTransition.phase)
@@ -105,9 +111,6 @@ export class BossBase implements IBoss {
 
     const attackContext = this.createAttackContext(ctx)
     const attackTick = this.attackController.tick(ctx.dtMs, attackContext)
-    if (attackTick.fired) {
-      this.hooks.onAttackStarted?.(attackTick.fired)
-    }
     if (attackTick.done) {
       this.hooks.onAttackResolved?.(attackTick.done)
     }
@@ -134,6 +137,7 @@ export class BossBase implements IBoss {
             this.definition.panicDistance ?? 36
           )
           if (started) {
+            this.hooks.onAttackStarted?.(started)
             this.transitionTo('ATTACKING')
           } else {
             this.transitionTo('MOVE_TO_RANGE')
@@ -153,6 +157,7 @@ export class BossBase implements IBoss {
             this.definition.panicDistance ?? 36
           )
           if (started) {
+            this.hooks.onAttackStarted?.(started)
             this.transitionTo('ATTACKING')
           } else {
             this.transitionTo('THINK')
@@ -184,7 +189,7 @@ export class BossBase implements IBoss {
       case 'PHASE_TRANSITION': {
         this.phaseTransitionRemainingMs -= ctx.dtMs
         if (this.phaseTransitionRemainingMs <= 0) {
-          this.transitionTo('THINK')
+          this.transitionTo(this.attackController.activeAttackId ? 'ATTACKING' : 'THINK')
         }
         break
       }

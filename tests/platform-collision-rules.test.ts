@@ -65,3 +65,51 @@ test('one-way does not collide without horizontal overlap', () => {
 
   assert.equal(collide, false)
 })
+
+test('one-way top tolerance allows slightly late descending collision', () => {
+  const collide = shouldCollideWithOneWayPlatform({
+    actorPrevBottom: 103,
+    actorBottom: 104,
+    actorVelocityY: 8,
+    actorLeft: 40,
+    actorRight: 52,
+    platformTop: 100,
+    platformLeft: 30,
+    platformRight: 80,
+    dropThroughActive: false
+  })
+
+  assert.equal(collide, true)
+})
+
+test('one-way rejects actors that are already below the top tolerance band', () => {
+  const collide = shouldCollideWithOneWayPlatform({
+    actorPrevBottom: 104,
+    actorBottom: 112,
+    actorVelocityY: 80,
+    actorLeft: 40,
+    actorRight: 52,
+    platformTop: 100,
+    platformLeft: 30,
+    platformRight: 80,
+    dropThroughActive: false
+  })
+
+  assert.equal(collide, false)
+})
+
+test('one-way rejects one-pixel edge contact as non-overlap', () => {
+  const collide = shouldCollideWithOneWayPlatform({
+    actorPrevBottom: 98,
+    actorBottom: 102,
+    actorVelocityY: 80,
+    actorLeft: 79,
+    actorRight: 81,
+    platformTop: 100,
+    platformLeft: 30,
+    platformRight: 80,
+    dropThroughActive: false
+  })
+
+  assert.equal(collide, false)
+})

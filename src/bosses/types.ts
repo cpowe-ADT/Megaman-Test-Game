@@ -146,7 +146,7 @@ export interface BossBlueprint {
     preferredRange: 'close' | 'mid' | 'long'
     mobilityNotes: string
   }
-  weaponReward: WeaponRewardPlan
+  weaponReward?: WeaponRewardPlan
   attacks: AttackPattern[]
   phases: PhaseDefinition[]
   spritePlan: SpriteSheetPlan
@@ -164,3 +164,4 @@ export type BossId =
   | 'mire_wraith'
   | 'gale_vixen'
   | 'glacier_ronin'
+  | 'omega_core'

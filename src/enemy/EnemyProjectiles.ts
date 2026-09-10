@@ -18,7 +18,12 @@ export function spawnEnemyProjectile(
   definition: EnemyProjectileDefinition,
   origin: Phaser.Math.Vector2,
   direction: 1 | -1,
-  aimAt?: Phaser.Math.Vector2
+  aimAt?: Phaser.Math.Vector2,
+  source?: {
+    sourceType: 'enemy_projectile' | 'boss_projectile' | 'system'
+    sourceId: string
+    attackId?: string
+  }
 ): Phaser.Physics.Arcade.Sprite | null {
   const velocity = new Phaser.Math.Vector2(direction * definition.speed, 0)
   if (aimAt) {
@@ -39,7 +44,10 @@ export function spawnEnemyProjectile(
       y: velocity.y
     },
     metadata: {
-      enemyProjectileKey: definition.key
+      enemyProjectileKey: definition.key,
+      sourceType: source?.sourceType ?? 'enemy_projectile',
+      sourceId: source?.sourceId ?? definition.key,
+      attack: source?.attackId ?? definition.key
     }
   })
 }

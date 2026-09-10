@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { resolveAutomationConfig } from '../src/config/automation'
 import { resolveDeveloperModeConfig } from '../src/config/developerMode'
 import { resolveEnemyFeatureFlags } from '../src/enemy/featureFlags'
 import { resolvePlayerFeatureFlags } from '../src/player/featureFlags'
@@ -41,4 +42,11 @@ test('developer mode can re-enable combat visuals explicitly', () => {
 
   assert.equal(playerFlags.enableDebugHitboxes, true)
   assert.equal(enemyFlags.enableEnemyDebug, true)
+})
+
+test('automation controls are opt-in through query or automation env flags', () => {
+  assert.equal(resolveAutomationConfig({}, '').enabled, false)
+  assert.equal(resolveAutomationConfig({}, '?automation=1').enabled, true)
+  assert.equal(resolveAutomationConfig({ VITE_AUTOMATION: '1' }, '').enabled, true)
+  assert.equal(resolveAutomationConfig({ VITE_SMOKE: '1' }, '').enabled, true)
 })

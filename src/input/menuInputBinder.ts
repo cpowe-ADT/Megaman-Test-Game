@@ -1,6 +1,5 @@
 import Phaser from 'phaser'
 import AudioService from '../audio'
-import InputActions from './InputActions'
 
 type MenuInputBinderOptions = {
   onConfirm?: () => void
@@ -11,7 +10,6 @@ export function bindMenuConfirmCancel(
   scene: Phaser.Scene,
   options: MenuInputBinderOptions
 ): () => void {
-  InputActions.init(scene)
   const keyboard = scene.input.keyboard
   if (!keyboard) {
     return () => {}

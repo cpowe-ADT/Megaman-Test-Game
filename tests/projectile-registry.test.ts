@@ -1,7 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createDefaultProjectileRegistry } from '../src/projectiles/defaultRegistry'
-import { resolvePlayerProjectileId } from '../src/projectiles/definitions/coreProjectiles'
+import {
+  resolvePlayerChargeFrame,
+  resolvePlayerProjectileId,
+  resolvePlayerWeaponFrame
+} from '../src/projectiles/definitions/coreProjectiles'
 
 test('default projectile registry includes buster, charge, and special weapon definitions', () => {
   const registry = createDefaultProjectileRegistry()
@@ -26,4 +30,18 @@ test('resolvePlayerProjectileId maps charged buster separately from standard wea
   assert.equal(resolvePlayerProjectileId('Buster', 0), 'player_weapon_Buster')
   assert.equal(resolvePlayerProjectileId('Buster', 3), 'player_buster_charge_lv3')
   assert.equal(resolvePlayerProjectileId('FlameSerpent', 0), 'player_weapon_FlameSerpent')
+})
+
+test('player weapons and charge tiers resolve to distinct authored visual frames', () => {
+  const weaponFrames = [
+    resolvePlayerWeaponFrame('Buster'),
+    resolvePlayerWeaponFrame('FlameSerpent'),
+    resolvePlayerWeaponFrame('HydroLance'),
+    resolvePlayerWeaponFrame('ThunderSpike'),
+    resolvePlayerWeaponFrame('MagcutDisc')
+  ]
+  const chargeFrames = ([1, 2, 3, 4] as const).map(resolvePlayerChargeFrame)
+
+  assert.equal(new Set(weaponFrames).size, weaponFrames.length)
+  assert.equal(new Set(chargeFrames).size, chargeFrames.length)
 })

@@ -1,15 +1,28 @@
 import Phaser from 'phaser'
+import type { DigitalButtonPad } from '../input/DigitalButtonPad'
 import { AnimationManifest } from './AnimationManifest'
 import { PlayerAnimator } from './PlayerAnimator'
+import { applyPlayerBodyProfile, resolvePlayerBodyProfileKey, type PlayerBodyProfileKey } from './PlayerBodyProfiles'
 import { PlayerCombat } from './PlayerCombat'
 import { PlayerController } from './PlayerController'
 import { PlayerDebug } from './PlayerDebug'
 import { PlayerMotor } from './PlayerMotor'
 import { PlayerStateMachine } from './PlayerStateMachine'
 import { VfxSfxRouter } from './VfxSfxRouter'
-import { PLAYER_GAMEPLAY_CONFIG } from './config'
+import { PLAYER_GAMEPLAY_CONFIG, resolveSwordVisualFacing, shouldFlipPlayerSpriteForFacing } from './config'
 import type { PlayerFeatureFlags } from './featureFlags'
-import type { CombatSnapshot, MotorSnapshot, PlayerRuntimeEvent, ResolvedHitbox } from './types'
+import type {
+  CombatSnapshot,
+  HitTier,
+  MotorSnapshot,
+  PlayerDamageRequest,
+  PlayerDamageResult,
+  PlayerResolvedState,
+  PlayerRuntimeEvent,
+  ProjectileSpawnReceipt,
+  ResolvedHitbox,
+  SpawnProjectileRequest
+} from './types'
 
 type ActionKeys = {
   dash: Phaser.Input.Keyboard.Key
@@ -19,14 +32,8 @@ type ActionKeys = {
 
 type RuntimeHooks = {
   setAnimation: (key: string) => void
-  spawnProjectile: (request: {
-    speed: number
-    damage: number
-    scale: number
-    chargeLevel: 0 | 1 | 2 | 3 | 4
-    impactFxKey: string
-    facing: 1 | -1
-  }) => void
+  spawnProjectile: (request: SpawnProjectileRequest) => ProjectileSpawnReceipt | null
+  canChargeProjectile: () => boolean
   applySwordHitbox: (hitbox: ResolvedHitbox) => void
   applyDamage: (damage: number) => void
 }
@@ -44,6 +51,22 @@ export class NewPlayerRuntime {
   private lastMotorSnapshot?: MotorSnapshot
   private lastCombatSnapshot?: CombatSnapshot
   private currentAnimationKey = 'player_idle'
+  private currentBodyProfile: PlayerBodyProfileKey = 'stand'
+  private nextDashAfterimageAt = 0
+  private nextWallSlideFxAt = 0
+  private shotsFiredTotal = 0
+  private lastProjectileSpawnMs = 0
+  private lastProjectileSpawnFrame = 0
+  private lastProjectile: ProjectileSpawnReceipt | null = null
+  private lastLandingSpeed = 0
+  private lastJumpSource: MotorSnapshot['jumpSource'] = 'none'
+  private lastDashStartedAtMs = 0
+  private lastDashEndedAtMs = 0
+  private lastDamageSource = 'none'
+  private lastDamageTier: HitTier | 'none' = 'none'
+  private lastKnockback = { x: 0, y: 0 }
+  private destroyed = false
+  private readonly debugToggleHandler = () => this.debug.toggle()
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -51,9 +74,10 @@ export class NewPlayerRuntime {
     cursors: Phaser.Types.Input.Keyboard.CursorKeys,
     actionKeys: ActionKeys,
     private readonly flags: PlayerFeatureFlags,
-    private readonly hooks: RuntimeHooks
+    private readonly hooks: RuntimeHooks,
+    private readonly virtualButtons?: DigitalButtonPad
   ) {
-    this.controller = new PlayerController(scene, cursors, actionKeys)
+    this.controller = new PlayerController(scene, cursors, actionKeys, virtualButtons)
     this.motor = new PlayerMotor(player, PLAYER_GAMEPLAY_CONFIG.movement, PLAYER_GAMEPLAY_CONFIG.dash)
     this.combat = new PlayerCombat(
       player,
@@ -63,23 +87,13 @@ export class NewPlayerRuntime {
       PLAYER_GAMEPLAY_CONFIG.damage,
       {
         onDamageAccepted: (damage) => this.hooks.applyDamage(damage),
-        onKnockback: (vx, vy) => this.motor.applyKnockback(vx, vy)
+        onKnockback: (vx, vy) => this.applyKnockback(vx, vy)
       }
     )
     this.stateMachine = new PlayerStateMachine()
     this.animator = new PlayerAnimator(AnimationManifest, {
       play: (key) => this.hooks.setAnimation(key),
       onAnimationEvent: (eventName, payload) => {
-        if (eventName === 'projectile.spawn') {
-          this.hooks.spawnProjectile({
-            speed: PLAYER_GAMEPLAY_CONFIG.blaster.pelletSpeed,
-            damage: PLAYER_GAMEPLAY_CONFIG.blaster.pelletDamage,
-            scale: 1,
-            chargeLevel: 0,
-            impactFxKey: 'fx_impact_small',
-            facing: this.motor.getFacing()
-          })
-        }
         if (eventName === 'hitbox.enable') {
           const request = this.activeHitbox
           if (request) {
@@ -93,12 +107,13 @@ export class NewPlayerRuntime {
     })
     this.vfxSfx = new VfxSfxRouter(scene, player)
     this.debug = new PlayerDebug(scene, player)
+    applyPlayerBodyProfile(this.player, this.currentBodyProfile)
 
     if (flags.enableDebugHitboxes) {
       this.debug.toggle(true)
     }
 
-    this.scene.input.keyboard?.on('keydown-F2', () => this.debug.toggle())
+    this.scene.input.keyboard?.on('keydown-F2', this.debugToggleHandler)
   }
 
   update(now: number, deltaMs: number): void {
@@ -111,46 +126,94 @@ export class NewPlayerRuntime {
       deltaMs,
       motorSnapshot.facing,
       motorSnapshot.grounded,
-      motorSnapshot.dashing
+      motorSnapshot.dashing,
+      this.hooks.canChargeProjectile()
     )
 
     this.consumeCombatEvents(combatResult.events)
-    this.dispatchLocomotionSfx(motorSnapshot)
+    if (motorSnapshot.justJumped) {
+      this.lastJumpSource = motorSnapshot.jumpSource
+    }
+    this.dispatchLocomotionSfx(now, motorSnapshot)
     this.lastMotorSnapshot = motorSnapshot
     this.lastCombatSnapshot = combatResult.snapshot
 
     const resolved = this.stateMachine.resolve(intent, motorSnapshot, combatResult.snapshot)
-    this.currentAnimationKey = this.animator.update(resolved, motorSnapshot, combatResult.snapshot)
+    this.syncBodyProfile(resolved)
+    this.currentAnimationKey = this.animator.update(resolved, motorSnapshot, combatResult.snapshot, deltaMs)
 
-    if (!combatResult.snapshot.slashActive) {
+    if (combatResult.snapshot.slashPhase !== 'active') {
       this.activeHitbox = undefined
     }
 
-    this.player.setFlipX(motorSnapshot.facing === -1)
+    const visualFacing =
+      combatResult.snapshot.slashPhase != null
+        ? resolveSwordVisualFacing(combatResult.snapshot.slashDirection, motorSnapshot.facing)
+        : motorSnapshot.facing
+    this.player.setFlipX(shouldFlipPlayerSpriteForFacing(visualFacing))
 
     this.debug.draw(motorSnapshot, combatResult.snapshot, this.activeHitbox)
   }
 
-  receiveDamage(damage: number, tier: 'light' | 'heavy' = 'light'): boolean {
+  pauseAnimations(): void {
+    this.player.anims.pause()
+  }
+
+  resumeAnimations(): void {
+    this.player.anims.resume()
+  }
+
+  receiveDamage(request: PlayerDamageRequest): PlayerDamageResult {
+    if (this.destroyed || !this.player.active) {
+      return { accepted: false, reason: 'inactive', amount: 0, request }
+    }
     const body = this.player.body as Phaser.Physics.Arcade.Body
-    const accepted = this.combat.receiveDamage(
-      damage,
+    const tier = request.tier ?? (request.amount >= 2 ? 'heavy' : 'light')
+    const damageResult = this.combat.receiveDamage(
+      Math.max(0, request.amount),
       body.onFloor() || body.blocked.down,
-      this.motor.getFacing(),
-      tier
+      request.direction ?? ((-this.motor.getFacing()) as 1 | -1),
+      tier,
+      {
+        bypassIFrames: request.bypassIFrames,
+        knockback: request.knockback
+      }
     )
-    if (accepted) {
+    this.lastDamageSource = `${request.sourceType}:${request.sourceId}`
+    this.lastDamageTier = tier
+    if (damageResult.accepted) {
+      this.consumeCombatEvents(damageResult.events)
+      this.lastDamageTier = tier
       this.hooks.setAnimation(tier === 'heavy' ? 'player_hurt_heavy' : 'player_hurt_light')
     }
-    return accepted
+    return {
+      accepted: damageResult.accepted,
+      reason: damageResult.accepted ? 'accepted' : 'iframes',
+      amount: damageResult.accepted ? Math.max(0, request.amount) : 0,
+      request
+    }
   }
 
   destroy(): void {
+    if (this.destroyed) {
+      return
+    }
+    this.destroyed = true
+    this.scene.input.keyboard?.off('keydown-F2', this.debugToggleHandler)
+    this.vfxSfx.destroy()
     this.debug.destroy()
   }
 
   suppressJumpFor(ms: number): void {
     this.controller.suppressJumpFor(ms)
+  }
+
+  setMovementSpeedMultiplier(multiplier: number): void {
+    this.motor.setMovementSpeedMultiplier(multiplier)
+  }
+
+  getFacing(): 1 | -1 {
+    return this.motor.getFacing()
   }
 
   resetForRespawn(iFrameMs = PLAYER_GAMEPLAY_CONFIG.damage.iFramesMs): void {
@@ -162,6 +225,19 @@ export class NewPlayerRuntime {
     this.lastMotorSnapshot = undefined
     this.lastCombatSnapshot = undefined
     this.currentAnimationKey = 'player_idle'
+    this.currentBodyProfile = 'stand'
+    this.nextDashAfterimageAt = 0
+    this.nextWallSlideFxAt = 0
+    this.lastProjectileSpawnFrame = 0
+    this.lastProjectile = null
+    this.lastLandingSpeed = 0
+    this.lastJumpSource = 'none'
+    this.lastDashStartedAtMs = 0
+    this.lastDashEndedAtMs = 0
+    this.lastDamageSource = 'none'
+    this.lastDamageTier = 'none'
+    this.lastKnockback = { x: 0, y: 0 }
+    applyPlayerBodyProfile(this.player, this.currentBodyProfile)
     this.hooks.setAnimation('player-idle')
   }
 
@@ -169,28 +245,69 @@ export class NewPlayerRuntime {
     if (!this.lastMotorSnapshot || !this.lastCombatSnapshot) {
       return null
     }
+    const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
     return {
       locomotion: {
         grounded: this.lastMotorSnapshot.grounded,
         dashing: this.lastMotorSnapshot.dashing,
+        dashStarted: this.lastMotorSnapshot.dashStarted,
+        dashEnded: this.lastMotorSnapshot.dashEnded,
+        lastDashStartedAtMs: this.lastDashStartedAtMs,
+        lastDashEndedAtMs: this.lastDashEndedAtMs,
         airDashing: this.lastMotorSnapshot.airDashing,
+        wallSliding: this.lastMotorSnapshot.wallSliding,
+        wallSide: this.lastMotorSnapshot.wallSide,
+        wallJumping: this.lastMotorSnapshot.wallJumping,
         coyoteMs: Math.round(this.lastMotorSnapshot.coyoteRemainingMs),
         jumpBufferMs: Math.round(this.lastMotorSnapshot.jumpBufferRemainingMs),
+        lastJumpSource: this.lastJumpSource,
+        lastLandingSpeed: this.lastLandingSpeed,
         dashMs: Math.round(this.lastMotorSnapshot.dashRemainingMs),
         dashCooldownMs: Math.round(this.lastMotorSnapshot.dashCooldownRemainingMs)
       },
       combat: {
+        shotFired: this.lastCombatSnapshot.shotFired,
         chargeLevel: this.lastCombatSnapshot.chargeLevel,
+        chargeElapsedMs: Math.round(this.lastCombatSnapshot.chargeElapsedMs),
         charging: this.lastCombatSnapshot.charging,
+        chargeReleased: this.lastCombatSnapshot.chargeReleased,
+        shotsFiredTotal: this.shotsFiredTotal,
+        lastProjectileSpawnMs: this.lastProjectileSpawnMs,
+        lastProjectileSpawnFrame: this.lastProjectileSpawnFrame,
+        lastProjectile: this.lastProjectile ? { ...this.lastProjectile } : null,
+        slashGrounded: this.lastCombatSnapshot.slashGrounded ?? null,
         slashPhase: this.lastCombatSnapshot.slashPhase ?? null,
         slashDirection: this.lastCombatSnapshot.slashDirection ?? null,
         iFramesMs: Math.round(this.lastCombatSnapshot.iFramesRemainingMs),
         hitstunMs: Math.round(this.lastCombatSnapshot.hitstunRemainingMs),
-        hitstopFrames: this.lastCombatSnapshot.hitstopRemainingFrames
+        hitstopFrames: this.lastCombatSnapshot.hitstopRemainingFrames,
+        lastDamageSource: this.lastDamageSource,
+        lastDamageTier: this.lastDamageTier,
+        lastKnockback: { ...this.lastKnockback }
+      },
+      physics: {
+        bodyProfileKey: this.currentBodyProfile,
+        onFloor: Boolean(body?.onFloor?.()),
+        blocked: {
+          up: Boolean(body?.blocked.up),
+          down: Boolean(body?.blocked.down),
+          left: Boolean(body?.blocked.left),
+          right: Boolean(body?.blocked.right)
+        },
+        touching: {
+          up: Boolean(body?.touching.up),
+          down: Boolean(body?.touching.down),
+          left: Boolean(body?.touching.left),
+          right: Boolean(body?.touching.right)
+        }
+      },
+      input: {
+        touchButtons: this.virtualButtons?.getHeldSnapshot?.() ?? null
       },
       visuals: {
         animationKey: this.currentAnimationKey,
         frameName: String(this.player.frame?.name ?? ''),
+        facing: this.player.flipX ? 1 : -1,
         activeHitbox: this.activeHitbox
           ? {
               direction: this.activeHitbox.direction,
@@ -205,14 +322,7 @@ export class NewPlayerRuntime {
   private consumeCombatEvents(events: PlayerRuntimeEvent[]): void {
     for (const event of events) {
       if (event.type === 'projectile') {
-        this.hooks.spawnProjectile({
-          speed: event.request.speed,
-          damage: event.request.damage,
-          scale: event.request.scale,
-          chargeLevel: event.request.chargeLevel,
-          impactFxKey: event.request.impactFxKey,
-          facing: event.request.facing
-        })
+        this.dispatchProjectile(event.request)
       } else if (event.type === 'hitbox') {
         this.activeHitbox = event.request
         this.hooks.applySwordHitbox(event.request)
@@ -222,18 +332,77 @@ export class NewPlayerRuntime {
     this.vfxSfx.dispatch(events)
   }
 
-  private dispatchLocomotionSfx(motorSnapshot: MotorSnapshot): void {
+  private dispatchProjectile(request: SpawnProjectileRequest): void {
+    const receipt = this.hooks.spawnProjectile(request)
+    if (!receipt) {
+      return
+    }
+    this.shotsFiredTotal += 1
+    this.lastProjectileSpawnMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
+    this.lastProjectileSpawnFrame = Math.max(0, Math.round((this.scene.time.now ?? 0) / (1000 / 60)))
+    this.lastProjectile = { ...receipt }
+  }
+
+  private dispatchLocomotionSfx(now: number, motorSnapshot: MotorSnapshot): void {
     if (motorSnapshot.justJumped) {
       this.vfxSfx.dispatch([{ type: 'sfx', key: 'jump' }])
     }
 
     if (motorSnapshot.justLanded) {
-      this.vfxSfx.dispatch([{ type: 'sfx', key: 'land' }])
+      const lastVelocityY = this.lastMotorSnapshot?.velocityY ?? 0
+      this.lastLandingSpeed = Math.max(0, Math.round(lastVelocityY))
+      if (lastVelocityY > 400) {
+        this.vfxSfx.dispatch([
+          { type: 'sfx', key: 'land' },
+          { type: 'vfx', key: 'fx_shake_camera_light' },
+          { type: 'hitstop', frames: 3 }
+        ])
+      } else {
+        this.vfxSfx.dispatch([{ type: 'sfx', key: 'land' }])
+      }
     }
 
     const lastDashMs = this.lastMotorSnapshot?.dashRemainingMs ?? 0
     if (lastDashMs <= 0 && motorSnapshot.dashRemainingMs > 0) {
+      this.lastDashStartedAtMs = Math.max(0, Math.round(now))
       this.vfxSfx.dispatch([{ type: 'sfx', key: 'dash' }])
+      this.nextDashAfterimageAt = now
     }
+
+    if (motorSnapshot.dashEnded) {
+      this.lastDashEndedAtMs = Math.max(0, Math.round(now))
+    }
+
+    if (motorSnapshot.dashing && now >= this.nextDashAfterimageAt) {
+      this.vfxSfx.dispatch([{ type: 'vfx', key: 'fx_dash_afterimage' }])
+      this.nextDashAfterimageAt = now + 42
+    }
+
+    const wasWallSliding = Boolean(this.lastMotorSnapshot?.wallSliding)
+    if (motorSnapshot.wallSliding && (!wasWallSliding || now >= this.nextWallSlideFxAt)) {
+      this.vfxSfx.dispatch([{ type: 'vfx', key: 'fx_wall_slide_dust' }])
+      this.nextWallSlideFxAt = now + 90
+    }
+
+    if (!motorSnapshot.wallSliding) {
+      this.nextWallSlideFxAt = now
+    }
+  }
+
+  private syncBodyProfile(state: PlayerResolvedState): void {
+    const nextProfile = resolvePlayerBodyProfileKey(state)
+    if (nextProfile === this.currentBodyProfile) {
+      return
+    }
+    this.currentBodyProfile = nextProfile
+    applyPlayerBodyProfile(this.player, nextProfile)
+  }
+
+  private applyKnockback(vx: number, vy: number): void {
+    this.lastKnockback = {
+      x: Math.round(vx),
+      y: Math.round(vy)
+    }
+    this.motor.applyKnockback(vx, vy)
   }
 }

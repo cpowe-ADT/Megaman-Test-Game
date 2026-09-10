@@ -3,6 +3,124 @@
   "generatedAt": "2026-03-10T18:00:00-05:00",
   "entries": [
     {
+      "id": "enemy-platformer-security-robot",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/robot-platformer-sprites",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Robot platformer sprites by GearShocky.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_robot_platformer_sheet_free_v1_20260312_120000.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/*_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/*/*.png",
+        "assets/sprites/enemies/*/*.atlas.json"
+      ],
+      "notes": "Downloaded raw robot-platformer sheet, then derived the humanoid and standard drone enemy variants used across the v2 full-roster enemy rebuild."
+    },
+    {
+      "id": "enemy-kenney-robot-pack",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/robot-pack",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Robot pack by Kenney. Credit Kenney.nl is appreciated but not required on the source page.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_robot_pack_side_sheet_free_v1_20260312_120000.png",
+      "runtimeOutputs": [],
+      "notes": "Retained as an earlier CC0 tracked-robot intake candidate, but the active heavy/turret rebuilds have since moved to more specialized source packs."
+    },
+    {
+      "id": "enemy-plant-monster",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/plant-monster",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Plant Monster by bevouliin.com.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_plant_monster_frame1_free_v1_20260312_184600.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_fly_trap_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.png",
+        "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.atlas.json"
+      ],
+      "notes": "Stored the two transparent plant-monster source frames and used them as the base silhouette for the fly-trap toxic harrier rebuild."
+    },
+    {
+      "id": "enemy-jumping-blob",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/jumping-blob",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Jumping Blob by Master484.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_jumping_blob_strip_free_v1_20260312_184600.png",
+      "runtimeOutputs": [],
+      "notes": "Retained as an earlier CC0 intake candidate for hazard/blob silhouettes, but superseded in the active bouncer rebuild by the Slime First Gen sheet."
+    },
+    {
+      "id": "enemy-scorpy-scorp",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/scorpy-scorp",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Scorpy Scorp by AntumDeluge.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_scorpy_scorp_walk_sheet_free_v1_20260312_184600.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_mine_bot_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.png",
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.atlas.json"
+      ],
+      "notes": "Stored the scorpion walk and stab sheets and used them to rebuild the mine-bot as a grounded hazard crawler with a distinct silhouette."
+    },
+    {
+      "id": "enemy-slime-first-gen-weak",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/slime-monster-sprites",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Slime Monster Sprites by BDragon1727.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_slime_first_gen_weak_free_v1_20260312_190900.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_bouncer_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.png",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.atlas.json"
+      ],
+      "notes": "Used the green slime row and splash frames as the upgraded squash-and-stretch source for the active bouncer rebuild."
+    },
+    {
+      "id": "enemy-eye-monster",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/floating-eye-monster-16x16",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Floating Eye Monster 16x16 by Bevouliin.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_eye_monster_sheet_free_v1_20260312_190900.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_laser_eye_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.png",
+        "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.atlas.json"
+      ],
+      "notes": "Used the floating-eye frame grid as the active laser-eye rebuild so the beam sentinel now has a dedicated eye silhouette instead of a recolored saucer."
+    },
+    {
+      "id": "enemy-cannon-gun",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/cannon-gun",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Cannon Gun by Clint Bellanger / Liberated Pixel Cup contributors as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_cannon_gun_sheet_free_v1_20260312_191500.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_frost_turret_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.png",
+        "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.atlas.json"
+      ],
+      "notes": "Used the cannon-gun animation row as the active frost-turret rebuild so the stage turret now reads as a dedicated mounted cannon instead of a recolored tracked robot."
+    },
+    {
+      "id": "enemy-kenney-tanks-pack",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/tanks",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Tanks by Kenney.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_kenney_tank_grey1_free_v1_20260312_194000.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_armored_bot_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.png",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.atlas.json"
+      ],
+      "notes": "Used the grey tank body variants from Kenney's CC0 tanks pack as the active armored-bot rebuild so the heavy bruiser now reads as a dedicated tank silhouette."
+    },
+    {
       "id": "boss-enemy-free-roster",
       "family": "bosses-enemies",
       "sourceUrl": "https://opengameart.org/content/mech-designs",

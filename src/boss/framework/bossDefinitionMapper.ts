@@ -1,5 +1,6 @@
 import { BossBlueprint, AttackPattern } from '../../bosses/types'
 import { BossAttackDefinition, BossDefinition } from './types'
+import { BOSS_COMBAT_PROFILES } from '../../bosses/bossCombatProfiles'
 
 function toAttackType(pattern: AttackPattern): BossAttackDefinition['type'] {
   if (pattern.state === 'shoot' || pattern.state === 'summon') {
@@ -18,6 +19,38 @@ function normalizedId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_')
 }
 
+function resolveDamageType(blueprint: BossBlueprint): string {
+  return blueprint.element.toLowerCase()
+}
+
+function resolveAttackDamage(pattern: AttackPattern): number {
+  if (pattern.state === 'dash' || pattern.state === 'special') {
+    return 2
+  }
+  return 1
+}
+
+function resolveAttackParams(blueprint: BossBlueprint, pattern: AttackPattern) {
+  const spawns = pattern.spawns ?? []
+  return {
+    spawns: spawns.join(','),
+    projectileSpeed: pattern.state === 'shoot' || pattern.state === 'summon' ? 240 : undefined,
+    count: spawns.some((spawn) =>
+      ['arc_shards', 'flame_cone', 'freeze_cone', 'dart_spread', 'boulder_radial'].includes(spawn)
+    )
+      ? 3
+      : undefined,
+    spread: spawns.some((spawn) =>
+      ['arc_shards', 'flame_cone', 'freeze_cone', 'dart_spread', 'boulder_radial'].includes(spawn)
+    )
+      ? 0.36
+      : undefined,
+    dashSpeed: pattern.state === 'dash' ? Math.max(220, blueprint.baseStats.dashSpeed * 1.8) : undefined,
+    hazardDuration: pattern.state === 'special' || pattern.state === 'summon' ? 850 : undefined,
+    radius: pattern.state === 'special' ? 72 : undefined
+  }
+}
+
 function inferRange(blueprint: BossBlueprint, pattern: AttackPattern): { min: number; max: number } {
   const profile = blueprint.movementProfile.preferredRange
   if (pattern.state === 'dash') {
@@ -32,6 +65,10 @@ function inferRange(blueprint: BossBlueprint, pattern: AttackPattern): { min: nu
 export function toBossDefinition(blueprint: BossBlueprint): BossDefinition {
   const attacks: BossAttackDefinition[] = blueprint.attacks.map((attack) => {
     const range = inferRange(blueprint, attack)
+    const combatProfile =
+      BOSS_COMBAT_PROFILES[blueprint.id as keyof typeof BOSS_COMBAT_PROFILES]?.attacks[
+        normalizedId(attack.name)
+      ]
     return {
       id: normalizedId(attack.name),
       displayName: attack.name,
@@ -43,23 +80,34 @@ export function toBossDefinition(blueprint: BossBlueprint): BossDefinition {
       rangeMin: range.min,
       rangeMax: range.max,
       weight: 1,
-      params: {
-        spawns: attack.spawns?.join(',') ?? ''
-      },
+      panicWeight: attack.state === 'dash' ? 3 : undefined,
+      params: resolveAttackParams(blueprint, attack),
       hit: {
-        damageAmount: 2,
-        damageType: 'normal',
-        hitstopFrames: 2
+        damageAmount: resolveAttackDamage(attack),
+        damageType: resolveDamageType(blueprint),
+        knockbackVector: attack.state === 'dash' ? { x: 150, y: -45 } : { x: 100, y: -30 },
+        hitstopFrames: attack.state === 'dash' || attack.state === 'special' ? 4 : 2
       },
       telegraph: {
         animationName: attack.state,
         sfxName: attack.name,
         vfxName: attack.telegraph.warningFx
+      },
+      requirements: {
+        grounded: combatProfile?.requiresGrounded,
+        maxActiveHazards:
+          attack.state === 'special' || attack.state === 'summon'
+            ? BOSS_COMBAT_PROFILES[blueprint.id as keyof typeof BOSS_COMBAT_PROFILES]?.room
+                .maxActiveHazards
+            : undefined
       }
     }
   })
 
-  const phases = blueprint.phases.map((phase) => {
+  const laterPhaseUnlocks = new Set(
+    blueprint.phases.slice(1).flatMap((phase) => phase.newAttacks.map((attackName) => normalizedId(attackName)))
+  )
+  const phases = blueprint.phases.map((phase, phaseIndex) => {
     const overrides: Record<string, number> = {}
     phase.newAttacks.forEach((attackName) => {
       overrides[normalizedId(attackName)] = 3
@@ -70,8 +118,15 @@ export function toBossDefinition(blueprint: BossBlueprint): BossDefinition {
       speedMultiplier: phase.cadenceMultiplier,
       thinkTimeMultiplier: phase.enraged ? 1.25 : 1,
       attackWeightOverrides: overrides,
-      unlockAttacks: phase.newAttacks.map((attackName) => normalizedId(attackName)),
-      transitionLockMs: phase.enraged ? 420 : 0
+      unlockAttacks:
+        phaseIndex === 0
+          ? attacks.map((attack) => attack.id).filter((attackId) => !laterPhaseUnlocks.has(attackId))
+          : phase.newAttacks.map((attackName) => normalizedId(attackName)),
+      transitionLockMs: phase.enraged ? 420 : 0,
+      patternDeck:
+        BOSS_COMBAT_PROFILES[blueprint.id as keyof typeof BOSS_COMBAT_PROFILES]?.deterministicDeck?.[
+          phaseIndex
+        ]
     }
   })
 
@@ -105,7 +160,7 @@ export function toAttackPatternFromDefinition(attack: BossAttackDefinition): Att
       ? 'shoot'
       : attack.type === 'dash'
         ? 'dash'
-        : attack.type === 'hazard'
+        : attack.type === 'hazard' || attack.type === 'slam'
           ? 'special'
           : 'move'
 
@@ -120,6 +175,9 @@ export function toAttackPatternFromDefinition(attack: BossAttackDefinition): Att
     },
     executeMs: attack.activeTime,
     cooldownMs: attack.cooldown,
-    spawns: undefined
+    spawns:
+      typeof attack.params?.spawns === 'string'
+        ? attack.params.spawns.split(',').map((value) => value.trim()).filter(Boolean)
+        : undefined
   }
 }

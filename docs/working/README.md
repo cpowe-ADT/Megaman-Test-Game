@@ -11,6 +11,11 @@ This folder holds useful planning and audit material that may lag behind runtime
 - Archive it instead if it becomes date-bound or obsolete.
 
 ## Files
+- `full-game-audit.md`
+- `full-game-sprint-plan.md`
 - `refactor-plan.md`
 - `implementation-spec.md`
 - `consultant-audit.md`
+- `orchestrated-completion-audit.md`
+- `supervised-game-completion-plan.md`
+- `boss-animation-and-fight-rebuild-plan.md`

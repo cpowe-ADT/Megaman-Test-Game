@@ -6,6 +6,8 @@ export type PlayerIntent = {
   jumpHeld: boolean
   jumpReleased: boolean
   dashPressed: boolean
+  dashHeld: boolean
+  dashReleased: boolean
   shootPressed: boolean
   shootHeld: boolean
   shootReleased: boolean
@@ -26,6 +28,8 @@ export type LocomotionState =
   | 'land'
   | 'dash'
   | 'air_dash'
+  | 'wall_slide'
+  | 'wall_jump'
   | 'hurt'
 
 export type ActionState =
@@ -42,8 +46,14 @@ export type MotorSnapshot = {
   grounded: boolean
   justLanded: boolean
   justJumped: boolean
+  jumpSource: 'none' | 'ground' | 'coyote' | 'wall'
   dashing: boolean
+  dashStarted: boolean
+  dashEnded: boolean
   airDashing: boolean
+  wallSliding: boolean
+  wallSide: -1 | 0 | 1
+  wallJumping: boolean
   facing: 1 | -1
   turnRequested: boolean
   velocityX: number
@@ -52,14 +62,18 @@ export type MotorSnapshot = {
   jumpBufferRemainingMs: number
   dashRemainingMs: number
   dashCooldownRemainingMs: number
+  isGravityInverted: boolean
 }
 
 export type CombatSnapshot = {
   shotFired: boolean
   chargeLevel: 0 | 1 | 2 | 3 | 4
+  chargeElapsedMs: number
   charging: boolean
   chargeReleased: boolean
+  releasedChargeLevel: 0 | 1 | 2 | 3 | 4
   slashActive: boolean
+  slashGrounded?: boolean
   slashDirection?: Direction8
   slashPhase?: 'startup' | 'active' | 'recovery'
   hitstunRemainingMs: number
@@ -74,17 +88,28 @@ export type PlayerResolvedState = {
   facing: 1 | -1
   slashDirection?: Direction8
   chargeLevel?: 0 | 1 | 2 | 3 | 4
+  isGravityInverted: boolean
 }
 
 export type SpawnProjectileRequest = {
   type: 'pellet' | 'charge'
   chargeLevel: 0 | 1 | 2 | 3 | 4
   facing: 1 | -1
-  speed: number
+}
+
+export type ProjectileSpawnReceipt = {
+  source: 'player'
+  projectileId: string
+  weaponId: string
+  weaponElement: string
+  chargeLevel: 0 | 1 | 2 | 3 | 4
   damage: number
+  speed: number
   scale: number
   pierce: number
   impactFxKey: string
+  energyCost: number
+  energyRemaining: number
 }
 
 export type ResolvedHitbox = {
@@ -101,3 +126,31 @@ export type PlayerRuntimeEvent =
   | { type: 'hitstop'; frames: number }
 
 export type HitTier = 'light' | 'heavy'
+
+export type PlayerDamageSourceType =
+  | 'enemy_contact'
+  | 'enemy_melee'
+  | 'enemy_projectile'
+  | 'boss_contact'
+  | 'boss_projectile'
+  | 'hazard'
+  | 'fall'
+  | 'system'
+
+export type PlayerDamageRequest = {
+  amount: number
+  tier?: HitTier
+  sourceType: PlayerDamageSourceType
+  sourceId: string
+  direction?: -1 | 1
+  knockback?: { x: number; y: number }
+  element?: string
+  bypassIFrames?: boolean
+}
+
+export type PlayerDamageResult = {
+  accepted: boolean
+  reason: 'accepted' | 'iframes' | 'inactive'
+  amount: number
+  request: PlayerDamageRequest
+}

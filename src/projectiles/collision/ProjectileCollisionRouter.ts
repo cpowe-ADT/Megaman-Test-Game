@@ -13,6 +13,8 @@ type CombatTarget = 'player' | 'enemy' | 'boss' | 'environment'
 type BulletDamageMeta = {
   weaponId?: string
   weaponElement?: string
+  projectileId?: string
+  chargeLevel: 0 | 1 | 2 | 3 | 4
   kind: 'bullet'
 }
 
@@ -22,6 +24,15 @@ type EnemyHitResult = {
   recycleBullet: boolean
 }
 
+type EnemyBulletDamageMeta = {
+  sourceType: 'enemy_projectile' | 'boss_projectile' | 'system'
+  sourceId: string
+  projectileId: string
+  direction: -1 | 1
+  tier: 'light' | 'heavy'
+  element?: string
+}
+
 type ProjectileCollisionRouterOptions = {
   playerBullets: Phaser.Physics.Arcade.Group
   enemyBullets: Phaser.Physics.Arcade.Group
@@ -29,7 +40,7 @@ type ProjectileCollisionRouterOptions = {
   getNow: () => number
   getFacing: () => 1 | -1
   damageBoss: (damage: number, meta: BulletDamageMeta) => void
-  damagePlayer: (damage: number) => boolean
+  damagePlayer: (damage: number, meta: EnemyBulletDamageMeta) => { accepted: boolean }
   damageEnemy: (enemy: Phaser.Physics.Arcade.Sprite, damage: number) => EnemyHitResult
   recycleBullet: (a: any, b: any) => void
   recordCombatHit: (
@@ -120,6 +131,8 @@ export class ProjectileCollisionRouter {
     this.options.damageBoss(damage, {
       weaponId: bullet.data?.get?.('weaponId') as string | undefined,
       weaponElement: bullet.data?.get?.('weaponElement') as string | undefined,
+      projectileId: bullet.data?.get?.('projectileId') as string | undefined,
+      chargeLevel: Math.max(0, Math.min(4, Number(bullet.data?.get?.('chargeLevel') ?? 0))) as 0 | 1 | 2 | 3 | 4,
       kind: 'bullet'
     })
     this.options.devLogOverlap?.('PB->B', bullet, target, true, 'owner is player')
@@ -158,8 +171,26 @@ export class ProjectileCollisionRouter {
     }
 
     const damage = (bullet.data?.get?.('damage') as number | undefined) ?? 1
-    const accepted = this.options.damagePlayer(damage)
-    this.options.recordCombatHit('enemy', 'player', damage, 'bullet', accepted, 'new-player-runtime')
+    const rawSourceType = String(bullet.data?.get?.('sourceType') ?? 'enemy_projectile')
+    const sourceType: EnemyBulletDamageMeta['sourceType'] =
+      rawSourceType === 'boss_projectile' || rawSourceType === 'system'
+        ? rawSourceType
+        : 'enemy_projectile'
+    const velocityX = Number((bullet.body as Phaser.Physics.Arcade.Body | undefined)?.velocity.x ?? 0)
+    this.options.damagePlayer(damage, {
+      sourceType,
+      sourceId: String(
+        bullet.data?.get?.('sourceId') ??
+        bullet.data?.get?.('attack') ??
+        bullet.data?.get?.('enemyProjectileKey') ??
+        bullet.data?.get?.('projectileId') ??
+        'unknown_projectile'
+      ),
+      projectileId: String(bullet.data?.get?.('projectileId') ?? 'unknown_projectile'),
+      direction: velocityX < 0 ? -1 : 1,
+      tier: damage >= 2 ? 'heavy' : 'light',
+      element: bullet.data?.get?.('element') as string | undefined
+    })
     this.options.devLogOverlap?.('EB->P', bullet, player, true, 'owner is enemy')
     this.options.recycleBullet(bullet, player)
   }

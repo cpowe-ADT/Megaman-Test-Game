@@ -75,7 +75,7 @@ This repo already supports automated gameplay inspection. Preserve these contrac
 
 - `window.render_game_to_text`
   - Must keep exposing concise, decision-useful runtime state for automation.
-- Deterministic stepping hooks such as `window.advanceTime`
+- Animation-frame waiting hooks such as `window.advanceTime` (not deterministic Phaser stepping)
   - Do not remove or silently change semantics without updating smoke tooling and docs.
 - `scripts/smoke-test.mjs` and `scripts/mission-visual-sweep.mjs`
   - Treat these as part of the test surface, not disposable scripts.

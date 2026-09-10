@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { ProjectileRegistry } from './ProjectileRegistry'
+import { resolveProjectileStall } from './projectileLifecycle'
 import type { ProjectileDefinition, ProjectilePoolKey, ProjectileSpawnRequest } from './types'
 
 type ProjectileSystemOptions = {
@@ -9,6 +10,7 @@ type ProjectileSystemOptions = {
 
 type UpdateContext = {
   player?: Phaser.Physics.Arcade.Sprite
+  enemyReturnTarget?: Phaser.GameObjects.GameObject & { x: number; y: number }
 }
 
 export class ProjectileSystem {
@@ -78,6 +80,12 @@ export class ProjectileSystem {
     if (body) {
       body.enable = true
       body.reset(request.x, request.y)
+      const hitbox = definition.hitbox
+      if (hitbox) {
+        body.setSize(hitbox.width, hitbox.height, true)
+      } else {
+        body.setSize(bullet.frame.width, bullet.frame.height, true)
+      }
       body.allowGravity = false
       body.onWorldBounds = definition.hitPolicy.collidesWithWorldBounds
       body.setCollideWorldBounds(definition.hitPolicy.collidesWithWorldBounds)
@@ -101,6 +109,9 @@ export class ProjectileSystem {
     bullet.data?.set('pierceRemaining', definition.hitPolicy.pierce)
     bullet.data?.set('weaponBehavior', definition.behavior.kind)
     bullet.data?.set('baseSpeedX', velocityX)
+    bullet.data?.set('baseSpeedY', velocityY)
+    bullet.data?.set('baseScale', request.scale ?? definition.visual.scale)
+    bullet.data?.set('stalledSince', null)
     bullet.data?.set('chargeLevel', request.chargeLevel ?? 0)
 
     if (definition.behavior.kind === 'wave') {
@@ -152,22 +163,41 @@ export class ProjectileSystem {
 
         const projectileId = bullet.data?.get?.('projectileId') as string | undefined
         if (!projectileId) {
+          this.recycleInvalidProjectile(bullet)
           return false
         }
 
         const definition = this.registry.get(projectileId)
         if (!definition) {
-          return false
-        }
-
-        const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
-        if (body && !body.enable) {
+          this.recycleInvalidProjectile(bullet)
           return false
         }
 
         const spawnedAt = Number(bullet.data?.get?.('spawnedAt') ?? now)
         const lifetimeMs = Number(bullet.data?.get?.('lifetimeMs') ?? definition.lifetimeMs)
         if (lifetimeMs > 0 && now - spawnedAt >= lifetimeMs) {
+          this.recycle(bullet)
+          return false
+        }
+
+        const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+        if (!body || !body.enable) {
+          this.recycleInvalidProjectile(bullet)
+          return false
+        }
+
+        const rawStalledSince = bullet.data?.get?.('stalledSince')
+        const stall = resolveProjectileStall({
+          kind: definition.behavior.kind,
+          now,
+          stalledSince: typeof rawStalledSince === 'number' && Number.isFinite(rawStalledSince) ? rawStalledSince : null,
+          expectedVelocityX: Number(bullet.data?.get?.('baseSpeedX') ?? 0),
+          expectedVelocityY: Number(bullet.data?.get?.('baseSpeedY') ?? 0),
+          actualVelocityX: body.velocity.x,
+          actualVelocityY: body.velocity.y
+        })
+        bullet.data?.set('stalledSince', stall.stalledSince)
+        if (stall.shouldRecycle) {
           this.recycle(bullet)
           return false
         }
@@ -181,7 +211,9 @@ export class ProjectileSystem {
         } else if (definition.behavior.kind === 'lob') {
           const gravityY = Number(bullet.data?.get?.('gravityY') ?? definition.behavior.gravityY)
           body?.setVelocityY(body.velocity.y + gravityY * deltaSeconds)
-        } else if (definition.behavior.kind === 'boomerang' && context.player && body) {
+        } else if (definition.behavior.kind === 'boomerang' && body) {
+          const returnTarget = definition.owner === 'enemy' ? context.enemyReturnTarget : context.player
+          if (!returnTarget) return false
           const returnAfterMs = Math.max(
             80,
             Number(bullet.data?.get?.('returnAfterMs') ?? definition.behavior.returnAfterMs)
@@ -197,8 +229,8 @@ export class ProjectileSystem {
           }
 
           if (bullet.data?.get?.('returning')) {
-            const dx = context.player.x - bullet.x
-            const dy = context.player.y + homeOffsetY - bullet.y
+            const dx = returnTarget.x - bullet.x
+            const dy = returnTarget.y + homeOffsetY - bullet.y
             const distance = Math.hypot(dx, dy)
             if (distance <= 14) {
               this.recycle(bullet)
@@ -207,6 +239,19 @@ export class ProjectileSystem {
             const scale = returnSpeed / Math.max(1, distance)
             body.setVelocity(dx * scale, dy * scale)
           }
+        }
+
+        const baseScale = Number(bullet.data?.get?.('baseScale') ?? definition.visual.scale)
+        if (projectileId.startsWith('player_buster_charge_lv')) {
+          const elapsed = now - spawnedAt
+          const pulse = 1 + Math.sin(elapsed * 0.026) * 0.08
+          bullet.setScale(baseScale * pulse)
+          bullet.setAngle((elapsed * 0.16) % 360)
+        } else if (projectileId === 'player_weapon_MagcutDisc' || projectileId === 'player_weapon_ThunderSpike') {
+          bullet.setAngle((now * 0.42 * Math.sign(body.velocity.x || 1)) % 360)
+        } else {
+          bullet.setScale(baseScale)
+          bullet.setAngle(0)
         }
 
         return false
@@ -257,5 +302,13 @@ export class ProjectileSystem {
     }
 
     return true
+  }
+
+  private recycleInvalidProjectile(bullet: Phaser.Physics.Arcade.Sprite): void {
+    if (this.recycle(bullet)) {
+      return
+    }
+    bullet.disableBody(true, true)
+    bullet.setVelocity(0, 0)
   }
 }

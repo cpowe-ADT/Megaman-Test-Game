@@ -6,6 +6,10 @@ export class PlayerStateMachine {
 
     if (combat.hitstunRemainingMs > 0) {
       locomotion = 'hurt'
+    } else if (motor.wallSliding) {
+      locomotion = 'wall_slide'
+    } else if (motor.wallJumping) {
+      locomotion = 'wall_jump'
     } else if (motor.airDashing) {
       locomotion = 'air_dash'
     } else if (motor.dashing) {
@@ -52,7 +56,8 @@ export class PlayerStateMachine {
       action,
       facing: motor.facing,
       slashDirection: combat.slashDirection,
-      chargeLevel: combat.chargeLevel
+      chargeLevel: combat.chargeReleased ? combat.releasedChargeLevel : combat.chargeLevel,
+      isGravityInverted: motor.isGravityInverted
     }
   }
 }

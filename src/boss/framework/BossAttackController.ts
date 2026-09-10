@@ -33,6 +33,8 @@ export class BossAttackController {
 
   private activeModule?: TimedAttackModule
   private lastAttackId?: string
+  private selectionDeck: string[] = []
+  private deckIndex = 0
 
   constructor(attacks: BossAttackDefinition[]) {
     this.modules = new Map(attacks.map((attack) => [attack.id, new TimedAttackModule(attack)]))
@@ -80,7 +82,7 @@ export class BossAttackController {
 
   tryStartAttack(ctx: AttackContext, panicDistance: number): BossAttackDefinition | undefined {
     if (this.activeModule) {
-      return this.activeModule.definition
+      return undefined
     }
 
     const candidates = this.getAvailableAttacks(ctx)
@@ -102,17 +104,20 @@ export class BossAttackController {
         : []
 
     const pool = panicCandidates.length > 0 ? panicCandidates : filteredByRepeat
-    const selected = pickWeighted(
-      pool,
-      (module) => {
-        const id = module.id
-        const base = this.weightOverrides.get(id) ?? this.baseWeights.get(id) ?? 1
-        const panicBoost =
-          panicCandidates.length > 0 ? (module.definition.panicWeight ?? Math.max(2, base)) : 0
-        return base + panicBoost
-      },
-      ctx.rng
-    )
+    const selectedFromDeck = this.pickFromDeck(pool)
+    const selected =
+      selectedFromDeck ??
+      pickWeighted(
+        pool,
+        (module) => {
+          const id = module.id
+          const base = this.weightOverrides.get(id) ?? this.baseWeights.get(id) ?? 1
+          const panicBoost =
+            panicCandidates.length > 0 ? (module.definition.panicWeight ?? Math.max(2, base)) : 0
+          return base + panicBoost
+        },
+        ctx.rng
+      )
 
     if (!selected) {
       return undefined
@@ -145,6 +150,26 @@ export class BossAttackController {
     Object.entries(overrides).forEach(([id, weight]) => this.weightOverrides.set(id, weight))
   }
 
+  setSelectionDeck(ids: string[]): void {
+    this.selectionDeck = [...ids]
+    this.deckIndex = 0
+  }
+
+  private pickFromDeck(pool: TimedAttackModule[]): TimedAttackModule | undefined {
+    if (this.selectionDeck.length === 0 || pool.length === 0) {
+      return undefined
+    }
+    const available = new Map(pool.map((module) => [module.id, module]))
+    for (let offset = 0; offset < this.selectionDeck.length; offset += 1) {
+      const index = (this.deckIndex + offset) % this.selectionDeck.length
+      const candidate = available.get(this.selectionDeck[index])
+      if (!candidate) continue
+      this.deckIndex = (index + 1) % this.selectionDeck.length
+      return candidate
+    }
+    return undefined
+  }
+
   private getAvailableAttacks(ctx: AttackContext): TimedAttackModule[] {
     const list: TimedAttackModule[] = []
     this.modules.forEach((module, id) => {
@@ -152,6 +177,19 @@ export class BossAttackController {
         return
       }
       if ((this.cooldownsMs.get(id) ?? 0) > 0) {
+        return
+      }
+      const requirements = module.definition.requirements
+      if (requirements?.grounded && ctx.bossGrounded === false) {
+        return
+      }
+      if (requirements?.airborne && ctx.bossGrounded !== false) {
+        return
+      }
+      if (
+        requirements?.maxActiveHazards != null &&
+        Number(ctx.activeHazardCount ?? 0) >= requirements.maxActiveHazards
+      ) {
         return
       }
       if (!module.CanUse(ctx)) {

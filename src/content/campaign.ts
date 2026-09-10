@@ -2,6 +2,7 @@ import type { BossId, WeaponId } from '../bosses/types'
 import type { EnemyLevelMarker } from '../enemy/types'
 import type { SaveData } from '../systems/Save'
 import {
+  BOSS_ROOM_VIEWPORT_WIDTH,
   buildDefaultBossRoom,
   filterBossRoomEnemies,
   filterBossRoomHazards,
@@ -60,6 +61,29 @@ export type CampaignStageDefinition = {
   enemyMarkers: EnemyLevelMarker[]
   arena: StageArenaDefinition
 }
+
+export type StageContentRetentionReport = {
+  stageId: string
+  routeWidth: number
+  worldWidth: number
+  bossRoomX: number
+  authored: {
+    enemies: number
+    hazards: number
+    platforms: number
+    checkpoints: number
+  }
+  retained: {
+    enemies: number
+    hazards: number
+    platforms: number
+    checkpoints: number
+  }
+}
+
+export const GROUNDED_PLAYER_SPAWN_Y = 214
+
+const STAGE_CONTENT_RETENTION = new Map<string, StageContentRetentionReport>()
 
 function checkpoint(id: string, x: number, y: number, triggerX: number) {
   return { id, x, y, triggerX }
@@ -168,12 +192,12 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     rewardWeaponId: 'FlameSerpent',
     rewardEnabled: true,
     enemyMarkers: [
-      marker('pyro_slicer', 'enemy_slicer_bot', 144, 185, 118, 186, {
-        spawnTriggerX: 56,
-        retireTriggerX: 218
+      marker('pyro_slicer', 'enemy_slicer_bot', 160, 185, 132, 204, {
+        spawnTriggerX: 104,
+        retireTriggerX: 240
       }),
       marker('pyro_mine', 'enemy_mine_bot', 232, 185, undefined, undefined, {
-        spawnTriggerX: 104,
+        spawnTriggerX: 128,
         retireTriggerX: 300
       }),
       marker('pyro_rocket', 'enemy_rocket_bot', 324, 185, undefined, undefined, {
@@ -217,12 +241,12 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         spawnTriggerX: 60,
         retireTriggerX: 214
       }),
-      marker('tide_gunner', 'enemy_gunner_bot', 236, 185, 204, 276, {
-        spawnTriggerX: 110,
+      marker('tide_gunner', 'enemy_gunner_bot', 236, 185, 210, 286, {
+        spawnTriggerX: 100,
         retireTriggerX: 308
       }),
       marker('tide_rocket', 'enemy_rocket_bot', 330, 185, undefined, undefined, {
-        spawnTriggerX: 154,
+        spawnTriggerX: 166,
         retireTriggerX: 388
       })
     ],
@@ -256,17 +280,17 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     rewardWeaponId: 'ThunderSpike',
     rewardEnabled: true,
     enemyMarkers: [
-      marker('volt_eye', 'enemy_laser_eye', 146, 124, undefined, undefined, {
-        spawnTriggerX: 60,
+      marker('volt_eye', 'enemy_laser_eye', 152, 136, undefined, undefined, {
+        spawnTriggerX: 54,
         retireTriggerX: 214
       }),
-      marker('volt_bouncer', 'enemy_bouncer', 236, 185, undefined, undefined, {
-        spawnTriggerX: 108,
-        retireTriggerX: 304
+      marker('volt_bouncer', 'enemy_bouncer', 228, 185, 210, 258, {
+        spawnTriggerX: 104,
+        retireTriggerX: 286
       }),
-      marker('volt_drone', 'enemy_drone', 322, 110, undefined, undefined, {
-        spawnTriggerX: 148,
-        retireTriggerX: 380
+      marker('volt_drone', 'enemy_shield_drone', 312, 116, undefined, undefined, {
+        spawnTriggerX: 146,
+        retireTriggerX: 368
       })
     ],
     arena: {
@@ -305,12 +329,12 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         spawnTriggerX: 58,
         retireTriggerX: 222
       }),
-      marker('basalt_slicer', 'enemy_slicer_bot', 232, 185, 208, 268, {
-        spawnTriggerX: 108,
-        retireTriggerX: 298
+      marker('basalt_bouncer', 'enemy_bouncer', 230, 185, 212, 258, {
+        spawnTriggerX: 116,
+        retireTriggerX: 294
       }),
       marker('basalt_mine', 'enemy_mine_bot', 316, 185, undefined, undefined, {
-        spawnTriggerX: 150,
+        spawnTriggerX: 156,
         retireTriggerX: 378
       })
     ],
@@ -434,12 +458,12 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         spawnTriggerX: 62,
         retireTriggerX: 214
       }),
-      marker('gale_hopper', 'enemy_shock_hopper', 236, 185, undefined, undefined, {
-        spawnTriggerX: 112,
-        retireTriggerX: 302
+      marker('gale_shield', 'enemy_shield_drone', 234, 138, undefined, undefined, {
+        spawnTriggerX: 114,
+        retireTriggerX: 312
       }),
-      marker('gale_eye', 'enemy_laser_eye', 324, 148, undefined, undefined, {
-        spawnTriggerX: 152,
+      marker('gale_eye', 'enemy_laser_eye', 324, 142, undefined, undefined, {
+        spawnTriggerX: 156,
         retireTriggerX: 384
       })
     ],
@@ -473,16 +497,16 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     rewardWeaponId: 'FrostShatter',
     rewardEnabled: true,
     enemyMarkers: [
-      marker('glacier_hopper', 'enemy_shock_hopper', 150, 185, undefined, undefined, {
-        spawnTriggerX: 58,
-        retireTriggerX: 216
+      marker('glacier_drone', 'enemy_drone', 152, 126, undefined, undefined, {
+        spawnTriggerX: 64,
+        retireTriggerX: 222
       }),
-      marker('glacier_gunner', 'enemy_gunner_bot', 236, 185, 212, 274, {
-        spawnTriggerX: 108,
+      marker('glacier_gunner', 'enemy_gunner_bot', 238, 185, 216, 282, {
+        spawnTriggerX: 112,
         retireTriggerX: 304
       }),
       marker('glacier_turret', 'enemy_frost_turret', 322, 149, undefined, undefined, {
-        spawnTriggerX: 150,
+        spawnTriggerX: 154,
         retireTriggerX: 384
       })
     ],
@@ -509,8 +533,8 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
   omega_fortress: {
     id: FINAL_STAGE_ID,
     kind: 'final',
-    bossId: 'volt_hopper',
-    runtimeBossConfigId: 'volt_golem',
+    bossId: 'omega_core',
+    runtimeBossConfigId: 'omega_core',
     title: 'Omega Fortress',
     selectLabel: 'FINAL',
     introCallout: 'OMEGA CORE',
@@ -961,26 +985,75 @@ for (const [stageId, patch] of Object.entries(STAGE_EXTENSION_PATCHES) as Array<
 }
 
 for (const stage of Object.values(CAMPAIGN_STAGES)) {
-  const worldWidth = Math.max(448, Number(stage.arena.width ?? 448))
+  if (stage.kind !== 'final') {
+    stage.runtimeBossConfigId = stage.bossId
+  }
+  const routeWidth = Math.max(BOSS_ROOM_VIEWPORT_WIDTH, Number(stage.arena.width ?? BOSS_ROOM_VIEWPORT_WIDTH))
+  const worldWidth = routeWidth + BOSS_ROOM_VIEWPORT_WIDTH
   const background = getStageBackgroundDefinition(stage.id)
+  const relocatedBossSpawnX = stage.arena.bossSpawn.x + BOSS_ROOM_VIEWPORT_WIDTH
   const bossRoom = buildDefaultBossRoom(worldWidth, {
-    bossSpawnX: stage.arena.bossSpawn.x
+    bossSpawnX: relocatedBossSpawnX
   })
+  const authored = {
+    enemies: stage.enemyMarkers.length,
+    hazards: stage.arena.hazards.length,
+    platforms: stage.arena.midPlatforms.length,
+    checkpoints: stage.arena.checkpoints.length
+  }
+  const retainedEnemies = filterBossRoomEnemies(stage.enemyMarkers, bossRoom)
+  const retainedHazards = filterBossRoomHazards(stage.arena.hazards, bossRoom)
+  const retainedPlatforms = filterBossRoomPlatforms(stage.arena.midPlatforms, bossRoom)
+  const retained = {
+    enemies: retainedEnemies.length,
+    hazards: retainedHazards.length,
+    platforms: retainedPlatforms.length,
+    checkpoints: stage.arena.checkpoints.length
+  }
 
-  stage.enemyMarkers = filterBossRoomEnemies(stage.enemyMarkers, bossRoom)
+  const invalidCheckpoint = stage.arena.checkpoints.find(
+    (entry) => entry.x < 0 || entry.x >= bossRoom.x || entry.triggerX < 0 || entry.triggerX >= bossRoom.x
+  )
+  const lostContent = Object.keys(authored).find(
+    (key) => authored[key as keyof typeof authored] !== retained[key as keyof typeof retained]
+  )
+  if (invalidCheckpoint || lostContent) {
+    throw new Error(
+      `[Campaign] Stage '${stage.id}' has content outside its ${routeWidth}px route budget` +
+        (invalidCheckpoint ? ` (checkpoint '${invalidCheckpoint.id}')` : ` (${lostContent} truncated)`)
+    )
+  }
+
+  stage.enemyMarkers = retainedEnemies
   stage.arena = {
     ...stage.arena,
     width: worldWidth,
     background,
     backgroundColor: background.baseColor,
+    spawn: {
+      ...stage.arena.spawn,
+      y: GROUNDED_PLAYER_SPAWN_Y
+    },
     bossSpawn: {
       x: bossRoom.bossSpawnX,
       y: stage.arena.bossSpawn.y
     },
     bossRoom,
-    hazards: filterBossRoomHazards(stage.arena.hazards, bossRoom),
-    midPlatforms: filterBossRoomPlatforms(stage.arena.midPlatforms, bossRoom)
+    checkpoints: stage.arena.checkpoints.map((entry) => ({
+      ...entry,
+      y: GROUNDED_PLAYER_SPAWN_Y
+    })),
+    hazards: retainedHazards,
+    midPlatforms: retainedPlatforms
   }
+  STAGE_CONTENT_RETENTION.set(stage.id, {
+    stageId: stage.id,
+    routeWidth,
+    worldWidth,
+    bossRoomX: bossRoom.x,
+    authored,
+    retained
+  })
 }
 
 export function getCampaignStage(id: string): CampaignStageDefinition {
@@ -992,7 +1065,27 @@ export function getRobotMasterStages(): CampaignStageDefinition[] {
 }
 
 export function getSelectableBossStages(): CampaignStageDefinition[] {
-  return getRobotMasterStages()
+  return [...getRobotMasterStages(), CAMPAIGN_STAGES[FINAL_STAGE_ID]]
+}
+
+export function isCampaignStageCleared(
+  saveData: Pick<SaveData, 'clearedBosses' | 'finalBossCleared'>,
+  stageId: string
+): boolean {
+  return stageId === FINAL_STAGE_ID
+    ? Boolean(saveData.finalBossCleared)
+    : saveData.clearedBosses.includes(stageId)
+}
+
+export function getStageContentRetentionReport(stageId: string): StageContentRetentionReport | null {
+  const report = STAGE_CONTENT_RETENTION.get(stageId)
+  return report
+    ? {
+        ...report,
+        authored: { ...report.authored },
+        retained: { ...report.retained }
+      }
+    : null
 }
 
 export function countClearedRobotMasters(saveData: Pick<SaveData, 'clearedBosses'>): number {

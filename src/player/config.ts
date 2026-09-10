@@ -11,6 +11,11 @@ export type MovementTuningConfig = {
   jumpHoldGravityScale: number
   coyoteTimeMs: number
   jumpBufferMs: number
+  wallSlideFallSpeed: number
+  wallJumpVelocityX: number
+  wallJumpVelocityY: number
+  wallJumpBoostMultiplier: number
+  wallJumpLockMs: number
 }
 
 export type DashConfig = {
@@ -97,20 +102,71 @@ export type PlayerGameplayConfig = {
   damage: DamageConfig
 }
 
+export type PlayerPhysicsLimits = {
+  maxVelocityX: number
+  maxVelocityY: number
+}
+
+export function normalizeMovementSpeedMultiplier(value: number): number {
+  return Number.isFinite(value) && value > 0 ? value : 1
+}
+
+export function resolvePlayerPhysicsLimits(
+  config: Pick<PlayerGameplayConfig, 'movement' | 'dash'>,
+  movementSpeedMultiplier = 1
+): PlayerPhysicsLimits {
+  const multiplier = normalizeMovementSpeedMultiplier(movementSpeedMultiplier)
+  const maximumAuthoredHorizontalSpeed = Math.max(
+    config.movement.runSpeed,
+    config.dash.dashSpeed,
+    config.movement.wallJumpVelocityX * config.movement.wallJumpBoostMultiplier
+  )
+  const maximumAuthoredVerticalSpeed = Math.max(
+    config.movement.terminalVelocity,
+    Math.abs(config.movement.jumpVelocity),
+    Math.abs(config.movement.wallJumpVelocityY)
+  )
+
+  return {
+    maxVelocityX: maximumAuthoredHorizontalSpeed * multiplier,
+    maxVelocityY: maximumAuthoredVerticalSpeed
+  }
+}
+
+// The imported Mega Man X override sheets are authored facing left by default.
+export function shouldFlipPlayerSpriteForFacing(facing: 1 | -1): boolean {
+  return facing === 1
+}
+
+/**
+ * West-facing saber poses mirror east-authored atlas frames. Horizontal attacks
+ * therefore need to drive the sprite flip from the locked attack direction,
+ * rather than from locomotion which may change during the slash window.
+ */
+export function resolveSwordVisualFacing(direction: Direction8 | undefined, locomotionFacing: 1 | -1): 1 | -1 {
+  if (direction === 'w' || direction === 'nw' || direction === 'sw') {
+    return -1
+  }
+  if (direction === 'e' || direction === 'ne' || direction === 'se') {
+    return 1
+  }
+  return locomotionFacing
+}
+
 const baseSwordWindow = (hitbox: HitboxShape): SwordWindowConfig => ({
-  startupFrames: 4,
+  startupFrames: 6,
   activeFrames: 4,
-  recoveryFrames: 8,
+  recoveryFrames: 4,
   hitbox,
-  hitstopFrames: 3
+  hitstopFrames: 5
 })
 
 const baseSwordWindowAir = (hitbox: HitboxShape): SwordWindowConfig => ({
-  startupFrames: 4,
-  activeFrames: 3,
-  recoveryFrames: 7,
+  startupFrames: 5,
+  activeFrames: 4,
+  recoveryFrames: 4,
   hitbox,
-  hitstopFrames: 2
+  hitstopFrames: 4
 })
 
 export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
@@ -124,7 +180,12 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     jumpVelocity: -420,
     jumpHoldGravityScale: 0.55,
     coyoteTimeMs: 100,
-    jumpBufferMs: 100
+    jumpBufferMs: 100,
+    wallSlideFallSpeed: 95,
+    wallJumpVelocityX: 240,
+    wallJumpVelocityY: -355,
+    wallJumpBoostMultiplier: 1.28,
+    wallJumpLockMs: 140
   },
   dash: {
     dashSpeed: 320,
@@ -139,7 +200,7 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     fireRateMs: 120,
     pelletSpeed: 260,
     pelletDamage: 1,
-    chargeThresholdsMs: [220, 450, 780, 1150],
+    chargeThresholdsMs: [190, 390, 710, 1020],
     perLevelProjectile: {
       1: { size: 1.05, speed: 300, damage: 1, pierce: 0, impactFxKey: 'fx_impact_charge_lv1' },
       2: { size: 1.2, speed: 330, damage: 2, pierce: 0, impactFxKey: 'fx_impact_charge_lv2' },

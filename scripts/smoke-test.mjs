@@ -3,12 +3,25 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { chromium } from 'playwright'
+import { assertPelletHitEvidence } from './smoke/assert-pellet-hit.mjs'
 
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT ?? 4173)
-const url = `http://${host}:${port}?renderer=canvas&startScene=StageSelect`
-const titleUrl = `http://${host}:${port}?renderer=canvas`
+const smokeServerMode = String(process.env.SMOKE_SERVER ?? 'dev').trim()
+const serverUrl = `http://${host}:${port}/`
+const url = `http://${host}:${port}?renderer=canvas&automation=1&startScene=StageSelect`
+const touchUrl = `http://${host}:${port}?renderer=canvas&automation=1&startScene=StageSelect&touchControls=1`
+const titleUrl = `http://${host}:${port}?renderer=canvas&automation=1`
 const outputDir = path.resolve('output/web-game-smoke')
+const smokeSummaryPath = path.join(outputDir, 'summary.json')
+const smokeOnlyScenarios = new Set(
+  String(process.env.SMOKE_ONLY ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+)
+const smokeFromScenario = String(process.env.SMOKE_FROM ?? '').trim() || null
+let smokeFromMatched = smokeFromScenario == null
 const localClient = path.resolve('scripts/web_game_playwright_client.js')
 const defaultClient = path.join(
   os.homedir(),
@@ -30,19 +43,42 @@ const robotMasterStageIds = [
   'glacier_ronin'
 ]
 
+function getSmokeServerConfig() {
+  if (smokeServerMode === 'preview') {
+    return {
+      label: 'vite-preview',
+      args: ['run', 'preview', '--', '--host', host, '--port', String(port), '--strictPort'],
+      env: process.env
+    }
+  }
+
+  if (smokeServerMode !== 'dev') {
+    throw new Error(`Unsupported SMOKE_SERVER mode '${smokeServerMode}'. Expected 'dev' or 'preview'.`)
+  }
+
+  return {
+    label: 'vite',
+    args: ['run', 'dev', '--', '--host', host, '--port', String(port), '--strictPort'],
+    env: {
+      ...process.env,
+      VITE_SMOKE: '1',
+      VITE_AUTOMATION: '1'
+    }
+  }
+}
+
 const clickOnlyActions = {
   steps: [
-    { buttons: [], frames: 20 },
+    { buttons: [], frames: 60 },
     { buttons: ['left_mouse_button'], frames: 2, mouse_x: 52, mouse_y: 84 },
-    { buttons: [], frames: 30 }
+    { buttons: [], frames: 60 }
   ]
 }
 
 const keyboardSelectThenEnterActions = {
   steps: [
     { buttons: [], frames: 20 },
-    { buttons: ['right'], frames: 3 },
-    { buttons: [], frames: 4 },
+    { buttons: [], frames: 8 },
     { buttons: ['enter'], frames: 2 },
     { buttons: [], frames: 70 }
   ]
@@ -91,7 +127,7 @@ async function waitForServerReady(targetUrl, timeoutMs = 30_000) {
     }
     await new Promise((resolve) => setTimeout(resolve, 300))
   }
-  throw new Error(`Dev server did not become ready at ${targetUrl} within ${timeoutMs}ms`)
+  throw new Error(`Smoke server did not become ready at ${targetUrl} within ${timeoutMs}ms`)
 }
 
 function collectScenarioErrors(dir) {
@@ -156,48 +192,234 @@ async function advanceFrames(page, frames = 1) {
 }
 
 async function readState(page) {
-  const text = await page.evaluate(() => {
-    if (typeof window.render_game_to_text === 'function') {
-      return window.render_game_to_text()
+  let text = null
+  try {
+    text = await page.evaluate(() => {
+      if (typeof window.render_game_to_text === 'function') {
+        return window.render_game_to_text()
+      }
+      return null
+    })
+  } catch (error) {
+    const message = String(error?.message ?? error ?? '')
+    if (
+      message.includes('Execution context was destroyed') ||
+      message.includes('Cannot find context with specified id') ||
+      message.includes('Target closed')
+    ) {
+      return null
     }
-    return null
-  })
+    throw error
+  }
   return text ? JSON.parse(text) : null
 }
 
-async function waitForState(page, predicate, timeoutMs = 5000) {
+function summarizeStateForError(state) {
+  if (!state || typeof state !== 'object') {
+    return null
+  }
+
+  return {
+    scene: state.scene ?? null,
+    activeScenes: Array.isArray(state.activeScenes) ? state.activeScenes : [],
+    player: state.player ?? null,
+    playerState: state.playerState ?? null,
+    playerVisual: state.playerVisual ?? null,
+    stageSelect: state.stageSelect ?? null,
+    stageRuntime: state.stageRuntime ?? null,
+    progression: state.progression ?? null,
+    projectiles: state.projectiles ?? null,
+    newPlayer: state.newPlayer ?? null,
+    combatDebug: state.combatDebug ?? null,
+    visuals: state.visuals ?? null,
+    audio: state.audio ?? null
+  }
+}
+
+function classifyScenarioError(error) {
+  const message = String(error?.message ?? error ?? '')
+  if (message.includes('Timed out waiting for state condition')) {
+    return 'state_timeout'
+  }
+  if (message.includes('Timed out waiting for page condition')) {
+    return 'page_timeout'
+  }
+  if (message.includes('browser errors')) {
+    return 'browser_error'
+  }
+  return 'error'
+}
+
+function serializeScenarioError(error) {
+  return {
+    name: String(error?.name ?? 'Error'),
+    message: String(error?.message ?? error ?? 'Unknown error'),
+    classification: classifyScenarioError(error),
+    stack: typeof error?.stack === 'string' ? error.stack : undefined,
+    timeoutMs: Number(error?.timeoutMs ?? 0) || undefined,
+    lastState: summarizeStateForError(error?.lastState)
+  }
+}
+
+function writeSmokeSummary(summary) {
+  fs.writeFileSync(smokeSummaryPath, JSON.stringify(summary, null, 2))
+}
+
+function createSmokeSummary() {
+  return {
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    serverMode: smokeServerMode,
+    outputDir,
+    scenarios: []
+  }
+}
+
+async function executeSmokeScenario(summary, name, runScenario) {
+  if (!smokeFromMatched) {
+    if (name === smokeFromScenario) {
+      smokeFromMatched = true
+    } else {
+      summary.scenarios.push({
+        name,
+        status: 'skipped',
+        artifactDir: path.join(outputDir, name),
+        reason: `Skipped until SMOKE_FROM=${smokeFromScenario}`
+      })
+      writeSmokeSummary(summary)
+      return null
+    }
+  }
+
+  if (smokeOnlyScenarios.size > 0 && !smokeOnlyScenarios.has(name)) {
+    summary.scenarios.push({
+      name,
+      status: 'skipped',
+      artifactDir: path.join(outputDir, name),
+      reason: 'Skipped by SMOKE_ONLY filter'
+    })
+    writeSmokeSummary(summary)
+    return null
+  }
+
   const startedAt = Date.now()
+  try {
+    const result = await runScenario()
+    summary.scenarios.push({
+      name,
+      status: 'pass',
+      durationMs: Date.now() - startedAt,
+      artifactDir: path.join(outputDir, name)
+    })
+    writeSmokeSummary(summary)
+    return result
+  } catch (error) {
+    summary.scenarios.push({
+      name,
+      status: 'fail',
+      durationMs: Date.now() - startedAt,
+      artifactDir: path.join(outputDir, name),
+      error: serializeScenarioError(error)
+    })
+    writeSmokeSummary(summary)
+    throw error
+  }
+}
+
+async function waitForState(page, predicate, timeoutMs = 8000, description = 'state condition') {
+  const startedAt = Date.now()
+  let lastState = null
   while (Date.now() - startedAt < timeoutMs) {
     await advanceFrames(page, 2)
     const state = await readState(page)
+    lastState = state
     if (state && predicate(state)) {
       return state
     }
     await page.waitForTimeout(25)
   }
-  throw new Error(`Timed out waiting for state condition after ${timeoutMs}ms`)
+  const error = new Error(`Timed out waiting for state condition (${description}) after ${timeoutMs}ms`)
+  error.name = 'TimeoutError'
+  error.timeoutMs = timeoutMs
+  error.lastState = lastState
+  throw error
 }
 
-async function waitForPageCheck(page, predicate, timeoutMs = 5000) {
+async function waitForPageCheck(page, predicate, timeoutMs = 8000, description = 'page condition') {
   const startedAt = Date.now()
   while (Date.now() - startedAt < timeoutMs) {
     await advanceFrames(page, 2)
-    const passed = await page.evaluate(predicate)
+    let passed = false
+    try {
+      passed = await page.evaluate(predicate)
+    } catch (error) {
+      const message = String(error?.message ?? error ?? '')
+      if (
+        message.includes('Execution context was destroyed') ||
+        message.includes('Cannot find context with specified id') ||
+        message.includes('Target closed')
+      ) {
+        await page.waitForTimeout(25)
+        continue
+      }
+      throw error
+    }
     if (passed) {
       return
     }
     await page.waitForTimeout(25)
   }
-  throw new Error(`Timed out waiting for page condition after ${timeoutMs}ms`)
+  const error = new Error(`Timed out waiting for page condition (${description}) after ${timeoutMs}ms`)
+  error.name = 'TimeoutError'
+  error.timeoutMs = timeoutMs
+  throw error
 }
 
 async function clickCanvas(page, x, y) {
+  const point = await getCanvasPoint(page, x, y)
+  await page.mouse.click(point.x, point.y)
+}
+
+async function getCanvasBox(page) {
   const canvas = await page.locator('canvas').first()
   const box = await canvas.boundingBox()
   if (!box) {
     throw new Error('Expected visible canvas while attempting click')
   }
-  await page.mouse.click(box.x + x, box.y + y)
+  return box
+}
+
+async function getCanvasPoint(page, x, y) {
+  const box = await getCanvasBox(page)
+  const scaleX = box.width / 448
+  const scaleY = box.height / 252
+  return {
+    x: box.x + x * scaleX,
+    y: box.y + y * scaleY
+  }
+}
+
+async function moveCanvasPointer(page, x, y) {
+  const point = await getCanvasPoint(page, x, y)
+  await page.mouse.move(point.x, point.y)
+}
+
+async function mouseDownCanvas(page, x, y) {
+  await moveCanvasPointer(page, x, y)
+  await page.mouse.down()
+}
+
+async function mouseUpCanvas(page, x, y = null) {
+  if (typeof x === 'number' && typeof y === 'number') {
+    await moveCanvasPointer(page, x, y)
+  }
+  await page.mouse.up()
+}
+
+async function tapCanvas(page, x, y, holdFrames = 2) {
+  await mouseDownCanvas(page, x, y)
+  await advanceFrames(page, holdFrames)
+  await mouseUpCanvas(page)
 }
 
 async function tapKey(page, key, holdFrames = 2) {
@@ -244,6 +466,7 @@ async function runVictoryReturnScenario(name, confirmMode) {
       window.stageDebug?.crossBossGate?.()
       window.bossDebug?.unlockIntro?.()
       window.bossDebug?.damage?.(999)
+      window.stageDebug?.skipDialogue?.()
     })
 
     await waitForState(page, (state) => state.scene === 'Game' && state.victory?.modalOpen === true)
@@ -274,8 +497,6 @@ async function runVictoryReturnScenario(name, confirmMode) {
       page,
       (state) => state.scene === 'StageSelect' && state.stageSelect?.transitionPending === false
     )
-    await tapKey(page, 'ArrowRight')
-    await advanceFrames(page, 4)
     await tapKey(page, 'Enter')
     const finalState = await waitForState(page, (state) => state.scene === 'Game')
 
@@ -289,6 +510,8 @@ async function runVictoryReturnScenario(name, confirmMode) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
       throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
     }
+
+    return finalState
   } finally {
     await browser.close()
   }
@@ -326,7 +549,8 @@ async function runChargeShotScenario(name) {
 
     await waitForState(page, (state) => state.scene === 'StageSelect')
     await tapKey(page, 'Enter')
-    await waitForState(page, (state) => state.scene === 'Game')
+    const baselineState = await waitForState(page, (state) => state.scene === 'Game')
+    const baselineShots = Number(baselineState.combatDebug?.player?.shotsFiredTotal ?? 0)
     await page.keyboard.down('x')
     await advanceFrames(page, 45)
     await page.keyboard.up('x')
@@ -340,6 +564,18 @@ async function runChargeShotScenario(name) {
         typeof state.playerState?.maxHp === 'number' &&
         typeof state.combatDebug?.player?.chargeMs === 'number'
     )
+    const finalShots = Number(finalState.combatDebug?.player?.shotsFiredTotal ?? 0)
+    const lastProjectile = finalState.combatDebug?.player?.lastProjectile
+    if (finalShots - baselineShots !== 1) {
+      throw new Error(`Expected one accepted charge input to spawn exactly one projectile; saw ${finalShots - baselineShots}.`)
+    }
+    if (
+      lastProjectile?.weaponId !== 'Buster' ||
+      Number(lastProjectile?.chargeLevel ?? 0) <= 0 ||
+      !String(lastProjectile?.projectileId ?? '').startsWith('player_buster_charge_lv')
+    ) {
+      throw new Error('Expected charge-shot trace to retain Buster projectile identity and charge level.')
+    }
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(finalState, null, 2))
@@ -348,6 +584,8 @@ async function runChargeShotScenario(name) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
       throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
     }
+
+    return finalState
   } finally {
     await browser.close()
   }
@@ -384,15 +622,335 @@ async function runKeyboardEnterStartScenario(name) {
     await page.evaluate(() => window.dispatchEvent(new Event('resize')))
 
     await waitForState(page, (state) => state.scene === 'StageSelect')
-    await tapKey(page, 'ArrowRight')
-    await advanceFrames(page, 8)
     await tapKey(page, 'Enter')
-
     const finalState = await waitForState(page, (state) => state.scene === 'Game')
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(finalState, null, 2))
 
+    if (errors.length > 0) {
+      fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
+      throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
+    }
+
+    return finalState
+  } finally {
+    await browser.close()
+  }
+}
+
+async function runClickOnlyStageSelectScenario(name) {
+  const scenarioDir = path.join(outputDir, name)
+  fs.rmSync(scenarioDir, { recursive: true, force: true })
+  fs.mkdirSync(scenarioDir, { recursive: true })
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader']
+  })
+  const page = await browser.newPage()
+  const errors = []
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      errors.push({ type: 'console.error', text: msg.text() })
+    }
+  })
+  page.on('pageerror', (err) => {
+    errors.push({
+      type: 'pageerror',
+      text: String(err),
+      stack: typeof err?.stack === 'string' ? err.stack : undefined
+    })
+  })
+
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(400)
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+
+    await waitForState(page, (state) => state.scene === 'StageSelect')
+    await clickCanvas(page, 224, 32)
+    await advanceFrames(page, 30)
+    const finalState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'StageSelect' &&
+        typeof state.stageSelect?.weaknessLabel === 'string' &&
+        state.stageSelect.weaknessLabel.length > 0 &&
+        typeof state.stageSelect?.rewardLabel === 'string' &&
+        state.stageSelect.rewardLabel.length > 0 &&
+        typeof state.stageSelect?.finalGateText === 'string' &&
+        state.stageSelect.finalGateText.startsWith('FINAL'),
+      4000,
+      'StageSelect seeded progression presentation payload'
+    )
+
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(finalState, null, 2))
+
+    if (errors.length > 0) {
+      fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
+      throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
+    }
+
+    return finalState
+  } finally {
+    await browser.close()
+  }
+}
+
+async function runTitleControlsScenario(name) {
+  const scenarioDir = path.join(outputDir, name)
+  fs.rmSync(scenarioDir, { recursive: true, force: true })
+  fs.mkdirSync(scenarioDir, { recursive: true })
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader']
+  })
+  const page = await browser.newPage()
+  const errors = []
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      errors.push({ type: 'console.error', text: msg.text() })
+    }
+  })
+  page.on('pageerror', (err) => {
+    errors.push({
+      type: 'pageerror',
+      text: String(err),
+      stack: typeof err?.stack === 'string' ? err.stack : undefined
+    })
+  })
+
+  try {
+    await page.goto(titleUrl, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(400)
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+
+    await waitForState(page, (state) => state.scene === 'Title')
+    await tapKey(page, 'c')
+
+    const controlsState = await waitForState(
+      page,
+      (state) => Array.isArray(state.activeScenes) && state.activeScenes.includes('Controls')
+    )
+
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+
+    await tapKey(page, 'Escape')
+    const finalState = await waitForState(
+      page,
+      (state) => state.scene === 'Title' && (!Array.isArray(state.activeScenes) || !state.activeScenes.includes('Controls'))
+    )
+
+    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify({ controlsState, finalState }, null, 2))
+
+    if (errors.length > 0) {
+      fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
+      throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+async function runStageSelectProgressionSummaryScenario(name) {
+  const scenarioDir = path.join(outputDir, name)
+  fs.rmSync(scenarioDir, { recursive: true, force: true })
+  fs.mkdirSync(scenarioDir, { recursive: true })
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader']
+  })
+  const page = await browser.newPage()
+  const errors = []
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      errors.push({ type: 'console.error', text: msg.text() })
+    }
+  })
+  page.on('pageerror', (err) => {
+    errors.push({
+      type: 'pageerror',
+      text: String(err),
+      stack: typeof err?.stack === 'string' ? err.stack : undefined
+    })
+  })
+
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(400)
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+
+    await waitForState(page, (state) => state.scene === 'StageSelect')
+    await tapKey(page, 'Escape')
+    await waitForPageCheck(page, () => Boolean(window.__phaserGame?.scene?.isActive?.('SystemMenu')))
+    await page.evaluate(() => {
+      const menu = window.__phaserGame?.scene?.getScene?.('SystemMenu')
+      if (!menu) {
+        return
+      }
+      menu.index = 1
+      menu.updateCursor?.()
+      menu.activateSelection?.()
+    })
+
+    const summaryState = await waitForState(
+      page,
+      (state) =>
+        Array.isArray(state.activeScenes) &&
+        state.activeScenes.includes('ProgressionSummary') &&
+        typeof state.progressionSummary?.seed === 'string'
+    )
+
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    await tapKey(page, 'Escape')
+    const finalState = await waitForState(
+      page,
+      (state) =>
+        Array.isArray(state.activeScenes) &&
+        state.activeScenes.includes('SystemMenu') &&
+        !state.activeScenes.includes('ProgressionSummary')
+    )
+
+    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify({ summaryState, finalState }, null, 2))
+
+    if (errors.length > 0) {
+      fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
+      throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+async function runProgressionImportTruthScenario(name) {
+  const scenarioDir = path.join(outputDir, name)
+  fs.rmSync(scenarioDir, { recursive: true, force: true })
+  fs.mkdirSync(scenarioDir, { recursive: true })
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader']
+  })
+  const page = await browser.newPage()
+  const errors = []
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      errors.push({ type: 'console.error', text: msg.text() })
+    }
+  })
+  page.on('pageerror', (err) => {
+    errors.push({ type: 'pageerror', text: String(err), stack: err?.stack })
+  })
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'save.v1',
+      JSON.stringify({
+        weaponsUnlocked: [],
+        gameOverCounts: {},
+        clearedBosses: [],
+        tutorialCleared: false,
+        finalBossCleared: false,
+        gameCompleted: false,
+        activeRun: {
+          version: 2,
+          savedAt: Date.now(),
+          stageId: 'pyro_maw',
+          bossId: 'pyro_maw',
+          playerHp: 8,
+          playerMaxHp: 8,
+          playerLives: 3,
+          currentWeaponIndex: 0,
+          currentWeaponId: 'Buster',
+          checkpointIndex: 0,
+          checkpointId: 'pyro_start',
+          weaponEnergyById: { Buster: 28 }
+        }
+      })
+    )
+  })
+
+  const payload = {
+    version: 1,
+    slotData: {
+      seed: 'browser-import-seed',
+      startingStageIds: ['tutorial_sentinel', 'pyro_maw'],
+      weaknessStrictness: 'weakness_and_buster',
+      finalGate: { rules: [{ category: 'medals', required: 8 }] }
+    },
+    checkedLocations: [
+      'tutorial_sentinel:boss_clear',
+      ...robotMasterStageIds.map((stageId) => `${stageId}:boss_clear`),
+      'omega_fortress:boss_clear'
+    ],
+    receivedItems: [
+      'FlameSerpent',
+      'HydroLance',
+      'ThunderSpike',
+      'QuakeKnuckle',
+      'MagcutDisc',
+      'AcidGlob',
+      'AeroDarts',
+      'FrostShatter',
+      'heart_tank',
+      'heart_tank'
+    ],
+    checkpoints: { pyro_maw: ['pyro_mid_a', 'pyro_mid_b'] }
+  }
+
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(400)
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+    await waitForState(page, (state) => state.scene === 'StageSelect')
+
+    await page.evaluate(() => {
+      const stageSelect = window.__phaserGame?.scene?.getScene?.('StageSelect')
+      stageSelect?.scene?.launch?.('ProgressionSummary', {
+        returnSceneKey: 'SystemMenu',
+        sourceSceneKey: 'StageSelect'
+      })
+      stageSelect?.scene?.pause?.()
+    })
+    await waitForPageCheck(
+      page,
+      () => Boolean(window.__phaserGame?.scene?.getScene?.('ProgressionSummary')?.importTransportText),
+      8000,
+      'progression summary import handler'
+    )
+    await page.evaluate(async (transport) => {
+      const summary = window.__phaserGame?.scene?.getScene?.('ProgressionSummary')
+      await summary?.importTransportText?.(JSON.stringify(transport))
+    }, payload)
+
+    const finalState = await waitForState(
+      page,
+      (state) => state.scene === 'StageSelect' && state.stageSelect?.finalGateText === 'FINAL • COMPLETE',
+      8000,
+      'imported progression completion truth on Stage Select'
+    )
+    const storedSave = await page.evaluate(() => JSON.parse(window.localStorage.getItem('save.v1') ?? '{}'))
+    if (
+      storedSave.progressionWorld?.seed !== 'browser-import-seed' ||
+      storedSave.tutorialCleared !== true ||
+      storedSave.finalBossCleared !== true ||
+      storedSave.gameCompleted !== true ||
+      storedSave.clearedBosses?.length !== robotMasterStageIds.length ||
+      storedSave.activeRun !== null
+    ) {
+      throw new Error('Imported progression did not persist canonical world, clear, completion, and active-run truth.')
+    }
+
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify({ finalState, storedSave }, null, 2))
     if (errors.length > 0) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
       throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
@@ -645,6 +1203,9 @@ async function runFinalRouteUnlockScenario(name) {
     tutorialCleared: true,
     finalBossCleared: false,
     gameCompleted: false,
+    upgradeUnlocks: ['armor_helmet', 'armor_arms', 'armor_body', 'armor_legs'],
+    heartTanks: 8,
+    subTanks: 4,
     activeRun: null
   })
 
@@ -729,6 +1290,7 @@ async function runWeaponSwitchAndEnergyScenario(name) {
     )
     const startingEnergy = Number(switchedState.weaponEnergy?.current ?? -1)
     const maxEnergy = Number(switchedState.weaponEnergy?.max ?? -1)
+    const startingShots = Number(switchedState.combatDebug?.player?.shotsFiredTotal ?? 0)
     if (startingEnergy <= 0 || maxEnergy <= 0) {
       throw new Error('Expected switched special weapon to expose positive current/max weapon energy.')
     }
@@ -743,6 +1305,21 @@ async function runWeaponSwitchAndEnergyScenario(name) {
         Number(state.projectiles?.playerActive ?? 0) >= 1,
       6000
     )
+    const lastProjectile = firedState.combatDebug?.player?.lastProjectile
+    const firedShots = Number(firedState.combatDebug?.player?.shotsFiredTotal ?? 0)
+    const energyCost = Number(lastProjectile?.energyCost ?? -1)
+    const endingEnergy = Number(firedState.weaponEnergy?.current ?? -1)
+    if (firedShots - startingShots !== 1) {
+      throw new Error(`Expected one special-weapon input to spawn exactly one projectile; saw ${firedShots - startingShots}.`)
+    }
+    if (lastProjectile?.weaponId !== 'FlameSerpent' || Number(lastProjectile?.chargeLevel ?? -1) !== 0) {
+      throw new Error('Expected special-weapon trace to retain FlameSerpent identity without Buster charge metadata.')
+    }
+    if (energyCost <= 0 || startingEnergy - endingEnergy !== energyCost) {
+      throw new Error(
+        `Expected special-weapon energy delta to equal one configured cost; start=${startingEnergy}, end=${endingEnergy}, cost=${energyCost}.`
+      )
+    }
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
@@ -821,7 +1398,10 @@ async function runLoadSaveRestoreScenario(name) {
     await waitForState(page, (state) => state.scene === 'StageSelect')
     await tapKey(page, 'Escape')
     await waitForPageCheck(page, () => Boolean(window.__phaserGame?.scene?.isActive?.('SystemMenu')))
-    await tapKey(page, 'Enter')
+    await page.evaluate(() => {
+      const stageSelect = window.__phaserGame?.scene?.getScene?.('StageSelect')
+      stageSelect?.onSystemMenuAction?.('load_game')
+    })
 
     const loadedState = await waitForState(
       page,
@@ -833,7 +1413,7 @@ async function runLoadSaveRestoreScenario(name) {
         Number(state.weaponEnergy?.current ?? -1) === 17 &&
         Number(state.playerState?.lives ?? -1) === 2 &&
         Number(state.playerState?.hp ?? -1) === 6,
-      6000
+      20000
     )
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
@@ -845,6 +1425,356 @@ async function runLoadSaveRestoreScenario(name) {
     }
   } finally {
     await browser.close()
+  }
+}
+
+async function runCorruptSaveRejectedScenario(name) {
+  const scenarioDir = path.join(outputDir, name)
+  fs.rmSync(scenarioDir, { recursive: true, force: true })
+  fs.mkdirSync(scenarioDir, { recursive: true })
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader']
+  })
+  const page = await browser.newPage()
+  const errors = []
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      errors.push({ type: 'console.error', text: msg.text() })
+    }
+  })
+  page.on('pageerror', (err) => {
+    errors.push({
+      type: 'pageerror',
+      text: String(err),
+      stack: typeof err?.stack === 'string' ? err.stack : undefined
+    })
+  })
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'save.v1',
+      JSON.stringify({
+        weaponsUnlocked: [],
+        gameOverCounts: {},
+        clearedBosses: [],
+        tutorialCleared: true,
+        finalBossCleared: false,
+        gameCompleted: false,
+        activeRun: {
+          version: 2,
+          savedAt: Date.now(),
+          stageId: 'not_a_stage',
+          bossId: 'not_a_boss',
+          playerHp: 999,
+          playerMaxHp: -4,
+          playerLives: -7,
+          currentWeaponIndex: 999,
+          currentWeaponId: 'not_a_weapon',
+          weaponEnergyById: { not_a_weapon: 999 },
+          checkpointIndex: 999,
+          checkpointId: 'not_a_checkpoint'
+        }
+      })
+    )
+  })
+
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(400)
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+
+    const beforeLoad = await waitForState(page, (state) => state.scene === 'StageSelect')
+    await tapKey(page, 'Escape')
+    await waitForPageCheck(page, () => Boolean(window.__phaserGame?.scene?.isActive?.('SystemMenu')))
+    const loadOptionEnabled = await page.evaluate(() => {
+      const menu = window.__phaserGame?.scene?.getScene?.('SystemMenu')
+      const loadOption = menu?.options?.find?.((option) => option.id === 'load_game')
+      return Boolean(loadOption?.enabled)
+    })
+    if (loadOptionEnabled) {
+      throw new Error('Expected corrupt active run to disable the load option.')
+    }
+
+    await page.evaluate(() => {
+      const stageSelect = window.__phaserGame?.scene?.getScene?.('StageSelect')
+      stageSelect?.onSystemMenuAction?.('load_game')
+    })
+    const afterLoad = await waitForState(page, (state) => state.scene === 'StageSelect')
+    const storedActiveRun = await page.evaluate(() => {
+      const stored = JSON.parse(window.localStorage.getItem('save.v1') ?? '{}')
+      return stored.activeRun ?? null
+    })
+    if (storedActiveRun !== null) {
+      throw new Error('Expected corrupt active run to be removed from persistent storage.')
+    }
+
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    fs.writeFileSync(
+      path.join(scenarioDir, 'state-0.json'),
+      JSON.stringify({ beforeLoad, loadOptionEnabled, storedActiveRun, afterLoad }, null, 2)
+    )
+
+    if (errors.length > 0) {
+      fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
+      throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+async function runUnifiedPlayerDamageScenario(name) {
+  const scenarioDir = path.join(outputDir, name)
+  fs.rmSync(scenarioDir, { recursive: true, force: true })
+  fs.mkdirSync(scenarioDir, { recursive: true })
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--use-gl=angle', '--use-angle=swiftshader']
+  })
+  const page = await browser.newPage()
+  const errors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push({ type: 'console.error', text: msg.text() })
+  })
+  page.on('pageerror', (err) => errors.push({ type: 'pageerror', text: String(err), stack: err?.stack }))
+
+  const requestDebugDamage = (sourceId) =>
+    page.evaluate((id) => {
+      const scene = window.__phaserGame?.scene?.getScene?.('Game')
+      if (!scene || typeof scene.requestPlayerDamage !== 'function') {
+        throw new Error('Game damage adapter unavailable in automation mode.')
+      }
+      return scene.requestPlayerDamage({
+        amount: 1,
+        tier: 'light',
+        sourceType: 'system',
+        sourceId: id,
+        direction: 1
+      })
+    }, sourceId)
+
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(400)
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+    await waitForState(page, (state) => state.scene === 'StageSelect')
+    await tapKey(page, 'Enter')
+    const baseline = await waitForState(
+      page,
+      (state) => state.scene === 'Game' && Number(state.playerState?.hp ?? 0) > 0
+    )
+    const baselineHp = Number(baseline.playerState.hp)
+
+    const first = await requestDebugDamage('damage_matrix_first')
+    const repeated = await requestDebugDamage('damage_matrix_iframe_repeat')
+    const iframeState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        Number(state.playerState?.hp ?? -1) === baselineHp - 1 &&
+        Number(state.combatDebug?.totals?.total ?? 0) >= 2
+    )
+    if (!first?.accepted || repeated?.accepted) {
+      throw new Error('Expected first damage request accepted and immediate i-frame repeat rejected.')
+    }
+    const iframeHits = iframeState.combatDebug?.recentHits ?? []
+    if (
+      iframeHits.filter((hit) => hit.note?.startsWith('damage_matrix_first:') && hit.accepted).length !== 1 ||
+      iframeHits.filter((hit) => hit.note?.startsWith('damage_matrix_iframe_repeat:') && !hit.accepted).length !== 1
+    ) {
+      throw new Error('Expected exactly one accepted and one rejected trace for the i-frame pair.')
+    }
+
+    await advanceFrames(page, 50)
+    await waitForState(
+      page,
+      (state) => state.scene === 'Game' && Number(state.combatDebug?.player?.iFramesMs ?? -1) === 0,
+      8000,
+      'player i-frame expiry'
+    )
+    const afterIFrames = await requestDebugDamage('damage_matrix_after_iframes')
+    const expiredState = await waitForState(
+      page,
+      (state) => state.scene === 'Game' && Number(state.playerState?.hp ?? -1) === baselineHp - 2
+    )
+    if (!afterIFrames?.accepted) {
+      throw new Error('Expected damage after i-frame expiry to be accepted.')
+    }
+
+    await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScene?.('Game')
+      scene?.scene?.restart?.({ bossId: 'pyro_maw', stageId: 'pyro_maw' })
+    })
+    const restartBaseline = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        Number(state.playerState?.hp ?? 0) === Number(state.playerState?.maxHp ?? -1) &&
+        Number(state.combatDebug?.totals?.total ?? -1) === 0,
+      8000,
+      'clean Game restart damage baseline'
+    )
+    const restartHp = Number(restartBaseline.playerState.hp)
+    const restartHit = await requestDebugDamage('damage_matrix_restart')
+    const finalState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        Number(state.playerState?.hp ?? -1) === restartHp - 1 &&
+        Number(state.combatDebug?.totals?.total ?? 0) === 1 &&
+        Number(state.combatDebug?.totals?.accepted ?? 0) === 1
+    )
+    if (!restartHit?.accepted) {
+      throw new Error('Expected one accepted hit after scene restart.')
+    }
+
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    fs.writeFileSync(
+      path.join(scenarioDir, 'state-0.json'),
+      JSON.stringify({ baseline, iframeState, expiredState, restartBaseline, finalState }, null, 2)
+    )
+    if (errors.length > 0) {
+      fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
+      throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+async function runMovementFeelScenario(name) {
+  const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
+  const sampleDash = async () => {
+    const trace = []
+    await page.keyboard.down('ArrowRight')
+    await page.keyboard.down('z')
+    for (let frame = 0; frame < 7; frame += 1) {
+      await advanceFrames(page, 1)
+      const state = await readState(page)
+      trace.push({
+        frame,
+        vx: Number(state?.player?.vx ?? 0),
+        x: Number(state?.player?.x ?? 0),
+        dashing: Boolean(state?.newPlayer?.locomotion?.dashing),
+        dashMs: Number(state?.newPlayer?.locomotion?.dashMs ?? 0)
+      })
+    }
+    await page.keyboard.up('z')
+    await page.keyboard.up('ArrowRight')
+    return trace
+  }
+
+  try {
+    await waitForState(
+      page,
+      (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true,
+      8000,
+      'grounded player before movement feel trace'
+    )
+    const resetMovement = (speedster) =>
+      page.evaluate((enableSpeedster) => {
+        const scene = window.__phaserGame?.scene?.getScene?.('Game')
+        if (!scene?.player || !scene?.newPlayerRuntime) {
+          throw new Error('Player runtime unavailable for movement trace.')
+        }
+        const upgrades = Array.isArray(scene.progressionSave?.upgradeUnlocks)
+          ? scene.progressionSave.upgradeUnlocks.filter((id) => id !== 'chip_speedster')
+          : []
+        scene.progressionSave = {
+          ...scene.progressionSave,
+          upgradeUnlocks: enableSpeedster ? [...upgrades, 'chip_speedster'] : upgrades
+        }
+        scene.applyProgressionMovementModifiers()
+        scene.newPlayerRuntime.resetForRespawn(0)
+        scene.player.setPosition(180, scene.player.y)
+        scene.player.body.setVelocity(0, 0)
+        return {
+          maxVelocityX: Number(scene.player.body.maxVelocity?.x ?? 0),
+          maxVelocityY: Number(scene.player.body.maxVelocity?.y ?? 0)
+        }
+      }, speedster)
+
+    const baseLimits = await resetMovement(false)
+    await advanceFrames(page, 2)
+    const baseTrace = await sampleDash()
+    const speedsterLimits = await resetMovement(true)
+    await advanceFrames(page, 2)
+    const speedsterTrace = await sampleDash()
+
+    const wallJump = await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScene?.('Game')
+      const runtime = scene?.newPlayerRuntime
+      const motor = runtime?.motor
+      const body = scene?.player?.body
+      if (!motor || !body) {
+        throw new Error('Player motor unavailable for wall-jump trace.')
+      }
+      runtime.resetForRespawn(0)
+      const originalOnFloor = body.onFloor
+      body.onFloor = () => false
+      body.blocked.down = false
+      body.touching.down = false
+      body.blocked.right = false
+      body.touching.right = true
+      body.setVelocity(0, 120)
+      const snapshot = motor.update(
+        {
+          moveAxis: 1,
+          jumpPressed: true,
+          jumpHeld: true,
+          jumpReleased: false,
+          dashPressed: false,
+          dashHeld: true,
+          dashReleased: false,
+          shootPressed: false,
+          shootHeld: false,
+          shootReleased: false,
+          slashPressed: false,
+          crouchHeld: false,
+          aim: { x: 1, y: 0 }
+        },
+        1000 / 60,
+        true
+      )
+      const result = {
+        vx: Number(body.velocity.x),
+        vy: Number(body.velocity.y),
+        jumpSource: snapshot.jumpSource,
+        wallJumping: snapshot.wallJumping
+      }
+      body.onFloor = originalOnFloor
+      return result
+    })
+
+    const peak = (trace) => Math.max(...trace.map((sample) => Math.abs(sample.vx)))
+    const basePeak = peak(baseTrace)
+    const speedsterPeak = peak(speedsterTrace)
+    if (baseLimits.maxVelocityX !== 320 || basePeak < 315 || basePeak > 321) {
+      throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} peak=${basePeak}.`)
+    }
+    if (speedsterLimits.maxVelocityX !== 368 || speedsterPeak < 363 || speedsterPeak > 369) {
+      throw new Error(
+        `Expected Speedster dash near 368, got cap=${speedsterLimits.maxVelocityX} peak=${speedsterPeak}.`
+      )
+    }
+    if (!wallJump.wallJumping || wallJump.jumpSource !== 'wall' || Math.abs(wallJump.vx + 353.28) > 0.01) {
+      throw new Error(`Expected boosted Speedster wall-jump launch vx=-353.28, got ${JSON.stringify(wallJump)}.`)
+    }
+
+    const finalState = await readState(page)
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    fs.writeFileSync(
+      path.join(scenarioDir, 'state-0.json'),
+      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, finalState }, null, 2)
+    )
+  } finally {
+    await page.keyboard.up('z').catch(() => {})
+    await page.keyboard.up('ArrowRight').catch(() => {})
+    await closeGameplayPage(browser, scenarioDir, errors)
   }
 }
 
@@ -882,6 +1812,9 @@ async function runCompletionReturnScenario(name) {
     tutorialCleared: true,
     finalBossCleared: false,
     gameCompleted: false,
+    upgradeUnlocks: ['armor_helmet', 'armor_arms', 'armor_body', 'armor_legs'],
+    heartTanks: 8,
+    subTanks: 4,
     activeRun: null
   })
 
@@ -1387,6 +2320,15 @@ async function runFinalUnlockFromLastClearScenario(name) {
     tutorialCleared: true,
     finalBossCleared: false,
     gameCompleted: false,
+    progressionWorld: null,
+    stageAccessUnlocked: ['tutorial_sentinel', 'pyro_maw'],
+    collectedChecks: [],
+    unlockedCheckpoints: {},
+    selectedCheckpointByStage: {},
+    upgradeUnlocks: ['armor_helmet', 'armor_arms', 'armor_body', 'armor_legs'],
+    heartTanks: 8,
+    subTanks: 4,
+    pendingProgressionItems: [],
     activeRun: null
   })
 
@@ -1408,8 +2350,8 @@ async function runFinalUnlockFromLastClearScenario(name) {
     if (!Array.isArray(saveState.clearedBosses) || saveState.clearedBosses.length < 8) {
       throw new Error('Expected the last live boss clear to persist all 8 cleared robot masters.')
     }
-    if (!saveState.weaponsUnlocked?.includes?.('FlameSerpent')) {
-      throw new Error('Expected the last live boss clear to unlock FlameSerpent.')
+    if (!saveState.collectedChecks?.includes?.('pyro_maw:boss_clear')) {
+      throw new Error('Expected the last live boss clear to persist the Pyro Maw boss-clear check.')
     }
     if (saveState.activeRun !== null) {
       throw new Error('Expected the last live boss clear to clear any stale active run snapshot.')
@@ -1482,8 +2424,19 @@ async function runBossRoomRespawnScenario(name) {
     const gateX = Number(activeBossRoomState.stageRuntime?.bossGateX ?? 0)
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.spawnHostileProjectile))
-    await page.evaluate(() => window.stageDebug?.spawnHostileProjectile?.())
-    await waitForState(page, (state) => state.scene === 'Game' && Number(state.projectiles?.bossActive ?? 0) >= 1)
+    const spawnedHostileProjectile = await page.evaluate(() => window.stageDebug?.spawnHostileProjectile?.())
+    if (!spawnedHostileProjectile || spawnedHostileProjectile.active === false) {
+      throw new Error('Expected debug hostile projectile spawn helper to return an active projectile before respawn test.')
+    }
+    const immediateProjectileState = await readState(page)
+    if (Number(immediateProjectileState?.projectiles?.bossActive ?? 0) < 1) {
+      await waitForState(
+        page,
+        (state) => state.scene === 'Game' && Number(state.projectiles?.bossActive ?? 0) >= 1,
+        2000,
+        'debug hostile projectile to become visible before respawn'
+      )
+    }
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.forcePlayerDeath))
     await page.evaluate(() => window.stageDebug?.forcePlayerDeath?.())
@@ -1583,21 +2536,7 @@ async function captureScenarioState(page, scenarioDir, index, state) {
   fs.writeFileSync(path.join(scenarioDir, `state-${index}.json`), JSON.stringify(state, null, 2))
 }
 
-function hasAcceptedMeleeHit(state, target) {
-  const recentHits = state?.combatDebug?.recentHits
-  if (!Array.isArray(recentHits)) {
-    return false
-  }
-
-  return recentHits.some((hit) => hit?.accepted === true && hit?.kind === 'melee' && hit?.target === target)
-}
-
-function findEnemy(state, typeKey = 'enemy_gunner_bot') {
-  const enemies = Array.isArray(state?.enemies) ? state.enemies : []
-  return enemies.find((enemy) => enemy?.typeKey === typeKey) ?? null
-}
-
-async function openGameplayPage(name) {
+async function openGameplayPage(name, targetUrl = url) {
   const scenarioDir = path.join(outputDir, name)
   fs.rmSync(scenarioDir, { recursive: true, force: true })
   fs.mkdirSync(scenarioDir, { recursive: true })
@@ -1622,12 +2561,20 @@ async function openGameplayPage(name) {
     })
   })
 
-  await page.goto(url, { waitUntil: 'domcontentloaded' })
+  await page.goto(targetUrl, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(400)
   await page.evaluate(() => window.dispatchEvent(new Event('resize')))
   await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
   await tapKey(page, 'Enter')
-  await waitForState(page, (state) => state.scene === 'Game', 8000)
+  try {
+    await waitForState(page, (state) => state.scene === 'Game', 4000)
+  } catch {
+    const retryState = await readState(page)
+    if (retryState?.scene === 'StageSelect') {
+      await tapKey(page, 'Enter')
+    }
+    await waitForState(page, (state) => state.scene === 'Game', 8000)
+  }
 
   return { browser, page, scenarioDir, errors }
 }
@@ -1648,44 +2595,512 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
 
   try {
     await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
+    await waitForPageCheck(
+      page,
+      () =>
+        Boolean(window.stageDebug?.setPlayerX) &&
+        Boolean(window.__phaserGame?.scene?.getScenes(true)?.[0]?.newPlayerRuntime?.resetForRespawn),
+      8000,
+      'stage debug position control and player runtime reset for sword scenario stabilization'
+    )
+    await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      window.stageDebug?.setPlayerX?.(150)
+      scene?.newPlayerRuntime?.resetForRespawn?.(30000)
+      if (typeof scene?.playerMaxHp === 'number') {
+        scene.playerHp = scene.playerMaxHp
+        scene.player?.data?.set?.('hp', scene.playerMaxHp)
+      }
+      const enemyGroup = scene?.enemies
+      enemyGroup?.getChildren?.().forEach((child) => {
+        child?.disableBody?.(true, true)
+        child?.setActive?.(false)
+        child?.setVisible?.(false)
+      })
+    })
+    await advanceFrames(page, 2)
     await waitForPageCheck(page, () => Boolean(window.spawnEnemyDebug))
     if (moving) {
       await page.keyboard.down('ArrowRight')
       await advanceFrames(page, 10)
     }
-    await page.evaluate(() => {
+    await page.evaluate((enemyOffsetX) => {
       const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
-      const x = Number(scene?.player?.x ?? 0) + 28
+      const x = Number(scene?.player?.x ?? 0) + Number(enemyOffsetX ?? 28)
       const y = Number(scene?.player?.y ?? 0) - 4
       window.spawnEnemyDebug?.('enemy_gunner_bot', x, y)
-    })
+    }, moving ? 72 : 28)
     await advanceFrames(page, 8)
     await tapKey(page, 'c', 2)
-    const baselineEnemyHp = 4
-    const slashState = await waitForState(
-      page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.newPlayer?.visuals?.animationKey === 'player_slash_ground_e' &&
-        String(state.playerVisual?.frameName ?? '').startsWith('player_main/slash_ground_e/') &&
-        state.newPlayer?.visuals?.activeHitbox?.direction === 'e' &&
-        (!moving || Number(state.player?.vx ?? 0) >= 0),
-      2500
-    )
-    await captureScenarioState(page, scenarioDir, 0, slashState)
-
-    if (!moving) {
-      const damageState = await waitForState(
-        page,
-        (state) => state.scene === 'Game' && Number(findEnemy(state)?.hp ?? baselineEnemyHp) < baselineEnemyHp,
-        5000
-      )
-      await captureScenarioState(page, scenarioDir, 1, damageState)
+    const isEastSlashState = (state) => {
+      if (state?.scene !== 'Game') {
+        return false
+      }
+      const animationKey = String(state.newPlayer?.visuals?.animationKey ?? '')
+      const frameName = String(state.playerVisual?.frameName ?? '')
+      const validSlash =
+        (animationKey === 'player_slash_ground_e' && frameName.startsWith('player_main/slash_ground_e/')) ||
+        (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/'))
+      return validSlash && state.newPlayer?.visuals?.activeHitbox?.direction === 'e'
+    }
+    if (moving) {
+      await advanceFrames(page, 6)
+      const immediateMovingState = await readState(page)
+      const movingHitState =
+        isEastSlashState(immediateMovingState) && Number(immediateMovingState?.player?.vx ?? 0) >= 0
+          ? immediateMovingState
+          : await waitForState(
+              page,
+              (state) => isEastSlashState(state) && Number(state.player?.vx ?? 0) >= 0,
+              5000
+            )
+      await captureScenarioState(page, scenarioDir, 0, movingHitState)
+    } else {
+      const immediateSlashState = await readState(page)
+      const slashState = isEastSlashState(immediateSlashState)
+        ? immediateSlashState
+        : await waitForState(page, isEastSlashState, 2500)
+      await captureScenarioState(page, scenarioDir, 0, slashState)
     }
   } finally {
     if (moving) {
       await page.keyboard.up('ArrowRight').catch(() => {})
     }
+    await closeGameplayPage(browser, scenarioDir, errors)
+  }
+}
+
+async function runWestSwordFacingScenario(name) {
+  const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
+
+  try {
+    await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
+    await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      window.stageDebug?.setPlayerX?.(180)
+      scene?.newPlayerRuntime?.resetForRespawn?.(30000)
+    })
+    await advanceFrames(page, 2)
+
+    // Start west, then reverse locomotion during startup. The authored slash
+    // direction must remain west and keep the east-authored sprite mirrored.
+    await page.keyboard.down('ArrowLeft')
+    await advanceFrames(page, 2)
+    await tapKey(page, 'c', 2)
+    await page.keyboard.up('ArrowLeft')
+    await page.keyboard.down('ArrowRight')
+
+    const slashState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.newPlayer?.combat?.slashDirection === 'w' &&
+        state.newPlayer?.visuals?.activeHitbox?.direction === 'w' &&
+        state.newPlayer?.visuals?.facing === -1 &&
+        String(state.newPlayer?.visuals?.animationKey ?? '').endsWith('_w') &&
+        String(state.playerVisual?.frameName ?? '').startsWith('player_main/slash_ground_e/'),
+      3000,
+      'west saber pose, hitbox, and mirrored atlas frame to stay aligned after locomotion reversal'
+    )
+    await captureScenarioState(page, scenarioDir, 0, slashState)
+  } finally {
+    await page.keyboard.up('ArrowLeft').catch(() => {})
+    await page.keyboard.up('ArrowRight').catch(() => {})
+    await closeGameplayPage(browser, scenarioDir, errors)
+  }
+}
+
+async function runFrozenProjectileWatchdogScenario(name) {
+  const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
+
+  try {
+    await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
+    await waitForPageCheck(page, () => Boolean(window.stageDebug?.freezeLatestPlayerProjectile))
+    const baseline = Number((await readState(page))?.projectiles?.playerActive ?? 0)
+    await tapKey(page, 'x', 2)
+    await waitForState(
+      page,
+      (state) => Number(state.projectiles?.playerActive ?? 0) > baseline,
+      2500,
+      'player projectile to become active before freeze watchdog test'
+    )
+    const frozen = await page.evaluate(() => window.stageDebug?.freezeLatestPlayerProjectile?.())
+    if (!frozen?.active || !frozen?.visible || !frozen?.bodyEnabled) {
+      throw new Error('Expected the debug freeze hook to stop a live, visible projectile body.')
+    }
+
+    await advanceFrames(page, 20)
+    const recycledState = await waitForState(
+      page,
+      (state) => Number(state.projectiles?.playerActive ?? 0) <= baseline,
+      2500,
+      'stalled projectile watchdog to recycle the frozen shot'
+    )
+    await captureScenarioState(page, scenarioDir, 0, recycledState)
+  } finally {
+    await closeGameplayPage(browser, scenarioDir, errors)
+  }
+}
+
+async function runViewportAndEnergyEconomyScenario(name) {
+  const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
+
+  try {
+    await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
+    await waitForPageCheck(
+      page,
+      () =>
+        Boolean(window.stageDebug?.setWeaponEnergy) &&
+        Boolean(window.stageDebug?.playerViewport) &&
+        Boolean(window.stageDebug?.spawnPickup),
+      8000,
+      'viewport, energy, and pickup automation hooks'
+    )
+
+    const pickupVisuals = await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      scene.weapons = ['Buster', 'FlameSerpent', 'HydroLance']
+      scene.currentWeaponIndex = 1
+      scene.weaponEnergyById = { Buster: 28, FlameSerpent: 0, HydroLance: 0 }
+      scene.updateWeaponLabel?.()
+      window.stageDebug?.setWeaponEnergy?.('FlameSerpent', 0)
+      window.stageDebug?.setWeaponEnergy?.('HydroLance', 0)
+      return {
+        health: window.stageDebug?.spawnPickup?.('health', 48),
+        weapon: window.stageDebug?.spawnPickup?.('ammo', 72)
+      }
+    })
+    if (
+      pickupVisuals.health?.textureKey !== 'pickup_capsule_health' ||
+      pickupVisuals.weapon?.textureKey !== 'pickup_capsule_weapon'
+    ) {
+      throw new Error(`Expected distinct capsule textures, got ${JSON.stringify(pickupVisuals)}.`)
+    }
+
+    await tapKey(page, 'c', 2)
+    const saberRechargeState = await waitForState(
+      page,
+      (state) =>
+        state.playerState?.weapon === 'FlameSerpent' &&
+        Number(state.weaponRecharge?.inventory?.FlameSerpent ?? 0) === 2,
+      3000,
+      'saber to restore two energy to the selected empty special weapon'
+    )
+
+    await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      scene.currentWeaponIndex = 0
+      scene.passiveWeaponRechargeAccumulatorMs = 0
+      scene.updateWeaponLabel?.()
+    })
+    await waitForState(page, (state) => state.playerState?.weapon === 'Buster', 2500)
+    await advanceFrames(page, 96)
+    const passiveRechargeState = await waitForState(
+      page,
+      (state) =>
+        Number(state.weaponRecharge?.inventory?.FlameSerpent ?? 0) >= 3 &&
+        Number(state.weaponRecharge?.inventory?.HydroLance ?? 0) >= 1,
+      3000,
+      'holstered special weapons to receive their passive recharge tick'
+    )
+
+    await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      const player = scene?.player
+      const body = player?.body
+      if (player && body) {
+        player.setY(42)
+        body.reset(player.x, 42)
+        body.setVelocityY(-520)
+      }
+    })
+    await advanceFrames(page, 8)
+    const viewport = await page.evaluate(() => window.stageDebug?.playerViewport?.())
+    if (Number(viewport?.top ?? -1) < Number(viewport?.actorCeiling ?? 90)) {
+      throw new Error(`Player escaped behind the HUD: ${JSON.stringify(viewport)}.`)
+    }
+
+    const finalState = await readState(page)
+    await captureScenarioState(page, scenarioDir, 0, {
+      pickupVisuals,
+      saberRechargeState,
+      passiveRechargeState,
+      viewport,
+      finalState
+    })
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+  } finally {
+    await closeGameplayPage(browser, scenarioDir, errors)
+  }
+}
+
+async function runPelletHitsShortEnemyScenario(name) {
+  const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
+
+  try {
+    await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
+    await waitForPageCheck(page, () => Boolean(window.spawnEnemyDebug) && Boolean(window.stageDebug?.setPlayerX))
+    const baseline = await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      window.stageDebug?.setPlayerX?.(150)
+      scene?.newPlayerRuntime?.resetForRespawn?.(30000)
+      scene?.enemySpawner?.getEntities?.().forEach((entity) => entity?.destroy?.())
+      scene?.enemySpawner?.enemies?.clear?.()
+      scene?.enemySpawner?.levelMarkers?.clear?.()
+      scene?.enemySpawner?.activeMarkerIds?.clear?.()
+      scene?.enemySpawner?.retiredMarkerIds?.clear?.()
+      const entity = window.spawnEnemyDebug?.(
+        'enemy_mine_bot',
+        Number(scene?.player?.x ?? 150) + 68,
+        Number(scene?.player?.y ?? 0)
+      )
+      window.__pelletTestEnemyId = entity?.id ?? null
+      return { id: entity?.id ?? null, hp: Number(entity?.combat?.currentHp ?? -1) }
+    })
+    if (baseline.hp <= 0) {
+      throw new Error('Expected a live short enemy for the pellet hitbox scenario.')
+    }
+
+    const beforeShot = await readState(page)
+    await tapKey(page, 'ArrowRight', 3)
+    await tapKey(page, 'x', 2)
+    await advanceFrames(page, 2)
+    const geometry = await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      const bounds = (sprite) => {
+        const body = sprite?.body
+        return body ? {
+          x: sprite.x, y: sprite.y,
+          left: body.left, right: body.right, top: body.top, bottom: body.bottom,
+          width: body.width, height: body.height,
+          visibleBounds: sprite.getBounds()
+        } : null
+      }
+      const enemy = scene?.enemySpawner?.getEntities?.()
+        ?.find?.((entity) => entity?.id === window.__pelletTestEnemyId)
+      return {
+        player: bounds(scene?.player),
+        enemy: bounds(enemy?.sprite),
+        projectiles: (scene?.playerBullets?.getChildren?.() ?? [])
+          .filter((bullet) => bullet.active).map(bounds)
+      }
+    })
+    await advanceFrames(page, 36)
+
+    const result = await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      const entity = scene?.enemySpawner
+        ?.getEntities?.()
+        ?.find?.((candidate) => candidate?.id === window.__pelletTestEnemyId)
+      return {
+        id: entity?.id ?? null,
+        hp: entity?.combat?.currentHp ?? null,
+        active: Boolean(entity?.sprite?.active),
+        bodyEnabled: Boolean(entity?.sprite?.body?.enable)
+      }
+    })
+    const state = await readState(page)
+    await captureScenarioState(page, scenarioDir, 0, state)
+    const evidence = {
+      baseline, result, geometry,
+      shot: state?.combatDebug?.player?.lastProjectile,
+      shotsFired: Number(state?.combatDebug?.player?.shotsFiredTotal ?? 0) -
+        Number(beforeShot?.combatDebug?.player?.shotsFiredTotal ?? 0),
+      acceptedEnemyHits: Number(state?.combatDebug?.totals?.byTarget?.enemy ?? 0) -
+        Number(beforeShot?.combatDebug?.totals?.byTarget?.enemy ?? 0),
+      hits: (state?.combatDebug?.recentHits ?? []).slice(beforeShot?.combatDebug?.recentHits?.length ?? 0)
+    }
+    fs.writeFileSync(path.join(scenarioDir, 'pellet-evidence.json'), JSON.stringify(evidence, null, 2))
+    assertPelletHitEvidence(evidence)
+  } finally {
+    await closeGameplayPage(browser, scenarioDir, errors)
+  }
+}
+
+async function runTouchControlsScenario(name) {
+  const { browser, page, scenarioDir, errors } = await openGameplayPage(name, touchUrl)
+
+  try {
+    const initialState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.playerState?.virtualControlsVisible === true &&
+        state.newPlayer?.locomotion?.grounded === true,
+      8000
+    )
+
+    await waitForPageCheck(
+      page,
+      () => Boolean(window.__phaserGame?.scene?.getScenes(true)?.[0]?.newPlayerRuntime?.resetForRespawn),
+      8000,
+      'new player runtime to expose resetForRespawn for touch scenario stabilization'
+    )
+    await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      scene?.newPlayerRuntime?.resetForRespawn?.(30000)
+    })
+    await advanceFrames(page, 2)
+
+    await waitForPageCheck(
+      page,
+      () => {
+        const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+        return Boolean(scene?.touchControls?.setButtonHeld) && Boolean(scene?.touchControls?.triggerPause)
+      },
+      8000,
+      'touch controls to expose button and pause handlers'
+    )
+
+    const setTouchButton = async (name, held) => {
+      await page.evaluate(
+        ({ name, held }) => {
+          const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+          scene?.touchControls?.setButtonHeld?.(name, held)
+        },
+        { name, held }
+      )
+    }
+
+    await setTouchButton('right', true)
+    await advanceFrames(page, 24)
+    const movedRightState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.playerState?.virtualControlsVisible === true &&
+        state.newPlayer?.locomotion?.grounded === true &&
+        Number(state.player?.vx ?? 0) >= 30,
+      4000
+    )
+
+    await setTouchButton('right', false)
+    await setTouchButton('left', true)
+    await advanceFrames(page, 24)
+    const movedLeftState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.playerState?.virtualControlsVisible === true &&
+        state.newPlayer?.locomotion?.grounded === true &&
+        Number(state.player?.vx ?? 0) <= -30,
+      4000
+    )
+
+    await setTouchButton('left', false)
+    await advanceFrames(page, 10)
+
+    const groundedY = Number(movedLeftState.player?.y ?? 0)
+    await setTouchButton('jump', true)
+    await advanceFrames(page, 3)
+    await setTouchButton('jump', false)
+    const jumpState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.playerState?.virtualControlsVisible === true &&
+        state.newPlayer?.locomotion?.grounded === false &&
+        Number(state.player?.y ?? groundedY) < groundedY,
+      4000
+    )
+
+    await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 6000)
+    await setTouchButton('dash', true)
+    await advanceFrames(page, 3)
+    const isDashState = (state) =>
+      state?.scene === 'Game' &&
+      state.playerState?.virtualControlsVisible === true &&
+      (
+        state.newPlayer?.locomotion?.dashing === true ||
+        Number(state.newPlayer?.locomotion?.dashMs ?? 0) > 0 ||
+        Number(state.newPlayer?.locomotion?.dashCooldownMs ?? 0) > 0 ||
+        Number(state.combatDebug?.player?.dashCooldownMs ?? 0) > 0
+      )
+    const immediateDashState = await readState(page)
+    const dashState = isDashState(immediateDashState)
+      ? immediateDashState
+      : await waitForState(page, isDashState, 3000, 'touch dash to engage')
+    await setTouchButton('dash', false)
+    await advanceFrames(page, 12)
+
+    const shotBaselineState = await readState(page)
+    const baselinePlayerProjectiles = Number(shotBaselineState?.projectiles?.playerActive ?? 0)
+    const baselineShotsFiredTotal = Number(shotBaselineState?.newPlayer?.combat?.shotsFiredTotal ?? 0)
+    await setTouchButton('shoot', true)
+    await advanceFrames(page, 3)
+    const shootHoldState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.playerState?.virtualControlsVisible === true &&
+        (
+          state.newPlayer?.combat?.charging === true ||
+          Number(state.newPlayer?.combat?.chargeElapsedMs ?? 0) > 0 ||
+          Number(state.combatDebug?.player?.chargeMs ?? 0) > 0
+        ),
+      3000,
+      'touch shoot hold to enter charge state'
+    )
+    await setTouchButton('shoot', false)
+    const shotState = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.playerState?.virtualControlsVisible === true &&
+        (
+          Number(state.projectiles?.playerActive ?? 0) > baselinePlayerProjectiles ||
+          Number(state.newPlayer?.combat?.shotsFiredTotal ?? 0) > baselineShotsFiredTotal ||
+          Number(state.combatDebug?.player?.shotsFiredTotal ?? 0) > baselineShotsFiredTotal
+        ),
+      4000,
+      'touch shoot release to spawn a projectile'
+    )
+
+    await setTouchButton('saber', true)
+    await advanceFrames(page, 2)
+    const isSaberSlashState = (state) =>
+      state?.scene === 'Game' &&
+      (
+        typeof state.newPlayer?.combat?.slashPhase === 'string' ||
+        (typeof state.newPlayer?.visuals?.animationKey === 'string' &&
+          state.newPlayer.visuals.animationKey.startsWith('player_slash_')) ||
+        Boolean(state.newPlayer?.visuals?.activeHitbox)
+      )
+    const immediateSaberState = await readState(page)
+    const saberSlashState = isSaberSlashState(immediateSaberState)
+      ? immediateSaberState
+      : await waitForState(page, isSaberSlashState, 2500, 'touch saber to enter slash state')
+    await setTouchButton('saber', false)
+    const saberState = saberSlashState
+
+    await captureScenarioState(page, scenarioDir, 0, {
+      initialState,
+      movedRightState,
+      movedLeftState,
+      jumpState,
+      dashState,
+      shotBaselineState,
+      shootHoldState,
+      shotState,
+      saberSlashState,
+      saberState
+    })
+
+    await page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+      scene?.touchControls?.triggerPause?.()
+    })
+    const pausedState = await waitForState(
+      page,
+      (state) =>
+        Array.isArray(state.activeScenes) &&
+        state.activeScenes.includes('Game') &&
+        state.activeScenes.includes('SystemMenu'),
+      3000
+    )
+    await captureScenarioState(page, scenarioDir, 1, pausedState)
+  } finally {
+    await page.mouse.up().catch(() => {})
     await closeGameplayPage(browser, scenarioDir, errors)
   }
 }
@@ -1696,24 +3111,54 @@ async function runAirSwordDirectionScenario(name, direction) {
   try {
     await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
     await tapKey(page, 'Space', 2)
-    await advanceFrames(page, 6)
+    try {
+      await waitForState(
+        page,
+        (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === false,
+        1200,
+        'jump to become airborne for air sword'
+      )
+    } catch {
+      await page.evaluate(() => {
+        const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+        const player = scene?.player
+        const body = player?.body
+        if (player && body) {
+          player.setY(Number(player.y ?? 0) - 20)
+          body.setVelocityY(-260)
+        }
+      })
+      await waitForState(
+        page,
+        (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === false,
+        2500,
+        'fallback airborne setup for air sword'
+      )
+    }
     const key = direction === 'n' ? 'ArrowUp' : 'ArrowDown'
     await page.keyboard.down(key)
     await tapKey(page, 'c', 2)
-    await advanceFrames(page, 6)
+    await advanceFrames(page, 2)
     const expectedAnimation = `player_slash_air_${direction}`
     const expectedFramePrefix = `player_main/slash_air_${direction}/`
-    const finalState = await readState(page)
-    if (
-      finalState?.scene !== 'Game' ||
-      finalState?.newPlayer?.visuals?.animationKey !== expectedAnimation ||
-      !String(finalState?.playerVisual?.frameName ?? '').startsWith(expectedFramePrefix) ||
-      finalState?.newPlayer?.visuals?.activeHitbox?.direction !== direction
-    ) {
-      throw new Error(
-        `Expected airborne slash '${direction}' but observed ${JSON.stringify(finalState?.newPlayer?.visuals ?? null)}`
+    const isExpectedAirSlashState = (state) =>
+      state?.scene === 'Game' &&
+      state.newPlayer?.combat?.slashGrounded === false &&
+      state.newPlayer?.combat?.slashDirection === direction &&
+      (
+        state.newPlayer?.visuals?.animationKey === expectedAnimation ||
+        String(state.playerVisual?.frameName ?? '').startsWith(expectedFramePrefix) ||
+        state.newPlayer?.visuals?.activeHitbox?.direction === direction
       )
-    }
+    const immediateSlashState = await readState(page)
+    const finalState = isExpectedAirSlashState(immediateSlashState)
+      ? immediateSlashState
+      : await waitForState(
+      page,
+      isExpectedAirSlashState,
+      2500,
+      `air sword ${direction} slash animation`
+    )
     await captureScenarioState(page, scenarioDir, 0, finalState)
     await page.keyboard.up(key)
   } finally {
@@ -1741,28 +3186,44 @@ async function runBossSwordScenario(name) {
       const boss = scene?.bossTarget ?? scene?.bossBody
       const player = scene?.player
       if (boss && player) {
+        // Isolate the saber contract from the independently tested contact/projectile
+        // damage paths so hitstun cannot consume the one-frame slash input.
+        scene?.bossContactWire?.destroy?.()
+        scene.bossContactWire = undefined
+        scene?.disableProjectileGroups?.()
+        scene?.bossProjectileController?.onPauseChanged?.(true)
         player.setPosition(boss.x - 26, boss.y + 8)
       }
     })
     await advanceFrames(page, 8)
+    const preSlashState = await readState(page)
+    const bossHpBefore = Number(preSlashState?.bossState?.hp?.current ?? 0)
+    const bossHitsBefore = Number(preSlashState?.combatDebug?.totals?.byTarget?.boss ?? 0)
     await tapKey(page, 'c', 2)
-    const bossHpBefore = await page.evaluate(() => {
-      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
-      return Number(scene?.bossHp?.current ?? scene?.bossController?.hp ?? 0)
-    })
     const slashState = await waitForState(
       page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.newPlayer?.visuals?.animationKey === 'player_slash_ground_e' &&
-        String(state.playerVisual?.frameName ?? '').startsWith('player_main/slash_ground_e/') &&
-        state.newPlayer?.visuals?.activeHitbox?.direction === 'e',
+      (state) => {
+        if (state.scene !== 'Game') {
+          return false
+        }
+        const animationKey = String(state.newPlayer?.visuals?.animationKey ?? '')
+        const frameName = String(state.playerVisual?.frameName ?? '')
+        const validSlash =
+          (animationKey === 'player_slash_ground_e' && frameName.startsWith('player_main/slash_ground_e/')) ||
+          (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/'))
+        return validSlash && state.newPlayer?.visuals?.activeHitbox?.direction === 'e'
+      },
       2500
     )
     await captureScenarioState(page, scenarioDir, 0, slashState)
     const damageState = await waitForState(
       page,
-      (state) => state.scene === 'Game' && Number(state.bossState?.hp?.current ?? bossHpBefore) < bossHpBefore,
+      (state) =>
+        state.scene === 'Game' &&
+        (
+          Number(state.bossState?.hp?.current ?? bossHpBefore) < bossHpBefore ||
+          Number(state.combatDebug?.totals?.byTarget?.boss ?? 0) > bossHitsBefore
+        ),
       5000
     )
     await captureScenarioState(page, scenarioDir, 1, damageState)
@@ -1778,98 +3239,206 @@ async function main() {
 
   fs.rmSync(outputDir, { recursive: true, force: true })
   fs.mkdirSync(outputDir, { recursive: true })
+  const summary = createSmokeSummary()
+  writeSmokeSummary(summary)
 
-  const vite = spawn('npm', ['run', 'dev', '--', '--host', host, '--port', String(port), '--strictPort'], {
+  const smokeServer = getSmokeServerConfig()
+  const vite = spawn('npm', smokeServer.args, {
     stdio: 'pipe',
     cwd: process.cwd(),
-    env: process.env,
+    env: smokeServer.env,
     shell: false
   })
 
+  let markReady = () => {}
+  const readyFromOutput = new Promise((resolve) => {
+    markReady = resolve
+  })
+  const readyMarker = `http://${host}:${port}/`
+  const maybeMarkReady = (chunk) => {
+    if (String(chunk).includes(readyMarker)) {
+      markReady()
+    }
+  }
+
   const relay = (chunk) => {
-    process.stdout.write(`[vite] ${chunk}`)
+    maybeMarkReady(chunk)
+    process.stdout.write(`[${smokeServer.label}] ${chunk}`)
   }
   const relayErr = (chunk) => {
-    process.stderr.write(`[vite] ${chunk}`)
+    maybeMarkReady(chunk)
+    process.stderr.write(`[${smokeServer.label}] ${chunk}`)
   }
 
   vite.stdout.on('data', relay)
   vite.stderr.on('data', relayErr)
 
   try {
-    await waitForServerReady(url)
+    await Promise.race([waitForServerReady(serverUrl), readyFromOutput])
 
-    const clickOnly = await runScenario('1-click-select', clickOnlyActions, 1)
-    const clickOnlyLast = clickOnly.states[clickOnly.states.length - 1]
+    await executeSmokeScenario(summary, '1-click-select', async () => {
+      const clickOnlyLast = await runClickOnlyStageSelectScenario('1-click-select')
+      if (clickOnlyLast.scene !== 'StageSelect') {
+        throw new Error(`Expected click-only scenario to stay on StageSelect, got ${clickOnlyLast.scene}`)
+      }
 
-    if (clickOnlyLast.scene !== 'StageSelect') {
-      throw new Error(`Expected click-only scenario to stay on StageSelect, got ${clickOnlyLast.scene}`)
-    }
+      const selectedBoss = clickOnlyLast.stageSelect?.selectedBossId
+      if (selectedBoss !== 'pyro_maw') {
+        throw new Error(`Expected click-only scenario to remain on pyro_maw, got ${selectedBoss ?? 'null'}`)
+      }
+    })
 
-    const selectedBoss = clickOnlyLast.stageSelect?.selectedBossId
-    if (selectedBoss !== 'pyro_maw') {
-      throw new Error(`Expected click-only scenario to remain on pyro_maw, got ${selectedBoss ?? 'null'}`)
-    }
-
-    await runKeyboardEnterStartScenario('2-keyboard-enter-start')
-
-    await runChargeShotScenario('3-enter-then-charge-shot')
-    const shootLast = JSON.parse(
-      fs.readFileSync(path.join(outputDir, '3-enter-then-charge-shot', 'state-0.json'), 'utf8')
+    await executeSmokeScenario(summary, '2-keyboard-enter-start', () =>
+      runKeyboardEnterStartScenario('2-keyboard-enter-start')
     )
-    if (typeof shootLast.playerState?.hp !== 'number' || typeof shootLast.playerState?.maxHp !== 'number') {
-      throw new Error('Expected Game state payload to expose numeric player HP and max HP.')
-    }
-    if (!shootLast.combatDebug || typeof shootLast.combatDebug !== 'object') {
-      throw new Error('Expected Game state payload to expose combatDebug snapshot.')
-    }
-    if (
-      typeof shootLast.combatDebug?.player?.dashCooldownMs !== 'number' ||
-      typeof shootLast.combatDebug?.player?.chargeMs !== 'number'
-    ) {
-      throw new Error('Expected combatDebug.player timers (dashCooldownMs/chargeMs) in state payload.')
-    }
-    if (!shootLast.visuals || typeof shootLast.visuals !== 'object') {
-      throw new Error('Expected Game state payload to expose visuals snapshot counters.')
-    }
-    if (
-      typeof shootLast.visuals?.placeholderCount !== 'number' ||
-      typeof shootLast.visuals?.missingAtlasCount !== 'number' ||
-      typeof shootLast.visuals?.nonPixelFilteredCount !== 'number'
-    ) {
-      throw new Error(
-        'Expected visuals counters (placeholderCount/missingAtlasCount/nonPixelFilteredCount) in state payload.'
-      )
-    }
 
-    await runVictoryReturnScenario('4-boss-clear-enter-return', 'enter')
-    await runVictoryReturnScenario('5-boss-clear-numpad-return', 'numpad_enter')
-    await runVictoryReturnScenario('6-boss-clear-escape-return', 'escape')
-    await runBossRoomActivationScenario('7-boss-room-activation')
-    await runCheckpointRespawnScenario('8-checkpoint-respawn')
-    await runEnemyStreamingScenario('9-enemy-streaming')
-    await runFinalRouteUnlockScenario('10-final-route-unlock')
-    await runWeaponSwitchAndEnergyScenario('11-weapon-switch-energy')
-    await runLoadSaveRestoreScenario('12-load-save-restores-weapon-energy')
-    await runCompletionReturnScenario('13-completion-return-flow')
-    await runMenuAudioInputScenario('14-menu-audio-and-input-stability')
-    await runMusicCueScenario('15-music-cue-flow')
-    await runProjectileClashScenario('16-projectile-clash')
-    await runExtendedStageScenario('17-extended-stage-scroll')
-    await runProjectileClashSurviveScenario('18-projectile-clash-survive')
-    await runPickupRecoveryScenario('19-pickup-recovery')
-    await runBossGateLockScenario('20-boss-gate-lock')
-    await runFinalUnlockFromLastClearScenario('21-final-unlock-from-last-clear')
-    await runBossRoomRespawnScenario('22-boss-room-respawn')
-    await runGroundSwordEnemyScenario('23-ground-sword-enemy')
-    await runAirSwordDirectionScenario('24-air-sword-up', 'n')
-    await runAirSwordDirectionScenario('25-air-sword-down', 's')
-    await runBossSwordScenario('26-boss-sword-hit')
-    await runGroundSwordEnemyScenario('27-moving-sword-align', true)
+    await executeSmokeScenario(summary, '3-enter-then-charge-shot', async () => {
+      await runChargeShotScenario('3-enter-then-charge-shot')
+      const shootLast = JSON.parse(
+        fs.readFileSync(path.join(outputDir, '3-enter-then-charge-shot', 'state-0.json'), 'utf8')
+      )
+      if (typeof shootLast.playerState?.hp !== 'number' || typeof shootLast.playerState?.maxHp !== 'number') {
+        throw new Error('Expected Game state payload to expose numeric player HP and max HP.')
+      }
+      if (!shootLast.combatDebug || typeof shootLast.combatDebug !== 'object') {
+        throw new Error('Expected Game state payload to expose combatDebug snapshot.')
+      }
+      if (
+        typeof shootLast.combatDebug?.player?.dashCooldownMs !== 'number' ||
+        typeof shootLast.combatDebug?.player?.chargeMs !== 'number' ||
+        typeof shootLast.combatDebug?.player?.shotsFiredTotal !== 'number' ||
+        typeof shootLast.combatDebug?.player?.lastProjectileSpawnMs !== 'number'
+      ) {
+        throw new Error(
+          'Expected combatDebug.player timers and shot metrics (dashCooldownMs/chargeMs/shotsFiredTotal/lastProjectileSpawnMs) in state payload.'
+        )
+      }
+      if (!shootLast.visuals || typeof shootLast.visuals !== 'object') {
+        throw new Error('Expected Game state payload to expose visuals snapshot counters.')
+      }
+      if (
+        typeof shootLast.visuals?.placeholderCount !== 'number' ||
+        typeof shootLast.visuals?.missingAtlasCount !== 'number' ||
+        typeof shootLast.visuals?.nonPixelFilteredCount !== 'number'
+      ) {
+        throw new Error(
+          'Expected visuals counters (placeholderCount/missingAtlasCount/nonPixelFilteredCount) in state payload.'
+        )
+      }
+    })
+
+    await executeSmokeScenario(summary, '4-title-controls', () => runTitleControlsScenario('4-title-controls'))
+    await executeSmokeScenario(summary, '4b-stage-select-progression', () =>
+      runStageSelectProgressionSummaryScenario('4b-stage-select-progression')
+    )
+    await executeSmokeScenario(summary, '4c-touch-controls', () => runTouchControlsScenario('4c-touch-controls'))
+    await executeSmokeScenario(summary, '4d-progression-import-truth', () =>
+      runProgressionImportTruthScenario('4d-progression-import-truth')
+    )
+
+    await executeSmokeScenario(summary, '5-boss-clear-enter-return', () =>
+      runVictoryReturnScenario('5-boss-clear-enter-return', 'enter')
+    )
+    await executeSmokeScenario(summary, '6-boss-clear-numpad-return', () =>
+      runVictoryReturnScenario('6-boss-clear-numpad-return', 'numpad_enter')
+    )
+    await executeSmokeScenario(summary, '7-boss-clear-escape-return', () =>
+      runVictoryReturnScenario('7-boss-clear-escape-return', 'escape')
+    )
+    await executeSmokeScenario(summary, '8-boss-room-activation', () =>
+      runBossRoomActivationScenario('8-boss-room-activation')
+    )
+    await executeSmokeScenario(summary, '9-checkpoint-respawn', () =>
+      runCheckpointRespawnScenario('9-checkpoint-respawn')
+    )
+    await executeSmokeScenario(summary, '10-enemy-streaming', () =>
+      runEnemyStreamingScenario('10-enemy-streaming')
+    )
+    await executeSmokeScenario(summary, '11-final-route-unlock', () =>
+      runFinalRouteUnlockScenario('11-final-route-unlock')
+    )
+    await executeSmokeScenario(summary, '12-weapon-switch-energy', () =>
+      runWeaponSwitchAndEnergyScenario('12-weapon-switch-energy')
+    )
+    await executeSmokeScenario(summary, '13-load-save-restores-weapon-energy', () =>
+      runLoadSaveRestoreScenario('13-load-save-restores-weapon-energy')
+    )
+    await executeSmokeScenario(summary, '13b-corrupt-save-rejected', () =>
+      runCorruptSaveRejectedScenario('13b-corrupt-save-rejected')
+    )
+    await executeSmokeScenario(summary, '13c-unified-player-damage', () =>
+      runUnifiedPlayerDamageScenario('13c-unified-player-damage')
+    )
+    await executeSmokeScenario(summary, '13d-movement-feel', () =>
+      runMovementFeelScenario('13d-movement-feel')
+    )
+    await executeSmokeScenario(summary, '14-completion-return-flow', () =>
+      runCompletionReturnScenario('14-completion-return-flow')
+    )
+    await executeSmokeScenario(summary, '15-menu-audio-and-input-stability', () =>
+      runMenuAudioInputScenario('15-menu-audio-and-input-stability')
+    )
+    await executeSmokeScenario(summary, '16-music-cue-flow', () =>
+      runMusicCueScenario('16-music-cue-flow')
+    )
+    await executeSmokeScenario(summary, '17-projectile-clash', () =>
+      runProjectileClashScenario('17-projectile-clash')
+    )
+    await executeSmokeScenario(summary, '18-extended-stage-scroll', () =>
+      runExtendedStageScenario('18-extended-stage-scroll')
+    )
+    await executeSmokeScenario(summary, '19-projectile-clash-survive', () =>
+      runProjectileClashSurviveScenario('19-projectile-clash-survive')
+    )
+    await executeSmokeScenario(summary, '20-pickup-recovery', () =>
+      runPickupRecoveryScenario('20-pickup-recovery')
+    )
+    await executeSmokeScenario(summary, '21-boss-gate-lock', () =>
+      runBossGateLockScenario('21-boss-gate-lock')
+    )
+    await executeSmokeScenario(summary, '22-final-unlock-from-last-clear', () =>
+      runFinalUnlockFromLastClearScenario('22-final-unlock-from-last-clear')
+    )
+    await executeSmokeScenario(summary, '23-boss-room-respawn', () =>
+      runBossRoomRespawnScenario('23-boss-room-respawn')
+    )
+    await executeSmokeScenario(summary, '24-ground-sword-enemy', () =>
+      runGroundSwordEnemyScenario('24-ground-sword-enemy')
+    )
+    await executeSmokeScenario(summary, '25-air-sword-up', () =>
+      runAirSwordDirectionScenario('25-air-sword-up', 'n')
+    )
+    await executeSmokeScenario(summary, '26-air-sword-down', () =>
+      runAirSwordDirectionScenario('26-air-sword-down', 's')
+    )
+    await executeSmokeScenario(summary, '27-boss-sword-hit', () =>
+      runBossSwordScenario('27-boss-sword-hit')
+    )
+    await executeSmokeScenario(summary, '28-moving-sword-align', () =>
+      runGroundSwordEnemyScenario('28-moving-sword-align', true)
+    )
+    await executeSmokeScenario(summary, '29-pellet-hits-short-enemy', () =>
+      runPelletHitsShortEnemyScenario('29-pellet-hits-short-enemy')
+    )
+    await executeSmokeScenario(summary, '30-west-sword-facing', () =>
+      runWestSwordFacingScenario('30-west-sword-facing')
+    )
+    await executeSmokeScenario(summary, '31-frozen-projectile-watchdog', () =>
+      runFrozenProjectileWatchdogScenario('31-frozen-projectile-watchdog')
+    )
+    await executeSmokeScenario(summary, '32-viewport-energy-economy', () =>
+      runViewportAndEnergyEconomyScenario('32-viewport-energy-economy')
+    )
+    summary.status = 'pass'
   } finally {
     if (!vite.killed) {
       vite.kill('SIGTERM')
     }
+    if (summary.status === 'running') {
+      summary.status = 'fail'
+    }
+    summary.completedAt = new Date().toISOString()
+    writeSmokeSummary(summary)
   }
 
   console.log(`Smoke test complete. Artifacts: ${outputDir}`)

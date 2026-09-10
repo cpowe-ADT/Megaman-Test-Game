@@ -3,6 +3,8 @@ import path from 'node:path'
 import process from 'node:process'
 import { validateSpriteManifest } from '../../src/assets/validateManifest.ts'
 
+const MAX_REMOTE_BYTES = Number(process.env.SPRITE_IMPORT_MAX_BYTES ?? 10 * 1024 * 1024)
+
 function parseArgs(argv) {
   const args = {
     manifest: 'assets/sprites/manifest.v1.json',
@@ -37,17 +39,35 @@ function parseArgs(argv) {
   return args
 }
 
-async function fetchToFile(url, targetPath, overwrite) {
+function validateRemoteUrl(rawUrl) {
+  const parsed = new URL(rawUrl)
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(`Unsupported URL protocol for ${rawUrl}`)
+  }
+  return parsed.toString()
+}
+
+async function fetchToFile(rawUrl, targetPath, overwrite) {
   if (fs.existsSync(targetPath) && !overwrite) {
     return 'skipped-existing'
   }
 
+  const url = validateRemoteUrl(rawUrl)
   const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} for ${url}`)
   }
 
+  const contentLength = Number(response.headers.get('content-length') ?? 0)
+  if (contentLength > MAX_REMOTE_BYTES) {
+    throw new Error(`Remote asset is too large (${contentLength} bytes) for ${url}`)
+  }
+
   const data = Buffer.from(await response.arrayBuffer())
+  if (data.byteLength > MAX_REMOTE_BYTES) {
+    throw new Error(`Remote asset is too large (${data.byteLength} bytes) for ${url}`)
+  }
+
   fs.mkdirSync(path.dirname(targetPath), { recursive: true })
   fs.writeFileSync(targetPath, data)
   return 'downloaded'

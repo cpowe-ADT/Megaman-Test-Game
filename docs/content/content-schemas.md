@@ -1,7 +1,7 @@
 # Content Schemas (Phaser + TypeScript)
 - Status: canonical
 - Owner scope: content
-- Last reviewed: 2026-03-06
+- Last reviewed: 2026-08-04
 
 ## 1) Format Decisions
 - Source format: **JSON** files in `src/content/**` (imported by Vite).
@@ -308,3 +308,55 @@
 - Startup behavior:
   - Dev: fail fast with descriptive errors.
   - Production: configurable strict mode (recommended strict on CI, fail build).
+
+## 10) Save and Progression Contract
+
+### SaveData
+```json
+{
+  "weaponsUnlocked": [],
+  "gameOverCounts": {},
+  "clearedBosses": [],
+  "tutorialCleared": false,
+  "finalBossCleared": false,
+  "gameCompleted": false,
+  "progressionWorld": {
+    "version": 1,
+    "seed": "local-default",
+    "startingStageIds": ["tutorial_sentinel", "pyro_maw"],
+    "stageChain": ["pyro_maw"],
+    "placements": {
+      "tutorial_sentinel:boss_clear": "access_pyro_maw"
+    },
+    "weaknessStrictness": "weakness_and_buster",
+    "weaknessProfiles": {
+      "pyro_maw": { "bossId": "pyro_maw", "weaknessWeaponIds": ["FrostShatter"] }
+    },
+    "finalGate": {
+      "rules": [{ "category": "medals", "required": 8 }]
+    }
+  },
+  "stageAccessUnlocked": ["tutorial_sentinel", "pyro_maw"],
+  "collectedChecks": [],
+  "unlockedCheckpoints": {},
+  "selectedCheckpointByStage": {},
+  "upgradeUnlocks": [],
+  "heartTanks": 0,
+  "subTanks": 0,
+  "pendingProgressionItems": [],
+  "activeRun": null
+}
+```
+
+### Rules
+- `ensureProgressionState(save)` is the normalization boundary for progression-backed saves.
+- `createFreshProgressionState(seed)` creates fresh seeded progression and unlocks tutorial plus the seeded first robot-master stage.
+- Checked boss-clear locations are canonical completion truth. Normalization derives tutorial clear, robot-master medals, final-boss clear, and game completion from those checks while preserving compatible legacy flags.
+- Boss-clear rewards come from `progressionWorld.placements["<stageId>:boss_clear"]`.
+- Stage Select weakness text comes from `progressionWorld.weaknessProfiles[bossId]`, not static boss metadata.
+- `evaluateFinalGate(save)` is the only final-route access gate.
+- Progression transport import regenerates the complete world from the imported seed, applies sanitized slot overrides, replaces stale target progression, preserves repeated allowed `receivedItems`, and treats those received items as imported inventory truth.
+- Progression import clears `activeRun` because a run from the previous world cannot be resumed safely.
+- `validateActiveRun(save, raw)` is the active-run boundary. Stage and boss identity must match live campaign content; HP, lives, weapons, energy, and checkpoint values are normalized against the current save and content catalogs before menus or `Game` can consume the run.
+- `activeRun` is also cleared on boss victory and loaded through the system menu resume path.
+- Story flags are not part of this contract yet; add them here when story state becomes save-backed.

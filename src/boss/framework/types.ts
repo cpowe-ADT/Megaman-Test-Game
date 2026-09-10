@@ -58,6 +58,11 @@ export interface BossAttackDefinition {
   params?: AttackParams
   hit: HitSpec
   telegraph?: AttackTelegraphSpec
+  requirements?: {
+    grounded?: boolean
+    airborne?: boolean
+    maxActiveHazards?: number
+  }
 }
 
 export interface BossPhaseDefinition {
@@ -67,6 +72,8 @@ export interface BossPhaseDefinition {
   attackWeightOverrides?: Record<string, number>
   unlockAttacks?: string[]
   transitionLockMs?: number
+  /** Optional deterministic authored order. Unavailable/cooling entries are skipped safely. */
+  patternDeck?: string[]
 }
 
 export interface BossDefinition {
@@ -98,6 +105,8 @@ export interface BossContext {
   phaseIndex: number
   speedMultiplier: number
   thinkTimeMultiplier: number
+  bossGrounded?: boolean
+  activeHazardCount?: number
 }
 
 export interface AttackContext extends BossContext {

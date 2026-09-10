@@ -2,11 +2,10 @@ import Phaser from 'phaser'
 import AudioService from '../audio'
 import { ORDERED_BOSSES } from '../bosses/roster'
 import {
-  countClearedRobotMasters,
   FINAL_STAGE_ID,
   getCampaignStage,
-  getRobotMasterStages,
-  isFinalRouteUnlocked,
+  getSelectableBossStages,
+  isCampaignStageCleared,
   TUTORIAL_STAGE_ID
 } from '../content/campaign'
 import { DEBUG_UI } from '../config/debug'
@@ -14,6 +13,19 @@ import { showToast } from '../core/navigation'
 import InputActions from '../input/InputActions'
 import { Save, SaveData } from '../systems/Save'
 import { DebugOverlay } from '../ui/DebugOverlay'
+import {
+  evaluateFinalGate,
+  formatCheckpointLabel,
+  getAccessibleCheckpointIds,
+  getBossWeaknessLabel,
+  getFinalGateProgressLabel,
+  getFinalGateStatusLabel,
+  getSelectedCheckpointId,
+  getStageBossRewardLabel,
+  getStageAccessRequirementLabel,
+  getStageLocationDefinitions,
+  isStageAccessible
+} from '../progression'
 import type { SystemMenuAction } from './menu/systemMenuSelector'
 import { StageSelectLogic } from './stage-select/StageSelectLogic'
 import { resolveSlotClick, truncateLabel } from './stage-select/selectionContract'
@@ -42,14 +54,14 @@ const ROWS = 3
 const PAGE_SIZE = COLUMNS * ROWS
 
 const FONT = {
-  title: '30px monospace',
-  subtitle: '10px monospace',
-  slotTitle: '10px monospace',
-  slotMeta: '8px monospace',
-  panelTitle: '10px monospace',
-  panelName: '16px monospace',
-  panelBody: '9px monospace',
-  footer: '9px monospace'
+  title: '22px monospace',
+  subtitle: '8px monospace',
+  slotTitle: '8px monospace',
+  slotMeta: '7px monospace',
+  panelTitle: '9px monospace',
+  panelName: '13px monospace',
+  panelBody: '8px monospace',
+  footer: '7px monospace'
 }
 
 const COLOR = {
@@ -72,7 +84,7 @@ export class StageSelect extends Phaser.Scene {
   private readonly columns = COLUMNS
   private readonly rows = ROWS
   private readonly pageSize = PAGE_SIZE
-  private readonly stages = getRobotMasterStages()
+  private readonly stages = getSelectableBossStages()
 
   private layout?: Layout
   private slots: Phaser.Math.Vector2[] = []
@@ -84,6 +96,10 @@ export class StageSelect extends Phaser.Scene {
   public selectedBossId: string | null = null
   public canConfirm = false
   public confirmArmed = true
+  public selectedCheckpointId: string | null = null
+  public selectedWeaknessLabel: string | null = null
+  public selectedRewardLabel: string | null = null
+  public finalGateText: string | null = null
 
   private saveData: SaveData = Save.load()
 
@@ -92,6 +108,9 @@ export class StageSelect extends Phaser.Scene {
   private bossNameText?: Phaser.GameObjects.Text
   private infoText?: Phaser.GameObjects.Text
   private detailsText?: Phaser.GameObjects.Text
+  private previewGlow?: Phaser.GameObjects.Ellipse
+  private previewSprite?: Phaser.GameObjects.Sprite
+  private previewMaskShape?: Phaser.GameObjects.Graphics
   private pageIndicator?: Phaser.GameObjects.Text
   private footerStatus?: Phaser.GameObjects.Text
   private toastHandle?: Phaser.GameObjects.Container
@@ -140,6 +159,7 @@ export class StageSelect extends Phaser.Scene {
     this.refreshPage()
     this.setSelection(this.index)
     this.applyPostReturnState()
+    this.events.on(Phaser.Scenes.Events.RESUME, this.refreshFromSave, this)
 
     this.registerKeyboardShortcuts()
     this.installScrollGuards()
@@ -185,11 +205,11 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private computeLayout(width: number, height: number): Layout {
-    const outerPad = 12
-    const headerHeight = 50
-    const footerHeight = 34
-    const contentGap = 8
-    const previewWidth = 174
+    const outerPad = 8
+    const headerHeight = 36
+    const footerHeight = 28
+    const contentGap = 5
+    const previewWidth = 160
 
     const headerRect = new Phaser.Geom.Rectangle(outerPad, outerPad, width - outerPad * 2, headerHeight)
     const footerRect = new Phaser.Geom.Rectangle(
@@ -211,8 +231,8 @@ export class StageSelect extends Phaser.Scene {
       contentHeight
     )
 
-    const slotGapX = 8
-    const slotGapY = 10
+    const slotGapX = 4
+    const slotGapY = 4
     const slotWidth = Math.floor((gridRect.width - slotGapX * (this.columns - 1)) / this.columns)
     const slotHeight = Math.floor((gridRect.height - slotGapY * (this.rows - 1)) / this.rows)
 
@@ -242,7 +262,7 @@ export class StageSelect extends Phaser.Scene {
       .setStrokeStyle(2, COLOR.border, 0.8)
 
     this.add
-      .text(layout.headerRect.centerX, layout.headerRect.y + 4, 'ROBOT MASTER SELECT', {
+      .text(layout.headerRect.centerX, layout.headerRect.y + 1, 'ROBOT MASTER SELECT', {
         font: FONT.title,
         color: COLOR.text,
         letterSpacing: 1
@@ -250,7 +270,7 @@ export class StageSelect extends Phaser.Scene {
       .setOrigin(0.5, 0)
 
     this.add
-      .text(layout.headerRect.centerX, layout.headerRect.bottom - 5, '8 robot masters • T tutorial • F final route', {
+      .text(layout.headerRect.centerX, layout.headerRect.bottom - 3, '8 ROBOT MASTERS + OMEGA  •  T TUTORIAL  •  F FINAL', {
         font: FONT.subtitle,
         color: COLOR.textMuted,
         align: 'center'
@@ -285,7 +305,7 @@ export class StageSelect extends Phaser.Scene {
         rect.on('pointerdown', () => this.handleSlotPointerDown(slotIndex))
 
         const name = this.add
-          .text(x, y - 11, '', {
+          .text(x, y - 10, '', {
             font: FONT.slotTitle,
             color: COLOR.text,
             align: 'center'
@@ -293,7 +313,7 @@ export class StageSelect extends Phaser.Scene {
           .setOrigin(0.5, 0)
 
         const meta = this.add
-          .text(x, y + 4, '', {
+          .text(x, y + 2, '', {
             font: FONT.slotMeta,
             color: COLOR.textAccent,
             align: 'center',
@@ -332,7 +352,7 @@ export class StageSelect extends Phaser.Scene {
       .setStrokeStyle(2, COLOR.border, 0.85)
 
     this.previewTitle = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 8, '', {
+      .text(layout.previewRect.centerX, layout.previewRect.y + 5, '', {
         font: FONT.panelTitle,
         color: COLOR.textAccent,
         align: 'center',
@@ -341,30 +361,48 @@ export class StageSelect extends Phaser.Scene {
       .setOrigin(0.5, 0)
 
     this.bossNameText = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 24, '', {
+      .text(layout.previewRect.centerX, layout.previewRect.y + 17, '', {
         font: FONT.panelName,
         color: COLOR.text,
         align: 'center'
       })
       .setOrigin(0.5, 0)
 
+    this.previewGlow = this.add
+      .ellipse(layout.previewRect.centerX, layout.previewRect.y + 72, 88, 64, COLOR.border, 0.16)
+      .setStrokeStyle(2, COLOR.borderMuted, 0.35)
+
+    this.previewSprite = this.add
+      .sprite(layout.previewRect.centerX, layout.previewRect.y + 75, 'atlas_sentinel_rook', 'sentinel_rook/idle/000')
+      .setVisible(false)
+
+    this.previewMaskShape = this.add.graphics().setVisible(false)
+    this.previewMaskShape.fillStyle(0xffffff)
+    this.previewMaskShape.fillRect(
+      layout.previewRect.x + 4,
+      layout.previewRect.y + 33,
+      layout.previewRect.width - 8,
+      76
+    )
+    this.previewSprite.setMask(this.previewMaskShape.createGeometryMask())
+
     this.infoText = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 50, '', {
+      .text(layout.previewRect.centerX, layout.previewRect.y + 109, '', {
         font: FONT.panelBody,
         color: COLOR.textMuted,
         align: 'center',
         wordWrap: { width: layout.previewRect.width - 18, useAdvancedWrap: true },
-        lineSpacing: 2
+        lineSpacing: 1
       })
       .setOrigin(0.5, 0)
 
     this.detailsText = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 92, '', {
+      .text(layout.previewRect.centerX, layout.previewRect.y + 132, '', {
         font: FONT.panelBody,
         color: COLOR.text,
         align: 'center',
         wordWrap: { width: layout.previewRect.width - 18, useAdvancedWrap: true },
-        lineSpacing: 2
+        lineSpacing: 1
       })
       .setOrigin(0.5, 0)
   }
@@ -377,7 +415,7 @@ export class StageSelect extends Phaser.Scene {
       .setStrokeStyle(1, COLOR.borderMuted, 0.8)
 
     this.add
-      .text(layout.footerRect.centerX, layout.footerRect.y + 7, 'Arrows move • Click select • Enter deploy • T tutorial • F final route', {
+      .text(layout.footerRect.centerX, layout.footerRect.y + 5, 'ARROWS MOVE  •  L/R CHECKPOINT  •  ENTER DEPLOY', {
         font: FONT.footer,
         color: COLOR.textMuted,
         align: 'center'
@@ -385,7 +423,7 @@ export class StageSelect extends Phaser.Scene {
       .setOrigin(0.5, 0)
 
     this.footerStatus = this.add
-      .text(layout.footerRect.centerX, layout.footerRect.bottom - 6, '', {
+      .text(layout.footerRect.centerX, layout.footerRect.bottom - 4, '', {
         font: FONT.footer,
         color: COLOR.textAccent,
         align: 'center'
@@ -416,27 +454,23 @@ export class StageSelect extends Phaser.Scene {
 
       const bossEntry = ORDERED_BOSSES.find((entry) => entry.id === stage.bossId)
       const stageId = stage.id
-      const weaponId = stage.rewardWeaponId ?? bossEntry?.blueprint.weaponReward?.id ?? stageId
-      const unlocked = this.saveData.weaponsUnlocked.includes(weaponId) ? 'UNLOCKED' : 'LOCKED'
-      const cleared = this.saveData.clearedBosses.includes(stageId)
-      const goCount = this.saveData.gameOverCounts[stageId] ?? 0
-
-      slot.name.setText(truncateLabel(stage.selectLabel, 12))
+      const accessible = isStageAccessible(this.saveData, stageId)
+      const cleared = isCampaignStageCleared(this.saveData, stageId)
+      const checkProgress = this.getStageCheckProgress(stage.id)
+      slot.name.setText(truncateLabel(stage.selectLabel, 11))
       slot.name.setColor(cleared ? COLOR.textCleared : COLOR.text)
-      slot.meta.setText(`${cleared ? 'CLEARED' : unlocked}  •  GO:${goCount}`)
-      slot.meta.setColor(cleared ? '#8793ad' : unlocked === 'UNLOCKED' ? '#9ec2ff' : '#6f8cb8')
+      slot.meta.setText(
+        `${cleared ? 'CLEARED' : accessible ? 'OPEN' : 'LOCKED'}  •  CHECKS ${checkProgress.collected}/${checkProgress.total}`
+      )
+      slot.meta.setColor(cleared ? '#8793ad' : accessible ? '#9ec2ff' : '#6f8cb8')
       slot.badge.setText(cleared ? 'DEFEATED' : '')
       slot.badge.setVisible(cleared)
 
       this.layoutSlotText(slot)
     })
 
-    const clearedRobotMasters = countClearedRobotMasters(this.saveData)
-    const finalState = this.saveData.gameCompleted
-      ? 'FINAL • COMPLETE'
-      : isFinalRouteUnlocked(this.saveData)
-        ? 'FINAL • READY (F)'
-        : `FINAL • LOCKED ${clearedRobotMasters}/8`
+    const finalState = getFinalGateStatusLabel(this.saveData)
+    this.finalGateText = finalState
     this.footerStatus?.setText(finalState)
     this.updateSelectionVisuals()
   }
@@ -444,8 +478,8 @@ export class StageSelect extends Phaser.Scene {
   private layoutSlotText(slot: SlotEntry): void {
     const slotWidth = slot.rect.width
     const slotHeight = slot.rect.height
-    slot.name.setPosition(slot.rect.x, slot.rect.y - 12)
-    slot.meta.setPosition(slot.rect.x, slot.rect.y + 4)
+    slot.name.setPosition(slot.rect.x, slot.rect.y - 8)
+    slot.meta.setPosition(slot.rect.x, slot.rect.y + 6)
     slot.badge.setPosition(slot.rect.x + slotWidth / 2 - 5, slot.rect.y - slotHeight / 2 + 3)
   }
 
@@ -461,6 +495,8 @@ export class StageSelect extends Phaser.Scene {
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN)?.on('down', () => this.move(this.columns))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q)?.on('down', () => this.changePage(-1))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)?.on('down', () => this.changePage(1))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L)?.on('down', () => this.cycleCheckpoint(1))
+    keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R)?.on('down', () => this.cycleCheckpoint(-1))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.T)?.on('down', () => this.launchCampaignStage(TUTORIAL_STAGE_ID))
     keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F)?.on('down', () => this.launchFinalRoute())
     const enterHandler = (event: KeyboardEvent) => {
@@ -486,6 +522,7 @@ export class StageSelect extends Phaser.Scene {
     keyboard.on('keydown-ESC', escHandler)
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.RESUME, this.refreshFromSave, this)
       try {
         keyboard.off('keydown-ENTER', enterHandler)
         keyboard.off('keydown-NUMPAD_ENTER', numpadEnterHandler)
@@ -506,7 +543,7 @@ export class StageSelect extends Phaser.Scene {
       const run = Save.loadActiveRun()
       if (!run) {
         this.toastHandle?.destroy(true)
-        this.toastHandle = showToast(this, 'No saved game found.', 1200)
+        this.toastHandle = showToast(this, 'No valid saved game found.', 1200)
         return
       }
       this.scene.start('Game', {
@@ -531,6 +568,14 @@ export class StageSelect extends Phaser.Scene {
       this.toastHandle?.destroy(true)
       this.toastHandle = showToast(this, 'Save data cleared.', 1200)
     }
+  }
+
+  refreshFromSave(): void {
+    this.saveData = Save.load()
+    this.refreshPage()
+    this.setSelection(this.index)
+    this.updatePreview()
+    this.updateDebugSelectionState()
   }
 
   private installScrollGuards(): void {
@@ -614,6 +659,7 @@ export class StageSelect extends Phaser.Scene {
   private setSelection(nextIndex: number): void {
     this.index = Phaser.Math.Clamp(nextIndex, 0, Math.max(this.stages.length - 1, 0))
     this.logic.setIndex(this.index)
+    this.logic.setCheckpointId(this.getSelectedCheckpointForStage(this.stages[this.index]?.id ?? ''))
     this.ensurePageForIndex()
     this.updateSelectionVisuals()
     this.updatePreview()
@@ -640,7 +686,7 @@ export class StageSelect extends Phaser.Scene {
       const entry = ORDERED_BOSSES.find((boss) => boss.id === stage?.bossId)
       const primary = entry?.blueprint.theme.primary ?? COLOR.borderMuted
       const isSelected = slot.stageIndex === this.index
-      const isCleared = stage ? this.saveData.clearedBosses.includes(stage.id) : false
+      const isCleared = stage ? isCampaignStageCleared(this.saveData, stage.id) : false
       slot.rect
         .setStrokeStyle(
           isSelected ? 2 : 1,
@@ -671,29 +717,119 @@ export class StageSelect extends Phaser.Scene {
   private updatePreview(): void {
     const stage = this.stages[this.index]
     const entry = stage ? ORDERED_BOSSES.find((boss) => boss.id === stage.bossId) : null
-    if (!stage || !entry || !this.previewTitle || !this.bossNameText || !this.infoText || !this.detailsText) {
+    if (
+      !stage ||
+      !entry ||
+      !this.previewTitle ||
+      !this.bossNameText ||
+      !this.infoText ||
+      !this.detailsText ||
+      !this.previewGlow ||
+      !this.previewSprite
+    ) {
       return
     }
 
     const blueprint = entry.blueprint
-    const reward = stage.rewardWeaponId ? blueprint.weaponReward : null
-    const goCount = this.saveData.gameOverCounts[stage.id] ?? 0
-    const isCleared = this.saveData.clearedBosses.includes(stage.id)
+    const isCleared = isCampaignStageCleared(this.saveData, stage.id)
+    const accessible = isStageAccessible(this.saveData, stage.id)
+    const checkpointIds = this.getAccessibleCheckpointIdsForStage(stage.id)
+    const checkpointId = this.getSelectedCheckpointForStage(stage.id)
+    const checkpointLabel = formatCheckpointLabel(checkpointId)
+    const checkProgress = this.getStageCheckProgress(stage.id)
+    const finalGate = stage.id === FINAL_STAGE_ID ? evaluateFinalGate(this.saveData) : null
+    const weaknessLabel = getBossWeaknessLabel(this.saveData, stage.bossId, entry.weakTo)
+    const rewardLabel = getStageBossRewardLabel(
+      this.saveData,
+      stage.id,
+      stage.rewardWeaponId ? blueprint.weaponReward?.displayName ?? stage.rewardWeaponId : 'Tutorial intel'
+    )
+    const requirementLabel =
+      !accessible && stage.id !== FINAL_STAGE_ID ? getStageAccessRequirementLabel(stage.id) : null
 
-    this.previewTitle.setText(truncateLabel(stage.introCallout, 26))
+    this.previewTitle.setText(truncateLabel(stage.introCallout, 24))
     this.bossNameText.setText(blueprint.codename)
+    this.previewGlow.setFillStyle(blueprint.theme.glow, 0.18)
+    this.previewGlow.setStrokeStyle(2, blueprint.theme.primary, 0.55)
+    this.updatePreviewSprite(stage.bossId)
     this.infoText.setText(
-      `Element: ${blueprint.element}   Weak: ${entry.weakTo}\nArena: ${stage.arenaLabel}   Status: ${isCleared ? 'CLEARED' : 'ACTIVE'}`
+      `${blueprint.element.toUpperCase()}  •  WEAK: ${truncateLabel(weaknessLabel, 14).toUpperCase()}\n${truncateLabel(stage.arenaLabel, 14).toUpperCase()}  •  ${
+        isCleared ? 'CLEARED' : accessible ? 'OPEN' : 'LOCKED'
+      }`
     )
     this.detailsText.setText(
-      `Reward: ${truncateLabel(reward?.displayName ?? 'Tutorial intel', 20)}\n${truncateLabel(stage.description, 26)}\nGame Overs: ${goCount}`
+      `REWARD: ${truncateLabel(rewardLabel, 18)}\nCHECKPOINT: ${truncateLabel(checkpointLabel, 16)} (${checkpointIds.length})\nCHECKS ${checkProgress.collected}/${checkProgress.total}\n${
+        finalGate
+          ? truncateLabel(`Gate: ${getFinalGateProgressLabel(this.saveData)}`, 26)
+          : requirementLabel
+            ? truncateLabel(`Needs: ${requirementLabel}`, 26)
+          : isCleared
+            ? 'MISSION RECORD COMPLETE'
+            : 'READY FOR DEPLOYMENT'
+      }`
     )
+  }
+
+  private updatePreviewSprite(bossId: string): void {
+    if (!this.previewSprite) {
+      return
+    }
+
+    const atlasKey = `atlas_${bossId}`
+    if (!this.textures.exists(atlasKey)) {
+      this.previewSprite.setVisible(false)
+      return
+    }
+
+    const idleFrames = this.getPreviewFrames(atlasKey, `${bossId}/idle/`)
+    const fallbackFrames =
+      idleFrames.length > 0
+        ? idleFrames
+        : this.textures
+            .get(atlasKey)
+            .getFrameNames()
+            .filter((name) => name !== '__BASE')
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    const frameNames = fallbackFrames.length > 0 ? fallbackFrames : ['__BASE']
+    if (frameNames.length === 0 || frameNames[0] === '__BASE') {
+      this.previewSprite.setVisible(false)
+      return
+    }
+
+    const animationKey = `stage-select-preview-${bossId}`
+    if (!this.anims.exists(animationKey)) {
+      this.anims.create({
+        key: animationKey,
+        frames: frameNames.map((frame) => ({ key: atlasKey, frame })),
+        frameRate: Math.min(8, Math.max(4, frameNames.length * 2)),
+        repeat: -1
+      })
+    }
+
+    this.previewSprite.setVisible(true)
+    this.previewSprite.setTexture(atlasKey, frameNames[0])
+    const previewFrame = this.textures.getFrame(atlasKey, frameNames[0])
+    const scale = previewFrame ? Math.min(1.5, 58 / Math.max(previewFrame.width, previewFrame.height)) : 1.15
+    this.previewSprite.setScale(scale)
+    this.previewSprite.play(animationKey, true)
+  }
+
+  private getPreviewFrames(atlasKey: string, prefix: string): string[] {
+    return this.textures
+      .get(atlasKey)
+      .getFrameNames()
+      .filter((name) => name !== '__BASE' && name.startsWith(prefix))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
   }
 
   private updateDebugSelectionState(): void {
     const stage = this.stages[this.index]
     this.selectedBossId = stage?.bossId ?? null
-    this.canConfirm = Boolean(stage)
+    this.selectedCheckpointId = stage ? this.getSelectedCheckpointForStage(stage.id) : null
+    this.canConfirm = Boolean(stage && isStageAccessible(this.saveData, stage.id))
+    this.selectedWeaknessLabel = stage ? getBossWeaknessLabel(this.saveData, stage.bossId) : null
+    this.selectedRewardLabel = stage ? getStageBossRewardLabel(this.saveData, stage.id) : null
+    this.finalGateText = getFinalGateStatusLabel(this.saveData)
   }
 
   private applyPostReturnState(): void {
@@ -733,7 +869,7 @@ export class StageSelect extends Phaser.Scene {
     for (let offset = 1; offset < this.stages.length; offset += 1) {
       const index = (fromIndex + offset) % this.stages.length
       const stageId = this.stages[index]?.id
-      if (stageId && !this.saveData.clearedBosses.includes(stageId)) {
+      if (stageId && !isCampaignStageCleared(this.saveData, stageId) && isStageAccessible(this.saveData, stageId)) {
         return index
       }
     }
@@ -742,8 +878,15 @@ export class StageSelect extends Phaser.Scene {
 
   private confirmSelection(): void {
     this.logic.setIndex(this.index)
+    this.logic.setCheckpointId(this.selectedCheckpointId)
     const transition = this.logic.confirm()
     if (!transition) {
+      return
+    }
+    if (!isStageAccessible(this.saveData, transition.data.stageId)) {
+      this.toastHandle?.destroy(true)
+      AudioService.playSfx('ui_cancel')
+      this.toastHandle = showToast(this, 'Stage locked. Clear more checks first.', 1300)
       return
     }
 
@@ -768,20 +911,33 @@ export class StageSelect extends Phaser.Scene {
 
   private launchCampaignStage(stageId: string): void {
     const stage = getCampaignStage(stageId)
+    if (!isStageAccessible(this.saveData, stage.id)) {
+      this.toastHandle?.destroy(true)
+      AudioService.playSfx('ui_cancel')
+      this.toastHandle = showToast(this, 'Stage locked. Find the access code first.', 1400)
+      return
+    }
+    const checkpointId = this.getSelectedCheckpointForStage(stage.id)
     AudioService.unlock()
     AudioService.playSfx('ui_confirm')
     this.startSceneTransition('Game', {
       stageId: stage.id,
       bossId: stage.bossId,
-      runtimeBossConfigId: stage.runtimeBossConfigId
+      runtimeBossConfigId: stage.runtimeBossConfigId,
+      checkpointId
     })
   }
 
   private launchFinalRoute(): void {
-    if (!isFinalRouteUnlocked(this.saveData)) {
+    const gate = evaluateFinalGate(this.saveData)
+    if (!gate.unlocked) {
       this.toastHandle?.destroy(true)
       AudioService.playSfx('ui_cancel')
-      this.toastHandle = showToast(this, 'Final route locked. Clear all 8 robot masters first.', 1400)
+      this.toastHandle = showToast(
+        this,
+        `Final route locked. ${gate.rules.map((rule) => `${rule.category} ${gate.counts[rule.category]}/${rule.required}`).join(' • ')}`,
+        1800
+      )
       return
     }
     this.launchCampaignStage(FINAL_STAGE_ID)
@@ -791,5 +947,63 @@ export class StageSelect extends Phaser.Scene {
     this.requestedTransition = { scene, data }
     this.transitionRequestedAt = performance.now()
     this.scene.start(scene, data)
+  }
+
+  private getAccessibleCheckpointIdsForStage(stageId: string): string[] {
+    const stage = this.stages.find((entry) => entry.id === stageId) ?? getCampaignStage(stageId)
+    return getAccessibleCheckpointIds(
+      this.saveData,
+      stage.id,
+      stage.arena.checkpoints.map((checkpoint) => checkpoint.id)
+    )
+  }
+
+  private getSelectedCheckpointForStage(stageId: string): string | null {
+    if (!stageId) {
+      return null
+    }
+    const accessible = this.getAccessibleCheckpointIdsForStage(stageId)
+    if (accessible.length === 0) {
+      return null
+    }
+    const saved = getSelectedCheckpointId(this.saveData, stageId)
+    const selected = saved && accessible.includes(saved) ? saved : accessible[0]
+    if (selected && saved !== selected) {
+      this.saveData = Save.load()
+      Save.setSelectedCheckpoint(stageId, selected)
+      this.saveData = Save.load()
+    }
+    return selected
+  }
+
+  private getStageCheckProgress(stageId: string): { collected: number; total: number } {
+    const locations = getStageLocationDefinitions(stageId)
+    const collected = locations.filter((location) => this.saveData.collectedChecks.includes(location.id)).length
+    return {
+      collected,
+      total: locations.length
+    }
+  }
+
+  private cycleCheckpoint(delta: number): void {
+    const stage = this.stages[this.index]
+    if (!stage) {
+      return
+    }
+    const accessible = this.getAccessibleCheckpointIdsForStage(stage.id)
+    if (accessible.length <= 1) {
+      return
+    }
+    const current = this.getSelectedCheckpointForStage(stage.id)
+    const currentIndex = Math.max(0, accessible.indexOf(current ?? accessible[0]))
+    const nextIndex = Phaser.Math.Wrap(currentIndex + delta, 0, accessible.length)
+    const nextCheckpointId = accessible[nextIndex] ?? accessible[0]
+    Save.setSelectedCheckpoint(stage.id, nextCheckpointId)
+    this.saveData = Save.load()
+    this.logic.setCheckpointId(nextCheckpointId)
+    this.updatePreview()
+    this.updateDebugSelectionState()
+    AudioService.unlock()
+    AudioService.playSfx('ui_move')
   }
 }

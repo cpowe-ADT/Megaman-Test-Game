@@ -3,7 +3,8 @@
 A Phaser 3 + TypeScript + Vite action-platformer prototype with a playable stage-select flow, boss encounters, a modularizing gameplay runtime, and local-first sprite/tooling pipelines.
 
 ## Current State
-- The game is playable and currently builds and tests cleanly.
+- The campaign is playable end to end: tutorial, eight authored warden stages, the selectable Omega Fortress finale, boss dialogue, completion, and replay.
+- The game currently builds and tests cleanly; smoke covers the full interaction surface and the visual sweep covers all ten missions.
 - The architecture is mid-refactor: reusable player, enemy, boss, combat, content, and asset modules exist, but `src/scenes/Game.ts` still owns too much of the runtime and remains under `@ts-nocheck`.
 - The production build currently emits a large-bundle warning. This is known debt, not an active build failure.
 - `progress.md` is the canonical running handoff log for ongoing work.
@@ -38,14 +39,18 @@ Command meanings and usage rules live in `TESTING.md`.
 | Action | Keys |
 | --- | --- |
 | Move | Left / Right arrows |
+| Aim / crouch | Up / Down arrows |
 | Confirm | Enter / Numpad Enter |
 | Jump | Space |
 | Dash | Z |
 | Shoot / Charge | X |
 | Saber combo | C |
-| Cycle weapon | S (Shift reverses) |
-| Shoulder cycle | L / R |
+| Cycle weapon | D / E |
+| Cycle weapon backward | Q |
+| Stage Select checkpoint cycle | L / R |
 | Return / back | Esc |
+
+You can also open the in-game `Controls` screen from the title menu and the system menu.
 
 ## Documentation
 - Agent workflow: `AGENTS.md`
@@ -61,6 +66,7 @@ Command meanings and usage rules live in `TESTING.md`.
 - Enemy systems: `src/enemy/`
 - Boss systems: `src/boss/`, `src/bosses/`
 - Content and registries: `src/content/`
+- Narrative playback and dialogue UI: `src/narrative/`, `src/content/dialogue/`, `src/ui/DialogueOverlayController.ts`
 - Asset manifest/runtime loading: `src/assets/`
 - Tests: `tests/`, `src/boss/__tests__/`
 - Tooling and smoke scripts: `scripts/`

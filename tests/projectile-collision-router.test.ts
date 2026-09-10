@@ -85,7 +85,7 @@ test('ProjectileCollisionRouter suppresses repeat hits on the same enemy inside 
     getNow: () => now,
     getFacing: () => 1,
     damageBoss: () => {},
-    damagePlayer: () => true,
+    damagePlayer: () => ({ accepted: true }),
     damageEnemy: () => {
       damageCalls += 1
       return { accepted: true, defeated: false, recycleBullet: true }
@@ -122,7 +122,7 @@ test('ProjectileCollisionRouter recycles a player bullet after a non-piercing en
     getNow: () => 200,
     getFacing: () => 1,
     damageBoss: () => {},
-    damagePlayer: () => true,
+    damagePlayer: () => ({ accepted: true }),
     damageEnemy: () => ({ accepted: true, defeated: false, recycleBullet: true }),
     recycleBullet: () => {
       recycleCalls += 1
@@ -151,7 +151,7 @@ test('ProjectileCollisionRouter resolves player-bullet enemy hits even if overla
     getNow: () => 220,
     getFacing: () => 1,
     damageBoss: () => {},
-    damagePlayer: () => true,
+    damagePlayer: () => ({ accepted: true }),
     damageEnemy: () => {
       damageCalls += 1
       return { accepted: true, defeated: false, recycleBullet: false }
@@ -163,4 +163,89 @@ test('ProjectileCollisionRouter resolves player-bullet enemy hits even if overla
   router.handlePlayerBulletHitsEnemy(enemy as any, bullet as any)
 
   assert.equal(damageCalls, 1)
+})
+
+test('ProjectileCollisionRouter forwards immutable projectile identity to boss damage', () => {
+  let received: Record<string, unknown> | null = null
+  const bullet = createSprite({
+    owner: 'player',
+    damage: 4,
+    weaponId: 'Buster',
+    weaponElement: 'Normal',
+    projectileId: 'player_buster_charge_lv4',
+    chargeLevel: 4
+  })
+  const boss = createSprite({ hp: 20 })
+  const router = new ProjectileCollisionRouter({
+    playerBullets: createGroup(bullet) as any,
+    enemyBullets: createGroup({}) as any,
+    getPlayer: () => undefined,
+    getNow: () => 300,
+    getFacing: () => 1,
+    damageBoss: (_damage, meta) => {
+      received = meta
+    },
+    damagePlayer: () => ({ accepted: true }),
+    damageEnemy: () => ({ accepted: true, defeated: false, recycleBullet: true }),
+    recycleBullet: () => {},
+    recordCombatHit: () => {}
+  })
+
+  router.handlePlayerBulletHitsBoss(bullet as any, boss as any, boss as any)
+
+  assert.deepEqual(received, {
+    weaponId: 'Buster',
+    weaponElement: 'Normal',
+    projectileId: 'player_buster_charge_lv4',
+    chargeLevel: 4,
+    kind: 'bullet'
+  })
+})
+
+test('ProjectileCollisionRouter forwards hostile source metadata without creating a duplicate player trace', () => {
+  let received: Record<string, unknown> | null = null
+  let traceCalls = 0
+  let recycleCalls = 0
+  const player = createSprite({ hp: 8 })
+  const bullet = createSprite({
+    owner: 'enemy',
+    damage: 2,
+    projectileId: 'enemy_basic_shot',
+    sourceType: 'boss_projectile',
+    sourceId: 'ground_slam',
+    attack: 'ground_slam'
+  })
+  bullet.body.velocity.x = -220
+  const router = new ProjectileCollisionRouter({
+    playerBullets: createGroup({}) as any,
+    enemyBullets: createGroup(bullet) as any,
+    getPlayer: () => player as any,
+    getNow: () => 400,
+    getFacing: () => 1,
+    damageBoss: () => {},
+    damagePlayer: (_damage, meta) => {
+      received = meta
+      return { accepted: false }
+    },
+    damageEnemy: () => ({ accepted: true, defeated: false, recycleBullet: true }),
+    recycleBullet: () => {
+      recycleCalls += 1
+    },
+    recordCombatHit: () => {
+      traceCalls += 1
+    }
+  })
+
+  router.handleEnemyBulletHitsPlayer(player as any, bullet as any)
+
+  assert.deepEqual(received, {
+    sourceType: 'boss_projectile',
+    sourceId: 'ground_slam',
+    projectileId: 'enemy_basic_shot',
+    direction: -1,
+    tier: 'heavy',
+    element: undefined
+  })
+  assert.equal(traceCalls, 0)
+  assert.equal(recycleCalls, 1)
 })

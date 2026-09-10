@@ -9,14 +9,42 @@ export type PlayerAnimatorHooks = {
 export class PlayerAnimator {
   private currentKey = ''
   private firedEventKeys = new Set<string>()
+  private poseHoldRemainingMs = 0
+  private poseHoldGrounded: boolean | null = null
 
   constructor(
     private readonly manifest: AnimationManifestType,
     private readonly hooks: PlayerAnimatorHooks
   ) {}
 
-  update(state: PlayerResolvedState, motor: MotorSnapshot, combat: CombatSnapshot): string {
-    const key = this.resolveAnimationKey(state, motor, combat)
+  update(
+    state: PlayerResolvedState,
+    motor: MotorSnapshot,
+    combat: CombatSnapshot,
+    deltaMs = 1000 / 60
+  ): string {
+    this.poseHoldRemainingMs = Math.max(0, this.poseHoldRemainingMs - Math.max(0, deltaMs))
+    const resolvedKey = this.resolveAnimationKey(state, motor, combat)
+    const interruptPose =
+      state.action === 'hurt_heavy' ||
+      state.action === 'hurt_light' ||
+      state.action === 'slash' ||
+      (this.poseHoldGrounded != null && this.poseHoldGrounded !== motor.grounded)
+    const canHoldPose =
+      !interruptPose &&
+      this.poseHoldRemainingMs > 0 &&
+      this.currentKey.length > 0 &&
+      state.action === 'none'
+    const key = canHoldPose ? this.currentKey : resolvedKey
+
+    if (state.action === 'shoot' || state.action === 'charge_release') {
+      const entry = this.manifest.animations[resolvedKey]
+      const frameCount = Math.max(1, (entry?.frameEnd ?? 0) - (entry?.frameStart ?? 0) + 1)
+      this.poseHoldRemainingMs = Math.max(90, (frameCount / Math.max(1, entry?.frameRate ?? 12)) * 1000)
+      this.poseHoldGrounded = motor.grounded
+    } else if (interruptPose || this.poseHoldRemainingMs <= 0) {
+      this.poseHoldGrounded = null
+    }
     if (key !== this.currentKey) {
       this.currentKey = key
       this.firedEventKeys.clear()
@@ -50,7 +78,7 @@ export class PlayerAnimator {
     }
     if (state.action === 'slash') {
       const dir = state.slashDirection ?? 'e'
-      return `${motor.grounded ? 'player_slash_ground' : 'player_slash_air'}_${dir}`
+      return `${combat.slashGrounded ?? motor.grounded ? 'player_slash_ground' : 'player_slash_air'}_${dir}`
     }
     if (state.action === 'charge_release') {
       const level = Math.max(1, Math.min(4, state.chargeLevel ?? 1))
@@ -80,6 +108,10 @@ export class PlayerAnimator {
         return 'player_dash_loop'
       case 'air_dash':
         return 'player_airdash_loop'
+      case 'wall_slide':
+        return 'player_wall_slide'
+      case 'wall_jump':
+        return 'player_wall_jump'
       case 'crouch':
         return 'player_crouch_hold'
       case 'turn':

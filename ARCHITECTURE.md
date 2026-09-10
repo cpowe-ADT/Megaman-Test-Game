@@ -7,12 +7,22 @@ The repo is mid-transition from a scene-owned prototype into a more modular runt
 - `src/player/` contains the new player runtime modules.
 - `src/enemy/` contains the enemy framework and spawn/combat/AI helpers.
 - `src/boss/` and `src/bosses/` split boss framework logic from runtime controller integration.
+- `src/bosses/bossCombatProfiles.ts` is the authored combat-direction registry for every campaign boss. `BossMotionController.ts` turns its jump/dash/hover/dive/teleport/slam intents into collision-safe Phaser-edge commands, while `BossController` owns action lifecycle traces, landing, presentation, and locked facing.
+- `src/projectiles/` owns projectile identity, damage, visuals, combat-sensor dimensions, and lifecycle quarantine. Gameplay platform recycling uses visible sprite bounds so forgiving combat sensors do not collide with floors early; invalid, disabled, expired, or unexpectedly stalled standard shots recycle through the same pool boundary.
+- `src/content/dialogue/` owns validated story content; `src/narrative/` owns pure playback state; `src/ui/DialogueOverlayController.ts` is the Phaser presentation adapter.
+- `src/config/gameplayLayout.ts` owns the fixed HUD/playfield boundary. Arcade world bounds keep actor bodies below the HUD while `Game` renders a stage-tinted backing layer behind authored parallax art.
+- `src/content/weaponEnergyEconomy.ts` owns special-weapon cost normalization plus saber and passive recharge rules; `Game` only schedules those pure rules and synchronizes the HUD/save snapshot.
+- `src/ui/pickups/PickupTextures.ts` owns the small procedural health, weapon-energy, bonus, upgrade, and tank silhouettes. `src/ui/HUD.ts` renders matching segmented energy bars and weapon-tinted chrome.
+- `src/ui/menu/menuTheme.ts` owns shared title/controls/system-menu fonts, colors, backdrops, and panel chrome so scene menus retain one presentation language.
 - `src/combat/`, `src/physics/`, `src/content/`, and `src/assets/` hold shared logic, registries, and data contracts.
 
 ## Architectural Boundaries
 - Phaser bootstrapping and scene orchestration live in `src/main.ts` and `src/scenes/`.
 - Pure or mostly pure gameplay logic should live outside scenes where practical.
 - Asset/content contracts belong in `src/assets/` and `src/content/` plus the canonical docs in `docs/content/`.
+- Dialogue never grants rewards or writes completion flags. `Game` gates combat/presentation, while canonical progression location claims remain the only clear/completion authority.
+- `BossController` is the single visible boss actor and faces the same player target used for attack direction; scene-owned boss sprites are not layered over it.
+- Attack facing is snapshotted at windup and shared by the boss sprite, motion, and projectile controller. Projectiles arm after the authored telegraph instead of starting dash or damage behavior at attack selection time.
 - Browser automation and validation tooling live in `scripts/` and depend on stable runtime hooks.
 
 ## Known Architectural Debt

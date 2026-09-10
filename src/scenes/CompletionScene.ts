@@ -1,7 +1,6 @@
 import Phaser from 'phaser'
 import AudioService from '../audio'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
-import { Save } from '../systems/Save'
 
 export class CompletionScene extends Phaser.Scene {
   constructor() {
@@ -9,7 +8,6 @@ export class CompletionScene extends Phaser.Scene {
   }
 
   create(): void {
-    Save.markGameCompleted()
     AudioService.playMusic(this, 'completion')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => AudioService.onSceneShutdown(this))
 
@@ -24,7 +22,7 @@ export class CompletionScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 124, 'The final route is clear.\nAll robot masters neutralized.\nCampaign complete.', {
+    this.add.text(width / 2, 124, 'The final route is clear.\nAll eight wardens are free.\nThe districts choose their future.', {
       fontFamily: 'monospace',
       fontSize: '14px',
       color: '#cfe8ff',

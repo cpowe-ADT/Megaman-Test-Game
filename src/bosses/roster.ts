@@ -1021,6 +1021,117 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         }
       ]
     }
+  },
+  omega_core: {
+    id: 'omega_core',
+    codename: 'OMEGA CORE',
+    element: 'Normal',
+    arena: 'Omega Citadel Command Vault',
+    introCallout: 'CENTRAL DIRECTIVE',
+    theme: { primary: 0x142d52, accent: 0x42e7ff, glow: 0x70f4ff, trail: 0xff8a32 },
+    baseStats: {
+      maxHp: 72,
+      contactDamage: 10,
+      moveSpeed: 82,
+      dashSpeed: 176,
+      jumpHeight: 0
+    },
+    movementProfile: {
+      weight: 'heavy',
+      preferredRange: 'mid',
+      mobilityNotes: 'Hovers with deliberate range corrections, then commits to high-speed armored rams.'
+    },
+    attacks: [
+      {
+        name: 'Directive Volley',
+        state: 'shoot',
+        description: 'Fires a disciplined reactor-bolt spread that closes the safest lane.',
+        telegraph: { telegraphMs: 360, warningFx: 'fan-lines', anchor: 'self' },
+        executeMs: 220,
+        cooldownMs: 760,
+        spawns: ['arc_shards']
+      },
+      {
+        name: 'Lockdown Pulse',
+        state: 'special',
+        description: 'Pulses three floor sectors in sequence to force a reposition.',
+        telegraph: { telegraphMs: 460, warningFx: 'reticle', anchor: 'target' },
+        executeMs: 360,
+        cooldownMs: 1160,
+        spawns: ['ground_slam_hazard']
+      },
+      {
+        name: 'Core Ram',
+        state: 'dash',
+        description: 'Seals its armor and rams through the player lane while shedding static orbs.',
+        telegraph: { telegraphMs: 280, warningFx: 'glow', anchor: 'self' },
+        executeMs: 260,
+        cooldownMs: 940,
+        spawns: ['static_orb']
+      },
+      {
+        name: 'Override Cascade',
+        state: 'summon',
+        description: 'Combines falling command shards with persistent denial zones.',
+        telegraph: { telegraphMs: 520, warningFx: 'wave', anchor: 'target' },
+        executeMs: 420,
+        cooldownMs: 1320,
+        spawns: ['icicle_fall', 'vapor_pod']
+      }
+    ],
+    phases: [
+      {
+        name: 'Compliance Protocol',
+        threshold: 1,
+        enraged: false,
+        description: 'Tests movement discipline with volleys and floor lockdowns.',
+        newAttacks: [],
+        cadenceMultiplier: 1
+      },
+      {
+        name: 'Enforcement Protocol',
+        threshold: 0.62,
+        enraged: true,
+        description: 'Adds armored rams between shortened projectile cycles.',
+        newAttacks: ['Core Ram'],
+        cadenceMultiplier: 1.22
+      },
+      {
+        name: 'Absolute Override',
+        threshold: 0.3,
+        enraged: true,
+        description: 'Overlaps the learned hazard families in a final command cascade.',
+        newAttacks: ['Override Cascade'],
+        cadenceMultiplier: 1.42
+      }
+    ],
+    spritePlan: {
+      frame: PX(64, 64),
+      origin: { x: 0.5, y: 0.78 },
+      animations: [
+        {
+          atlas: 'omega_core',
+          key: 'omega_idle',
+          frames: 4,
+          fps: 6,
+          description: 'Heavy hover cycle with reactor pulse.'
+        },
+        {
+          atlas: 'omega_core',
+          key: 'omega_move',
+          frames: 4,
+          fps: 10,
+          description: 'Armored hover translation with energy-fin compensation.'
+        },
+        {
+          atlas: 'omega_core',
+          key: 'omega_shoot',
+          frames: 4,
+          fps: 12,
+          description: 'Reactor and gauntlet charge followed by a cyan muzzle flare.'
+        }
+      ]
+    }
   }
 }
 

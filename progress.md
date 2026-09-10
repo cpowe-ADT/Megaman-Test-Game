@@ -791,3 +791,1017 @@ Original prompt: My game doesnt really work properly. So I want you to first Do 
   - Remaining known debt:
     - boss/enemy presentation is materially improved, but those atlases are still synthesized from one curated pose per roster slot; fully bespoke per-boss action strips would still be better
     - special-weapon projectile variety is better than before, but several weapons still rely on hue/scale variants within the shared projectile atlas rather than one unique authored sheet per weapon
+- Player pose-grounding phase 1 completed on 2026-03-11:
+  - Added shared player body profiles in `src/player/PlayerBodyProfiles.ts` so standing, crouching, and dashing keep a consistent floor-contact baseline while preserving a distinct crouch silhouette.
+  - Updated `src/player/NewPlayerRuntime.ts` to resolve and apply body profiles from locomotion state instead of leaving collider swaps as scene-local ad hoc logic.
+  - Updated `src/scenes/Game.ts` to use the shared player body profile helper for initial player setup and the remaining legacy slide-hitbox path.
+  - Reworked `scripts/sprites/rebuild_core_runtime_atlases.py` so player pose emission uses a shared grounded baseline and target pose heights instead of independently auto-fitting every frame to the full 48x48 box.
+  - Rebuilt `assets/sprites/player/main/player_main.png` through `.venv/bin/python scripts/sprites/rebuild_core_runtime_atlases.py`; the updated atlas keeps locomotion poses visually grounded and reduces the cut-off/collapsed crouch look from the previous export.
+  - Added focused regression coverage in `tests/player-body-profiles.test.ts`.
+  - Validation after the player grounding pass:
+    - `npm run test`
+    - `npm run build`
+    - `npm run test:smoke`
+    - `npm run test:visual-sweep`
+  - Remaining known debt:
+    - enemy hit detection still needs the next pass: sword/contact damage paths in `Game.ts` still reason about target display bounds instead of the framework `hurtbox` contract
+    - the player source combat sheet is still a composite art source, so the new emitter is more stable but cannot fully replace a clean hand-authored production sprite strip
+- Progression/randomizer retool pass completed on 2026-03-11:
+  - Added a new native progression domain under `src/progression/` with typed MMX-inspired items/checks/checkpoints, deterministic seeded world generation, explicit boss weakness profiles, final-route gate rules, and import/export payload helpers for a future Archipelago adapter seam.
+  - Extended `src/systems/Save.ts` to persist progression world state, unlocked stage access, collected checks, unlocked/selected checkpoints, upgrade unlocks, tank counts, and queued consumable rewards while keeping legacy weapon/clear fields backward-compatible.
+  - Updated `src/scenes/StageSelect.ts` and `src/scenes/stage-select/StageSelectLogic.ts` so stage launch is progression-aware:
+    - locked/open state now comes from saved access items instead of boss-reward assumptions
+    - checkpoint selection is persisted per stage and can be cycled before launch
+    - final-route messaging now reflects rule-bundle gate counts instead of the old fixed 8-clear rule
+    - post-victory auto-focus now prefers the next accessible uncleared stage
+  - Updated `src/scenes/Game.ts` to route boss clears and in-stage pickups through progression locations rather than hardcoded boss weapon rewards:
+    - spawns progression-owned capsule/heart/sub/bonus pickups per stage
+    - claims boss-clear and pickup checks exactly once
+    - applies unlocked weapons/upgrades/tanks immediately where possible
+    - queues HP/weapon refills when they cannot be fully applied and drains them later
+    - uses progression-configured boss weakness strictness instead of the old elemental ring only
+    - persists and restores checkpoint selection/index in active-run saves
+  - Extended debug payloads in `src/main.ts` with progression state and selected checkpoint info for smoke/automation visibility.
+  - Updated smoke coverage in `scripts/smoke-test.mjs` to respect locked-stage progression and the new boss-clear location-check model instead of assuming every cleared boss unlocks its own fixed weapon.
+  - Added progression-focused regression coverage:
+    - `tests/progression-state.test.ts`
+    - updated `tests/save-system.test.ts`
+    - updated `tests/stage-select-logic.test.ts`
+  - Validation after the progression pass:
+    - `npm run build`
+    - `npm run test`
+    - `npm run test:smoke`
+  - Remaining known debt:
+    - seeded progression currently guarantees playability through a controlled chain, not a full AP-style sphere solver
+    - stage pickup placement is system-driven and readable, but still uses lightweight proxy coordinates/sprites rather than bespoke authored collectible placements
+    - the AP seam is file/JSON-ready only; live client/server sync is still intentionally deferred
+- Player dash/wall/touch-controls pass completed on 2026-03-11:
+  - Added shared digital-button input plumbing in `src/input/DigitalButtonPad.ts` and touch-first gameplay controls in `src/ui/GameplayTouchControls.ts`, then wired `src/scenes/Game.ts` and `src/player/NewPlayerRuntime.ts` so virtual buttons and keyboard feed the same player-intent path during the `Game` scene only.
+  - Extended the modular player runtime for MMX-style traversal:
+    - `src/player/types.ts`, `src/player/PlayerController.ts`, `src/player/PlayerMotor.ts`, and `src/player/PlayerStateMachine.ts` now expose dash edge intent, wall-slide contact state, and wall-jump transitions
+    - grounded dash supports early release cancel, wall contact cancels dash, wall slide caps descent, and jump while wall sliding launches away with a stronger variant when dash is held
+    - charge timing/debug state is now surfaced through the modular combat/runtime payload
+  - Tightened animation and VFX integration:
+    - added `player_wall_slide` and `player_wall_jump` manifest/binding coverage in `src/player/AnimationManifest.ts`, `src/player/PlayerAtlasBindings.ts`, and `src/player/PlayerAnimator.ts`
+    - added dash afterimage and wall-slide dust routing in `src/player/VfxSfxRouter.ts`
+    - extended automation/debug payloads in `src/main.ts`, `src/player/PlayerDebug.ts`, and `src/tools/debug/StateSnapshot.ts` with wall, dash, charge, and virtual-control visibility state
+  - Added regression coverage for the new input/runtime contracts:
+    - `tests/digital-button-pad.test.ts`
+    - `tests/player-state-machine.test.ts`
+    - updated animation/manifest/body-profile/state-snapshot coverage
+  - Updated `scripts/smoke-test.mjs` so the Stage Select keyboard-start scenario respects the new progression-gated default selection and keeps the automation flow aligned with the current stage-access contract.
+  - Validation after the dash/wall/touch-controls pass:
+    - `npm run test`
+    - `npm run build`
+    - `SMOKE_PORT=4175 npm run test:smoke`
+  - Remaining known debt:
+    - wall-specific animation keys currently fall back to existing jump/fall atlas groups until dedicated authored wall-slide/wall-jump frames are added to the player sheet
+    - touch controls are intentionally touch-first/coarse-pointer gated; there is still no separate desktop remapping UI for virtual buttons
+- Follow-up validation/stability pass completed on 2026-03-12:
+  - Fixed a player-runtime type drift introduced by the gravity-inversion contract by wiring `isGravityInverted: false` through `src/player/PlayerMotor.ts` and `src/player/PlayerStateMachine.ts` until real inverted-gravity gameplay is implemented.
+  - Fixed slash animation resolution so air slashes keep their airborne animation family after landing by carrying slash origin state through `src/player/PlayerCombat.ts` and consuming it in `src/player/PlayerAnimator.ts`.
+  - Added focused regression coverage in `tests/player-animator.test.ts` for the airborne-slash animation selection case.
+  - Tightened smoke harness sword/load-save flows in `scripts/smoke-test.mjs`:
+    - air-sword scenarios now force a deterministic airborne setup and wait on actual slash-hitbox state instead of brittle fixed frame guesses
+    - ground/boss sword checks now accept the slash contract that matters (east slash hitbox / accepted melee contact) rather than overfitting to one transient pose
+    - load-save restore now triggers the Stage Select `load_game` action directly after confirming the system menu is open, avoiding flaky keyboard focus within the overlay
+  - Validation during the follow-up pass:
+    - `npm run build`
+    - `node --loader ./tools/ts-node-loader.mjs --test tests/player-state-machine.test.ts`
+    - `node --loader ./tools/ts-node-loader.mjs --test tests/player-animator.test.ts`
+    - `SWEEP_PORT=4185 npm run test:visual-sweep`
+  - Final smoke/verify stabilization:
+    - updated `vite.config.ts` so `VITE_SMOKE=1` disables HMR in addition to the existing watch-ignore path; smoke now no longer loses browser context when unrelated source files are touched during a run
+    - after that change, `SMOKE_PORT=4180 npm run test:smoke` passed cleanly and `SMOKE_PORT=4181 npm run verify` passed cleanly end to end
+- Private Mega Man visual override pass completed on 2026-03-11:
+  - Added a local-only private sprite override seam:
+    - `.gitignore` now excludes `assets/private/`
+    - `vite.config.ts` injects the optional local override manifest at build/dev startup
+    - `src/assets/privateSpriteManifest.ts` merges the bundled base manifest with private overrides while preserving stable atlas keys
+    - `src/scenes/Preload.ts` now validates/loads the merged manifest and reports private override counts in `sprite_manifest_summary`
+  - Added the private Mega Man asset importer:
+    - `scripts/sprites/private_megaman_override_spec.json` stores the curated player/boss source URLs and frame/component selections
+    - `scripts/sprites/build_private_megaman_override_pack.py` downloads the local-only source sheets, rebuilds `assets/private/runtime/player/player_main.*`, rebuilds boss atlases for all 9 boss slots, and writes `assets/private/runtime/private-sprite-overrides.manifest.json`
+    - private source downloads now include X/Zero reference sheets plus canonical boss sheets from The Spriters Resource
+  - Updated Stage Select presentation in `src/scenes/StageSelect.ts`:
+    - preview panel now renders the selected boss sprite with an animated idle loop and theme-color glow instead of text-only presentation
+  - Added planning/backlog docs:
+    - `docs/working/zero-character-select-backlog.md`
+    - updated `docs/content/sprites.md` with the private local override workflow
+  - Strengthened automation/tests:
+    - added `tests/private-sprite-manifest.test.ts`
+    - updated `scripts/mission-visual-sweep.mjs` to seed an all-stages-unlocked save payload and use longer deterministic waits so the sweep remains stable under the heavier private atlases
+  - Validation after the private override pass:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py`
+    - `npm run sprites:validate`
+    - `node --loader ./tools/ts-node-loader.mjs scripts/sprites/validate-manifest.mjs --manifest assets/private/runtime/private-sprite-overrides.manifest.json`
+    - `npm run test`
+    - `npm run build`
+    - `npm run test:smoke`
+    - `npm run test:visual-sweep`
+    - `npm run verify`
+  - Visual spot checks reviewed:
+    - `output/web-game-smoke/1-click-select/shot-0.png`
+    - `output/web-game-smoke/27-moving-sword-align/shot-0.png`
+    - `output/mission-visual-sweep/pyro_maw/boss-room.png`
+    - `output/mission-visual-sweep/tide_reaver/boss-room.png`
+    - `output/mission-visual-sweep/ferro_blade/boss-room.png`
+  - Remaining known debt:
+    - player locomotion and boss presentation are materially improved, but several player fallback groups (especially some non-locomotion poses) still come from the existing atlas until a cleaner dedicated X combat strip or hand-authored cleanup replaces them
+    - some debug/smoke scenarios still expose awkward player Y placement during forced boss-room activation; the visual override did not cause that runtime behavior, but it makes the issue more obvious and it still needs a separate gameplay-camera/body pass
+- Private player sprite cleanup follow-up completed on 2026-03-12:
+  - Tightened the private Mega Man atlas builder in `scripts/sprites/build_private_megaman_override_pack.py`:
+    - matte/background detection now samples opaque border pixels instead of trusting transparent padding
+    - extracted source crops now run through an additional matte-strip pass before final alpha cropping, which removed the green halo that was still visible on several running poses
+    - player atlas generation now loads the base atlas group list and fails if the override spec leaves any player animation group undocumented
+  - Expanded `scripts/sprites/private_megaman_override_spec.json` so every required player action state is now intentionally assigned:
+    - replacement Mega Man X groups stay on `mode: "source"` for locomotion/crouch/jump/dash/shoot coverage
+    - imperfect states explicitly use `mode: "base"` with a note explaining the deliberate fallback instead of silently inheriting whatever the atlas happened to contain
+  - Fixed the menu/input regression exposed during smoke:
+    - `src/input/menuInputBinder.ts` no longer rebinds the shared `InputActions` singleton for overlay menus, which had been stealing Stage Select confirm input after opening `SystemMenu`
+    - `src/scenes/StageSelect.ts` keeps its keyboard confirm/pause handlers, while the underlying input ownership remains stable across menu overlays
+  - Rebuilt and spot-checked the private runtime player atlas and runtime outputs:
+    - `assets/private/runtime/player/player_main.png`
+    - `output/web-game-smoke/27-moving-sword-align/shot-0.png`
+    - `output/mission-visual-sweep/pyro_maw/boss-room.png`
+    - `output/web-game-crouch-check-manual-grounded/shot-0.png`
+    - `output/web-game-crouch-check-manual-grounded/state-0.json` confirms `playerVisual.animationKey = player_crouch_hold` and `frameName = player_main/crouch_hold/000`
+  - Validation after the sprite cleanup follow-up:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py`
+    - `npm run sprites:validate`
+    - `npm run test`
+    - `npm run build`
+    - `npm run test:smoke`
+    - `npm run test:visual-sweep`
+  - Remaining known debt:
+    - several combat-only player groups are still explicit base-atlas fallbacks by design until a cleaner dedicated X combat strip is sourced
+    - there is still a separate gameplay/spawn issue in some forced debug captures where the player can appear high on the screen before settling; the crouch verification run worked only after waiting for grounded state
+- Player facing + run-cycle fix completed on 2026-03-12:
+  - Corrected the imported Mega Man X source orientation contract:
+    - added `shouldFlipPlayerSpriteForFacing()` in `src/player/config.ts` because the private X override sheets are authored facing left by default
+    - updated `src/player/NewPlayerRuntime.ts` and `src/player/PlayerCombat.ts` to use that helper instead of assuming left-facing movement should set `flipX = true`
+    - updated `src/scenes/Game.ts` so the legacy `this.facing` mirror of sprite state now interprets `flipX` consistently with the new source orientation
+    - updated `src/player/VfxSfxRouter.ts` wall-slide dust direction so VFX still emit on the correct side of the player after the flip inversion
+  - Fixed locomotion animation cadence in `src/player/AnimationManifest.ts`:
+    - the modular runtime had been creating `player_run` and other player-state animations at the default `1 fps`
+    - added explicit per-state frame rates so idle, run, shoot, dash, charge, hurt, and other multi-frame player states now animate at readable gameplay speeds
+  - Added regression checks in `tests/player-system-config.test.ts`:
+    - verifies readable frame rates for run/shoot/idle
+    - verifies the helper flips right-facing movement for the left-authored private source sheets
+  - Runtime proof points reviewed after the facing pass:
+    - `output/web-game-run-facing-check/run-right.png`
+    - `output/web-game-run-facing-check/right-state.json` confirms `player_run`, `player_main/run/003`, `vx = 219`
+    - `output/web-game-run-left-check/run-left.png`
+    - `output/web-game-run-left-check/left-state.json` confirms `player_run`, `player_main/run/003`, `vx = -220`
+  - Validation after the facing/run-cycle pass:
+    - `npm run test`
+    - `npm run build`
+    - `npm run test:smoke`
+- Private player combat override pass completed on 2026-03-12:
+  - Finished the private Mega Man player spec so combat states no longer fall back to the legacy/base atlas:
+    - updated `scripts/sprites/private_megaman_override_spec.json`
+    - `shoot_air`, `dash_shoot`, all `charge_*`, all `slash_ground_*`, all `slash_air_*`, plus `hurt_light`, `hurt_heavy`, `knockdown`, `getup`, `death`, and `respawn` now use deliberate `mode: "source"` mappings
+    - substitutions are documented inline in the spec when the X4 sheet only had a nearest-fit pose rather than a perfect canonical match
+  - Updated `scripts/sprites/build_private_megaman_override_pack.py` note text to reflect the new state: player locomotion and combat now resolve through private Mega Man sheet mappings rather than legacy atlas carry-over.
+  - Added regression coverage in `tests/private-sprite-manifest.test.ts` to assert that all player combat override groups stay on `mode: "source"` instead of drifting back to `mode: "base"`.
+  - Rebuilt the private runtime atlas and confirmed there are no remaining player combat fallback groups in the emitted manifest (`groupFallbacks: {}` for `atlas_player_main`).
+  - Runtime proof artifacts reviewed:
+    - `output/web-game-combat-override-check/shoot-ground.json` shows `player_charge_start` resolving to `player_main/charge_start/000`
+    - `output/web-game-combat-override-check/shoot-ground.png`
+    - `output/web-game-combat-override-check/shoot-air.png`
+    - `output/web-game-combat-override-check/slash-ground.json` shows `player_slash_ground_e` resolving to `player_main/slash_ground_e/000`
+    - `output/web-game-combat-override-check/slash-ground.png`
+    - `output/web-game-combat-override-check/slash-air.json` shows `player_slash_air_e` resolving to `player_main/slash_air_e/000`
+    - `output/web-game-combat-override-check/slash-air.png`
+  - Validation after the combat-override pass:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py`
+    - `npm run sprites:validate`
+    - `npm run test`
+    - `npm run build`
+    - `npm run test:smoke`
+    - `npm run test:visual-sweep`
+    - `npm run verify`
+  - Remaining known debt:
+    - slash states now stay inside the Mega Man override set, but they still use nearest-fit blaster/dash poses plus sword VFX because a dedicated X saber sheet has not been added yet
+    - the private builder still emits a Pillow deprecation warning for `Image.getdata()` during matte sampling; behavior is correct, but that helper should be modernized later
+- Private Blade Armor slash-sheet pass completed on 2026-03-12:
+  - Downloaded and added a dedicated private sword-capable source sheet:
+    - `assets/private/source/player/x_blade_mmx6.png`
+    - Source: The Spriters Resource `Mega Man X6 / X (Blade Armor)`
+  - Extended `scripts/sprites/build_private_megaman_override_pack.py` so player group mappings can resolve against per-group `sourceId` values instead of always slicing the primary `x_mmx4` source.
+  - Updated `scripts/sprites/private_megaman_override_spec.json` so all `slash_ground_*` and `slash_air_*` groups now point at deliberate Blade Armor component indices from `x_blade_mmx6` rather than placeholder top-of-sheet fragments.
+  - Expanded `tests/private-sprite-manifest.test.ts` to assert the slash groups explicitly target `x_blade_mmx6`.
+  - Fixed a syntax regression in `src/player/VfxSfxRouter.ts` that was blocking `tsc`/`vite build` during validation.
+  - Rebuilt the private runtime atlas and reviewed the resulting slash presentation:
+    - `output/web-game-smoke/23-ground-sword-enemy/shot-0.png`
+    - `output/web-game-smoke/24-air-sword-up/shot-0.png`
+    - `output/web-game-smoke/27-moving-sword-align/shot-0.png`
+  - Validation after the Blade Armor slash-sheet pass:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py`
+    - `npm run verify`
+    - `npm run test:smoke`
+    - `npm run test:visual-sweep`
+  - Remaining known debt:
+    - the private builder still emits a Pillow deprecation warning for `Image.getdata()` during source matte analysis; output is correct, but the helper should be modernized later
+- Private sprite pipeline stability follow-up completed on 2026-03-12:
+  - Removed the Pillow deprecation warning from `scripts/sprites/build_private_megaman_override_pack.py` by replacing the old `Image.getdata()` matte-sampling fallback with direct pixel iteration.
+  - Hardened combat smoke timing in `scripts/smoke-test.mjs`:
+    - airborne sword scenarios now hold jump long enough to guarantee airtime before the slash input
+    - both ground and air sword scenarios now advance deterministic frames after the slash press so assertions sample the active sword window instead of depending on real-time browser timing
+    - airborne slash assertions now explicitly require `grounded === false` on both locomotion state and active hitbox state
+  - Validation during this follow-up:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py`
+    - `SMOKE_PORT=4175 npm run verify`
+  - Current validation status:
+    - builder rebuild is clean and no longer emits the prior Pillow warning
+    - sprite/test/build phases passed during the alternate-port verify run
+    - smoke still showed unrelated local instability during repeated reruns because Vite received live reloads from `src/enemy/EnemyEntity.ts`, `src/enemy/EnemySpawner.ts`, and `src/enemy/EnemyAI.ts`, which destroyed the Playwright execution context mid-scenario
+- Controls screen menu pass completed on 2026-03-12:
+  - Added a dedicated overlay scene `src/scenes/ControlsScene.ts` backed by a typed control-map module at `src/ui/controls/controlMap.ts`.
+  - Wired `Controls` into the main menu and the shared `SystemMenu` flow without adding logic to `src/scenes/Game.ts`:
+    - Title screen now exposes `VIEW CONTROLS` plus `C` as a direct shortcut.
+    - System menu now includes a `Controls` option for both `Game` and `StageSelect`.
+    - Closing the controls overlay returns to the paused menu source cleanly.
+  - Updated `src/main.ts` to register the new scene and expose `activeScenes` in `render_game_to_text` so overlay flows are observable in automation.
+  - Updated `README.md` control docs to match the current runtime bindings (`D/E/Q` weapon cycling, stage-select checkpoint keys, controls-screen availability).
+  - Added regression coverage in `tests/system-menu-selector.test.ts` for the new menu option.
+  - Added smoke coverage for `Title -> Controls -> Back` in `scripts/smoke-test.mjs`.
+  - Manually browser-validated the rendered controls screen and saved the artifact at:
+    - `output/manual-controls-check/title-controls.png`
+    - `output/manual-controls-check/state.json`
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` ⚠️ did not finish cleanly across full-suite reruns because unrelated browser/Vite instability surfaced in later existing scenarios:
+      - one rerun hit a browser-error failure in `8-boss-room-activation`
+      - a later rerun was interrupted by Vite live reloads from unrelated enemy files, which destroyed the Playwright execution context mid-scenario
+    - focused manual controls-browser check on `http://127.0.0.1:4174?renderer=canvas` ✅
+  - Remaining known debt:
+    - the controls screen is keyboard/touch oriented; controller mappings are explicitly called out as not yet wired
+    - full smoke remains sensitive to unrelated local file-watch reloads during long runs
+- Controls smoke follow-up completed on 2026-03-12:
+  - Fixed the Stage Select load-save smoke path after the new `Controls` menu item shifted the system-menu ordering:
+    - `scripts/smoke-test.mjs` now waits for the system menu to settle, moves one row down, and confirms `Continue (Load Save)` deterministically.
+  - Re-ran the full validation after the controls-screen follow-up copy/layout cleanup:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` ✅
+  - Current status:
+    - the controls screen is readable in the real 448×252 runtime viewport
+    - the full smoke suite now passes cleanly without the earlier menu-order regression
+- Enemy visuals + stage-behavior pass completed on 2026-03-12:
+  - Added a typed enemy engagement layer in `src/enemy/EnemyBehaviorProfiles.ts` so suppressors, bruisers, harriers, sentinels, and hazard enemies hold different horizontal bands and vertical tolerances instead of sharing one chase pattern.
+  - Updated `src/enemy/EnemyAI.ts` to:
+    - respect per-archetype preferred range bands
+    - stop off-screen attacks
+    - keep flyers/drones on controlled hover bands
+    - preserve point-blank sword windows instead of instant ranged-enemy backpedal
+  - Propagated patrol bounds from level markers through `src/enemy/EnemySpawner.ts` and `src/enemy/EnemyEntity.ts`, so stage marker `patrolMinX/patrolMaxX` now actually constrains ground-patrol lanes.
+  - Retuned early/mid-stage marker usage in `src/content/campaign.ts`:
+    - delayed the first `pyro_maw` slicer/mine cadence to remove an early cheap ambush
+    - tightened `tide_reaver` gunner/rocket pacing
+    - shifted `volt_hopper`, `basalt_titan`, `gale_vixen`, and `glacier_ronin` toward stronger aerial/heavy-role pairings and fairer trigger windows
+  - Added representative free-source enemy art intake and rebuild pipeline:
+    - downloaded CC0 source art from OpenGameArt:
+      - GearShocky `robot-platformer-sprites`
+      - Kenney `robot-pack`
+    - stored the raw inputs under `assets/sprites/source/enemies/`
+    - added attribution entries in `assets/sprites/source/free-source-attribution.v1.json`
+    - added `scripts/sprites/build_enemy_showcase_pack.py` to derive and slice upgraded showcase sheets for:
+      - `enemy_gunner_bot`
+      - `enemy_armored_bot`
+      - `enemy_drone`
+  - Rebuilt runtime atlases + manifest entries for the showcase trio:
+    - `assets/sprites/enemies/enemy_gunner_bot/`
+    - `assets/sprites/enemies/enemy_armored_bot/`
+    - `assets/sprites/enemies/enemy_drone/`
+  - Updated `docs/content/sprites.md` with the new free-source showcase workflow.
+  - Added regression coverage in `tests/enemy-behavior-profiles.test.ts`.
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_enemy_showcase_pack.py` ✅
+    - `npm run sprites:validate` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4179 npm run test:smoke` ✅
+  - Notes / local environment gotchas:
+    - default smoke ports `4173` and some nearby ports were already occupied by live Vite processes in this workspace; reran smoke on `4179`
+    - an intermediate smoke failure in `28-moving-sword-align` exposed that the first `pyro_maw` slicer was spawning early enough to interfere with the debug-spawned sword target; delaying that opener fixed both the smoke regression and the stage’s early unfairness
+  - Remaining known debt:
+    - only three enemy types have upgraded free-source art in this pass; the same showcase pipeline should be extended across the rest of the roster
+    - the new armored-bot visuals are cleaner and more readable than the old synthesized atlas, but they still have a flatter vector look than the humanoid gunner/drone set
+- Full enemy-roster free-source rebuild completed on 2026-03-12:
+  - Expanded `scripts/sprites/build_enemy_showcase_pack.py` from a 3-enemy showcase builder into a full 12-enemy roster generator backed by the same downloaded CC0 inputs.
+  - The builder now emits v2 source sheets and runtime atlases for:
+    - `enemy_gunner_bot`
+    - `enemy_rocket_bot`
+    - `enemy_slicer_bot`
+    - `enemy_armored_bot`
+    - `enemy_shock_hopper`
+    - `enemy_bouncer`
+    - `enemy_mine_bot`
+    - `enemy_frost_turret`
+    - `enemy_laser_eye`
+    - `enemy_drone`
+    - `enemy_shield_drone`
+    - `enemy_fly_trap`
+  - Updated `assets/sprites/source/free-source-attribution.v1.json` and `docs/content/sprites.md` so the repo now describes the free-source enemy rebuild as a full-roster workflow rather than a representative sample.
+  - Rebuilt all affected `assets/sprites/enemies/<typeKey>/` atlases and manifest frame metadata from the new v2 sheets.
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_enemy_showcase_pack.py` ✅
+    - `npm run sprites:validate` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SWEEP_PORT=4180 npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4181 npm run test:smoke` ✅
+  - Remaining known debt:
+    - the full roster is now consistently free-source-driven, but several archetypes still share family construction logic (humanoid / tracked / saucer), so the next quality jump would come from adding one or two more raw source packs with stronger shape variety for crawlers and hazard enemies
+- Progression follow-up validation + smoke hardening completed on 2026-03-12:
+  - Re-ran the post-progression strongest gate and fixed the remaining smoke-harness breakages rather than changing progression runtime behavior.
+  - Updated `scripts/smoke-test.mjs` to:
+    - navigate to `Load Save` explicitly in the Stage Select system menu restore scenario
+    - retry one Stage Select confirm in `openGameplayPage()` before failing a launch
+    - capture the grounded slash immediately after sword input instead of stepping past the hitbox window
+    - move the moving-sword debug enemy spawn farther ahead so the test measures slash alignment instead of immediate body collision
+    - start the smoke Vite server with `VITE_SMOKE=1`
+  - Updated `vite.config.ts` so smoke-mode Vite disables watch/HMR reloads entirely; this was necessary because unrelated dirty-tree file writes were destroying the Playwright execution context during long smoke runs.
+  - Updated `TESTING.md` to document the smoke server behavior.
+  - Validation during this pass:
+    - `npm run test:smoke` ✅
+    - `npm run verify` ✅
+  - Notes / local environment gotchas:
+    - the workspace was actively touching local source files during smoke (`ControlsScene`, `controlMap`, `EnemyBehaviorProfiles`), which caused HMR reloads and false smoke failures until smoke-mode watch reloads were disabled
+    - those dirty-tree writes were not reverted
+- Progression phase-2 UX polish completed on 2026-03-12:
+  - Added `src/progression/presentation.ts` so progression-facing labels are generated from typed helpers instead of raw internal ids.
+  - Updated `src/scenes/StageSelect.ts` to surface more progression context directly in the selector:
+    - footer hint now includes `L/R` checkpoint cycling
+    - slot metadata now shows collected checks per stage (`CK:x/y`) plus accessible checkpoint count
+    - preview panel now formats checkpoint names (`Start`, `Mid`, `Boss Gate`) instead of raw ids
+    - preview panel now shows check progress and, when a stage is locked, the specific access requirement text instead of only generic lock state
+  - Updated `src/scenes/Game.ts` so `CHECK SECURED` toasts use friendly item labels (`Pyro Maw Access`, `Arms Armor`, `Heart Tank`, etc.) instead of internal ids.
+  - Added regression coverage in `tests/progression-state.test.ts` for the new presentation helpers.
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` ✅
+  - Visual check notes:
+    - inspected `output/web-game-smoke/1-click-select/shot-0.png`
+    - confirmed the updated Stage Select footer, slot metadata, and checkpoint/progression copy read cleanly in the rendered UI
+- Enemy specialist source-pack follow-up completed on 2026-03-12:
+  - Added three more CC0 raw enemy source packs under `assets/sprites/source/enemies/` to break up the reused robot-family silhouettes:
+    - `enemy_jumping_blob_strip_free_v1_20260312_184600.png`
+    - `enemy_scorpy_scorp_walk_sheet_free_v1_20260312_184600.png`
+    - `enemy_scorpy_scorp_stab_sheet_free_v1_20260312_184600.png`
+    - `enemy_plant_monster_frame1_free_v1_20260312_184600.png`
+    - `enemy_plant_monster_frame2_free_v1_20260312_184600.png`
+  - Expanded `scripts/sprites/build_enemy_showcase_pack.py` with specialist builders so three enemy types no longer derive from the generic tracked/saucer families:
+    - `enemy_bouncer` now rebuilds from `Jumping Blob`
+    - `enemy_mine_bot` now rebuilds from `Scorpy Scorp`
+    - `enemy_fly_trap` now rebuilds from `Plant Monster`
+  - Updated `assets/sprites/source/free-source-attribution.v1.json` and `docs/content/sprites.md` to document the new CC0 sources and their roster mapping.
+  - Rebuilt the full enemy roster atlases so the three upgraded specialists ship through the normal runtime manifest/atlas path.
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_enemy_showcase_pack.py` ✅
+    - `npm run sprites:validate` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SWEEP_PORT=4186 npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4187 npm run test:smoke` ✅
+  - Visual check notes:
+    - inspected the regenerated specialist source sheets directly and confirmed the roster now includes a dedicated blob, scorpion crawler, and plant hazard silhouette instead of three more robot/drone recolors
+    - inspected fresh sweep/smoke screenshots after the runs; no new staging or scene-flow regressions were introduced by the atlas changes
+  - Remaining known debt:
+    - `enemy_bouncer` now reads as a distinct hazard body, but it is still a very simple silhouette; the next improvement would be a richer bouncing-creature source pack with more than five raw frames
+- Enemy silhouette upgrade follow-up completed on 2026-03-12:
+  - Added two more CC0 raw sheets under `assets/sprites/source/enemies/` to replace the weakest remaining interim silhouettes:
+    - `enemy_slime_first_gen_weak_free_v1_20260312_190900.png`
+    - `enemy_eye_monster_sheet_free_v1_20260312_190900.png`
+  - Updated `scripts/sprites/build_enemy_showcase_pack.py` again so:
+    - `enemy_bouncer` now rebuilds from the green `Slime Monster Sprites` row instead of the interim `Jumping Blob` strip
+    - `enemy_laser_eye` now rebuilds from `Floating Eye Monster 16x16` instead of the generic saucer family
+  - Updated `assets/sprites/source/free-source-attribution.v1.json` and `docs/content/sprites.md` so the source log now reflects:
+    - `enemy_bouncer` -> `Slime Monster Sprites`
+    - `enemy_laser_eye` -> `Floating Eye Monster 16x16`
+    - `Jumping Blob` retained only as an earlier archival intake candidate
+  - Rebuilt the roster atlases again so the runtime now ships the new slime-based bouncer sheet and eye-based laser-eye sheet.
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_enemy_showcase_pack.py` ✅
+    - `npm run sprites:validate` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SWEEP_PORT=4188 npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4189 npm run test:smoke` ✅
+  - Visual check notes:
+    - inspected the rebuilt `enemy_bouncer_sheet_v2_20260312_120000.png` and confirmed the new source gives clearer squash/stretch than the flat blob strip
+    - inspected the rebuilt `enemy_laser_eye_sheet_v2_20260312_120000.png` and confirmed the beam sentinel now reads as an actual eye silhouette instead of a recolored saucer
+    - spot-checked fresh smoke screenshots after the run; no new scene-flow regressions were introduced
+  - Remaining known debt:
+    - the new laser-eye sheet is much more on-theme, but some frames are still darker than ideal at runtime; a future pass could brighten the mid-attack frames or source a slightly bolder eye pack
+- Enemy turret silhouette follow-up completed on 2026-03-12:
+  - Added another CC0 raw source sheet under `assets/sprites/source/enemies/`:
+    - `enemy_cannon_gun_sheet_free_v1_20260312_191500.png`
+  - Updated `scripts/sprites/build_enemy_showcase_pack.py` so `enemy_frost_turret` now rebuilds from `Cannon Gun` instead of the generic tracked robot family.
+  - Updated `assets/sprites/source/free-source-attribution.v1.json` and `docs/content/sprites.md` so the active mapping now includes:
+    - `enemy_frost_turret` -> `Cannon Gun`
+  - Rebuilt the roster atlases again so the runtime ships the cannon-based frost-turret frames.
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_enemy_showcase_pack.py` ✅
+    - `npm run sprites:validate` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SWEEP_PORT=4190 npm run test:visual-sweep` -> transient server-readiness miss despite Vite reporting ready
+    - `SWEEP_PORT=4191 npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4192 npm run test:smoke` ✅
+  - Visual check notes:
+    - increased the cannon-source scale after the first rebuild because the turret silhouette landed too small in the 42x34 cell
+    - inspected the final rebuilt `enemy_frost_turret_sheet_v2_20260312_120000.png` and confirmed the cannon silhouette now reads clearly and fits the cell better than the prior tracked-bot reuse
+  - Remaining known debt:
+    - `enemy_armored_bot` is now the most obvious remaining reused tracked family; the next worthwhile visual pass is probably sourcing a dedicated heavy/tank silhouette for it
+- Enemy heavy silhouette follow-up completed on 2026-03-12:
+  - Added five more CC0 raw tank frames under `assets/sprites/source/enemies/`:
+    - `enemy_kenney_tank_grey1_free_v1_20260312_194000.png`
+    - `enemy_kenney_tank_grey2_free_v1_20260312_194000.png`
+    - `enemy_kenney_tank_grey3_free_v1_20260312_194000.png`
+    - `enemy_kenney_tank_grey4_free_v1_20260312_194000.png`
+    - `enemy_kenney_tank_grey5_free_v1_20260312_194000.png`
+  - Updated `scripts/sprites/build_enemy_showcase_pack.py` so `enemy_armored_bot` now rebuilds from `Kenney Tanks` instead of the generic tracked robot family.
+  - Updated `assets/sprites/source/free-source-attribution.v1.json` and `docs/content/sprites.md` so the active specialist mapping now includes:
+    - `enemy_armored_bot` -> `Kenney Tanks`
+    - `enemy-kenney-robot-pack` retained only as an earlier archival tracked-source intake
+  - Rebuilt the roster atlases again so the runtime now ships a dedicated heavy tank silhouette for the armored bot.
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_enemy_showcase_pack.py` ✅
+    - `npm run sprites:validate` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SWEEP_PORT=4193 npm run test:visual-sweep` -> dirty-tree HMR reload destroyed the Playwright context
+    - `SWEEP_PORT=4194 npm run test:visual-sweep` -> same HMR reload on `src/scenes/StageSelect.ts`
+    - `VITE_SMOKE=1 SWEEP_PORT=4195 npm run test:visual-sweep` -> separate Stage Select wait timeout
+    - `SWEEP_PORT=4196 npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4197 npm run test:smoke` ✅
+  - Visual check notes:
+    - inspected the rebuilt `enemy_armored_bot_sheet_v2_20260312_120000.png` and confirmed the heavy now reads as a tank silhouette with clearer mass and tread posture than the prior robot-pack reuse
+    - no new smoke regression was introduced by the armored-bot atlas swap
+  - Remaining known debt:
+    - the roster now has dedicated specialist silhouettes for the biggest weak spots; the next step is more refinement than replacement, especially brightness/attack-readability tuning on some of the newer specialist frames
+- Sword readability + impact pass completed on 2026-03-12:
+  - Reworked the private sword presentation across the atlas builder, runtime bindings, and VFX path instead of just swapping one frame.
+  - Updated `scripts/sprites/private_megaman_override_spec.json` so every private slash group now uses 4-frame startup/impact/recovery strips from `x_blade_mmx6` rather than a single pose.
+  - Extended `scripts/sprites/build_private_megaman_override_pack.py` so player groups can grow beyond the old base-atlas frame count and so the private pack also emits a dedicated `atlas_player_sword_fx` atlas.
+  - Added the new sword FX atlas from `zero_mmx5` saber-crescent components; this now drives the large readable arc instead of the old small particle-only trail.
+  - Retimed slash feel in runtime:
+    - `src/player/AnimationManifest.ts` now plays multi-frame slash animations (`frameEnd: 3`, `frameRate: 16`)
+    - `src/player/config.ts` retunes sword startup/active/recovery windows so the visible impact lands with the active hitbox
+    - `src/player/PlayerCombat.ts` now emits sword trail VFX on the active transition instead of immediately on button press
+    - `src/player/VfxSfxRouter.ts` now spawns a rotated additive sword-arc sprite from `atlas_player_sword_fx`, with a stronger fallback particle trail if the private atlas is absent
+    - `src/scenes/Preload.ts` now creates the `player-sword-fx` animation when the private FX atlas is present
+  - Updated tests:
+    - `tests/player-animation-binding.test.ts`
+    - `tests/player-system-config.test.ts`
+    - `tests/private-sprite-manifest.test.ts`
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SMOKE_PORT=4175 npm run test:smoke` ✅
+    - `SWEEP_PORT=4176 npm run test:visual-sweep` ✅
+  - Visual check notes:
+    - inspected `output/web-game-smoke/24-ground-sword-enemy/shot-0.png`, `output/web-game-smoke/25-air-sword-up/shot-0.png`, `output/web-game-smoke/26-air-sword-down/shot-0.png`, `output/web-game-smoke/27-boss-sword-hit/shot-0.png`, and `output/web-game-smoke/28-moving-sword-align/shot-0.png`
+    - the sword arc is now visibly larger and readable in ground, air, boss, and moving-slash cases
+  - Remaining known debt:
+    - the new sword arc currently comes from the private Zero saber-crescent sheet plus Blade Armor body poses; if the user later provides the exact green X saber sheet as a raw local file, the next refinement should remap the FX atlas to that source for even tighter style matching
+- X-authored saber source swap follow-up completed on 2026-03-12:
+  - Replaced the interim Blade Armor + Zero saber presentation with an X-authored Command Mission PS1-style sheet from The Spriters Resource:
+    - `assets/private/source/player/x_command_mission_ps1style.png`
+  - Updated `scripts/sprites/private_megaman_override_spec.json` so all private slash groups now pull from `x_command_mission_ps1style` instead of `x_blade_mmx6`.
+  - Updated the private sword FX atlas to use green saber crescents isolated from the same X sheet (`arcOnly` extraction) so the swing reads as X instead of borrowing Zero-style energy.
+  - Updated `scripts/sprites/build_private_megaman_override_pack.py` with arc-isolation support for sword FX generation.
+  - Updated `src/player/NewPlayerRuntime.ts` so the debug/state `activeHitbox` clears when slash recovery begins; damage behavior is unchanged, but the runtime state now matches the true active window.
+  - Confirmed boss contact still damages correctly after the source swap:
+    - inspected `output/web-game-smoke/27-boss-sword-hit/state-1.json`
+    - boss HP drops from `32` to `30`
+    - `combatDebug.recentHits` records an accepted `player -> boss` direct hit during the active sword frame
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SMOKE_PORT=4175 npm run test:smoke` ✅
+    - `SWEEP_PORT=4176 npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4175 SWEEP_PORT=4176 npm run verify` ✅
+  - Visual check notes:
+    - inspected `output/web-game-smoke/24-ground-sword-enemy/shot-0.png`, `output/web-game-smoke/25-air-sword-up/shot-0.png`, and `output/web-game-smoke/27-boss-sword-hit/shot-0.png`
+    - the swing now reads as X with green saber energy rather than the earlier mixed-character presentation
+- Sword contact-readability follow-up completed on 2026-03-12:
+  - Tightened sword feel in `src/player/config.ts` and `src/player/AnimationManifest.ts` so slash playback is smoother and more decisive:
+    - ground sword windows now run `startup 6 / active 4 / recovery 4` with stronger hitstop
+    - air sword windows now run `startup 5 / active 4 / recovery 4`
+    - slash animations now play at `18 fps`
+  - Removed the misleading sword-startup hit spark from `src/player/PlayerCombat.ts`; the slash no longer implies a hit before collision actually happens.
+  - Added real sword impact feedback in `src/scenes/Game.ts`:
+    - enemy and boss sword contact now spawn a dedicated impact flash/particle burst
+    - confirmed sword hits now trigger a small camera shake at the actual point of contact
+    - boss contact still routes through the same damage path and remains accepted by combat debug
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SMOKE_PORT=4175 npm run test:smoke` ✅
+    - `SWEEP_PORT=4176 npm run test:visual-sweep` ✅
+    - `SMOKE_PORT=4175 SWEEP_PORT=4176 npm run verify` ✅
+  - Visual check notes:
+    - inspected `output/web-game-smoke/24-ground-sword-enemy/shot-0.png`
+    - inspected `output/web-game-smoke/27-boss-sword-hit/shot-0.png`
+    - inspected `output/web-game-smoke/27-boss-sword-hit/state-1.json`
+    - sword impact now reads on actual contact instead of showing a fake spark on misses, and boss HP still drops from `32` to `30` on the confirmed sword hit
+  - Remaining known debt:
+    - production build still emits the existing large-bundle warning
+- Wall locomotion atlas follow-up completed on 2026-03-12:
+  - Root-caused the wall-slide/wall-jump smoke regression after switching `PlayerAtlasBindings` to dedicated wall groups:
+    - the rebuilt base atlas already contained `player_main/wall_slide/000` and `player_main/wall_jump/000`
+    - the game was still loading `atlas_player_main` from the private override manifest, and that private atlas did not yet include the new wall groups
+  - Updated `scripts/sprites/private_megaman_override_spec.json` to explicitly map:
+    - `wall_slide` to the narrow airborne fall pose with wall-profile sizing (`targetHeight: 40`, `maxWidth: 34`, `offsetX: -4`)
+    - `wall_jump` to the jump-start launch pose with dedicated wall-jump sizing (`targetHeight: 40`, `maxWidth: 40`, `offsetX: 3`)
+  - Rebuilt the private player override atlas with `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py`; the generated private atlas now contains:
+    - `player_main/wall_slide/000`
+    - `player_main/wall_jump/000`
+  - Confirmed the binding/test side now lines up with the runtime asset pipeline:
+    - `src/player/PlayerAtlasBindings.ts` resolves wall locomotion to `player_main/wall_slide/` and `player_main/wall_jump/`
+    - `tests/player-animation-binding.test.ts` covers the dedicated wall group contract
+  - Validation during this pass:
+    - `.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py` ✅
+    - `node --loader ./tools/ts-node-loader.mjs --test tests/player-animation-binding.test.ts tests/player-system-config.test.ts tests/player-animator.test.ts` ✅
+    - `npm run build` ✅
+    - `SMOKE_PORT=4182 npm run test:smoke` ✅
+    - `SMOKE_PORT=4184 npm run verify` ✅
+  - Browser inspection notes:
+    - used the `develop-web-game` Playwright client against `?touchControls=1` to confirm the touch-controls query path rendered cleanly without new console errors
+    - inspected `output/web-game-touch-check/shot-0.png` to confirm the Stage Select touch-controls query path stayed visually stable
+    - inspected `output/web-game-smoke/2-keyboard-enter-start/shot-0.png` and `output/web-game-smoke/2-keyboard-enter-start/state-0.json` after the green smoke run to confirm gameplay still resolves through `player_main/fall/000` and the new player debug payload remains intact
+  - Remaining known debt:
+    - wall-slide/wall-jump now resolve through explicit private atlas groups, but the underlying source still uses the best available fallback poses from the X4 sheet rather than bespoke cling/breakout art
+- Touch controls + smoke robustness follow-up completed on 2026-03-12:
+  - Tightened live touch-button behavior in `src/ui/GameplayTouchControls.ts`:
+    - drag-across transitions now rebind the active pointer between buttons instead of latching the original direction until release
+    - leaving a held button now clears the prior hold state immediately instead of waiting for a global pointer-up
+    - per-button pressed visuals stay consistent when multiple pointers are mapped to the same action
+  - Hardened smoke/browser automation in `scripts/smoke-test.mjs`:
+    - added logical-to-rendered canvas coordinate scaling so click/tap helpers work correctly on the upscaled 1280x720 canvas
+    - replaced the old flaky client-only `1-click-select` step with a direct Playwright scenario that clicks a non-interactive header region and verifies Stage Select remains stable
+    - stabilized the stage-select progression smoke path by invoking the System Menu scene directly after it opens, mirroring the earlier `load_game` stabilization approach
+    - added a new `4c-touch-controls` smoke scenario that validates:
+      - `touchControls=1` exposes the gameplay HUD in `Game`
+      - virtual-controls visibility is reflected in `render_game_to_text`
+      - right/left movement, jump, dash, and pause routing work through the touch-control path
+    - made `readState` / `waitForPageCheck` tolerate transient execution-context loss during navigation instead of aborting the full smoke run
+    - made dev-server readiness accept either a successful HTTP poll or the emitted Vite `Local:` readiness marker so nested `verify` smoke boots no longer fail on a false negative
+  - Browser inspection notes:
+    - ran the `develop-web-game` Playwright client against `?touchControls=1`
+    - inspected `output/web-game-touch-client/shot-0.png` and confirmed the touch HUD is visible in gameplay, not just in menu scenes
+    - inspected `output/web-game-touch-client/state-0.json` and confirmed `playerState.virtualControlsVisible === true` and `combatDebug.player.virtualControlsVisible === true`
+    - the captured HUD screenshot also shows the intended right-side action cluster and pause button placement
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SMOKE_PORT=4186 npm run test:smoke` ✅
+    - `SMOKE_PORT=4190 npm run verify` ✅
+  - Remaining known debt:
+    - the touch smoke currently exercises movement/jump/dash/pause through the touch path, but it does not yet assert a sword or buster projectile through pointer-driven taps; those still rely on the broader gameplay/smoke suite rather than a dedicated touch-only assertion
+- Progression summary overlay layout follow-up completed on 2026-03-12:
+  - Reflowed `src/scenes/ProgressionSummaryScene.ts` so the new Stage Select / system-menu progression overlay is readable at 448x252:
+    - removed the old single-column stacked summary that let `Final gate` and `Latest Items` collide
+    - switched to two wrapped metric columns with dynamic section flow
+    - capped the recent-items list to the latest four entries and anchored it below the rendered metric blocks instead of a fixed Y position
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` on the default port failed because `127.0.0.1:4173` was already occupied by another local Vite process
+    - `SMOKE_PORT=4175 npm run test:smoke` ✅
+  - Browser inspection notes:
+    - manually captured and inspected `output/manual-progression-summary/shot-0.png`
+    - the progression overlay now renders without text overlap; `Checkpoints`, `Latest Items`, and `Final gate` stay visually separated
+  - Remaining known debt:
+    - production build still emits the existing large-bundle warning
+- Progression transport UX follow-up completed on 2026-03-12:
+  - Extended the offline progression adapter seam into a usable Stage Select flow:
+    - added `parseProgressionTransport()` and `serializeProgressionTransport()` in `src/progression/state.ts` so transport JSON validation/normalization lives in the progression layer instead of the scene
+    - updated `src/scenes/ProgressionSummaryScene.ts` with `C: Copy Snapshot` and `V: Paste Snapshot` actions
+    - copy writes the current progression transport payload to the clipboard with a `window.prompt()` fallback if clipboard access is unavailable
+    - paste reads clipboard JSON or falls back to a paste prompt, validates it, imports it through `Save.importProgression()`, and exits back to the source scene
+    - paste/import is intentionally enabled only when the summary was opened from Stage Select; the Game-side overlay remains read-only so a live gameplay scene is not asked to hot-reconcile imported progression state
+  - Updated scene refresh behavior:
+    - `src/scenes/SystemMenu.ts` now passes the source scene key into `ProgressionSummary`
+    - `src/scenes/StageSelect.ts` now exposes `refreshFromSave()` and also reloads save-backed progression data on resume so imported snapshots show up immediately in the grid/preview state
+  - Added regression coverage:
+    - `tests/progression-state.test.ts` now validates JSON transport parsing/normalization
+    - `tests/save-system.test.ts` now covers `Save.importProgression()`
+  - Smoke/tooling follow-up during this pass:
+    - `scripts/smoke-test.mjs` had drifted back to pointer-driven touch simulation and was flaking in `runTouchControlsScenario`
+    - restored deterministic touch validation by driving `scene.touchControls.buttons.setHeld()` directly for move, jump, and dash
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SMOKE_PORT=4175 npm run test:smoke` ✅
+  - Browser inspection notes:
+    - manually captured and inspected `output/manual-progression-transport/shot-0.png`
+    - confirmed `C` copied a real transport payload to the clipboard
+    - confirmed `V` imported a modified payload from the clipboard and the reopened summary reflected the imported seed/check state
+  - Remaining known debt:
+    - production build still emits the existing large-bundle warning
+- Progression file-transport follow-up completed on 2026-03-12:
+  - Extended `src/scenes/ProgressionSummaryScene.ts` beyond clipboard-only transport:
+    - added `D: Download` to save the current progression transport as `progression-<seed>.json`
+    - added Stage Select-only `U: Upload File` to import a local `.json` transport snapshot through a hidden file input
+    - refactored import handling so clipboard paste and file upload share the same validation/import path
+    - added keyboard listener cleanup on scene shutdown and trimmed the modal copy so the larger action set still fits the 448x252 layout cleanly
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+  - Browser inspection notes:
+    - manually captured and inspected `output/manual-progression-file-transport/shot-before.png` and `output/manual-progression-file-transport/shot-after.png`
+    - confirmed `D` produced `output/manual-progression-file-transport/downloaded.json`
+    - confirmed `U` imported `output/manual-progression-file-transport/import.json` and the reopened summary reflected the imported `file-import-seed`
+  - Remaining known debt:
+    - production build still emits the existing large-bundle warning
+- Phase 0 automation stabilization completed on 2026-04-23:
+  - Hardened smoke automation in `scripts/smoke-test.mjs` and related debug payload seams:
+    - added `output/web-game-smoke/summary.json` with per-scenario `pass`/`fail`/`skipped` status, timeout classification, and artifact paths
+    - added `SMOKE_ONLY` / `SMOKE_FROM` filters so late-suite scenarios can be re-run without paying the full smoke cost during stabilization
+    - made `waitForState()` / `waitForPageCheck()` emit explicit timeout metadata and last-state excerpts into the summary artifact
+    - surfaced persistent projectile debug metrics plus `slashGrounded` through `NewPlayerRuntime` / combat debug so smoke can assert durable signals instead of narrow frame windows
+    - stabilized flaky touch, air-sword, boss-sword, respawn, and moving-sword scenarios by switching them to durable runtime signals, controlled setup, or scenario-local reset/invulnerability where the live stage could otherwise interrupt the control path
+  - Hardened visual sweep automation in `scripts/mission-visual-sweep.mjs`:
+    - added `output/mission-visual-sweep/summary.json`
+    - classified mission results as `pass` / `fail` / `hung_after_artifacts`
+    - added explicit cleanup timeout handling for browser/dev-server shutdown so the sweep fails truthfully if artifacts exist but teardown hangs
+  - Updated canonical testing docs:
+    - `TESTING.md`
+    - `docs/testing/quality-gates.md`
+  - Validation during this pass:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` ✅
+    - `npm run test:visual-sweep` ✅
+  - Artifact notes:
+    - smoke summary now reports `status: "pass"` with 30 scenario entries in `output/web-game-smoke/summary.json`
+    - visual sweep summary now reports `status: "pass"` with per-boss artifacts in `output/mission-visual-sweep/summary.json`
+  - Remaining known debt:
+    - production build still emits the existing large-bundle warning from the Phaser chunk
+- Phase 1 progression contract and Stage Select seeded truth pass started on 2026-04-23:
+  - Added `docs/working/full-game-audit.md` as the Phase 1 working contract for current save/progression/stage-select behavior:
+    - fresh-save path
+    - tutorial clear
+    - robot-master clear
+    - final-route unlock
+    - completion return
+    - active-run save/load
+  - Updated progression presentation helpers in `src/progression/presentation.ts`:
+    - boss weakness labels now resolve from `getBossWeaknessProfile(save, bossId)`
+    - boss-clear reward labels now resolve from seeded `progressionWorld.placements`
+    - final-gate footer/progress labels now share one live-save formatter
+  - Updated `src/scenes/StageSelect.ts` and `src/main.ts` so Stage Select UI and `render_game_to_text().stageSelect` expose live `weaknessLabel`, `rewardLabel`, and `finalGateText`.
+  - Updated docs:
+    - `docs/README.md`
+    - `docs/working/README.md`
+    - `docs/content/content-schemas.md`
+  - Validation during this pass so far:
+    - `node --loader ./tools/ts-node-loader.mjs --test tests/progression-state.test.ts tests/save-system.test.ts tests/stage-select-logic.test.ts` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `SMOKE_ONLY=1-click-select npm run test:smoke` ✅
+    - `npm run test:smoke` ✅
+  - Artifact notes:
+    - `output/web-game-smoke/1-click-select/state-0.json` now includes live seeded Stage Select labels (`weaknessLabel`, `rewardLabel`, `finalGateText`)
+    - `output/web-game-smoke/summary.json` reports `status: "pass"` with 30 scenarios after the Phase 1 payload update
+  - Remaining known debt:
+    - legacy `Save.markBossCleared()` / `Save.markTutorialCleared()` still mutate legacy fields directly; runtime victory uses the progression location claim path
+    - Stage Select is still visually dense and should receive the larger Phase 3 information-architecture pass
+- Phase 2 feel spec and trace instrumentation pass started on 2026-04-23:
+  - Added `docs/working/full-game-sprint-plan.md` with current measurable feel targets:
+    - jump velocity/height estimates
+    - coyote and jump-buffer windows
+    - dash distance/time/cooldown
+    - wall-slide and wall-jump values
+    - projectile cadence and charge thresholds
+    - slash windows, hitstop, i-frames, hitstun, knockback, and boss-room safe-entry values
+  - Expanded deterministic feel traces in `render_game_to_text()` via `newPlayer` and `combatDebug.player`:
+    - body profile key
+    - blocked/touching flags
+    - drop-through active state
+    - coyote/buffer timers
+    - dash start/end markers
+    - wall side
+    - last landing speed
+    - last jump source
+    - last damage source/tier
+    - last knockback vector
+    - last projectile spawn frame
+    - touch button held state
+  - Added early feel-regression coverage in `tests/player-motor.test.ts` for coyote jump, buffered jump, dash start/end, wall-slide cap, and wall-jump direction.
+  - Removed the runtime Phaser import from `src/player/PlayerMotor.ts`; it now uses a local clamp helper so motor logic can run in pure Node tests.
+  - Updated docs:
+    - `TESTING.md`
+    - `docs/testing/quality-gates.md`
+    - `docs/README.md`
+    - `docs/working/README.md`
+  - Validation during this pass:
+    - `node --loader ./tools/ts-node-loader.mjs --test tests/digital-button-pad.test.ts tests/player-animator.test.ts tests/player-state-machine.test.ts tests/state-snapshot.test.ts` ✅
+    - `node --loader ./tools/ts-node-loader.mjs --test tests/player-motor.test.ts` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` ✅
+  - Artifact notes:
+    - `output/web-game-smoke/summary.json` reports `status: "pass"` with 30 scenarios after the trace payload expansion
+    - `output/web-game-smoke/2-keyboard-enter-start/state-0.json` includes `newPlayer.physics`, `newPlayer.input`, and expanded `combatDebug.player` trace fields
+  - Remaining known debt:
+    - the jump-height values in `docs/working/full-game-sprint-plan.md` are analytical estimates from config and still need recorded trace confirmation before tuning
+    - dedicated trace/browser scenarios for short-hop/full-hop, 30fps/60fps tolerance, projectile cadence, charge thresholds, slash windows, and one-way/drop-through edges are still pending
+- Phase 2 feel regression expansion completed on 2026-04-23:
+  - Expanded `tests/player-motor.test.ts`:
+    - short-hop/full-hop ratio coverage
+    - 30fps/60fps jump-apex tolerance coverage
+  - Added `tests/player-combat.test.ts`:
+    - projectile fire-rate cadence
+    - charge thresholds
+    - charge release projectile level
+    - slash startup/active/recovery/clear windows
+  - Expanded `tests/platform-collision-rules.test.ts`:
+    - one-way top tolerance
+    - already-below-platform rejection
+    - one-pixel edge-contact rejection
+  - Removed the runtime Phaser import from `src/player/PlayerCombat.ts`; combat logic now loads in pure Node tests like `PlayerMotor`.
+  - Updated `docs/working/full-game-sprint-plan.md` with the expanded eval map.
+  - Validation during this pass so far:
+    - `node --loader ./tools/ts-node-loader.mjs --test tests/player-motor.test.ts tests/player-combat.test.ts tests/platform-collision-rules.test.ts` ✅
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` ✅
+  - Artifact notes:
+    - `output/web-game-smoke/summary.json` reports `status: "pass"` with 30 scenarios after the feel-regression expansion
+    - inspected `output/web-game-smoke/3-enter-then-charge-shot/shot-0.png`; charge-shot gameplay still renders correctly with active projectiles and stable HUD after the combat/motor testability changes
+  - Remaining known debt:
+    - these are deterministic logic simulations; browser-recorded trace artifacts for the same feel cases are still the next stronger gate before tuning
+- Security sweep completed on 2026-06-06:
+  - Reviewed browser-facing injection surfaces: DOM writes, URL params, debug globals, localStorage/save import, progression clipboard/file import, CSP, and sprite remote import tooling.
+  - No direct HTML injection sinks (`innerHTML`, `eval`, `document.write`) were found in the app runtime.
+  - Added `src/config/automation.ts` and gated mutation-capable automation/debug controls behind explicit automation mode:
+    - `window.__phaserGame`
+    - `window.bossDebug`
+    - `window.stageDebug`
+    - `window.spawnEnemyDebug`
+    - URL-only runtime overrides such as `startScene`, `bossId`, `bossConfig`, and forced `touchControls`
+  - Updated smoke/visual automation URLs and server env to opt in with `automation=1` / `VITE_AUTOMATION=1`, preserving the automated test contract intentionally.
+  - Hardened progression transport import:
+    - rejects oversized pasted/file snapshots
+    - trims seed length
+    - allowlists campaign stage IDs, progression location IDs, item IDs, and checkpoint IDs
+    - clamps final-gate requirements
+    - applies the same sanitization to direct `Save.importProgression(...)` calls
+  - Added a static CSP meta policy in `index.html` for script/style/image/media/connect/object/base/form constraints.
+  - Hardened `scripts/sprites/import-sprites.mjs` to allow only HTTP(S) remote URLs and reject remote assets over the configured size cap.
+  - Added regression coverage:
+    - automation mode opt-in tests in `tests/developer-mode-config.test.ts`
+    - progression transport size/allowlist/clamp tests in `tests/progression-state.test.ts`
+  - Validation:
+    - `npm run test` ✅
+    - `npm run build` ✅
+    - `npm run test:smoke` ✅
+    - Re-ran `npm run build` after the final CSP meta correction ✅
+  - Remaining known debt:
+    - `frame-ancestors` cannot be enforced from static HTML meta; deploy/preview hosting should add it as an HTTP header if this game is served publicly.
+    - `window.render_game_to_text` and `window.advanceTime` remain globally available by design for automation; they are read-only/time-step surfaces and were preserved per repo contract.
+- Deep audit/planning pass completed on 2026-07-08:
+  - No gameplay/source edits were made beyond this handoff note.
+  - Re-ran baseline gates:
+    - `npm run test` ✅
+    - `npm run build` ✅, with the existing large Phaser chunk warning
+    - `npm run sprites:validate` ✅
+    - `SMOKE_PORT=4317 npm run test:smoke` ✅, 30/30 smoke scenarios passing
+    - `VISUAL_SWEEP_PORT=4318 npm run test:visual-sweep` ✅, 8/8 mission visual sweep entries passing; note the script currently reads `SWEEP_PORT`, so it still used the default 4173 port
+  - Audit findings to prioritize:
+    - `src/scenes/Game.ts` remains the main finish-risk hotspot: ~3700 lines, `@ts-nocheck`, and still owns stage build, save/progression, boss/enemy/projectile wiring, HUD, pause/game-over/victory, and debug hooks.
+    - Stage/checkpoint spawn Y values are still mostly `40`, causing visual-sweep captures where the player falls through or clips under the fixed HUD before landing.
+    - Active-run save data is cloned but not allowlist-validated against campaign stage IDs, boss IDs, weapon IDs, and checkpoint IDs before resume.
+    - `window.advanceTime` is still a requestAnimationFrame wait helper rather than a truly deterministic Phaser tick step.
+    - Asset coverage proves required atlases/source sheets exist, but not final animation quality, action-group coverage, silhouette readability, or HUD/player overlap.
+- Five-persona orchestrated completion audit documented on 2026-07-08:
+  - Added `docs/working/orchestrated-completion-audit.md`.
+  - Linked it from `docs/working/README.md` and `docs/README.md`.
+  - The plan consolidates runtime architecture, save/progression, gameplay feel/combat, level/content, and art/animation/performance QA mini-audits into P0/P1/P2 tickets.
+  - Highest-priority tickets called out:
+    - `PROD-001`: make production builds asset-complete and add production-preview smoke coverage.
+    - `SAVE-001`/`SAVE-002`: fix progression transport rehydration and active-run validation.
+    - `GAMEPLAY-001`/`GAMEPLAY-003`: make projectile/damage metadata single-source and route all player damage through the new runtime pipeline.
+    - `LEVEL-001`, `BOSS-001`, `FINAL-001`: preserve stage route content, author every robot-master boss runtime config, and complete Omega Fortress.
+  - Validation after docs update:
+    - `npm run test` passed.
+    - `npm run build` passed with the existing large Phaser chunk warning.
+- PROD-001 production asset packaging pass completed on 2026-07-08:
+  - Added a Vite build plugin in `vite.config.ts` that copies runtime-facing assets into `dist/assets` while preserving Vite-emitted JS chunks.
+  - Runtime asset copying excludes sprite source sheets and private source sheets, but includes local private runtime overrides when the build already references them.
+  - Added `scripts/check-dist-runtime-assets.mjs` and wired `npm run build` to run `npm run test:dist-assets` after `vite build`.
+  - Added `SMOKE_SERVER=preview` support to `scripts/smoke-test.mjs` and exposed `npm run test:smoke:preview`.
+  - Updated `TESTING.md`, `docs/testing/quality-gates.md`, and `docs/working/orchestrated-completion-audit.md` for the new production-preview gate.
+  - Validation during this pass:
+    - `npm run build` passed; dist check reported 151 runtime asset files and 5 emitted build refs.
+    - `SMOKE_PORT=4322 SMOKE_ONLY=2-keyboard-enter-start npm run test:smoke:preview` passed after an initial plugin bug was fixed.
+    - `npm run test` passed.
+    - `SMOKE_PORT=4324 npm run test:smoke` passed.
+    - `SMOKE_PORT=4325 npm run test:smoke:preview` passed with `serverMode: "preview"` and 0 failed scenarios.
+  - Artifact notes:
+    - inspected `output/web-game-smoke/27-boss-sword-hit/shot-1.png` from the preview smoke run; boss-room combat renders with production assets.
+  - Remaining known debt:
+    - production build still emits the known large Phaser chunk warning.
+    - preview smoke proves local `vite preview`; a future deploy-host check should confirm equivalent static hosting headers/paths.
+- Supervised full-game completion audit completed on 2026-08-04:
+  - Added `docs/working/supervised-game-completion-plan.md` and linked it from the documentation indexes.
+  - Reconciled the July completion backlog against current source, tests, browser state, and screenshots using focused save/gameplay, level/boss/finale, and separate story/dialogue audit tracks.
+  - Current validation baseline:
+    - `npm run test` passed: 120 scene/system tests plus 12 boss-framework tests.
+    - `npm run build` passed and verified 151 runtime asset files plus 5 emitted build references; the known Phaser chunk warning remains.
+    - `npm run sprites:validate` passed: 24 ready manifest entries and required coverage present.
+    - `SMOKE_PORT=4331 npm run test:smoke` passed: 30/30 scenarios.
+    - `SWEEP_PORT=4332 npm run test:visual-sweep` passed: 8/8 robot-master missions.
+  - Manual artifact inspection found quality gaps that current pass/fail assertions miss:
+    - stage/checkpoint spawn `y: 40` leaves the player falling through/behind the fixed HUD in start captures;
+    - Stage Select contains clipped/overlapping text and preview presentation at 448x252;
+    - boss presentation has inconsistent scale/readability;
+    - visual sweep omits the tutorial and Omega Fortress.
+  - Confirmed next implementation package remains `SAVE-001` + `SAVE-002`, followed by projectile metadata single-source and unified player-damage routing.
+  - Story work is intentionally separate: narrative content can begin in parallel, while persistent seen flags and runtime hooks wait for save/combat correctness and final-boss text waits for `FINAL-001`.
+  - No gameplay or asset files were changed during this audit.
+- Supervised save/progression correctness package (`SAVE-001` + `SAVE-002`) completed on 2026-08-04:
+  - Progression imports now regenerate the imported seed's complete world, sanitize imported settings, replace stale target progression state, preserve repeated progression items, and derive tutorial/robot-master/finale completion flags from checked locations.
+  - Runtime location claims now return the same canonical progression truth, so `Game` no longer maintains duplicate scene-owned clear flags.
+  - Active-run saves now validate their version, stage/boss identity, checkpoint ownership, weapons, weapon energy, HP, lives, and timestamp against live campaign/progression data before menus or gameplay can consume them.
+  - Invalid active runs are removed from storage, failed saves report failure, and progression imports clear stale active runs before returning to Stage Select.
+  - Added regression coverage in `tests/progression-state.test.ts` and `tests/save-system.test.ts`, plus browser scenarios `4d-progression-import-truth` and `13b-corrupt-save-rejected` in `scripts/smoke-test.mjs`.
+  - Updated the save/progression schema, testing guidance, orchestrated audit, and supervised completion plan to reflect the implemented contracts.
+  - Validation:
+    - focused save/progression tests passed: 27/27.
+    - `npm run verify` passed: sprite manifest/coverage, 12 boss-framework tests, 127 scene/system tests, type-check, production build, 151 runtime asset files plus 5 emitted build references, and 32/32 browser smoke scenarios.
+    - focused browser smoke passed for progression import truth, valid active-run restoration, and corrupt-run rejection; screenshots and exported runtime state were inspected.
+    - the `develop-web-game` Playwright client completed a separate Stage Select-to-Game play check with no browser errors.
+  - Automation contract note: existing `window.render_game_to_text` and stepping hooks were preserved; smoke coverage was expanded without changing their semantics.
+  - Remaining known debt:
+    - the existing large Phaser chunk warning remains.
+    - the next supervised implementation package is `GAMEPLAY-001` followed by `GAMEPLAY-003`: make projectile/damage metadata single-source, then route all player damage through the unified runtime pipeline.
+- Supervised full-game completion implementation completed on 2026-08-04:
+  - `GAMEPLAY-001`: added canonical typed player-shot resolution, made successful projectile spawn the energy-commit boundary, removed duplicate animation projectile events, and preserved immutable weapon/charge/damage metadata through boss collisions and traces.
+  - `GAMEPLAY-003`: routed hazards, enemies, hostile projectiles, boss contact, debug damage, and fatal falls through the typed `NewPlayerRuntime` damage path with consistent i-frames, hitstun, knockback, and single trace emission.
+  - `GAMEPLAY-002`: applied progression speed multipliers to run/dash/wall jump, derived Arcade velocity limits from authored movement peaks, preserved boosted wall-jump launch, and added 30/60fps plus browser feel traces.
+  - `LEVEL-001`: separated retained route width from the 448px boss room, added fail-fast authored/retained content reports, grounded every start/checkpoint, and expanded the sweep to start/mid/pre-boss/boss captures for all ten missions.
+  - `BOSS-001`: validated and generated identity-matched authored runtime definitions for tutorial, all eight wardens, and Omega; fixed dash/slam event execution, authored spawn families, phase unlocks, and runtime diagnostics.
+  - `FINAL-001`:
+    - authored `omega_core` as a rewardless 72-HP three-phase finale with its own attack set and runtime identity;
+    - added an original project-local Omega concept through image generation, removed the chroma background, and assembled a deterministic transparent 12-frame runtime atlas;
+    - made Omega the real ninth Stage Select tile while retaining `F` as a shortcut;
+    - tightened the final gate to tutorial + eight wardens + configured rules, while completed profiles remain replayable;
+    - migrated legacy Omega active runs from `volt_hopper` to `omega_core`;
+    - fixed boss-clear ordering so a stale active run cannot be restored after victory;
+    - removed completion writes from `CompletionScene`; canonical final boss-clear claims own `finalBossCleared` and `gameCompleted`.
+  - `NARRATIVE-001`:
+    - added a validated dialogue registry with intro/defeat exchanges for every campaign boss and order-independent 1/4/8 warden milestones;
+    - added pure deterministic playback plus a compact Phaser overlay;
+    - boss intros freeze gameplay until read or skipped, defeat dialogue precedes the victory modal, and both paths converge on identical callbacks;
+    - exposed concise dialogue state and advance/skip automation hooks.
+  - Browser/artifact verification:
+    - inspected the ninth-tile Stage Select capture in `output/web-game-smoke/14-omega-stage-select/`;
+    - inspected Omega intro, defeat, and completion captures in `output/web-game-smoke/15-omega-dialogue-flow/`;
+    - final Omega flow recorded `finalBossCleared=true`, `gameCompleted=true`, and `activeRun=null`;
+    - ten-mission sweep passed with Omega attacks `lockdown_pulse` and `directive_volley` plus Phase 2 observed in `output/mission-visual-sweep/omega_fortress/`.
+  - Final validation:
+    - focused finale/dialogue/save/boss tests: 45/45 passed;
+    - `npm run test` passed: 12 boss-framework tests and 157 scene/system/content tests;
+    - `npm run build` passed: typecheck, Vite bundle, 153 runtime asset files, and 5 emitted build refs;
+    - `npm run sprites:validate` passed: 25/25 manifest entries ready and required coverage includes 10 boss source sheets;
+    - `npm run test:smoke` passed after adapting victory/final-gate/saber scenarios to the new dialogue and unified damage contracts;
+    - `npm run test:visual-sweep` passed: 10/10 missions with full authored content retention and phase-two boss checks.
+  - Automation contract note: `render_game_to_text` now includes dialogue state; `stageDebug.advanceDialogue()` / `skipDialogue()` are automation-only mutation hooks. Existing state, movement, combat, and deterministic stepping fields remain intact.
+  - Remaining known debt:
+    - `src/scenes/Game.ts` remains under `@ts-nocheck` and is still the primary architecture hotspot;
+    - the production bundle retains the known large Phaser chunk warning;
+    - optional polish remains for richer boss action-specific animation, stage-specific art/music, deployment headers, and broader visual quality heuristics, but no known P0 campaign-completion blocker remains.
+- Combat and presentation polish pass completed on 2026-08-04 from live screenshot feedback:
+  - Fixed uncharged Buster shots passing above short ground enemies by adding explicit projectile combat-sensor dimensions for every weapon/charge tier.
+  - Kept platform recycling tied to visible projectile bounds, preventing the more forgiving enemy sensor from destroying shots against the floor at spawn.
+  - Added browser regression `29-pellet-hits-short-enemy`; it isolates `enemy_mine_bot` and proves a quick-tap pellet reduces HP from 5 to 4.
+  - Removed the scene-owned visible `bossArt` layer so `BossController` is the only rendered boss; visual sweeps no longer show doubled Sentinel/Pyro actors.
+  - Boss sprites now face the live player target instead of stale movement velocity, keeping pose and projectile direction coherent during stationary attacks.
+  - Reset boss actor references and the one-shot spawn guard on every `Game.create`, preventing replay/restart state from suppressing a later boss spawn.
+  - Player projectile facing now comes directly from `PlayerMotor`, and transient shoot/charge-release poses are held for their authored animation duration instead of flashing for one frame.
+  - Rebuilt Stage Select for the native 448x252 frame: compact 3x3 grid, clipped/scaled previews, contained metadata, and a non-overflowing footer/details panel.
+  - Reworked gameplay HUD chrome into stable player/phase/boss panels, corrected the player label to `MEGA MAN X`, removed duplicated `PHASE • PHASE 2` text, constrained attack labels, and kept the boss target visible before activation.
+  - Browser artifacts inspected:
+    - `output/polish-pass-stage-select/shot-0.png` for the contained Stage Select layout;
+    - `output/web-game-smoke/29-pellet-hits-short-enemy/` for the pellet hit and combat trace;
+    - `output/mission-visual-sweep/{tutorial_sentinel,pyro_maw,omega_fortress}/boss-room.png` for single-render bosses and target-facing attacks.
+  - Validation:
+    - `npm run test` passed: 12 boss-framework tests and 159 scene/system/content tests.
+    - `npm run build` passed: typecheck, Vite bundle, 153 runtime assets, and 5 emitted build refs.
+    - `npm run test:smoke` passed: 35/35 scenarios including the new pellet regression.
+    - `npm run test:visual-sweep` passed: 10/10 missions.
+  - Known debt unchanged: `Game.ts` remains the `@ts-nocheck` hotspot and the production build still reports the large Phaser vendor-chunk warning.
+- Saber, projectile-lifecycle, and menu-quality pass completed on 2026-08-04 from follow-up live feedback:
+  - Locked the player sprite's visual facing to the saber's authored eight-way attack direction for the entire slash window. West/northwest/southwest attacks now mirror the east-authored atlas frames even when locomotion reverses during startup, keeping the pose, trail, and damage hitbox aligned.
+  - Added `visuals.facing` to the player automation snapshot and browser regression `30-west-sword-facing`; its captured state records direction `w`, facing `-1`, animation `player_slash_ground_w`, mirrored source frame `player_main/slash_ground_e/001`, and active hitbox `w`.
+  - Hardened projectile pooling so missing definitions, missing/disabled bodies, and expired shots recycle immediately. Added a pure 180ms stall watchdog for standard/wave shots whose physics velocity unexpectedly drops to zero, without applying the watchdog to lob or boomerang behavior.
+  - Added automation-only `stageDebug.freezeLatestPlayerProjectile()` and browser regression `31-frozen-projectile-watchdog`; the test deliberately freezes a live visible Buster shot and confirms the player projectile pool returns to zero.
+  - Added `src/ui/menu/menuTheme.ts` as shared title/controls/system-menu presentation chrome. Rebuilt those screens with consistent display/body typography, layered technical backdrops, stronger panel hierarchy, selection backplates, readable disabled states, and compact native-resolution help text.
+  - No new PNGs were required for this pass; menu graphics are code-drawn and remain crisp at the native 448x252 frame.
+  - Browser artifacts inspected:
+    - `output/polish-title-final/shot-0.png` for final title spacing and hierarchy;
+    - `output/web-game-smoke/4-title-controls/shot-0.png` for the redesigned control map;
+    - `output/web-game-smoke/4c-touch-controls/shot-1.png` for the redesigned in-game system menu;
+    - `output/web-game-smoke/30-west-sword-facing/shot-0.png` plus its state trace for saber alignment.
+  - Validation:
+    - `npm run test` passed: 12 boss-framework tests and 163 scene/system/content tests.
+    - `npm run build` passed: typecheck, Vite bundle, 153 runtime assets, and 5 emitted build refs.
+    - `npm run test:smoke` passed: 37/37 scenarios including the two new regressions.
+    - `npm run test:visual-sweep` passed: 10/10 missions.
+    - the required `develop-web-game` Playwright client rendered and captured the revised title with no browser errors.
+  - Known debt unchanged: `Game.ts` remains the `@ts-nocheck` hotspot and the production build still reports the large Phaser vendor-chunk warning.
+- Viewport, pickups, HUD, weapon-energy, and boss-render hardening completed on 2026-08-04 from follow-up live feedback:
+  - Added a shared gameplay-layout contract with a 58px fixed-HUD boundary and a 90px actor-body ceiling, preventing high jumps or forced vertical movement from placing player/boss artwork behind the HUD while retaining normal jump height.
+  - Added a stage-tinted full-playfield backing layer and atmospheric bands so authored parallax backgrounds no longer leave the upper gameplay region visually untreated.
+  - Replaced generic tinted drop art with crisp procedural silhouettes: green health capsule, blue weapon capsule, gold bonus core/upgrade capsule, red health tank, and blue weapon tank.
+  - Rebuilt top health/weapon/boss meters as rounded segmented energy bars with green player health, weapon-tinted energy, and red boss health.
+  - Added `src/content/weaponEnergyEconomy.ts`: special costs are normalized to a sustainable 1–3 range, each saber activation restores 2 energy to the selected special (including reboot from zero), and holstered specials regain 1 energy every 1500ms.
+  - Removed the remaining hidden legacy boss actor. `BossController` is now the only boss physics/render actor; its sole sprite faces the player target used by the attack system. The ten-mission sweep now fails if any stage exposes a legacy actor or more/less than one visible boss sprite.
+  - Added pure energy-economy tests, the actor-ceiling layout assertion, smoke scenario `32-viewport-energy-economy`, `weaponRecharge` state, and deterministic viewport/energy/pickup hooks.
+  - Browser artifacts inspected:
+    - `output/web-game-smoke/32-viewport-energy-economy/shot-0.png` for the actor ceiling, segmented meters, background backing, and distinct capsules;
+    - `output/web-game-smoke/8-boss-room-activation/state-0.json` for `legacyActorPresent=false`, one visual child, one visible boss sprite, and player-relative facing;
+    - all ten `output/mission-visual-sweep/*/boss-room.png` captures passed the single-boss invariant.
+  - Validation:
+    - `npm run test` passed: 12 boss-framework tests and 167 scene/system/content tests.
+    - `npm run build` passed: typecheck, Vite bundle, 153 runtime assets, and 5 emitted build refs.
+    - `npm run test:smoke` passed: 38/38 scenarios.
+    - `npm run test:visual-sweep` passed: 10/10 missions with single-boss rendering assertions.
+    - the required `develop-web-game` Playwright client completed a Stage Select-to-Game jump check with no browser errors.
+  - Known debt unchanged: `Game.ts` remains the `@ts-nocheck` hotspot and the production build still reports the large Phaser vendor-chunk warning.
+- Boss animation/fight quality planning audit completed on 2026-08-05:
+  - Added `docs/working/boss-animation-and-fight-rebuild-plan.md` and linked it from both documentation indexes.
+  - Confirmed the floating-boss defect is architectural: all boss bodies disable gravity, the brain receives no real player Y, and movement output is only horizontal range correction.
+  - Confirmed authored `jumpHeight`, movement notes, telegraph animation names, and most action identity are not active runtime contracts.
+  - Confirmed every non-Omega runtime boss atlas contains only four synthesized `idle`, `move`, and `shoot` frames. The source action sheets are palette variants of one generic character with baked backgrounds/text and are unsuitable for distinct production bosses.
+  - Confirmed boss rooms remove route platforms/hazards and expose no boss-specific arena profile.
+  - Recommended a typed movement/attack-event/facing/animator foundation, followed by supervised Sentinel Rook and Pyro Maw vertical slices before batching the remaining bosses by shared mechanics.
+  - Art direction decision: generate original boss sheets one at a time and use downloads only for permissively licensed effects/reference; do not ship ripped Mega Man/Capcom sprites.
+  - No gameplay or runtime asset files were changed during this audit.
+- Supervised combat-art, hazard, menu, dialogue, and grounded-boss polish slice implemented on 2026-08-05:
+  - Replaced the generic effects-frame hazard with crisp procedural three-point spike banks and separate animated-looking flame-vent silhouettes for Pyro routes; hazard collision now follows the visible danger strip.
+  - Assigned distinct atlas frames to Buster, all special weapons, and all four charge tiers; charged shots pulse/rotate and disc/spike weapons spin instead of every power being the same tinted pellet.
+  - Rebuilt charge threshold feedback with tier-colored energy particles and expanding rings.
+  - Replaced the oversized 96px independent saber effect with a compact direction-locked layered arc. Re-authored the private slash groups from player-scale X4 poses so a slash no longer changes the player into an oversized unrelated silhouette.
+  - Refined the title hierarchy with a separated protocol band, mission-control CTA, explicit confirm hint, and clearer action copy. Increased Stage Select text size, reduced tile/preview duplication, and simplified the footer.
+  - Expanded boss dialogue into a safe 112px panel with a reserved footer, repeat/debounce protection, and panel-scoped pointer input. Boss intro dialogue no longer overlaps the boss-room toast, and the frame that activates dialogue now stops gameplay immediately.
+  - Enabled gravity/platform grounding for the single runtime boss actor. Bosses now open with a signature attack, then use deterministic weight-based jump cadence and air movement; outward edge velocity is stopped at room bounds. Runtime AI now receives real player Y and the HUD displays authored phase names.
+  - Specialist audits identified the next high-impact package: authored ground segments/pits and moving-platform carry, camera-relative enemy encounter composition, canonical combat cues/sockets/impact FX, then original Sentinel/Pyro/Omega action sheets before batching the remaining bosses.
+  - Research direction: preserve the Mega Man X-style teach/escalate/master rhythm, make hazards readable at native resolution, and make each stage mechanic/enemy/boss share a visual and tactical theme instead of extending the same flat runway.
+  - Validation completed so far:
+    - `npm run test` passed: 12 boss-framework tests and 168 scene/system/content tests.
+    - `npm run build` passed: typecheck, Vite bundle, 153 runtime assets, and 5 emitted build refs; the known Phaser vendor-chunk warning remains.
+    - focused browser smoke passed for title/controls, charge shot, boss activation/dialogue, all saber directions, frozen-projectile recycling, and viewport/energy behavior.
+    - `npm run test:visual-sweep` passed 10/10 missions after adding post-physics boss-room clamping and reliable dialogue/phase sampling.
+  - Automation note: the visual sweep now explicitly skips boss intro dialogue before sampling attacks, matching the runtime's stricter dialogue freeze contract; no existing player/combat state fields were removed.
+- Authored boss-combat runtime rebuild implemented on 2026-08-05:
+  - Added exhaustive typed combat profiles for all ten bosses and every one of their 31 attacks: movement intent, facing policy, windup/active/recovery/landing animation families, strategy tags, grounded requirements, room anchors, and active-hazard caps.
+  - Added a pure/testable `BossMotionController` for hold, walk, jump, dash-through, hover, dive, teleport, and slam commands. Grounded attacks cannot be selected in mid-air, jump/slam actions finish on landing, aerial bosses use deliberate height targets, and a four-pixel internal safety inset prevents Arcade Container resync from crossing room bounds.
+  - Rebuilt Sentinel Rook as the grounded hop/stomp tutorial pilot and Pyro Maw as the lane-control stream/lob/dash-through pilot; the same runtime now drives Tide/Volt, Basalt/Ferro, Mire/Gale, Glacier, and Omega without scene-local copies.
+  - Boss attack start now means true windup. Projectiles and hazards execute only after the telegraph, while sprite facing, movement direction, projectile velocity, and teleport/dash destination share one locked direction snapshot.
+  - Added action-specific runtime animation keys and phase presentation, bounded trace history, animation/frame/motion/lifecycle/hazard diagnostics, and Omega's deterministic per-phase pattern decks.
+  - Added distinct boss fire-orb, water-lance, arc-shard, acid-glob, static-orb, and returning-disc definitions. Boss-room hazards visibly arm for 180ms and respect encounter-specific caps; Pyro dash leaves a bounded vent trail.
+  - Strengthened the ten-mission visual sweep so generic shoot fallback, missing lifecycle traces, facing disagreement, room escape, duplicate actors, and hazard-cap overflow fail automatically. The capture now separates the player after sampling for clearer QA artifacts.
+  - Validation completed:
+    - focused boss/motion/projectile tests passed: 18/18 before the full suite;
+    - `npm run test` passed: 12 boss-framework tests and 175 scene/system/content tests;
+    - `npm run build` passed: typecheck, Vite bundle, 153 runtime assets, and 5 emitted build refs; the known Phaser vendor-chunk warning remains;
+    - `npm run test:visual-sweep` passed 10/10 missions after catching and fixing both an over-strict animation assertion and a real two-pixel Tide room-bound overshoot;
+    - `npm run test:smoke` passed all 38 browser scenarios with the new telegraph/attack timing;
+    - final `npm run test` passed again (12 boss-framework + 175 scene/system/content tests) and final `npm run build` passed after all runtime fixes;
+    - representative Sentinel, Pyro, Tide, and Omega boss-room screenshots plus trace JSON were opened and inspected.
+  - Remaining art tranche: Omega already has original project art, but the nine non-Omega runtime atlases still derive limited idle/move/shoot variations from one pose each. The typed action families are ready for original per-boss action sheets without another gameplay rewrite; final sheets should be generated/cleaned one boss at a time, beginning with Sentinel and Pyro, and must not use ripped Capcom art.
+- Saber and HUD regression polish completed on 2026-08-05 from live player feedback:
+  - Replaced the detached compact saber crescent with a hand-rooted eight-direction energy sweep. The effect now combines a bright blade core, broad crescent, additive glow, echo edge, tip flare, and a 145ms direction-locked sweep that follows the player during the active slash window.
+  - Kept the existing four-frame private slash-body animation atlas intact; the regression was isolated to the runtime VFX layer rather than discarding the authored player frames.
+  - Added a typed/testable `SwordTrailProfile` for all eight attack angles, mirrored hand anchors, and sweep timing. East and west roots are explicitly symmetrical and unknown direction input safely falls back to east.
+  - Re-seated the player health, weapon energy, and boss meters using a shared native-resolution HUD layout. The weapon meter now has three pixels of panel clearance, framed side sockets, fourteen distinct rounded energy cells, and weapon-specific color while remaining inside the fixed 58px HUD boundary.
+  - Added pure regression tests for directional saber geometry and meter containment/alignment.
+  - Validation:
+    - `npm run test` passed: 12 boss-framework tests and 180 scene/system/content tests.
+    - `npm run build` passed: typecheck, Vite bundle, 153 runtime assets, and 5 emitted build refs; the known Phaser vendor-chunk warning remains.
+    - focused Playwright smoke passed for ground/up/down/west saber attacks and viewport/weapon-energy behavior.
+    - inspected `output/web-game-smoke/24-ground-sword-enemy/shot-0.png`, `30-west-sword-facing/shot-0.png`, and `32-viewport-energy-economy/shot-0.png`; the effect is attached and correctly mirrored, and the energy cells are visibly seated inside their frame.
+  - Remaining regression outside this focused slice: the complete smoke run currently stops at `29-pellet-hits-short-enemy` because the uncharged pellet did not reduce the short enemy from 5 HP. The focused saber/HUD scenarios pass, but the projectile collision regression needs a separate gameplay fix.
+- Prompt 01a, Phase 1.0 baseline prepared on 2026-09-10 — EVAL-P1-001 (checkpoint commit pending STOP 1.0 approval):
+  - Ran the mandated entry gates in order: test, build, sprites validation, full smoke, full ten-mission visual sweep. All passed before gameplay changes; the historical scenario-29 pellet miss did not reproduce. Preserved initial smoke evidence in `output/phase-1-0/baseline-smoke/` and prior summaries in `output/phase-1-0/prior/`.
+  - QA found the old pellet assertion falsely accepted missing targets and unrelated/charged damage. Isolated the old predicate and recorded four failing fixtures, then added strict evidence validation in `scripts/smoke/assert-pellet-hit.mjs` with five regression tests and wired it into scenario 29. The same live mine bot must take exactly one ordinary Buster hit (5→4 HP), with one shot and an accepted one-damage bullet event.
+  - No gameplay module or collision sensor changed. Final `pellet-evidence.json` captures the live 14×54 sensor at y=181–235, overlapping the mine bot's y=226–236 body while the visible projectile remains above the floor. `src/scenes/Game.ts` remains 3,928 lines and the only `src/` file under `@ts-nocheck`.
+  - Documented existing smoke filters, ports, preview mode, automation URL flags, and boss/stage debug hooks in `TESTING.md`; coordinated quality-gate and AGENTS wording now accurately calls `advanceTime` an animation-frame wait rather than deterministic Phaser stepping. Hook semantics did not change; scenario 29 gained stricter assertions and a diagnostic artifact.
+  - Corrected charter drift: original 100 untracked status entries expand to 614 individual files; `types/` is build-required; several upgrades already affect runtime behavior; private boss atlases differ from the public synthesized rigs; the historical smoke failure is not current evidence. The separate develop-web-game client was run because its old smoke wrapper is no longer registered.
+  - Validation: `npm run test` → `Test summary: 12 passed, 0 failed`, `# pass 185`, `# fail 0` (`output/phase-1-0/09-final-test.log`); `npm run build` → `✓ built in 3.48s`, `Checked 153 runtime asset files and 5 emitted build refs in dist/.` (`10-final-build.log`); sprites → `Manifest valid (25 entries, 25 ready, 0 planned)` and `Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)` (`03-sprites-validate.log`). All exit 0; log paths are under `output/phase-1-0/`.
+  - Browser validation: full smoke → `Full smoke summary: 38/38 pass, 0 fail, 0 skipped.` (`output/phase-1-0/11-final-smoke.log`, `output/web-game-smoke/summary.json`); sweep → `Mission visual sweep complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/mission-visual-sweep`, 10/10 pass (`output/phase-1-0/05-baseline-sweep.log`, `output/mission-visual-sweep/summary.json`). Focused pellet evidence tests changed from `# pass 1`, `# fail 4` to `# pass 5`, `# fail 0`; focused scenario 29 passed with 37 explicitly filtered skips.
+  - Artifact review: Director opened all 40 sweep originals; Orchestrator inspected all sweep contact sheets, pellet state/PNG, and native skill-client capture; Engineer opened all 40 final smoke captures through seven contact sheets, plus the focused pellet and skill-client PNGs. Captures show readable dialogue/HUD, visible actors and impacts, and existing checkpoint toast overlap, truncated labels/tile titles, large touch controls, Gale cloud seams, and private boss-art limitations. `output/phase-1-0/contact-sheet-manifest.txt` indexes the sheets.
+  - Known visual debt: Volt's thin strip comes from effects-only private atlas cells; Glacier's private override is a low winged silhouette. Sweep boss JSON is sampled before attack checks and its PNG afterward, so they are not simultaneous. Original Omega attribution still needs an explicit source/author/license registry entry in the asset phase. Private art and franchise labels remain developer-only release debt; these gates are not public/final art approval. The Phaser chunk-size warning remains accepted debt.
+  - Prepared a clearly PARTIAL running handoff at `docs/prompts/handoff/01-foundation-and-story.md`, kept EVAL-P1-001 PENDING until an approved checkpoint commit exists, and left CI/later phases untouched. Proposed, unapplied ignore additions and complete checkpoint candidate lists are in `output/phase-1-0/`; the current proposal contains 108 modified tracked files and 118 new project files, retaining `types/private-sprite-manifest.d.ts`.

@@ -2,10 +2,22 @@
 import Phaser from 'phaser'
 import AudioService from '../audio'
 import { BossController } from '../bosses/BossController'
-import { BossId, damageMultiplier } from '../bosses/types'
+import { BossId } from '../bosses/types'
 import { getBossById } from '../bosses/roster'
 import { getBossDefinitionById } from '../boss/config'
-import { FINAL_STAGE_ID, getCampaignStage, TUTORIAL_STAGE_ID } from '../content/campaign'
+import {
+  countClearedRobotMasters,
+  FINAL_STAGE_ID,
+  getCampaignStage,
+  TUTORIAL_STAGE_ID
+} from '../content/campaign'
+import {
+  DIALOGUE_REGISTRY,
+  resolveDialogueText,
+  type DialogueInterpolationValues,
+  type DialogueLineDefinition,
+  type DialogueTrigger
+} from '../content/dialogue'
 import {
   getBossRoomActivationX,
   getBossRoomCameraBounds,
@@ -13,18 +25,53 @@ import {
   getBossRoomMovementBounds
 } from '../content/stageArenaLayout'
 import { buildWeaponEnergySnapshot, buildWeaponOrder, getWeaponConfig, getWeaponDisplayName } from '../content/weapons'
+import { GAMEPLAY_TEXTURE_KEYS, resolveStageHazardTexture } from '../ui/gameplay/GameplayTextures'
+import {
+  getHolsteredWeaponRechargeTargets,
+  PASSIVE_WEAPON_RECHARGE_AMOUNT,
+  PASSIVE_WEAPON_RECHARGE_INTERVAL_MS,
+  rechargeWeaponEnergyValue,
+  SABER_WEAPON_RECHARGE_AMOUNT,
+  SABER_WEAPON_RECHARGE_COOLDOWN_MS
+} from '../content/weaponEnergyEconomy'
+import { AUTOMATION } from '../config/automation'
 import { DEBUG_UI } from '../config/debug'
+import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP, getGameplayWorldBounds } from '../config/gameplayLayout'
 import { STRICT_PIXEL_RENDER_POLICY } from '../config/renderPolicy'
 import { returnToStageSelect, showToast } from '../core/navigation'
+import { DigitalButtonPad } from '../input/DigitalButtonPad'
 import InputActions from '../input/InputActions'
 import { NewPlayerRuntime } from '../player/NewPlayerRuntime'
+import { applyPlayerBodyProfile } from '../player/PlayerBodyProfiles'
+import { PLAYER_GAMEPLAY_CONFIG, resolvePlayerPhysicsLimits } from '../player/config'
 import { resolvePlayerFeatureFlags } from '../player/featureFlags'
 import { resolveSwordHitboxOrigin, swordHitboxIntersectsTarget } from '../player/swordCollision'
-import type { ResolvedHitbox } from '../player/types'
+import type { PlayerDamageRequest, PlayerDamageResult, ResolvedHitbox } from '../player/types'
 import { ActiveRunSaveData, Save } from '../systems/Save'
 import { DebugOverlay } from '../ui/DebugOverlay'
+import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD } from '../ui/HUD'
 import { VictoryModal } from '../ui/VictoryModal'
+import { DialogueOverlayController } from '../ui/DialogueOverlayController'
+import { ensurePickupTextures, PICKUP_TEXTURE_KEYS } from '../ui/pickups/PickupTextures'
+import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
+import {
+  claimLocationCheck,
+  drainPendingConsumable,
+  evaluateFinalGate,
+  getBossWeaknessProfile,
+  getBusterDamageBonus,
+  getLocationCheckId,
+  getProgressionItemLabel,
+  getPlayerMaxHpFromSave,
+  getStageLocationDefinitions,
+  getMovementSpeedMultiplier,
+  getStageBossRewardLabel,
+  getWeaponDamageBonus,
+  getWeaknessStrictness,
+  resolveBossDamageMultiplier,
+  type ProgressionConsumableId
+} from '../progression'
 import { BossProjectileController } from '../boss/framework/BossProjectileController'
 import { BossSceneEventBindings } from '../boss/framework/BossSceneEventBindings'
 import { BossUIBinder } from '../boss/framework/BossUIBinder'
@@ -44,23 +91,23 @@ import { makeGameCombatSnapshot } from '../tools/debug/StateSnapshot'
 import { PlatformCollisionSystem, PlatformType } from '../physics'
 import {
   createDefaultProjectileRegistry,
+  getLatestActiveProjectile,
   spawnDebugProjectileClash,
   summarizeProjectilePool,
   ProjectileCollisionRouter,
   ProjectileRegistry,
   ProjectileSystem,
   PROJECTILES_ATLAS_KEY,
-  resolvePlayerProjectileId
+  canAffordPlayerShot,
+  energyAfterPlayerShot,
+  resolvePlayerShot
 } from '../projectiles'
 
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
-const HAZARD_SPIKES_FRAME = 'effects_core/core/004'
+const HAZARD_SPIKES_TEXTURE = GAMEPLAY_TEXTURE_KEYS.spikeBank
 const SABER_TRAIL_FRAMES = ['effects_core/core/004', 'effects_core/core/005', 'effects_core/core/013', 'effects_core/core/021']
 const CHARGE_AURA_FRAMES = ['effects_core/core/006', 'effects_core/core/007', 'effects_core/core/014', 'effects_core/core/015']
 const PROJECTILE_CLASH_FRAMES = ['effects_core/core/011', 'effects_core/core/019', 'effects_core/core/003']
-const PLAYER_COLLIDER_STAND = { width: 16, height: 22, offsetX: 16, offsetY: 24 }
-const PLAYER_COLLIDER_SLIDE = { width: 20, height: 14, offsetX: 14, offsetY: 32 }
-
 const JUMP_VELOCITY = -420
 
 interface GameData {
@@ -94,6 +141,7 @@ export class Game extends Phaser.Scene {
   private hazards!: Phaser.Physics.Arcade.StaticGroup
   private enemies!: Phaser.Physics.Arcade.Group
   private drops?: Phaser.Physics.Arcade.Group
+  private progressionPickups?: Phaser.Physics.Arcade.Group
   private stagePlatforms?: Phaser.Physics.Arcade.StaticGroup
   private stageOneWayPlatforms?: Phaser.Physics.Arcade.StaticGroup
   private platformCollisionSystem?: PlatformCollisionSystem
@@ -112,22 +160,71 @@ export class Game extends Phaser.Scene {
   private bossDeathHandled = false
   private gameOverTriggered = false
   private victoryModal?: VictoryModal
+  private dialogueOverlay?: DialogueOverlayController
   private bossHitFeedbackTimer?: Phaser.Time.TimerEvent
+  private hitstopRemainingFrames = 0
+
+  private onHitstop = (frames: number) => {
+    this.hitstopRemainingFrames = Math.max(this.hitstopRemainingFrames, frames)
+    this.physics.world.pause()
+    this.newPlayerRuntime?.pauseAnimations?.()
+    this.enemySpawner?.pauseAnimations?.()
+    this.bossController?.pauseAnimations?.()
+  }
+
+  private onCameraShake = (config: { intensity: number; duration: number }) => {
+    this.cameras.main.shake(config.duration, config.intensity)
+  }
 
   private spawnGroundSlamHazard(origin: Phaser.GameObjects.GameObject, attackData?: any): void {
     if (!this.hazards) {
       return
     }
+    const attackId = String(attackData?.id ?? 'ground_slam')
     const radius = Math.max(24, Number(attackData?.params?.radius ?? 72))
     const duration = Math.max(200, Number(attackData?.params?.hazardDuration ?? 700))
-    const rings = 3
+    const activeBossHazards = this.countActiveBossRoomHazards()
+    const cap = this.bossController?.getRoomHazardCap() ?? 3
+    const rings = Math.max(0, Math.min(3, cap - activeBossHazards))
+    const direction = this.bossController?.getAttackFacing() ?? 1
+    const texture =
+      attackId === 'ignition_dash' || attackId === 'toxic_slide'
+        ? GAMEPLAY_TEXTURE_KEYS.flameVent
+        : HAZARD_SPIKES_TEXTURE
     for (let i = 0; i < rings; i += 1) {
-      const x = origin.x + (i - 1) * (radius * 0.45)
-      const hazard = this.hazards.create(x, origin.y + 16, EFFECTS_ATLAS_KEY, HAZARD_SPIKES_FRAME)
+      const laneOffset = attackId === 'ignition_dash' ? direction * i * (radius * 0.42) : (i - 1) * (radius * 0.45)
+      const x = origin.x + laneOffset
+      const hazard = this.hazards.create(x, origin.y + 16, texture)
+      hazard.setDataEnabled?.()
+      hazard.data?.set?.('damageSourceType', 'boss_projectile')
+      hazard.data?.set?.('damageSourceId', attackId)
+      hazard.data?.set?.('damageAmount', Number(attackData?.hit?.damageAmount ?? 2))
+      hazard.data?.set?.('bossRoomHazard', true)
       hazard.refreshBody()
-      hazard.setAlpha(0.9 - i * 0.2)
-      this.time.delayedCall(duration + i * 90, () => hazard.destroy())
+      const body = hazard.body as Phaser.Physics.Arcade.StaticBody | undefined
+      if (body) body.enable = false
+      hazard.setAlpha(0.22)
+      hazard.setTint(this.bossController?.blueprint.theme.glow ?? 0xffffff)
+      this.tweens.add({
+        targets: hazard,
+        alpha: 0.82 - i * 0.08,
+        duration: 180,
+        yoyo: false,
+        onComplete: () => {
+          if (!hazard.active) return
+          hazard.clearTint()
+          if (body) body.enable = true
+        }
+      })
+      this.time.delayedCall(180 + duration + i * 90, () => hazard.destroy())
     }
+  }
+
+  private countActiveBossRoomHazards(): number {
+    if (!this.hazards) return 0
+    return this.hazards.getChildren().filter((hazard: any) =>
+      Boolean(hazard?.active && hazard?.data?.get?.('bossRoomHazard'))
+    ).length
   }
   private bossProjectileController?: BossProjectileController
 
@@ -191,14 +288,13 @@ export class Game extends Phaser.Scene {
         const origin = (this.bossTarget ?? this.bossBody) as Phaser.Physics.Arcade.Sprite | undefined
         return origin?.body as Phaser.Physics.Arcade.Body | undefined
       },
+      getBossAttackFacing: () => this.bossController?.getAttackFacing() ?? 1,
       getTrailTint: () => this.bossController?.blueprint.theme.trail ?? 0x55ccff,
       createTrailEmitter: (bullet) => this.createBossProjectileTrailEmitter(bullet),
       registerProjectile: (bullet, kind) => this.devRegister(bullet, kind),
       playAttackSfx: (name) => AudioService.playSfx(name),
       setActionLabel: (text) => {
-        if (this.phaseLabel) {
-          this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}\n${text}`)
-        }
+        this.updatePhaseHud(text)
       },
       playShootAnimation: () => {
         if (this.bossArt) {
@@ -224,29 +320,14 @@ export class Game extends Phaser.Scene {
   private hud?: HUD
   private bossUiBinder?: BossUIBinder
   private bossSceneEvents?: BossSceneEventBindings
-  private isChargingShot = false
-  private chargeStartedAt = 0
+  private virtualButtons?: DigitalButtonPad
+  private touchControls?: GameplayTouchControls
   private currentWeaponIndex = 0
   private weapons: string[] = ['Buster']
   private weaponEnergyById: Record<string, number> = buildWeaponEnergySnapshot([])
-  private dashActive = false
-  private dashTimer = 0
-  private dashCooldownTimer = 0
-  private readonly dashDuration = 140
-  private readonly dashCooldown = 420
-  private saberComboStep = 0
-  private saberComboTimer = 0
-  private readonly saberComboWindow = 320
   private facing: 1 | -1 = 1
-  private usingSlideHitbox = false
-  private slideUntil = 0
-  private readonly slideDuration = 260
   private currentPhaseName = ''
-  private animationLockUntil = 0
   // [REGION: CHARGE-AURA - BEGIN]
-  private chargeEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
-  private charging = false
-  private fullyCharged = false
   // [REGION: CHARGE-AURA - END]
   private debugOverlay?: DebugOverlay
   private readonly combatDebugBus = new CombatDebugBus()
@@ -264,9 +345,12 @@ export class Game extends Phaser.Scene {
   private playerMaxHp = 0
   private playerHp = 0
   private weaponEnergy = { current: 28, max: 28 }
+  private passiveWeaponRechargeAccumulatorMs = 0
+  private lastSaberWeaponRechargeAtMs = Number.NEGATIVE_INFINITY
   private playerLives = 0
   private respawnPoint?: Phaser.Math.Vector2
   private currentCheckpointIndex = 0
+  private currentCheckpointId: string | null = null
   private bossEncounterActive = false
   private bossActivationX = 0
   private bossGateLockX = 0
@@ -279,8 +363,10 @@ export class Game extends Phaser.Scene {
   private activeBossId?: BossId
   private activeStageId = 'pyro_maw'
   private loadedFromSave = false
+  private progressionSave = Save.load()
   private bossUsingPlaceholder = false
   private stageBackgroundLayers: Phaser.GameObjects.TileSprite[] = []
+  private stageBackgroundBackdrop?: Phaser.GameObjects.Graphics
   private scaleResizeHandler?: Phaser.Types.Core.ScaleEventCallback
   private _devOn = false
   private _devInitOnce = false
@@ -313,6 +399,8 @@ export class Game extends Phaser.Scene {
   private clearStageBackgroundLayers(): void {
     this.stageBackgroundLayers.forEach((layer) => layer.destroy())
     this.stageBackgroundLayers = []
+    this.stageBackgroundBackdrop?.destroy()
+    this.stageBackgroundBackdrop = undefined
   }
 
   private renderStageBackground(stageId: string, worldWidth: number): void {
@@ -321,6 +409,21 @@ export class Game extends Phaser.Scene {
     const stage = getCampaignStage(stageId)
     const { height } = this.scale
     const layers = stage.arena.background?.layers ?? []
+    const baseColor = Phaser.Display.Color.HexStringToColor(stage.arena.background.baseColor).color
+    const accentColor = layers.find((layer) => typeof layer.tint === 'number')?.tint ?? 0x4a8cff
+    const backdrop = this.add.graphics().setDepth(-50)
+    backdrop.fillStyle(baseColor, 1).fillRect(0, 0, worldWidth, height)
+    backdrop.fillStyle(accentColor, 0.1).fillRect(0, GAMEPLAY_VIEWPORT_TOP, worldWidth, height - GAMEPLAY_VIEWPORT_TOP)
+    for (let y = GAMEPLAY_VIEWPORT_TOP; y < height; y += 14) {
+      const depthAlpha = 0.08 + ((y - GAMEPLAY_VIEWPORT_TOP) / Math.max(1, height - GAMEPLAY_VIEWPORT_TOP)) * 0.1
+      backdrop.fillStyle(accentColor, depthAlpha).fillRect(0, y, worldWidth, 1)
+    }
+    backdrop.lineStyle(1, accentColor, 0.1)
+    for (let x = 0; x < worldWidth; x += 64) {
+      backdrop.lineBetween(x, GAMEPLAY_VIEWPORT_TOP, x + 32, height)
+    }
+    backdrop.fillStyle(accentColor, 0.45).fillRect(0, GAMEPLAY_VIEWPORT_TOP, worldWidth, 2)
+    this.stageBackgroundBackdrop = backdrop
     layers.forEach((layer, index) => {
       if (!this.textures.exists(layer.key)) {
         return
@@ -370,7 +473,17 @@ export class Game extends Phaser.Scene {
     const worldWidth = Math.max(width, Number(cfg.width ?? width))
     this.activeBossRoom = cfg.bossRoom
 
-    this.physics.world.setBounds(0, 0, worldWidth, height, true, cfg.leftWall, cfg.rightWall, true)
+    const gameplayBounds = getGameplayWorldBounds(worldWidth, height)
+    this.physics.world.setBounds(
+      gameplayBounds.x,
+      gameplayBounds.y,
+      gameplayBounds.width,
+      gameplayBounds.height,
+      cfg.leftWall,
+      cfg.rightWall,
+      true,
+      !cfg.allowFallOff
+    )
     this.physics.world.setBoundsCollision(cfg.leftWall, cfg.rightWall, true, !cfg.allowFallOff)
     this.applyStageCameraBounds(stageId)
     this.cameras.main.setBackgroundColor(cfg.background.baseColor ?? cfg.backgroundColor ?? '#0b1220')
@@ -560,10 +673,213 @@ export class Game extends Phaser.Scene {
     }
     this.currentCheckpointIndex += 1
     this.respawnPoint = new Phaser.Math.Vector2(nextCheckpoint.x, nextCheckpoint.y)
+    this.currentCheckpointId = nextCheckpoint.id
+    Save.unlockCheckpoint(this.activeStageId, nextCheckpoint.id)
+    this.progressionSave = Save.load()
     this.showStageToast(`Checkpoint ${this.currentCheckpointIndex + 1}`, 900)
     if (this.currentCheckpointIndex >= stage.arena.checkpoints.length - 1 || this.player.x >= stage.arena.bossRoom.x) {
       this.activateBossEncounter()
     }
+  }
+
+  private refreshWeaponsFromProgression(): void {
+    const currentWeaponId = this.getCurrentWeaponId()
+    this.weapons = buildWeaponOrder(this.progressionSave.weaponsUnlocked)
+    const nextIndex = this.weapons.indexOf(currentWeaponId)
+    this.currentWeaponIndex = nextIndex >= 0 ? nextIndex : Phaser.Math.Clamp(this.currentWeaponIndex, 0, this.weapons.length - 1)
+    this.weaponEnergyById = {
+      ...buildWeaponEnergySnapshot(this.progressionSave.weaponsUnlocked),
+      ...this.weaponEnergyById
+    }
+    this.updateWeaponLabel()
+  }
+
+  private applyProgressionMovementModifiers(): void {
+    if (!this.player) {
+      return
+    }
+    const speedMultiplier = getMovementSpeedMultiplier(this.progressionSave)
+    const limits = resolvePlayerPhysicsLimits(PLAYER_GAMEPLAY_CONFIG, speedMultiplier)
+    this.player.setMaxVelocity(limits.maxVelocityX, limits.maxVelocityY)
+    this.newPlayerRuntime?.setMovementSpeedMultiplier(speedMultiplier)
+  }
+
+  private applySelectedCheckpoint(stageId: string, checkpointId?: string | null): void {
+    const stage = getCampaignStage(stageId)
+    const selectedId = checkpointId ?? Save.load().selectedCheckpointByStage?.[stageId] ?? stage.arena.checkpoints[0]?.id
+    const checkpointIndex = Math.max(
+      0,
+      stage.arena.checkpoints.findIndex((checkpoint) => checkpoint.id === selectedId)
+    )
+    const checkpoint = stage.arena.checkpoints[checkpointIndex] ?? stage.arena.checkpoints[0]
+    if (!checkpoint || !this.player) {
+      return
+    }
+    this.currentCheckpointIndex = checkpointIndex
+    this.currentCheckpointId = checkpoint.id
+    this.player.setPosition(checkpoint.x, checkpoint.y)
+    this.respawnPoint = new Phaser.Math.Vector2(checkpoint.x, checkpoint.y)
+    Save.setSelectedCheckpoint(stageId, checkpoint.id)
+    Save.unlockCheckpoint(stageId, checkpoint.id)
+    this.progressionSave = Save.load()
+  }
+
+  private spawnProgressionPickups(stageId: string): void {
+    if (!this.progressionPickups) {
+      return
+    }
+    const collected = new Set(this.progressionSave.collectedChecks)
+    getStageLocationDefinitions(stageId)
+      .filter((location) => location.category !== 'boss_clear' && location.x != null && location.y != null)
+      .filter((location) => !collected.has(location.id))
+      .forEach((location) => {
+        const textureKey =
+          location.category === 'capsule'
+            ? PICKUP_TEXTURE_KEYS.upgrade
+            : location.category === 'heart_tank'
+              ? PICKUP_TEXTURE_KEYS.heartTank
+              : location.category === 'sub_tank'
+                ? PICKUP_TEXTURE_KEYS.subTank
+                : PICKUP_TEXTURE_KEYS.bonus
+        const pickup = this.progressionPickups?.create(
+          Number(location.x),
+          Number(location.y),
+          textureKey
+        ) as Phaser.Physics.Arcade.Sprite | undefined
+        if (!pickup) {
+          return
+        }
+        pickup.setActive(true).setVisible(true).setDepth(5)
+        pickup.setScale(location.category === 'capsule' ? 1.08 : 1)
+        pickup.setDataEnabled()
+        pickup.data?.set('locationId', location.id)
+        pickup.data?.set('locationCategory', location.category)
+        pickup.clearTint()
+        const body = pickup.body as Phaser.Physics.Arcade.Body | undefined
+        if (body) {
+          body.enable = true
+          body.setAllowGravity(false)
+          body.setImmovable(true)
+        }
+      })
+  }
+
+  private onProgressionPickupCollected(
+    _playerObj: Phaser.GameObjects.GameObject,
+    pickupObj: Phaser.GameObjects.GameObject
+  ): void {
+    const pickup = pickupObj as Phaser.Physics.Arcade.Sprite
+    if (!pickup?.active) {
+      return
+    }
+    const locationId = String(pickup.data?.get?.('locationId') ?? '') as Parameters<typeof claimLocationCheck>[1]
+    if (!locationId) {
+      return
+    }
+    const body = pickup.body as Phaser.Physics.Arcade.Body | undefined
+    body?.setVelocity(0, 0)
+    if (body) {
+      body.enable = false
+    }
+    pickup.setActive(false).setVisible(false)
+    this.collectProgressionLocation(locationId)
+  }
+
+  private collectProgressionLocation(locationId: string): void {
+    const previous = this.progressionSave
+    const claim = claimLocationCheck(previous, locationId as any)
+    if (claim.duplicate) {
+      return
+    }
+    const next = claim.nextSave
+    Save.save(next)
+    this.progressionSave = Save.load()
+    this.applyProgressionStateToRuntime(previous, this.progressionSave, claim.itemId)
+  }
+
+  private applyProgressionStateToRuntime(previous: any, next: any, itemId: string | null): void {
+    if (itemId) {
+      const itemLabel = getProgressionItemLabel(itemId).toUpperCase()
+      if (
+        itemId.startsWith('access_') ||
+        itemId.startsWith('armor_') ||
+        itemId.startsWith('chip_') ||
+        itemId === 'heart_tank' ||
+        itemId === 'sub_tank' ||
+        this.progressionSave.weaponsUnlocked.includes(itemId)
+      ) {
+        this.showStageToast(`CHECK SECURED • ${itemLabel}`, 1100)
+      } else {
+        this.showStageToast(`CHECK SECURED • ${itemLabel}`, 900)
+      }
+    }
+
+    if (previous.weaponsUnlocked.join(',') !== next.weaponsUnlocked.join(',')) {
+      this.refreshWeaponsFromProgression()
+    }
+
+    const previousMaxHp = getPlayerMaxHpFromSave(previous)
+    const nextMaxHp = getPlayerMaxHpFromSave(next)
+    if (nextMaxHp !== previousMaxHp) {
+      const gained = nextMaxHp - previousMaxHp
+      this.playerMaxHp = nextMaxHp
+      this.playerHp = Math.min(nextMaxHp, this.playerHp + Math.max(0, gained))
+      this.player.data?.set?.('hp', this.playerHp)
+      this.player.data?.set?.('maxHp', this.playerMaxHp)
+      this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
+    }
+
+    this.applyProgressionMovementModifiers()
+    this.flushPendingProgressionItems()
+  }
+
+  private flushPendingProgressionItems(): void {
+    let working = this.progressionSave
+    while ((working.pendingProgressionItems?.length ?? 0) > 0) {
+      const drained = drainPendingConsumable(working)
+      if (!drained.item) {
+        break
+      }
+      const consumed = this.applyPendingConsumable(drained.item.itemId, drained.item.amount)
+      if (consumed < drained.item.amount) {
+        working = {
+          ...drained.nextSave,
+          pendingProgressionItems: [
+            {
+              itemId: drained.item.itemId,
+              amount: drained.item.amount - consumed
+            },
+            ...(drained.nextSave.pendingProgressionItems ?? [])
+          ]
+        }
+        Save.save(working)
+        this.progressionSave = Save.load()
+        return
+      }
+      working = drained.nextSave
+      Save.save(working)
+      this.progressionSave = Save.load()
+    }
+  }
+
+  private applyPendingConsumable(itemId: ProgressionConsumableId, amount: number): number {
+    if (itemId.startsWith('hp_')) {
+      const healed = this.restorePlayerHealth(amount)
+      if (healed > 0) {
+        AudioService.playSfx('pickup_health')
+        this.showStageToast(`HP +${healed}`, 700)
+      }
+      return healed
+    }
+    const ammo = this.restoreWeaponEnergy(amount)
+    if (ammo.restored > 0) {
+      AudioService.playSfx('pickup_ammo')
+      this.showStageToast(
+        `${getWeaponDisplayName(ammo.weaponId ?? 'Buster').toUpperCase()} +${ammo.restored}`,
+        700
+      )
+    }
+    return ammo.restored
   }
 
   private updateBossEncounterActivation(): void {
@@ -585,17 +901,83 @@ export class Game extends Phaser.Scene {
     this.applyBossRoomCameraLock()
     AudioService.playMusic(this, 'boss')
     AudioService.playSfx('boss_activate')
-    this.bossController?.unlockIntro()
     const phase = this.bossController?.currentPhase
     if (phase) {
       this.currentPhaseName = phase.name.toUpperCase()
-      this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}`)
+      this.updatePhaseHud()
     } else {
-      this.phaseLabel.setText('BOSS • ACTIVE')
+      this.phaseLabel.setText('BOSS\nACTIVE')
     }
+    const stage = getCampaignStage(this.activeStageId)
+    const introLines = this.buildDialogueLines(stage.id, 'boss_intro')
+    if (introLines.length === 0 || !this.dialogueOverlay) {
+      this.showStageToast('Boss room sealed', 800)
+      this.beginBossCombat()
+      return
+    }
+    this.freezeForDialogue()
+    this.dialogueOverlay.play(introLines, () => {
+      this.resumeAfterDialogue()
+      this.beginBossCombat()
+    })
+  }
+
+  private beginBossCombat(): void {
+    this.bossController?.unlockIntro()
     this.bossUiBinder?.onFightStart()
     this.hud?.setBossBarVisible(Boolean(this.bossHp))
-    this.showStageToast('Boss room sealed', 1000)
+  }
+
+  private buildDialogueLines(
+    stageId: string,
+    trigger: DialogueTrigger,
+    milestoneCount?: number
+  ): DialoguePlaybackLine[] {
+    const stage = getCampaignStage(stageId)
+    const clearedCount = countClearedRobotMasters(this.progressionSave)
+    const values: DialogueInterpolationValues = {
+      hero: 'Relay',
+      rewardLabel: getStageBossRewardLabel(
+        this.progressionSave,
+        stage.id,
+        stage.rewardWeaponId ? getWeaponDisplayName(stage.rewardWeaponId) : 'campaign access'
+      ),
+      clearedCount,
+      remainingCount: Math.max(0, 8 - clearedCount)
+    }
+    const groups: Array<{ id: string; lines: DialogueLineDefinition[] }> = []
+    const sequence = DIALOGUE_REGISTRY.getSequence(stage.id as any, trigger)
+    if (sequence) groups.push(sequence)
+    if (milestoneCount != null) {
+      const milestone = DIALOGUE_REGISTRY.getMilestone(milestoneCount)
+      if (milestone) groups.push(milestone)
+    }
+    return groups.flatMap((group) =>
+      group.lines.map((line) => {
+        const speaker = DIALOGUE_REGISTRY.getSpeaker(line.speakerId)
+        return {
+          sequenceId: group.id,
+          speakerId: line.speakerId,
+          speakerName: resolveDialogueText(speaker?.displayName ?? line.speakerId, values),
+          text: resolveDialogueText(line.text, values)
+        }
+      })
+    )
+  }
+
+  private freezeForDialogue(): void {
+    this.physics.world.pause()
+    this.newPlayerRuntime?.pauseAnimations?.()
+    this.enemySpawner?.pauseAnimations?.()
+    this.bossController?.pauseAnimations?.()
+  }
+
+  private resumeAfterDialogue(): void {
+    if (this.victoryTriggered || this.paused) return
+    this.physics.world.resume()
+    this.newPlayerRuntime?.resumeAnimations?.()
+    this.enemySpawner?.resumeAnimations?.()
+    this.bossController?.resumeAnimations?.()
   }
 
   private checkStageKillPlane(): void {
@@ -609,15 +991,19 @@ export class Game extends Phaser.Scene {
     if (this.player.y <= this.scale.height + 40) {
       return
     }
-    this.killPlayer('pit')
+    this.requestPlayerDamage({
+      amount: Math.max(1, this.playerHp),
+      tier: 'heavy',
+      sourceType: 'fall',
+      sourceId: 'stage_kill_plane',
+      bypassIFrames: true,
+      knockback: { x: 0, y: 0 }
+    })
   }
 
   private killPlayer(reason: 'pit' | 'debug' | 'damage'): void {
     if (!this.player || this.fallingToDeath) {
       return
-    }
-    if (reason === 'pit') {
-      this.recordCombatHit('system', 'player', this.playerHp, 'fall', true, 'pit')
     }
     this.playerHp = 0
     this.player.data?.set?.('hp', this.playerHp)
@@ -635,8 +1021,48 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    this.physics.add.collider(this.playerBullets, this.stagePlatforms, this.recycleBullet, undefined, this)
-    this.physics.add.collider(this.bossBullets, this.stagePlatforms, this.recycleBullet, undefined, this)
+    this.physics.add.collider(
+      this.playerBullets,
+      this.stagePlatforms,
+      this.recycleBullet,
+      this.shouldProjectileHitPlatform,
+      this
+    )
+    this.physics.add.collider(
+      this.bossBullets,
+      this.stagePlatforms,
+      this.recycleBullet,
+      this.shouldProjectileHitPlatform,
+      this
+    )
+  }
+
+  private shouldProjectileHitPlatform(
+    objA: Phaser.GameObjects.GameObject,
+    objB: Phaser.GameObjects.GameObject
+  ): boolean {
+    const spriteA = objA as Phaser.Physics.Arcade.Sprite
+    const spriteB = objB as Phaser.Physics.Arcade.Sprite
+    const bullet =
+      this.playerBullets?.contains(spriteA) || this.bossBullets?.contains(spriteA)
+        ? spriteA
+        : this.playerBullets?.contains(spriteB) || this.bossBullets?.contains(spriteB)
+          ? spriteB
+          : null
+    const platform = bullet === spriteA ? spriteB : spriteA
+    const platformBody = platform?.body as Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody | undefined
+    if (!bullet || !platformBody) {
+      return false
+    }
+
+    const visibleBounds = bullet.getBounds()
+    const platformBounds = new Phaser.Geom.Rectangle(
+      platformBody.x,
+      platformBody.y,
+      platformBody.width,
+      platformBody.height
+    )
+    return Phaser.Geom.Rectangle.Overlaps(visibleBounds, platformBounds)
   }
 
   private handleDropThroughInput(now: number): void {
@@ -686,6 +1112,7 @@ export class Game extends Phaser.Scene {
   // ======================= [OVERLAPS-BEGIN]
   private bossHitWire?: Phaser.Physics.Arcade.Collider
   private playerHitWire?: Phaser.Physics.Arcade.Collider
+  private bossContactWire?: Phaser.Physics.Arcade.Collider
   private projectileClashWire?: Phaser.Physics.Arcade.Collider
 
   private installHitWires(): void {
@@ -695,9 +1122,11 @@ export class Game extends Phaser.Scene {
 
     this.bossHitWire?.destroy()
     this.playerHitWire?.destroy()
+    this.bossContactWire?.destroy()
     this.projectileClashWire?.destroy()
     this.bossHitWire = undefined
     this.playerHitWire = undefined
+    this.bossContactWire = undefined
     this.projectileClashWire = undefined
 
     const target = this.bossTarget
@@ -716,6 +1145,15 @@ export class Game extends Phaser.Scene {
           this.playerBullets,
           target,
           (a, b) => this.projectileCollisionRouter.handlePlayerBulletHitsBoss(a, b, target),
+          undefined,
+          this
+        )
+      }
+      if (this.player) {
+        this.bossContactWire = this.physics.add.overlap(
+          this.player,
+          target,
+          (playerObj, bossObj) => this.onBossContact(playerObj, bossObj),
           undefined,
           this
         )
@@ -808,23 +1246,76 @@ export class Game extends Phaser.Scene {
       return rows
     }
 
-    ;(window as any).dump = dump
-    ;(window as any).bossDebug = {
-      damage: (amount = 1) => this.applyDamageToBoss(amount),
-      forceVictory: () => this.onBossDefeated(),
-      unlockIntro: () => this.bossController?.unlockIntro(),
-      hp: () => this.bossHp
-    }
-    ;(window as any).stageDebug = {
-      checkpointIndex: () => this.currentCheckpointIndex,
-      enemyStream: () => this.enemySpawner?.getStreamDebugSnapshot?.() ?? null,
-      projectilePools: () => ({
-        player: summarizeProjectilePool(this.playerBullets),
-        enemy: summarizeProjectilePool(this.bossBullets)
-      }),
-      forcePlayerDeath: () => this.killPlayer('debug'),
-      activateBossRoom: () => this.activateBossEncounter(),
-      spawnProjectileClash: (options?: { strong?: boolean } | boolean) => {
+    if (AUTOMATION.enabled) {
+      ;(window as any).dump = dump
+      ;(window as any).bossDebug = {
+        damage: (amount = 1) => this.applyDamageToBoss(amount),
+        forceVictory: () => {
+          this.onBossDefeated()
+          this.dialogueOverlay?.skip()
+        },
+        unlockIntro: () => {
+          this.dialogueOverlay?.skip()
+          this.bossController?.unlockIntro()
+        },
+        hp: () => this.bossHp
+      }
+      ;(window as any).stageDebug = {
+        checkpointIndex: () => this.currentCheckpointIndex,
+        enemyStream: () => this.enemySpawner?.getStreamDebugSnapshot?.() ?? null,
+        projectilePools: () => ({
+          player: summarizeProjectilePool(this.playerBullets),
+          enemy: summarizeProjectilePool(this.bossBullets)
+        }),
+        playerViewport: () => {
+          const body = this.player?.body as Phaser.Physics.Arcade.Body | undefined
+          return {
+            top: Number(body?.top ?? this.player?.y ?? 0),
+            bottom: Number(body?.bottom ?? this.player?.y ?? 0),
+            viewportTop: GAMEPLAY_VIEWPORT_TOP,
+            actorCeiling: GAMEPLAY_ACTOR_CEILING,
+            blockedUp: Boolean(body?.blocked.up)
+          }
+        },
+        setWeaponEnergy: (weaponId: string, amount: number) => {
+          if (!this.weapons.includes(weaponId) || weaponId === 'Buster') {
+            return null
+          }
+          const config = getWeaponConfig(weaponId)
+          this.weaponEnergyById[weaponId] = Phaser.Math.Clamp(Number(amount) || 0, 0, config.maxEnergy)
+          this.passiveWeaponRechargeAccumulatorMs = 0
+          if (weaponId === this.getCurrentWeaponId()) {
+            this.syncWeaponHud()
+          }
+          return this.getWeaponEnergyDebugState()
+        },
+        freezeLatestPlayerProjectile: () => {
+          const projectile = getLatestActiveProjectile(this.playerBullets)
+          const body = projectile?.body as Phaser.Physics.Arcade.Body | undefined
+          if (!projectile?.active || !body?.enable) {
+            return null
+          }
+          body.setVelocity(0, 0)
+          return {
+            projectileId: projectile.data?.get?.('projectileId') ?? null,
+            active: projectile.active,
+            visible: projectile.visible,
+            bodyEnabled: body.enable
+          }
+        },
+        forcePlayerDeath: () =>
+          this.requestPlayerDamage({
+            amount: Math.max(1, this.playerHp),
+            tier: 'heavy',
+            sourceType: 'system',
+            sourceId: 'debug_force_death',
+            bypassIFrames: true,
+            knockback: { x: 0, y: 0 }
+          }),
+        activateBossRoom: () => this.activateBossEncounter(),
+        advanceDialogue: () => this.dialogueOverlay?.advance(),
+        skipDialogue: () => this.dialogueOverlay?.skip(),
+        spawnProjectileClash: (options?: { strong?: boolean } | boolean) => {
         if (!this.player || !this.playerBullets || !this.bossBullets) {
           return null
         }
@@ -838,9 +1329,7 @@ export class Game extends Phaser.Scene {
           clashY,
           spawnPlayerProjectile: () =>
             this.fireBulletFromRuntime({
-              speed: strong ? 300 : 260,
-              damage: strong ? 3 : 1,
-              scale: strong ? 1.35 : 1,
+              type: strong ? 'charge' : 'pellet',
               chargeLevel: strong ? 2 : 0,
               facing: 1
             }),
@@ -857,6 +1346,8 @@ export class Game extends Phaser.Scene {
                 tint: this.bossController?.blueprint.theme.trail ?? 0x55ccff,
                 metadata: {
                   attack: strong ? 'debug-projectile-clash-strong' : 'debug-projectile-clash',
+                  sourceType: 'system',
+                  sourceId: 'debug_projectile_clash',
                   ignoreBossUntil: this.time.now + 120
                 }
               }) ?? undefined,
@@ -894,16 +1385,23 @@ export class Game extends Phaser.Scene {
           bossRoomX: this.activeBossRoom?.x ?? null
         }
       },
-      damagePlayer: (amount = 1) => {
-        this.applyDamageToPlayer(amount)
-        return { hp: this.playerHp, maxHp: this.playerMaxHp }
-      },
-      spawnPickup: (type: 'health' | 'ammo' | 'bonus' = 'health') => {
+      damagePlayer: (amount = 1) => ({
+        result: this.requestPlayerDamage({
+          amount,
+          sourceType: 'system',
+          sourceId: 'debug_damage'
+        }),
+        hp: this.playerHp,
+        maxHp: this.playerMaxHp
+      }),
+      spawnPickup: (type: 'health' | 'ammo' | 'bonus' = 'health', offsetX = 0) => {
         if (!this.player) {
           return null
         }
-        const pickup = this.spawnEnemyDrop(this.player.x, this.player.y - 18, type)
-        return pickup ? { type, x: pickup.x, y: pickup.y, active: pickup.active } : null
+        const pickup = this.spawnEnemyDrop(this.player.x + Number(offsetX || 0), this.player.y - 18, type)
+        return pickup
+          ? { type, x: pickup.x, y: pickup.y, active: pickup.active, textureKey: pickup.texture.key }
+          : null
       },
       spawnHostileProjectile: () => {
         if (!this.player || !this.projectileSystem) {
@@ -920,6 +1418,8 @@ export class Game extends Phaser.Scene {
             velocity: { x: -210, y: 0 },
             metadata: {
               attack: 'debug-respawn-projectile',
+              sourceType: 'system',
+              sourceId: 'debug_respawn_projectile',
               ignoreBossUntil: this.time.now + 120
             }
           }) ?? undefined,
@@ -927,13 +1427,14 @@ export class Game extends Phaser.Scene {
         )
         return projectile ? { x: projectile.x, y: projectile.y, active: projectile.active } : null
       },
-      bossGateState: () => ({
-        locked: this.bossGateLocked,
-        x: this.bossGateLockX,
-        bossRoomX: this.activeBossRoom?.x ?? null,
-        bossRoomWidth: this.activeBossRoom?.width ?? null,
-        cameraLocked: this.bossRoomCameraLocked
-      })
+        bossGateState: () => ({
+          locked: this.bossGateLocked,
+          x: this.bossGateLockX,
+          bossRoomX: this.activeBossRoom?.x ?? null,
+          bossRoomWidth: this.activeBossRoom?.width ?? null,
+          cameraLocked: this.bossRoomCameraLocked
+        })
+      }
     }
 
     const toggleOverlay = () => {
@@ -961,11 +1462,13 @@ export class Game extends Phaser.Scene {
         this.input.keyboard?.off('keydown-BACKTICK', toggleOverlay)
         this.input.keyboard?.off('keydown-D', handleDump)
         this.input.keyboard?.off('keydown-BACKSLASH', handlePhysics)
-        if ((window as any).dump === dump) {
-          delete (window as any).dump
+        if (AUTOMATION.enabled) {
+          if ((window as any).dump === dump) {
+            delete (window as any).dump
+          }
+          delete (window as any).bossDebug
+          delete (window as any).stageDebug
         }
-        delete (window as any).bossDebug
-        delete (window as any).stageDebug
       })
     }
   }
@@ -1123,6 +1626,11 @@ export class Game extends Phaser.Scene {
 
   create(data: GameData): void {
     this.combatDebugBus.clear()
+    this._bossSpawned = false
+    this.bossBody = undefined
+    this.bossArt = undefined
+    this.bossTarget = undefined
+    this.bossController = undefined
 
     const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
 
@@ -1145,9 +1653,6 @@ export class Game extends Phaser.Scene {
       this.bossSceneEvents = undefined
       this.bossProjectileController?.stop()
       this.bossProjectileController = undefined
-      this.chargeEmitter?.stop()
-      this.chargeEmitter?.destroy()
-      this.chargeEmitter = undefined
       this.physics?.world?.colliders?.destroy?.()
       this.platformCollisionSystem?.destroy()
       this.platformCollisionSystem = undefined
@@ -1187,16 +1692,20 @@ export class Game extends Phaser.Scene {
     this.devInit()
     const loadFromSave = Boolean((data as any)?.loadFromSave)
     this.loadedFromSave = loadFromSave
+    this.progressionSave = Save.load()
     const activeRun = loadFromSave ? Save.loadActiveRun() : null
     const stageId = activeRun?.stageId ?? (data as any)?.stageId ?? ((data as any)?.bossId as string) ?? 'pyro_maw'
     const stage = getCampaignStage(stageId)
-    const bossIdFromQuery = params?.get('bossId') as BossId | null
+    const bossIdFromQuery = AUTOMATION.enabled ? (params?.get('bossId') as BossId | null) : null
     const selectedBossId =
       (activeRun?.bossId as BossId | undefined) ?? bossIdFromQuery ?? data.bossId ?? stage.bossId
     this.activeBossId = selectedBossId
     this.activeStageId = stage.id
     const blueprint = getBossById(selectedBossId)
-    const runtimeDefinitionId = params?.get('bossConfig') ?? (data as any)?.runtimeBossConfigId ?? stage.runtimeBossConfigId
+    const runtimeDefinitionId =
+      (AUTOMATION.enabled ? params?.get('bossConfig') : null) ??
+      (data as any)?.runtimeBossConfigId ??
+      stage.runtimeBossConfigId
     const runtimeDefinition = runtimeDefinitionId ? getBossDefinitionById(runtimeDefinitionId) : undefined
     const bossMaxHp = runtimeDefinition?.maxHP ?? blueprint.baseStats?.maxHp ?? 20
     const bossCodename = runtimeDefinition?.displayName ?? blueprint.codename ?? blueprint.id
@@ -1224,22 +1733,15 @@ export class Game extends Phaser.Scene {
     this.input.once('pointerdown', unlockAudio)
     this.installScrollGuards()
     this.createPauseOverlay(width, height)
+    this.dialogueOverlay = new DialogueOverlayController(this)
 
     const escHandler = (event: KeyboardEvent) => {
       event.preventDefault()
-      if (this.victoryModal?.isOpen()) {
-        this.victoryModal.confirm()
+      if (this.dialogueOverlay?.isActive()) {
+        this.dialogueOverlay.skip()
         return
       }
-      if (this.scene.isActive('SystemMenu')) {
-        AudioService.playSfx('pause_resume')
-        this.scene.stop('SystemMenu')
-        this.onSystemMenuAction('resume')
-        return
-      }
-      this.setPaused(true)
-      AudioService.playSfx('pause_open')
-      this.scene.launch('SystemMenu', { sourceScene: 'Game' })
+      this.openSystemMenu()
     }
     this.input.keyboard?.on('keydown-ESC', escHandler)
     const resumeHandler = () => {
@@ -1261,6 +1763,7 @@ export class Game extends Phaser.Scene {
       this.events?.off?.(Phaser.Scenes.Events.WAKE, wakeHandler)
       this.physics?.world?.off?.('pause', physicsPauseHandler)
       this.physics?.world?.off?.('resume', physicsResumeHandler)
+      this.dialogueOverlay = undefined
     })
 
     if (this.input.keyboard) {
@@ -1283,8 +1786,10 @@ export class Game extends Phaser.Scene {
     this.dropJumpHeld = false
     this.bossName = bossCodename
     this.bossHp = { current: bossMaxHp, max: bossMaxHp }
-    this.weapons = buildWeaponOrder(Save.load().weaponsUnlocked)
-    this.weaponEnergyById = buildWeaponEnergySnapshot(Save.load().weaponsUnlocked)
+    this.weapons = buildWeaponOrder(this.progressionSave.weaponsUnlocked)
+    this.weaponEnergyById = buildWeaponEnergySnapshot(this.progressionSave.weaponsUnlocked)
+    this.passiveWeaponRechargeAccumulatorMs = 0
+    this.lastSaberWeaponRechargeAtMs = Number.NEGATIVE_INFINITY
 
     const makeOverlayLabel = (
       x: number,
@@ -1320,38 +1825,48 @@ export class Game extends Phaser.Scene {
     this.weaponLabel.setVisible(false)
 
     this.phaseLabel = this.add
-      .text(width / 2, 8, 'PHASE • --', {
+      .text(width / 2, 8, 'PHASE --', {
         fontFamily: 'monospace',
-        fontSize: '8px',
+        fontSize: '7px',
         color: '#d4e7ff',
         align: 'center'
       })
       .setScrollFactor(0)
       .setOrigin(0.5, 0)
       .setDepth(1000)
+    this.phaseLabel.setFixedSize(64, 24)
     this.phaseLabel.setLetterSpacing(1)
     this.phaseLabel.setShadow(0, 1, '#041224', 0, false, true)
     this.phaseLabel.setStroke('#0a2137', 2)
 
+    this.events.on('player.hitstop', this.onHitstop)
+    this.events.on('camera.shake', this.onCameraShake)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off('player.hitstop', this.onHitstop)
+      this.events.off('camera.shake', this.onCameraShake)
+    })
+
     this.player = this.physics.add.sprite(stage.arena.spawn.x, stage.arena.spawn.y, 'atlas_player_main', 'player_main/idle/000')
     this.player.setCollideWorldBounds(true)
     this.player.setDragX(900)
-    this.player.setMaxVelocity(220, 550)
-    const playerBody = this.player.body as Phaser.Physics.Arcade.Body
-    playerBody.setSize(PLAYER_COLLIDER_STAND.width, PLAYER_COLLIDER_STAND.height)
-    playerBody.setOffset(PLAYER_COLLIDER_STAND.offsetX, PLAYER_COLLIDER_STAND.offsetY)
+    const movementSpeedMultiplier = getMovementSpeedMultiplier(this.progressionSave)
+    const movementLimits = resolvePlayerPhysicsLimits(PLAYER_GAMEPLAY_CONFIG, movementSpeedMultiplier)
+    this.player.setMaxVelocity(movementLimits.maxVelocityX, movementLimits.maxVelocityY)
+    applyPlayerBodyProfile(this.player, 'stand')
     this.playAnimationSafe(this.player, 'player-idle')
-    this.playerMaxHp = 8
+    this.playerMaxHp = getPlayerMaxHpFromSave(this.progressionSave)
     this.playerHp = this.playerMaxHp
     this.playerLives = 3
     this.respawnPoint = new Phaser.Math.Vector2(this.player.x, this.player.y)
     this.currentCheckpointIndex = 0
+    this.currentCheckpointId = stage.arena.checkpoints[0]?.id ?? null
     this.player.setDataEnabled()
     this.player.data.set('hp', this.playerHp)
     this.player.data.set('maxHp', this.playerMaxHp)
     this.devRegister(this.player, 'player')
 
     this.buildStage(stageId)
+    ensurePickupTextures(this)
 
     this.projectileRegistry = createDefaultProjectileRegistry()
     this.projectileSystem = new ProjectileSystem(this, this.projectileRegistry, {
@@ -1369,12 +1884,15 @@ export class Game extends Phaser.Scene {
       getNow: () => this.time.now,
       getFacing: () => this.facing,
       damageBoss: (damage, meta) => this.applyDamageToBoss(damage, meta),
-      damagePlayer: (damage) => {
-        if (!this.newPlayerRuntime) {
-          throw new Error('[Game] NewPlayerRuntime is required in v2 runtime')
-        }
-        return this.newPlayerRuntime.receiveDamage(damage, 'light')
-      },
+      damagePlayer: (damage, meta) =>
+        this.requestPlayerDamage({
+          amount: damage,
+          tier: meta.tier,
+          sourceType: meta.sourceType,
+          sourceId: meta.sourceId,
+          direction: meta.direction,
+          element: meta.element
+        }),
       damageEnemy: (enemy, damage) => {
         const handledByFramework = this.enemySpawner?.applyDamageToSprite(enemy, {
           amount: damage,
@@ -1415,7 +1933,13 @@ export class Game extends Phaser.Scene {
     }
     this.hazards = this.physics.add.staticGroup()
     stage.arena.hazards.forEach((hazard) => {
-      this.hazards.create(hazard.x, hazard.y, EFFECTS_ATLAS_KEY, HAZARD_SPIKES_FRAME).refreshBody()
+      const sprite = this.hazards.create(hazard.x, hazard.y, resolveStageHazardTexture(hazard.id))
+      sprite.setDataEnabled?.()
+      sprite.data?.set?.('damageSourceType', 'hazard')
+      sprite.data?.set?.('damageSourceId', hazard.id)
+      sprite.data?.set?.('damageAmount', 1)
+      sprite.setSize?.(28, 10)
+      sprite.refreshBody()
     })
 
     this.enemies = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite })
@@ -1424,69 +1948,37 @@ export class Game extends Phaser.Scene {
       maxSize: 24,
       allowGravity: true
     })
+    this.progressionPickups = this.physics.add.group({
+      classType: Phaser.Physics.Arcade.Sprite,
+      maxSize: 32,
+      allowGravity: false,
+      immovable: true
+    })
     this.installEntityPlatformCollisions()
 
     this.initializeEnemyFramework(stageId)
 
-    const bossArtVisuals = this.prepareBossArtVisuals(selectedBossId)
-    // ======================= [BOSS-SPAWN-BEGIN]
-    this.spawnBossOnce(() => {
-      this.bossBody = this.physics.add.sprite(
-        stage.arena.bossSpawn.x,
-        stage.arena.bossSpawn.y - 64,
-        bossArtVisuals.atlasKey,
-        bossArtVisuals.defaultFrame
-      )
-      this.bossBody.setVisible(false)
-      this.bossBody.setCollideWorldBounds(true)
-      this.bossBody.setDataEnabled()
-      this.bossBody.data.set('name', bossCodename)
-      this.bossBody.data.set('maxHp', bossMaxHp)
-      this.bossBody.data.set('hp', bossMaxHp)
-      const bossBody = this.bossBody.body as Phaser.Physics.Arcade.Body
-      if (this.bossBody.width > 0 && this.bossBody.height > 0) {
-        bossBody.setSize(this.bossBody.width, this.bossBody.height)
-        bossBody.setOffset(0, 0)
-      }
-      this.bossBody.setVelocityX(-60)
-      this.bossHp = { current: bossMaxHp, max: bossMaxHp }
-      this.bossName = this.bossBody.data.get('name')
-      this.devRegister(this.bossBody, 'boss.body')
-      this.bossTarget = this.bossBody
-
-      this.installEntityPlatformCollisions()
-
-      if (!this.bossArt) {
-        this.bossArt = this.add.sprite(
-          this.bossBody.x,
-          this.bossBody.y,
-          bossArtVisuals.atlasKey,
-          bossArtVisuals.defaultFrame
-        )
-      } else {
-        this.bossArt.setTexture(bossArtVisuals.atlasKey, bossArtVisuals.defaultFrame)
-        this.bossArt.setVisible(true)
-        this.bossArt.setPosition(this.bossBody.x, this.bossBody.y)
-      }
-      this.bossArt.setDepth(2)
-      this.bossArt.setDataEnabled?.()
-      this.playAnimationSafe(this.bossArt, 'boss_walk')
-      this.devRegister(this.bossArt, 'boss.art')
-      this.devRegister(this.bossTarget, 'boss.hitbox')
-      this.bossProjectileController?.startLoop()
-    })
-    // ======================= [BOSS-SPAWN-END]
+    // The modular BossController below is the single authoritative boss actor.
+    // Do not create a second legacy sprite here: even when hidden, that actor
+    // retained independent physics, position, animation, and facing state and
+    // could reappear as the vertically offset "double boss" seen in playtests.
+    this.prepareBossArtVisuals(selectedBossId)
+    this.bossHp = { current: bossMaxHp, max: bossMaxHp }
+    this.bossName = bossCodename
 
     this.installEntityPlatformCollisions()
     this.installHitWires()
 
-    this.physics.add.overlap(this.player, this.hazards, this.onPlayerDamaged, undefined, this)
-    this.physics.add.overlap(this.player, this.enemies, this.onPlayerDamaged, undefined, this)
+    this.physics.add.overlap(this.player, this.hazards, this.onHazardContact, undefined, this)
+    this.physics.add.overlap(this.player, this.enemies, this.onEnemyContact, undefined, this)
     if (this.drops) {
       this.physics.add.overlap(this.player, this.drops, this.onPickupCollected, undefined, this)
       if (this.stagePlatforms) {
         this.physics.add.collider(this.drops, this.stagePlatforms)
       }
+    }
+    if (this.progressionPickups) {
+      this.physics.add.overlap(this.player, this.progressionPickups, this.onProgressionPickupCollected, undefined, this)
     }
     this.physics.add.overlap(this.playerBullets, this.enemies, this.onBulletHitsEnemy, undefined, this)
 
@@ -1496,6 +1988,19 @@ export class Game extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.createCursorKeys()
     this.initializeActionKeys()
+    this.virtualButtons = new DigitalButtonPad()
+    this.touchControls?.destroy()
+    this.touchControls = undefined
+    if (this.playerFeatureFlags.enableTouchControls && GameplayTouchControls.shouldEnable()) {
+      this.touchControls = new GameplayTouchControls(this, this.virtualButtons, {
+        onPause: () => this.openSystemMenu()
+      })
+      this.touchControls.setVisible(true)
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        this.touchControls?.destroy()
+        this.touchControls = undefined
+      })
+    }
     this.newPlayerRuntime = new NewPlayerRuntime(
       this,
       this.player,
@@ -1504,12 +2009,14 @@ export class Game extends Phaser.Scene {
       this.playerFeatureFlags,
       {
         setAnimation: (key) => this.setPlayerAnimation(key),
-        spawnProjectile: ({ speed, damage, scale, chargeLevel, facing }) =>
-          this.fireBulletFromRuntime({ speed, damage, scale, chargeLevel, facing }),
+        spawnProjectile: (request) => this.fireBulletFromRuntime(request),
+        canChargeProjectile: () => this.getCurrentWeaponConfig().allowCharge,
         applySwordHitbox: (hitbox) => this.applySwordHitboxFromRuntime(hitbox),
-        applyDamage: (damage) => this.applyDamageToPlayer(damage)
-      }
+        applyDamage: (damage) => this.commitPlayerDamage(damage)
+      },
+      this.virtualButtons
     )
+    this.newPlayerRuntime.setMovementSpeedMultiplier(movementSpeedMultiplier)
     this.playerMaxHp = Math.max(this.playerMaxHp, 8)
     this.playerHp = this.playerMaxHp
     this.player.data?.set('hp', this.playerHp)
@@ -1520,7 +2027,8 @@ export class Game extends Phaser.Scene {
       spawn: new Phaser.Math.Vector2(stage.arena.bossSpawn.x, stage.arena.bossSpawn.y),
       lockIntro: true,
       runtimeDefinition,
-      movementBounds: getBossRoomMovementBounds(stage.arena.bossRoom)
+      movementBounds: getBossRoomMovementBounds(stage.arena.bossRoom),
+      getActiveHazardCount: () => this.countActiveBossRoomHazards()
     })
     if (this.bossController) {
       const bossActor = this.bossController as Phaser.Types.Physics.Arcade.GameObjectWithBody
@@ -1540,9 +2048,12 @@ export class Game extends Phaser.Scene {
       this.bossProjectileController?.startLoop()
     }
     this.initializeHud()
+    this.applySelectedCheckpoint(stageId, activeRun?.checkpointId ?? (data as any)?.checkpointId ?? null)
+    this.spawnProgressionPickups(stageId)
     this.applyActiveRunSnapshot(activeRun)
+    this.flushPendingProgressionItems()
     this.currentPhaseName = this.bossController.currentPhase.name.toUpperCase()
-    this.phaseLabel.setText('BOSS GATE • ADVANCE')
+    this.phaseLabel.setText('BOSS GATE\nADVANCE')
     this.bossSceneEvents?.destroy()
     this.bossSceneEvents = new BossSceneEventBindings({
       events: this.events,
@@ -1550,7 +2061,7 @@ export class Game extends Phaser.Scene {
       playStageMusic: () => AudioService.playMusic(this, stage.id === FINAL_STAGE_ID ? 'final' : 'stage'),
       onPhaseChanged: (phaseName) => {
         this.currentPhaseName = phaseName
-        this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}`)
+        this.updatePhaseHud()
       },
       onAttack: (event) => {
         this.bossProjectileController?.onBossAttack(event.attack, event.attackData)
@@ -1559,7 +2070,7 @@ export class Game extends Phaser.Scene {
         this.bossHp = { current: hp.current, max: hp.max }
       },
       onBossDefeated: (rewardName) => {
-        this.phaseLabel.setText(`VICTORY • WEAPON ACQUIRED\n${rewardName.toUpperCase()}`)
+        this.phaseLabel.setText(`VICTORY\n${rewardName.toUpperCase().slice(0, 12)}`)
         this.onBossDefeated()
       }
     })
@@ -1569,6 +2080,17 @@ export class Game extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    if (this.hitstopRemainingFrames > 0) {
+      this.hitstopRemainingFrames -= 1
+      if (this.hitstopRemainingFrames <= 0) {
+        this.physics.world.resume()
+        this.newPlayerRuntime?.resumeAnimations?.()
+        this.enemySpawner?.resumeAnimations?.()
+        this.bossController?.resumeAnimations?.()
+      }
+      return
+    }
+
     if (!this.player || !this.cursors) {
       const now = this.time.now
       this.bossUpdate(now)
@@ -1611,6 +2133,11 @@ export class Game extends Phaser.Scene {
       return
     }
 
+    if (this.dialogueOverlay?.isActive()) {
+      this.devUpdate()
+      return
+    }
+
     if (pauseState.skipUpdate) {
       this.bossUpdate(now)
       this.enemySpawner?.update(now, delta)
@@ -1619,6 +2146,7 @@ export class Game extends Phaser.Scene {
     }
 
     this.registry.set('player_x', this.player.x)
+    this.registry.set('player_y', this.player.y)
 
     if (!this.newPlayerRuntime) {
       throw new Error('[Game] NewPlayerRuntime is required in v2 runtime')
@@ -1626,11 +2154,19 @@ export class Game extends Phaser.Scene {
     this.handleDropThroughInput(now)
     this.handleWeaponCycling()
     this.newPlayerRuntime.update(now, delta)
-    this.projectileSystem?.update(now, delta, { player: this.player })
+    this.updateWeaponEnergyRecharge(delta)
+    this.projectileSystem?.update(now, delta, {
+      player: this.player,
+      enemyReturnTarget: this.bossController
+    })
     this.updateRespawnCheckpoint()
     this.updateBossEncounterActivation()
+    if (this.dialogueOverlay?.isActive()) {
+      this.devUpdate()
+      return
+    }
     this.checkStageKillPlane()
-    this.facing = this.player.flipX ? -1 : 1
+    this.facing = this.newPlayerRuntime.getFacing()
     this.bossUpdate(now)
     this.bossProjectileController?.update(now, delta)
     this.enemySpawner?.update(now, delta)
@@ -1669,6 +2205,26 @@ export class Game extends Phaser.Scene {
         this.pauseOverlay = undefined
       }
     })
+  }
+
+  private openSystemMenu(): void {
+    if (this.dialogueOverlay?.isActive()) {
+      this.dialogueOverlay.skip()
+      return
+    }
+    if (this.victoryModal?.isOpen()) {
+      this.victoryModal.confirm()
+      return
+    }
+    if (this.scene.isActive('SystemMenu')) {
+      AudioService.playSfx('pause_resume')
+      this.scene.stop('SystemMenu')
+      this.onSystemMenuAction('resume')
+      return
+    }
+    this.setPaused(true)
+    AudioService.playSfx('pause_open')
+    this.scene.launch('SystemMenu', { sourceScene: 'Game' })
   }
 
   private setPaused(paused: boolean): void {
@@ -1730,15 +2286,15 @@ export class Game extends Phaser.Scene {
 
   private initializeHud(): void {
     this.hud = new HUD(this)
-    const stage = getCampaignStage(this.activeStageId)
     const bossLabelRaw =
       this.bossController?.blueprint.codename ??
       this.bossBody?.data?.get?.('name') ??
       this.bossName ??
       '??'
     const bossLabelName = typeof bossLabelRaw === 'string' ? bossLabelRaw : String(bossLabelRaw)
-    this.hud.setNames(stage.title, bossLabelName)
+    this.hud.setNames('MEGA MAN X', bossLabelName)
     this.hud.setWeaponName(getWeaponDisplayName(this.getCurrentWeaponId()))
+    this.hud.setWeaponColor(this.getCurrentWeaponConfig().tint)
     this.hud.setLives(this.playerLives)
     this.hud.updatePlayerHp(this.playerHp, this.playerMaxHp)
     this.syncWeaponHud()
@@ -1778,145 +2334,118 @@ export class Game extends Phaser.Scene {
     }
   }
 
-  private handleShooting(now: number, grounded: boolean): void {
-    const shootKey = this.actionKeys.shoot
-    if (Phaser.Input.Keyboard.JustDown(shootKey)) {
-      this.isChargingShot = true
-      this.chargeStartedAt = now
-      this.startCharging()
-    }
-
-    if (this.isChargingShot && !shootKey.isDown) {
-      const charged = now - this.chargeStartedAt >= 600
-      this.stopCharging()
-      this.fireBullet(charged)
-      this.isChargingShot = false
-      this.animationLockUntil = Math.max(this.animationLockUntil, now + 180)
-      this.setPlayerAnimation(grounded ? 'player-shoot' : 'player-shoot-air')
-    }
-  }
-
-  private handleSaberInput(now: number, grounded: boolean): void {
-    if (!Phaser.Input.Keyboard.JustDown(this.actionKeys.saber)) {
+  private updateWeaponEnergyRecharge(deltaMs: number): void {
+    this.passiveWeaponRechargeAccumulatorMs += Math.max(0, deltaMs)
+    const ticks = Math.min(
+      4,
+      Math.floor(this.passiveWeaponRechargeAccumulatorMs / PASSIVE_WEAPON_RECHARGE_INTERVAL_MS)
+    )
+    if (ticks <= 0) {
       return
     }
-
-    this.saberComboStep = ((this.saberComboStep % 3) + 1) as number
-    this.saberComboTimer = this.saberComboWindow
-    this.animationLockUntil = Math.max(this.animationLockUntil, now + 180)
-    this.updatePlayerTint()
-    this.setPlayerAnimation(grounded ? 'player-shoot' : 'player-shoot-air')
-    this.applySaberDamage()
-    if (this.player) {
-      this.playSaberFx(this.player, this.facing)
+    this.passiveWeaponRechargeAccumulatorMs -= ticks * PASSIVE_WEAPON_RECHARGE_INTERVAL_MS
+    const selectedWeaponId = this.getCurrentWeaponId()
+    const targets = getHolsteredWeaponRechargeTargets(this.weapons, selectedWeaponId)
+    for (const weaponId of targets) {
+      const config = getWeaponConfig(weaponId)
+      const current = this.weaponEnergyById[weaponId] ?? config.maxEnergy
+      const result = rechargeWeaponEnergyValue(
+        current,
+        config.maxEnergy,
+        PASSIVE_WEAPON_RECHARGE_AMOUNT * ticks
+      )
+      this.weaponEnergyById[weaponId] = result.next
     }
   }
 
-  private startDash(now: number, movingLeft: boolean, movingRight: boolean): void {
-    if (this.dashActive) {
-      return
+  private rechargeSelectedWeaponFromSaber(): number {
+    const weaponId = this.getCurrentWeaponId()
+    if (weaponId === 'Buster' || this.time.now - this.lastSaberWeaponRechargeAtMs < SABER_WEAPON_RECHARGE_COOLDOWN_MS) {
+      return 0
     }
-
-    const direction = movingLeft && !movingRight ? -1 : movingRight && !movingLeft ? 1 : this.facing
-    this.facing = direction === 0 ? this.facing : (direction as 1 | -1)
-
-    this.dashActive = true
-    this.dashTimer = this.dashDuration
-    this.dashCooldownTimer = this.dashCooldown
-    this.player.setAccelerationX(0)
-    this.player.setDragX(0)
-    this.player.setVelocityX(320 * this.facing)
-    this.animationLockUntil = Math.max(this.animationLockUntil, now + this.dashDuration)
-    this.updatePlayerTint()
-  }
-
-  private startSlide(now: number, movingLeft: boolean, movingRight: boolean): void {
-    const direction = movingLeft && !movingRight ? -1 : movingRight && !movingLeft ? 1 : this.facing
-    this.facing = direction === 0 ? this.facing : (direction as 1 | -1)
-    this.slideUntil = now + this.slideDuration
-    this.applySlideHitbox()
-    this.player.setVelocityX(260 * this.facing)
-    this.animationLockUntil = Math.max(this.animationLockUntil, this.slideUntil)
-    this.updatePlayerTint()
-    this.setPlayerAnimation('player-slide')
-  }
-
-  private applySlideHitbox(): void {
-    if (this.usingSlideHitbox) {
-      return
+    const config = getWeaponConfig(weaponId)
+    const current = this.weaponEnergyById[weaponId] ?? config.maxEnergy
+    const result = rechargeWeaponEnergyValue(current, config.maxEnergy, SABER_WEAPON_RECHARGE_AMOUNT)
+    this.lastSaberWeaponRechargeAtMs = this.time.now
+    if (result.restored <= 0) {
+      return 0
     }
-    const body = this.player.body as Phaser.Physics.Arcade.Body
-    body.setSize(PLAYER_COLLIDER_SLIDE.width, PLAYER_COLLIDER_SLIDE.height)
-    body.setOffset(PLAYER_COLLIDER_SLIDE.offsetX, PLAYER_COLLIDER_SLIDE.offsetY)
-    this.usingSlideHitbox = true
+    this.weaponEnergyById[weaponId] = result.next
+    this.syncWeaponHud()
+    if (current === 0) {
+      this.showStageToast(`${getWeaponDisplayName(weaponId).toUpperCase()} REBOOT +${result.restored}`, 550)
+    }
+    return result.restored
   }
 
-  private resetPlayerHitbox(): void {
-    const body = this.player.body as Phaser.Physics.Arcade.Body
-    body.setSize(PLAYER_COLLIDER_STAND.width, PLAYER_COLLIDER_STAND.height)
-    body.setOffset(PLAYER_COLLIDER_STAND.offsetX, PLAYER_COLLIDER_STAND.offsetY)
-    this.usingSlideHitbox = false
-  }
-
-  private fireBullet(charged: boolean): void {
-    this.fireBulletFromRuntime({
-      speed: charged ? 360 : 260,
-      damage: charged ? 2 : 1,
-      scale: charged ? 1.2 : 1,
-      chargeLevel: charged ? 1 : 0,
-      facing: this.facing
-    })
+  getWeaponEnergyDebugState(): Record<string, unknown> {
+    return {
+      selectedWeaponId: this.getCurrentWeaponId(),
+      inventory: { ...this.weaponEnergyById },
+      saberRechargeAmount: SABER_WEAPON_RECHARGE_AMOUNT,
+      saberCooldownMs: SABER_WEAPON_RECHARGE_COOLDOWN_MS,
+      passiveRechargeAmount: PASSIVE_WEAPON_RECHARGE_AMOUNT,
+      passiveIntervalMs: PASSIVE_WEAPON_RECHARGE_INTERVAL_MS,
+      passiveAccumulatorMs: Math.round(this.passiveWeaponRechargeAccumulatorMs)
+    }
   }
 
   private fireBulletFromRuntime(config: {
-    speed: number
-    damage: number
-    scale: number
+    type: 'pellet' | 'charge'
     chargeLevel: 0 | 1 | 2 | 3 | 4
     facing: 1 | -1
-  }): void {
+  }): boolean {
     if (!this.player?.active) {
-      return
+      return false
     }
     const currentWeapon = this.getCurrentWeaponConfig()
     const isBuster = currentWeapon.id === 'Buster'
     if (isBuster && this.playerBullets.countActive(true) >= 3) {
-      return
+      return false
     }
-    if (!this.consumeWeaponEnergy(currentWeapon.id, currentWeapon.energyCost)) {
+    const currentEnergy = this.weaponEnergyById[currentWeapon.id] ?? currentWeapon.maxEnergy
+    if (!canAffordPlayerShot(currentEnergy, currentWeapon.energyCost)) {
       AudioService.playSfx('ui_cancel')
-      return
+      return false
     }
 
     const shotFacing = config.facing
     const offsetX = shotFacing === -1 ? -8 : 8
     const bulletX = this.player.x + offsetX
     const bulletY = this.player.y - 6
-    const outgoingDamage = isBuster ? config.damage : currentWeapon.damage
-    const outgoingScale = isBuster ? config.scale : currentWeapon.scale
-    const outgoingSpeed = isBuster ? config.speed : currentWeapon.speed
-    const projectileId = resolvePlayerProjectileId(currentWeapon.id, isBuster ? config.chargeLevel : 0)
-    const bullet = this.projectileSystem?.spawn({
-      id: projectileId,
+    const shot = resolvePlayerShot({
+      weaponId: currentWeapon.id,
+      intent: config,
       x: bulletX,
-      y: bulletY,
-      direction: shotFacing,
-      speed: outgoingSpeed,
-      damage: outgoingDamage,
-      scale: outgoingScale,
-      tint: currentWeapon.tint,
-      chargeLevel: isBuster ? config.chargeLevel : 0,
-      metadata: {
-        weaponId: currentWeapon.id,
-        weaponElement: currentWeapon.element
-      }
+      y: bulletY
     })
+    const bullet = this.projectileSystem?.spawn(shot.spawnRequest)
     if (!bullet) {
-      return
+      return false
     }
 
+    this.weaponEnergyById[currentWeapon.id] = energyAfterPlayerShot(
+      currentEnergy,
+      shot.energyCost,
+      true
+    )
     this.devRegister(bullet, 'bullet')
     this.syncWeaponHud()
+    const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+    return {
+      source: 'player',
+      projectileId: shot.projectileId,
+      weaponId: shot.weapon.id,
+      weaponElement: shot.weapon.element,
+      chargeLevel: shot.chargeLevel,
+      damage: Number(bullet.data?.get?.('damage') ?? shot.weapon.damage),
+      speed: Math.round(Math.hypot(body?.velocity.x ?? 0, body?.velocity.y ?? 0)),
+      scale: Number(bullet.scaleX ?? shot.weapon.scale),
+      pierce: Number(bullet.data?.get?.('pierceRemaining') ?? shot.weapon.projectile.pierce),
+      impactFxKey: shot.impactFxKey,
+      energyCost: shot.energyCost,
+      energyRemaining: this.weaponEnergyById[currentWeapon.id]
+    }
   }
 
   // [REGION: SABER-FX - BEGIN]
@@ -1951,79 +2480,6 @@ export class Game extends Phaser.Scene {
     })
   }
   // [REGION: SABER-FX - END]
-
-  // [REGION: CHARGE-AURA - BEGIN]
-  private initChargeFx(): void {
-    if (!this.textures.exists('px')) {
-      const g = this.make.graphics({ x: 0, y: 0, add: false })
-      g.fillStyle(0xffffff, 1)
-      g.fillRect(0, 0, 2, 2)
-      g.generateTexture('px', 2, 2)
-      g.destroy()
-    }
-  }
-
-  private startCharging(): void {
-    if (!this.player?.active) {
-      return
-    }
-    this.initChargeFx()
-    if (this.charging) {
-      return
-    }
-    this.charging = true
-    this.fullyCharged = false
-
-    this.chargeEmitter?.stop()
-    this.chargeEmitter?.destroy()
-    this.chargeEmitter = this.add.particles(0, 0, 'px', {
-      follow: this.player,
-      lifespan: 220,
-      speed: { min: 10, max: 40 },
-      scale: { start: 1.0, end: 0 },
-      quantity: 6,
-      alpha: { start: 0.9, end: 0 },
-      tint: 0x88ddff,
-      angle: { min: 0, max: 360 }
-    })
-    this.chargeEmitter.setDepth(10)
-
-    this.time.delayedCall(600, () => {
-      if (!this.charging) {
-        return
-      }
-      this.fullyCharged = true
-      this.chargeEmitter?.updateConfig?.({
-        quantity: 2,
-        lifespan: 400,
-        speed: { min: 5, max: 20 },
-        tint: 0x55ffcc
-      })
-      this.tweens.add({ targets: this.player, scale: 1.05, duration: 80, yoyo: true })
-    })
-  }
-
-  private stopCharging(): void {
-    this.charging = false
-    if (!this.chargeEmitter) {
-      return
-    }
-
-    if (!this.fullyCharged) {
-      this.chargeEmitter.stop()
-      this.chargeEmitter = undefined
-      return
-    }
-
-    this.chargeEmitter.updateConfig?.({
-      quantity: 1,
-      lifespan: 500,
-      speed: 10,
-      alpha: { start: 0.5, end: 0 },
-      tint: 0x99ffee
-    })
-  }
-  // [REGION: CHARGE-AURA - END]
 
   private ensurePlayerBulletTexture(): void {
     // Placeholder retained for now; bullets are atlas-backed.
@@ -2205,6 +2661,7 @@ export class Game extends Phaser.Scene {
   }
 
   private applySwordHitboxFromRuntime(hitbox: ResolvedHitbox): void {
+    this.rechargeSelectedWeaponFromSaber()
     const origin = resolveSwordHitboxOrigin(this.player.x, this.player.y, this.facing, hitbox)
     let hitConfirmed = false
 
@@ -2231,6 +2688,7 @@ export class Game extends Phaser.Scene {
       const remaining = handledByFramework ? 1 : this.applyDamageToTarget(enemy, 2)
       if (remaining > 0) {
         this.flashEnemy(enemy)
+        this.spawnSwordImpactFx(enemy.x, enemy.y, false)
         hitConfirmed = true
       }
       return false
@@ -2254,6 +2712,7 @@ export class Game extends Phaser.Scene {
     ) {
       this.applyDamageToBoss(2)
       this.tweens?.add({ targets: boss, alpha: 0.25, yoyo: true, duration: 70 })
+      this.spawnSwordImpactFx(boss.x + this.facing * 10, boss.y - 6, true)
       hitConfirmed = true
     }
 
@@ -2292,7 +2751,6 @@ export class Game extends Phaser.Scene {
     this.victoryTriggered = true
     this.bossProjectileController?.stop()
     this.bossUiBinder?.onBossDeath()
-    this.stopCharging()
     AudioService.stopMusic()
     AudioService.playSfx('stage_clear')
 
@@ -2304,25 +2762,27 @@ export class Game extends Phaser.Scene {
     this.disableBossCombatActors()
     this.disableProjectileGroups()
     this.freezeCombatWorld()
-    Save.clearActiveRun()
-
     const stageId = ((this as any).stageId as string | undefined) ?? 'unknown'
-    const weaponId = (this as any).rewardWeapon as string | undefined
     const bossName = this.bossName ?? stageId
     const stage = getCampaignStage(stageId)
+    const previousClearedCount = countClearedRobotMasters(this.progressionSave)
+    this.collectProgressionLocation(getLocationCheckId(stage.id as any, 'boss_clear'))
+    Save.clearActiveRun()
+    this.progressionSave = Save.load()
+    const clearedCount = countClearedRobotMasters(this.progressionSave)
+    const gate = evaluateFinalGate(Save.load())
 
-    if (stage.id === TUTORIAL_STAGE_ID) {
-      Save.markTutorialCleared()
-    } else if (stage.id === FINAL_STAGE_ID) {
-      Save.markFinalBossCleared()
-      Save.markGameCompleted()
+    const milestoneCount = clearedCount !== previousClearedCount ? clearedCount : undefined
+    const lines = this.buildDialogueLines(stage.id, 'boss_defeat', milestoneCount)
+    const showVictory = () => this.showBossVictory(stage, bossName, gate.unlocked)
+    if (lines.length > 0 && this.dialogueOverlay) {
+      this.dialogueOverlay.play(lines, showVictory)
     } else {
-      if (weaponId) {
-        Save.addWeapon(weaponId)
-      }
-      Save.markBossCleared(stageId)
+      showVictory()
     }
+  }
 
+  private showBossVictory(stage: ReturnType<typeof getCampaignStage>, bossName: string, finalRouteUnlocked: boolean): void {
     this.victoryModal?.destroy()
     this.victoryModal = new VictoryModal(this)
     this.victoryModal.show({
@@ -2334,7 +2794,11 @@ export class Game extends Phaser.Scene {
         }
         this.handleReturnToStageSelect('victory', {
           toastMessage:
-            stage.id === TUTORIAL_STAGE_ID ? 'Tutorial cleared. Robot Master Select unlocked.' : `${bossName} defeated!`,
+            stage.id === TUTORIAL_STAGE_ID
+              ? 'Tutorial cleared. Warden Select unlocked.'
+              : finalRouteUnlocked
+                ? `${bossName} freed! Omega Fortress unlocked.`
+                : `${bossName} freed!`,
           focusBossId: stage.id,
           requireConfirmRelease: true
         })
@@ -2363,9 +2827,11 @@ export class Game extends Phaser.Scene {
     this.bossController = undefined
     this.bossHitWire?.destroy()
     this.playerHitWire?.destroy()
+    this.bossContactWire?.destroy()
     this.projectileClashWire?.destroy()
     this.bossHitWire = undefined
     this.playerHitWire = undefined
+    this.bossContactWire = undefined
     this.projectileClashWire = undefined
   }
 
@@ -2424,11 +2890,9 @@ export class Game extends Phaser.Scene {
 
     if (action === 'save_game') {
       const snapshot = this.captureActiveRunSnapshot()
-      if (snapshot) {
-        Save.saveActiveRun(snapshot)
-      }
+      const saved = snapshot ? Save.saveActiveRun(snapshot) : false
       this.setPaused(false)
-      showToast(this, snapshot ? 'Game saved.' : 'Save failed.', 1000)
+      showToast(this, saved ? 'Game saved.' : 'Save failed.', 1000)
       return
     }
 
@@ -2436,7 +2900,7 @@ export class Game extends Phaser.Scene {
       const run = Save.loadActiveRun()
       this.setPaused(false)
       if (!run) {
-        showToast(this, 'No saved game found.', 1200)
+        showToast(this, 'No valid saved game found.', 1200)
         return
       }
       this.scene.restart({
@@ -2497,6 +2961,8 @@ export class Game extends Phaser.Scene {
       playerLives: Math.max(0, Math.round(this.playerLives)),
       currentWeaponIndex: Math.max(0, Math.round(this.currentWeaponIndex)),
       currentWeaponId: this.getCurrentWeaponId(),
+      checkpointIndex: Math.max(0, Math.round(this.currentCheckpointIndex)),
+      checkpointId: this.currentCheckpointId ?? undefined,
       weaponEnergyById: { ...this.weaponEnergyById }
     }
   }
@@ -2519,6 +2985,24 @@ export class Game extends Phaser.Scene {
       ...this.weaponEnergyById,
       ...(run.weaponEnergyById ?? {})
     }
+    const stage = getCampaignStage(this.activeStageId)
+    const checkpointIndex =
+      typeof run.checkpointId === 'string'
+        ? stage.arena.checkpoints.findIndex((checkpoint) => checkpoint.id === run.checkpointId)
+        : -1
+    if (checkpointIndex >= 0) {
+      const checkpoint = stage.arena.checkpoints[checkpointIndex]
+      this.currentCheckpointIndex = checkpointIndex
+      this.currentCheckpointId = checkpoint.id
+      this.respawnPoint = new Phaser.Math.Vector2(checkpoint.x, checkpoint.y)
+      this.player.setPosition(checkpoint.x, checkpoint.y)
+    } else if (typeof run.checkpointIndex === 'number' && stage.arena.checkpoints[run.checkpointIndex]) {
+      const checkpoint = stage.arena.checkpoints[run.checkpointIndex]
+      this.currentCheckpointIndex = run.checkpointIndex
+      this.currentCheckpointId = checkpoint.id
+      this.respawnPoint = new Phaser.Math.Vector2(checkpoint.x, checkpoint.y)
+      this.player.setPosition(checkpoint.x, checkpoint.y)
+    }
 
     this.player.data?.set('hp', this.playerHp)
     this.player.data?.set('maxHp', this.playerMaxHp)
@@ -2533,7 +3017,6 @@ export class Game extends Phaser.Scene {
     }
     this.gameOverTriggered = true
     this.bossProjectileController?.stop()
-    this.stopCharging()
     Save.clearActiveRun()
     AudioService.stopMusic()
     AudioService.playSfx('game_over')
@@ -2549,16 +3032,34 @@ export class Game extends Phaser.Scene {
 
   private applyDamageToBoss(
     dmg: number,
-    hitContext: { weaponId?: string; weaponElement?: string; kind?: string } = {}
+    hitContext: {
+      weaponId?: string
+      weaponElement?: string
+      projectileId?: string
+      chargeLevel?: 0 | 1 | 2 | 3 | 4
+      kind?: string
+    } = {}
   ): void {
     const currentWeapon = this.getCurrentWeaponConfig()
     const weaponId = hitContext.weaponId ?? currentWeapon.id
-    const weaponElement = hitContext.weaponElement ?? currentWeapon.element
     const hitKind = hitContext.kind ?? 'direct'
-    const bossElement =
-      this.bossController?.blueprint.element ?? getBossById(this.activeBossId ?? 'pyro_maw').element
-    const multiplier = damageMultiplier(weaponElement, bossElement)
-    const scaledDamage = Math.max(1, Math.round(dmg * multiplier))
+    const weaknessProfile = getBossWeaknessProfile(this.progressionSave, this.activeBossId ?? 'pyro_maw')
+    const chargeLevel = weaponId === 'Buster' ? hitContext.chargeLevel ?? 0 : 0
+    const multiplier = resolveBossDamageMultiplier({
+      strictness: getWeaknessStrictness(this.progressionSave),
+      profile: weaknessProfile,
+      weaponId,
+      chargeLevel,
+      hasArmsUpgrade: this.progressionSave.upgradeUnlocks.includes('armor_arms')
+    })
+    if (multiplier <= 0) {
+      this.recordCombatHit('player', 'boss', dmg, hitKind, false, 'blocked-by-weakness-rules')
+      this.showBossHitFeedback(weaponId, multiplier, 'BLOCKED')
+      return
+    }
+    const damageBonus =
+      weaponId === 'Buster' ? getBusterDamageBonus(this.progressionSave) : getWeaponDamageBonus(this.progressionSave)
+    const scaledDamage = Math.max(1, Math.round((dmg + damageBonus) * multiplier))
     const controller = this.bossController
     if (controller) {
       const hit = controller.applyDamage({
@@ -2656,15 +3157,15 @@ export class Game extends Phaser.Scene {
     }
 
     this.bossHitFeedbackTimer?.remove(false)
-    this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}\n${label} • ${getWeaponDisplayName(weaponId).toUpperCase()}`)
+    this.updatePhaseHud(`${label.slice(0, 7)} ${getWeaponDisplayName(weaponId)}`)
     this.bossHitFeedbackTimer = this.time.delayedCall(520, () => {
       if (this.victoryTriggered) {
         return
       }
       if (this.bossEncounterActive && this.currentPhaseName) {
-        this.phaseLabel.setText(`PHASE • ${this.currentPhaseName}`)
+        this.updatePhaseHud()
       } else {
-        this.phaseLabel.setText('BOSS GATE • ADVANCE')
+        this.phaseLabel.setText('BOSS GATE\nADVANCE')
       }
     })
   }
@@ -2741,7 +3242,13 @@ export class Game extends Phaser.Scene {
       dropType = roll < 0.18 ? 'health' : roll < 0.33 ? 'ammo' : 'bonus'
     }
 
-    const drop = this.drops.get(x, y, PROJECTILES_ATLAS_KEY, 'projectiles_core/core/002') as
+    const textureKey =
+      dropType === 'health'
+        ? PICKUP_TEXTURE_KEYS.health
+        : dropType === 'ammo'
+          ? PICKUP_TEXTURE_KEYS.weapon
+          : PICKUP_TEXTURE_KEYS.bonus
+    const drop = this.drops.get(x, y, textureKey) as
       | Phaser.Physics.Arcade.Sprite
       | null
     if (!drop) {
@@ -2751,17 +3258,11 @@ export class Game extends Phaser.Scene {
     this.clearDropExpireTimer(drop)
     drop.setActive(true).setVisible(true).setDepth(5)
     drop.setPosition(x, y)
-    drop.setScale(dropType === 'bonus' ? 1.05 : 0.95)
+    drop.setTexture(textureKey)
+    drop.setScale(dropType === 'bonus' ? 1.05 : 1)
     drop.setDataEnabled()
     drop.data?.set('dropType', dropType)
     drop.clearTint()
-    if (dropType === 'health') {
-      drop.setTint(0x7dff7d)
-    } else if (dropType === 'ammo') {
-      drop.setTint(0x7dc0ff)
-    } else {
-      drop.setTint(0xffd67d)
-    }
 
     const body = drop.body as Phaser.Physics.Arcade.Body | undefined
     if (body) {
@@ -2929,39 +3430,104 @@ export class Game extends Phaser.Scene {
     })
   }
 
-  private onPlayerDamaged(playerObj: Phaser.GameObjects.GameObject): void {
-    const player = playerObj as Phaser.Physics.Arcade.Sprite
-    if (!player.active) {
+  private spawnSwordImpactFx(x: number, y: number, strong: boolean): void {
+    this.events.emit('camera.shake', {
+      intensity: strong ? 0.009 : 0.005,
+      duration: strong ? 100 : 75
+    })
+
+    if (!this.textures.exists(EFFECTS_ATLAS_KEY)) {
       return
     }
 
-    if (!this.newPlayerRuntime) {
-      throw new Error('[Game] NewPlayerRuntime is required in v2 runtime')
-    }
-    const accepted = this.newPlayerRuntime.receiveDamage(1, 'light')
-    this.recordCombatHit('hazard', 'player', 1, 'contact', accepted, 'new-player-runtime')
-    if (!accepted) {
-      return
-    }
-    player.setTint(0xff6b6b)
-    this.time.delayedCall(140, () => {
-      if (player.active) {
-        player.clearTint()
-      }
+    const flash = this.add
+      .sprite(x, y, EFFECTS_ATLAS_KEY, strong ? 'effects_core/core/019' : 'effects_core/core/011')
+      .setDepth(8)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(strong ? 0xd8fff4 : 0xc4fff2)
+      .setScale(strong ? 1.35 : 1.05)
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: strong ? 1.95 : 1.45,
+      duration: strong ? 120 : 90,
+      ease: 'Quad.Out',
+      onComplete: () => flash.destroy()
+    })
+
+    const emitter = this.add.particles(x, y, EFFECTS_ATLAS_KEY, {
+      frame: strong ? PROJECTILE_CLASH_FRAMES : ['effects_core/core/011', 'effects_core/core/003'],
+      lifespan: { min: 70, max: 120 },
+      speed: strong ? { min: 35, max: 120 } : { min: 25, max: 80 },
+      quantity: strong ? 12 : 7,
+      scale: { start: strong ? 0.7 : 0.5, end: 0 },
+      alpha: { start: 0.85, end: 0 },
+      tint: strong ? [0xc7fff1, 0xffffff, 0x7effc8] : [0xb8fff0, 0xffffff],
+      blendMode: 'ADD'
+    })
+    emitter.setDepth(7)
+    this.time.delayedCall(strong ? 135 : 105, () => {
+      emitter.stop()
+      emitter.destroy()
     })
   }
 
-  private updatePlayerTint(): void {
-    if (!this.player) {
+  private onHazardContact(
+    playerObj: Phaser.GameObjects.GameObject,
+    hazardObj: Phaser.GameObjects.GameObject
+  ): void {
+    const player = playerObj as Phaser.Physics.Arcade.Sprite
+    const hazard = hazardObj as Phaser.Physics.Arcade.Sprite
+    if (!player.active) {
       return
     }
-    if (this.dashActive) {
-      this.player.setTint(0x8bd2ff)
-    } else if (this.saberComboStep > 0) {
-      this.player.setTint(0xfff5a3)
-    } else {
-      this.player.clearTint()
+    const rawSourceType = String(hazard.data?.get?.('damageSourceType') ?? 'hazard')
+    this.requestPlayerDamage({
+      amount: Number(hazard.data?.get?.('damageAmount') ?? 1),
+      tier: Number(hazard.data?.get?.('damageAmount') ?? 1) >= 2 ? 'heavy' : 'light',
+      sourceType: rawSourceType === 'boss_projectile' ? 'boss_projectile' : 'hazard',
+      sourceId: String(hazard.data?.get?.('damageSourceId') ?? 'stage_hazard'),
+      direction: player.x >= hazard.x ? 1 : -1
+    })
+  }
+
+  private onEnemyContact(
+    playerObj: Phaser.GameObjects.GameObject,
+    enemyObj: Phaser.GameObjects.GameObject
+  ): void {
+    const player = playerObj as Phaser.Physics.Arcade.Sprite
+    const enemy = enemyObj as Phaser.Physics.Arcade.Sprite
+    if (!player.active || !enemy.active) {
+      return
     }
+    const entity = this.enemySpawner?.getEntityBySprite(enemy)
+    const damage = Number(entity?.definition.stats.contactDamage ?? entity?.definition.stats.damage ?? 1)
+    this.requestPlayerDamage({
+      amount: damage,
+      tier: damage >= 2 ? 'heavy' : 'light',
+      sourceType: 'enemy_contact',
+      sourceId: String(entity?.id ?? enemy.data?.get?.('enemyFrameworkId') ?? 'enemy_contact'),
+      direction: player.x >= enemy.x ? 1 : -1
+    })
+  }
+
+  private onBossContact(
+    playerObj: Phaser.GameObjects.GameObject,
+    bossObj: Phaser.GameObjects.GameObject
+  ): void {
+    const player = playerObj as Phaser.Physics.Arcade.Sprite
+    const boss = bossObj as Phaser.Physics.Arcade.Sprite
+    if (!player.active || !boss.active || !this.bossEncounterActive) {
+      return
+    }
+    this.requestPlayerDamage({
+      amount: 2,
+      tier: 'heavy',
+      sourceType: 'boss_contact',
+      sourceId: String(this.activeBossId ?? 'boss_contact'),
+      direction: player.x >= boss.x ? 1 : -1
+    })
   }
 
   private setPlayerAnimation(key: string): void {
@@ -2969,6 +3535,21 @@ export class Game extends Phaser.Scene {
       return
     }
     this.playAnimationSafe(this.player, key)
+  }
+
+  private updatePhaseHud(action?: string): void {
+    if (!this.phaseLabel) {
+      return
+    }
+    const phase = (this.currentPhaseName || 'PHASE --')
+      .replace(/^PHASE\s*•?\s*/i, 'PHASE ')
+      .toUpperCase()
+    const actionLabel = action
+      ?.replace(/^ACTION\s*•?\s*/i, '')
+      .trim()
+      .toUpperCase()
+      .slice(0, 12)
+    this.phaseLabel.setText(actionLabel ? `${phase}\n${actionLabel}` : phase)
   }
 
   private playAnimationSafe(
@@ -3008,6 +3589,7 @@ export class Game extends Phaser.Scene {
     const weapon = this.getCurrentWeaponId()
     this.weaponLabel.setText(`WEAPON • ${getWeaponDisplayName(weapon).toUpperCase()}`)
     this.hud?.setWeaponName(getWeaponDisplayName(weapon))
+    this.hud?.setWeaponColor(getWeaponConfig(weapon).tint)
     this.syncWeaponHud()
   }
 
@@ -3029,26 +3611,53 @@ export class Game extends Phaser.Scene {
     this.hud?.updateWeapon(this.weaponEnergy.current, this.weaponEnergy.max)
   }
 
-  private consumeWeaponEnergy(weaponId: string, amount: number): boolean {
-    if (weaponId === 'Buster' || amount <= 0) {
-      return true
+  private requestPlayerDamage(request: PlayerDamageRequest): PlayerDamageResult {
+    const debugSource =
+      request.sourceType.startsWith('boss_')
+        ? 'boss'
+        : request.sourceType.startsWith('enemy_')
+          ? 'enemy'
+          : request.sourceType === 'hazard'
+            ? 'hazard'
+            : 'system'
+    if (!this.player || !this.player.active || this.playerLives < 0 || !this.newPlayerRuntime) {
+      const result: PlayerDamageResult = {
+        accepted: false,
+        reason: 'inactive',
+        amount: 0,
+        request
+      }
+      this.recordCombatHit(debugSource, 'player', request.amount, request.sourceType, false, `${request.sourceId}:inactive`)
+      return result
     }
-    const current = this.weaponEnergyById[weaponId] ?? getWeaponConfig(weaponId).maxEnergy
-    if (current < amount) {
-      return false
+
+    const result = this.newPlayerRuntime.receiveDamage(request)
+    this.recordCombatHit(
+      debugSource,
+      'player',
+      request.amount,
+      request.sourceType,
+      result.accepted,
+      `${request.sourceId}:${result.reason}`
+    )
+    if (result.accepted) {
+      AudioService.playSfx('player_hit')
+      if (this.player.active) {
+        this.player.setTint(0xff6b6b)
+        this.time.delayedCall(140, () => {
+          if (this.player?.active) {
+            this.player.clearTint()
+          }
+        })
+      }
     }
-    this.weaponEnergyById[weaponId] = current - amount
-    return true
+    return result
   }
 
-  private applyDamageToPlayer(dmg: number): void {
+  private commitPlayerDamage(dmg: number): void {
     if (!this.player || !this.player.active || this.playerLives < 0) {
-      this.recordCombatHit('system', 'player', dmg, 'direct', false, 'player inactive')
       return
     }
-
-    this.recordCombatHit('enemy', 'player', dmg, 'direct', true)
-    AudioService.playSfx('player_hit')
     this.playerHp = Math.max(0, this.playerHp - dmg)
     this.player.setDataEnabled()
     this.player.data.set('hp', this.playerHp)
@@ -3065,7 +3674,6 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    this.stopCharging()
     this.playerLives--
     this.hud?.setLives(this.playerLives)
 
@@ -3137,7 +3745,7 @@ export class Game extends Phaser.Scene {
         projectileGroup: this.bossBullets,
         projectileSystem: this.projectileSystem,
         worldPlatforms: this.stagePlatforms,
-        applyDamageToPlayer: (amount: number) => this.applyDamageToPlayer(amount),
+        applyDamageToPlayer: (request) => this.requestPlayerDamage(request),
         onEnemyDefeated: (sprite: Phaser.Physics.Arcade.Sprite) => {
           if (this.enemyFeatureFlags.enableEnemyDrops) {
             this.spawnEnemyDrop(sprite.x, sprite.y - 8)
@@ -3170,7 +3778,7 @@ export class Game extends Phaser.Scene {
       })
     }
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && AUTOMATION.enabled) {
       ;(window as any).spawnEnemyDebug = (
         typeKey = 'enemy_gunner_bot',
         x = this.player.x + 100,
@@ -3184,20 +3792,53 @@ export class Game extends Phaser.Scene {
   }
 
   getCombatDebugSnapshot(): Record<string, unknown> | null {
-    const now = this.time?.now ?? 0
     const newPlayerState = this.getNewPlayerDebugState()
+    const locomotionDebug = ((newPlayerState as any)?.locomotion ?? {}) as Record<string, unknown>
+    const combatPlayerDebug = ((newPlayerState as any)?.combat ?? {}) as Record<string, unknown>
+    const physicsDebug = ((newPlayerState as any)?.physics ?? {}) as Record<string, unknown>
+    const inputDebug = ((newPlayerState as any)?.input ?? {}) as Record<string, unknown>
     const iFramesMs = Number((newPlayerState as any)?.combat?.iFramesMs ?? 0)
-    const chargeMs = this.isChargingShot ? Math.max(0, now - this.chargeStartedAt) : 0
+    const chargeMs = Number(combatPlayerDebug.chargeElapsedMs ?? 0)
+    const shotsFiredTotal = Number(combatPlayerDebug.shotsFiredTotal ?? 0)
+    const lastProjectileSpawnMs = Number(combatPlayerDebug.lastProjectileSpawnMs ?? 0)
+    const lastProjectileSpawnFrame = Number(combatPlayerDebug.lastProjectileSpawnFrame ?? 0)
+    const lastProjectile = (combatPlayerDebug.lastProjectile as any) ?? null
+    const dashCooldownMs = Number(locomotionDebug.dashCooldownMs ?? 0)
+    const slideRemainingMs = Number(locomotionDebug.dashMs ?? 0)
+    const wallSliding = Boolean(locomotionDebug.wallSliding ?? false)
+    const virtualControlsVisible = Boolean(this.touchControls?.isVisible?.())
     const snapshot = makeGameCombatSnapshot({
       recentHits: this.combatDebugBus.getRecentHits(10),
       totals: this.combatDebugBus.getTotals(),
       player: {
         hp: this.playerHp,
         maxHp: this.playerMaxHp,
-        dashCooldownMs: this.dashCooldownTimer,
-        slideRemainingMs: Math.max(0, this.slideUntil - now),
+        bodyProfileKey: String(physicsDebug.bodyProfileKey ?? '') || null,
+        blocked: (physicsDebug.blocked as any) ?? null,
+        touching: (physicsDebug.touching as any) ?? null,
+        dropThroughActive: Boolean(physicsDebug.dropThroughActive),
+        coyoteMs: Number(locomotionDebug.coyoteMs ?? 0),
+        jumpBufferMs: Number(locomotionDebug.jumpBufferMs ?? 0),
+        dashRemainingMs: Number(locomotionDebug.dashMs ?? 0),
+        dashCooldownMs,
+        dashStarted: Boolean(locomotionDebug.dashStarted),
+        dashEnded: Boolean(locomotionDebug.dashEnded),
+        slideRemainingMs,
+        wallSide: (locomotionDebug.wallSide === -1 || locomotionDebug.wallSide === 1 ? locomotionDebug.wallSide : 0) as -1 | 0 | 1,
+        lastLandingSpeed: Number(locomotionDebug.lastLandingSpeed ?? 0),
+        lastJumpSource: String(locomotionDebug.lastJumpSource ?? 'none'),
         chargeMs,
-        iFramesMs
+        shotsFiredTotal,
+        lastProjectileSpawnMs,
+        lastProjectileSpawnFrame,
+        lastProjectile,
+        iFramesMs,
+        lastDamageSource: String(combatPlayerDebug.lastDamageSource ?? 'none'),
+        lastDamageTier: String(combatPlayerDebug.lastDamageTier ?? 'none'),
+        knockback: (combatPlayerDebug.lastKnockback as any) ?? null,
+        wallSliding,
+        touchButtons: (inputDebug.touchButtons as any) ?? null,
+        virtualControlsVisible
       },
       boss: {
         hp: this.bossHp ?? null,
@@ -3209,7 +3850,20 @@ export class Game extends Phaser.Scene {
   }
 
   getNewPlayerDebugState(): Record<string, unknown> | null {
-    return this.newPlayerRuntime?.getDebugState?.() ?? null
+    const runtimeState = this.newPlayerRuntime?.getDebugState?.() ?? null
+    if (!runtimeState) {
+      return null
+    }
+    const physicsState = (runtimeState as any).physics && typeof (runtimeState as any).physics === 'object'
+      ? { ...(runtimeState as any).physics }
+      : {}
+    physicsState.dropThroughActive = Boolean(
+      this.player && this.platformCollisionSystem?.isDropThroughActive(this.player)
+    )
+    return {
+      ...runtimeState,
+      physics: physicsState
+    }
   }
 
   getVisualDebugSnapshot(): Record<string, unknown> | null {

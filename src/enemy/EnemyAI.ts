@@ -1,5 +1,10 @@
 import Phaser from 'phaser'
 import { ENEMY_GLOBAL_TUNING } from './config'
+import {
+  resolveEnemyBehaviorProfile,
+  resolveHorizontalBandIntent,
+  shouldEnemyAttackNow
+} from './EnemyBehaviorProfiles'
 import { EnemyCombat } from './EnemyCombat'
 import { EnemyMotor } from './EnemyMotor'
 import { EnemyDefinition, EnemyState } from './types'
@@ -11,6 +16,7 @@ export class EnemyAI {
   private readonly motor: EnemyMotor
   private readonly combat: EnemyCombat
   private readonly enabled: boolean
+  private readonly profile: ReturnType<typeof resolveEnemyBehaviorProfile>
 
   private stateEnteredAt = 0
   private lastScanAt = 0
@@ -28,6 +34,7 @@ export class EnemyAI {
     this.motor = motor
     this.combat = combat
     this.enabled = enabled
+    this.profile = resolveEnemyBehaviorProfile(definition)
   }
 
   update(now: number, _deltaMs: number): void {
@@ -45,8 +52,12 @@ export class EnemyAI {
     }
 
     const state = this.entity.state
+    const player = this.entity.context.player
+    const sprite = this.entity.sprite
     const distance = this.motor.distanceToPlayer()
-    const seesPlayer = this.canSeePlayer(distance, now)
+    const deltaX = player.x - sprite.x
+    const deltaY = player.y - sprite.y
+    const seesPlayer = this.canSeePlayer(distance, deltaX, deltaY, now)
 
     this.updateFacing()
 
@@ -74,8 +85,8 @@ export class EnemyAI {
         }
         break
       case 'chase':
-        this.applyChaseMovement(distance, now)
-        if (distance <= (this.definition.attack.range ?? 46) && this.combat.canAttack(now)) {
+        this.applyChaseMovement(deltaX, deltaY, now)
+        if (this.combat.canAttack(now) && this.shouldStartAttack(deltaX, deltaY)) {
           this.combat.beginAttack(now)
           this.transition('attack_windup', now)
           return
@@ -131,8 +142,13 @@ export class EnemyAI {
         break
       case 'flyer':
       case 'drone': {
-        const yWave = Math.sin(now / 260) * 30
-        this.motor.setIntent(this.patrolDirection * speed * 0.65, yWave)
+        const targetY = this.entity.spawnPosition.y + Math.sin(now / 260) * 18
+        const targetDeltaY = targetY - this.entity.sprite.y
+        const vy =
+          Math.abs(targetDeltaY) <= this.profile.hoverDeadzoneY
+            ? 0
+            : Phaser.Math.Clamp(targetDeltaY * 1.2, -speed * 0.8, speed * 0.8)
+        this.motor.setIntent(this.patrolDirection * speed * 0.65, vy)
         break
       }
       case 'turret':
@@ -140,40 +156,42 @@ export class EnemyAI {
         break
       default:
         this.motor.setIntent(this.patrolDirection * speed * 0.8, 0)
-        if (this.motor.hitWall() || this.motor.atLedge(this.patrolDirection)) {
+        if (this.shouldFlipPatrolDirection()) {
           this.flipPatrolDirection()
         }
         break
     }
   }
 
-  private applyChaseMovement(distanceToPlayer: number, now: number): void {
+  private applyChaseMovement(deltaX: number, deltaY: number, now: number): void {
     const player = this.entity.context.player
     const sprite = this.entity.sprite
     const towardPlayer: 1 | -1 = player.x >= sprite.x ? 1 : -1
     const speed = this.definition.stats.speed
+    const horizontalIntent = resolveHorizontalBandIntent(this.profile, deltaX)
 
     switch (this.definition.movementType) {
       case 'hopper':
         this.motor.setIntent(0, 0)
-        if (this.motor.isGrounded() && this.stateElapsed(now) > this.definition.ai.reactionTime * 0.9) {
-          this.motor.hop(towardPlayer, -250)
+        if (
+          this.motor.isGrounded() &&
+          this.stateElapsed(now) > this.definition.ai.reactionTime * 0.9 &&
+          Math.abs(deltaY) <= this.profile.verticalAggroTolerance
+        ) {
+          const hopDirection = horizontalIntent === 0 ? towardPlayer : (Math.sign(horizontalIntent) as 1 | -1)
+          this.motor.hop(hopDirection, -250)
           this.stateEnteredAt = now
         }
         break
       case 'flyer':
       case 'drone': {
-        const minBand = 80
-        const maxBand = 130
-        const dx = player.x - sprite.x
-        const dy = player.y - sprite.y
-        let vx = 0
-        if (Math.abs(dx) > maxBand) {
-          vx = Math.sign(dx) * speed
-        } else if (Math.abs(dx) < minBand) {
-          vx = -Math.sign(dx) * speed * 0.8
-        }
-        const vy = Phaser.Math.Clamp(dy * 1.5, -speed * 0.9, speed * 0.9)
+        const vx = horizontalIntent * speed
+        const targetY = player.y + this.profile.hoverAnchorOffsetY
+        const targetDeltaY = targetY - sprite.y
+        const vy =
+          Math.abs(targetDeltaY) <= this.profile.hoverDeadzoneY
+            ? 0
+            : Phaser.Math.Clamp(targetDeltaY * 1.35, -speed * 0.9, speed * 0.9)
         this.motor.setIntent(vx, vy)
         break
       }
@@ -181,8 +199,8 @@ export class EnemyAI {
         this.motor.setIntent(0, 0)
         break
       default:
-        this.motor.setIntent(towardPlayer * speed, 0)
-        if (distanceToPlayer < 34) {
+        this.motor.setIntent(horizontalIntent * speed, 0)
+        if (horizontalIntent === 0 && this.definition.attack.type === 'melee' && Math.abs(deltaX) < 24) {
           this.motor.setIntent(0, 0)
         }
         break
@@ -210,7 +228,10 @@ export class EnemyAI {
     this.motor.setIntent(towardSpawn * speed * 0.7, 0)
   }
 
-  private canSeePlayer(distance: number, now: number): boolean {
+  private canSeePlayer(distance: number, deltaX: number, deltaY: number, now: number): boolean {
+    if (Math.abs(deltaY) > this.profile.verticalAggroTolerance) {
+      return false
+    }
     const scanInterval = 1000 / ENEMY_GLOBAL_TUNING.aggroScanHz
     if (now - this.lastScanAt < scanInterval) {
       return distance <= this.definition.ai.aggroRange && this.entity.state !== 'idle'
@@ -223,6 +244,29 @@ export class EnemyAI {
     const sprite = this.entity.sprite
     const playerX = this.entity.context.player.x
     this.entity.facing = playerX >= sprite.x ? 1 : -1
+  }
+
+  private shouldFlipPatrolDirection(): boolean {
+    if (this.entity.patrolBounds) {
+      const nextX = this.entity.sprite.x + this.patrolDirection * 8
+      if (nextX <= this.entity.patrolBounds.minX || nextX >= this.entity.patrolBounds.maxX) {
+        return true
+      }
+    }
+    return this.motor.hitWall() || this.motor.atLedge(this.patrolDirection)
+  }
+
+  private shouldStartAttack(deltaX: number, deltaY: number): boolean {
+    const camera = this.entity.context.scene.cameras.main.worldView
+    const margin = this.profile.offscreenAttackMargin
+    const sprite = this.entity.sprite
+    const isOnscreen =
+      sprite.x >= camera.left - margin &&
+      sprite.x <= camera.right + margin &&
+      sprite.y >= camera.top - margin &&
+      sprite.y <= camera.bottom + margin
+
+    return shouldEnemyAttackNow(this.profile, deltaX, deltaY, isOnscreen)
   }
 
   private flipPatrolDirection(): void {

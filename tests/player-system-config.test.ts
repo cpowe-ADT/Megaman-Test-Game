@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { AnimationManifest } from '../src/player/AnimationManifest'
+import { resolveSwordVisualFacing, shouldFlipPlayerSpriteForFacing } from '../src/player/config'
 import { DEFAULT_PLAYER_FEATURE_FLAGS } from '../src/player/featureFlags'
 import { resolveEightDirection } from '../src/player/PlayerCombat'
 
@@ -15,6 +16,8 @@ const requiredAnimationKeys = [
   'player_jump_rise',
   'player_jump_apex',
   'player_fall',
+  'player_wall_slide',
+  'player_wall_jump',
   'player_land',
   'player_dash_start',
   'player_dash_loop',
@@ -41,6 +44,8 @@ test('new player feature flags default to v2-enabled behavior', () => {
   assert.equal(DEFAULT_PLAYER_FEATURE_FLAGS.enableSword, true)
   assert.equal(DEFAULT_PLAYER_FEATURE_FLAGS.enableChargeShot, true)
   assert.equal(DEFAULT_PLAYER_FEATURE_FLAGS.enableAirDash, true)
+  assert.equal(DEFAULT_PLAYER_FEATURE_FLAGS.enableWallSlideJump, true)
+  assert.equal(DEFAULT_PLAYER_FEATURE_FLAGS.enableTouchControls, true)
   assert.equal(DEFAULT_PLAYER_FEATURE_FLAGS.enableHitstop, true)
   assert.equal(DEFAULT_PLAYER_FEATURE_FLAGS.enableDebugHitboxes, false)
 })
@@ -57,7 +62,20 @@ test('animation manifest contains all 8 sword directions for ground and air', ()
   dirs.forEach((dir) => {
     assert.equal(AnimationManifest.animations[`player_slash_ground_${dir}`] != null, true)
     assert.equal(AnimationManifest.animations[`player_slash_air_${dir}`] != null, true)
+    assert.equal(AnimationManifest.animations[`player_slash_ground_${dir}`]?.frameEnd >= 3, true)
+    assert.equal(AnimationManifest.animations[`player_slash_air_${dir}`]?.frameEnd >= 3, true)
   })
+})
+
+test('run and fire locomotion animations use readable frame rates', () => {
+  assert.equal(AnimationManifest.animations.player_run.frameRate >= 12, true)
+  assert.equal(AnimationManifest.animations.player_shoot_run_fwd.frameRate >= 12, true)
+  assert.equal(AnimationManifest.animations.player_idle.frameRate >= 4, true)
+})
+
+test('private Mega Man sheets flip right-facing movement from left-authored source frames', () => {
+  assert.equal(shouldFlipPlayerSpriteForFacing(1), true)
+  assert.equal(shouldFlipPlayerSpriteForFacing(-1), false)
 })
 
 test('resolveEightDirection returns expected buckets', () => {
@@ -67,4 +85,15 @@ test('resolveEightDirection returns expected buckets', () => {
   assert.equal(resolveEightDirection({ x: 0, y: 1 }, 1, 0.2), 's')
   assert.equal(resolveEightDirection({ x: 1, y: -1 }, 1, 0.2), 'ne')
   assert.equal(resolveEightDirection({ x: -1, y: 1 }, 1, 0.2), 'sw')
+})
+
+test('sword visual facing follows the locked horizontal attack direction', () => {
+  assert.equal(resolveSwordVisualFacing('w', 1), -1)
+  assert.equal(resolveSwordVisualFacing('nw', 1), -1)
+  assert.equal(resolveSwordVisualFacing('sw', 1), -1)
+  assert.equal(resolveSwordVisualFacing('e', -1), 1)
+  assert.equal(resolveSwordVisualFacing('ne', -1), 1)
+  assert.equal(resolveSwordVisualFacing('se', -1), 1)
+  assert.equal(resolveSwordVisualFacing('n', -1), -1)
+  assert.equal(resolveSwordVisualFacing('s', 1), 1)
 })

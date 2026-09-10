@@ -95,6 +95,22 @@ Required keys:
 
 - Runtime sprite manifest: `assets/sprites/manifest.v1.json`
 - Source intake log: `assets/sprites/source/source-images.manifest.json`
+- Optional local override manifest: `assets/private/runtime/private-sprite-overrides.manifest.json`
+
+## Private Local Override Pack
+
+- Local-only copyrighted sheets belong under `assets/private/source/` and generated override atlases belong under `assets/private/runtime/`.
+- The game now resolves `assets/sprites/manifest.v1.json` first, then merges `assets/private/runtime/private-sprite-overrides.manifest.json` if it exists at dev/build start.
+- Override entries must keep the stable runtime atlas keys used by gameplay:
+  - `atlas_player_main`
+  - `atlas_<bossId>`
+- Build the local Mega Man override pack with:
+
+```bash
+.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py
+```
+
+- This private workflow is intentionally gitignored. The repo-safe defaults remain the canonical shared asset path.
 
 ## Player Combat Atlas
 
@@ -117,6 +133,42 @@ Required keys:
 - The runtime now prefers a free-source boss/enemy roster sheet when present:
   - `assets/sprites/source/bosses/boss_roster_sheet_free_v1_20260310_180000.png`
   - Built from free OpenGameArt mech sprites and palette-shifted into the existing roster-slot layout.
+- Enemy roster upgrades can also be rebuilt from downloaded free-source inputs:
+  - `assets/sprites/source/enemies/enemy_robot_platformer_sheet_free_v1_20260312_120000.png`
+  - `assets/sprites/source/enemies/enemy_robot_pack_side_sheet_free_v1_20260312_120000.png`
+  - `assets/sprites/source/enemies/enemy_jumping_blob_strip_free_v1_20260312_184600.png`
+  - `assets/sprites/source/enemies/enemy_slime_first_gen_weak_free_v1_20260312_190900.png`
+  - `assets/sprites/source/enemies/enemy_scorpy_scorp_walk_sheet_free_v1_20260312_184600.png`
+  - `assets/sprites/source/enemies/enemy_scorpy_scorp_stab_sheet_free_v1_20260312_184600.png`
+  - `assets/sprites/source/enemies/enemy_plant_monster_frame1_free_v1_20260312_184600.png`
+  - `assets/sprites/source/enemies/enemy_plant_monster_frame2_free_v1_20260312_184600.png`
+  - `assets/sprites/source/enemies/enemy_eye_monster_sheet_free_v1_20260312_190900.png`
+  - `assets/sprites/source/enemies/enemy_cannon_gun_sheet_free_v1_20260312_191500.png`
+  - `assets/sprites/source/enemies/enemy_kenney_tank_grey1_free_v1_20260312_194000.png`
+  - `assets/sprites/source/enemies/enemy_kenney_tank_grey2_free_v1_20260312_194000.png`
+  - `assets/sprites/source/enemies/enemy_kenney_tank_grey3_free_v1_20260312_194000.png`
+  - `assets/sprites/source/enemies/enemy_kenney_tank_grey4_free_v1_20260312_194000.png`
+  - `assets/sprites/source/enemies/enemy_kenney_tank_grey5_free_v1_20260312_194000.png`
+  - Derived v2 sheets now target the full enemy roster:
+    - `enemy_gunner_bot`
+    - `enemy_rocket_bot`
+    - `enemy_slicer_bot`
+    - `enemy_armored_bot`
+    - `enemy_shock_hopper`
+    - `enemy_bouncer`
+    - `enemy_mine_bot`
+    - `enemy_frost_turret`
+    - `enemy_laser_eye`
+    - `enemy_drone`
+    - `enemy_shield_drone`
+    - `enemy_fly_trap`
+  - The specialist packs are currently wired into the roster like this:
+    - `enemy_bouncer` -> `Slime Monster Sprites`
+    - `enemy_mine_bot` -> `Scorpy Scorp`
+    - `enemy_fly_trap` -> `Plant Monster`
+    - `enemy_laser_eye` -> `Floating Eye Monster 16x16`
+    - `enemy_frost_turret` -> `Cannon Gun`
+    - `enemy_armored_bot` -> `Kenney Tanks`
 - The projectile/effect atlases now prefer curated free-source inputs when present:
   - `assets/sprites/source/projectiles/projectile_robotfree_objects_sheet_v1_20260310_180000.png`
   - `assets/sprites/source/projectiles/effects_explosion03_sheet_v1_20260310_180000.png`
@@ -128,6 +180,12 @@ Required keys:
 ```bash
 .venv/bin/python scripts/sprites/rebuild_core_runtime_atlases.py
 .venv/bin/python scripts/sprites/rebuild_roster_runtime_atlases.py
+```
+
+- To rebuild the free-source v2 enemy roster pack:
+
+```bash
+.venv/bin/python scripts/sprites/build_enemy_showcase_pack.py
 ```
 
 ## Workflow

@@ -1,14 +1,18 @@
 import Phaser from 'phaser'
 import spriteManifestData from '../../assets/sprites/manifest.v1.json'
 import { getLoadableAtlasEntries } from '../assets/manifest'
+import { countSpriteManifestOverrides, mergeSpriteManifest } from '../assets/privateSpriteManifest'
+import type { SpriteSheetManifestV1 } from '../assets/types'
 import { validateSpriteManifest } from '../assets/validateManifest'
 import { getMusicAssetEntries } from '../audio/musicLibrary'
 import { getSfxAssetEntries } from '../audio/sfxLibrary'
 import { getStageBackgroundAssetEntries } from '../content/stageBackgroundCatalog'
 import { AnimationManifest, type AnimationManifestEntry } from '../player/AnimationManifest'
 import { resolvePlayerAtlasBinding } from '../player/PlayerAtlasBindings'
+import { ensureGameplayTextures } from '../ui/gameplay/GameplayTextures'
 
 const PLAYER_ATLAS_KEY = 'atlas_player_main'
+const PLAYER_SWORD_FX_ATLAS_KEY = 'atlas_player_sword_fx'
 const PROJECTILES_ATLAS_KEY = 'atlas_projectiles_core'
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
 
@@ -23,12 +27,20 @@ export class Preload extends Phaser.Scene {
   }
 
   preload(): void {
-    const manifestValidation = validateSpriteManifest(spriteManifestData)
+    const mergedManifest = mergeSpriteManifest(
+      spriteManifestData as SpriteSheetManifestV1,
+      __PRIVATE_SPRITE_MANIFEST_DATA__
+    )
+    const manifestValidation = validateSpriteManifest(mergedManifest)
     if (!manifestValidation.valid) {
       throw new Error(`[sprites] Manifest invalid: ${manifestValidation.errors.join('; ')}`)
     }
 
     const atlasEntries = getLoadableAtlasEntries(manifestValidation.manifest)
+    const privateOverrideEntries = countSpriteManifestOverrides(
+      spriteManifestData as SpriteSheetManifestV1,
+      manifestValidation.manifest
+    )
     atlasEntries.forEach((entry) => {
       if (!this.textures.exists(entry.atlasKey)) {
         this.load.atlas(entry.atlasKey, entry.runtimeImage, entry.runtimeData)
@@ -57,11 +69,14 @@ export class Preload extends Phaser.Scene {
       valid: true,
       entries: manifestValidation.manifest.entries.length,
       readyAtlases: atlasEntries.length,
-      backgroundImages: getStageBackgroundAssetEntries().length
+      backgroundImages: getStageBackgroundAssetEntries().length,
+      privateOverrideEntries,
+      manifestMode: privateOverrideEntries > 0 ? 'base+private' : 'base'
     })
   }
 
   create(): void {
+    ensureGameplayTextures(this)
     this.assertAtlasLoaded(PLAYER_ATLAS_KEY)
     this.assertAtlasLoaded(PROJECTILES_ATLAS_KEY)
     this.assertAtlasLoaded(EFFECTS_ATLAS_KEY)
@@ -103,6 +118,13 @@ export class Preload extends Phaser.Scene {
       start: 0,
       end: 3
     })
+
+    if (this.textures.exists(PLAYER_SWORD_FX_ATLAS_KEY)) {
+      this.createAtlasAnimation('player-sword-fx', PLAYER_SWORD_FX_ATLAS_KEY, ['player_sword_fx/core/'], 24, 0, {
+        start: 0,
+        end: 3
+      })
+    }
 
     Object.values(AnimationManifest.animations).forEach((entry) => {
       const binding = this.resolveManifestBinding(entry)

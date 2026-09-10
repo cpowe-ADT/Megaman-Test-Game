@@ -1,4 +1,5 @@
-import Phaser from 'phaser'
+import type Phaser from 'phaser'
+import { shouldFlipPlayerSpriteForFacing } from './config'
 import type { PlayerFeatureFlags } from './featureFlags'
 import type { BlasterConfig, SwordConfig, DamageConfig, Direction8 } from './config'
 import type {
@@ -62,7 +63,9 @@ export class PlayerCombat {
 
   private transientShotFired = false
   private transientChargeReleased = false
+  private transientReleasedChargeLevel: 0 | 1 | 2 | 3 | 4 = 0
   private chargeCueLevel: 0 | 1 | 2 | 3 | 4 = 0
+  private chargeElapsedMs = 0
 
   constructor(
     private readonly player: Phaser.Physics.Arcade.Sprite,
@@ -79,11 +82,14 @@ export class PlayerCombat {
     deltaMs: number,
     facing: 1 | -1,
     grounded: boolean,
-    dashing: boolean
+    dashing: boolean,
+    canChargeShot = this.flags.enableChargeShot
   ): { snapshot: CombatSnapshot; events: PlayerRuntimeEvent[] } {
     const events: PlayerRuntimeEvent[] = []
     this.transientShotFired = false
     this.transientChargeReleased = false
+    this.transientReleasedChargeLevel = 0
+    this.chargeElapsedMs = this.charging ? Math.max(0, now - this.chargeStartedAt) : 0
 
     this.iFramesRemainingMs = Math.max(0, this.iFramesRemainingMs - deltaMs)
     this.hitstunRemainingMs = Math.max(0, this.hitstunRemainingMs - deltaMs)
@@ -104,13 +110,14 @@ export class PlayerCombat {
     const canAct = this.hitstunRemainingMs <= 0
 
     if (canAct) {
-      const canShoot = !dashing
+      const canShoot = true
       if (canShoot && intent.shootPressed) {
-        if (this.flags.enableChargeShot) {
+        if (canChargeShot) {
           this.charging = true
           this.chargeStartedAt = now
           this.chargeLevel = 0
           this.chargeCueLevel = 0
+          this.chargeElapsedMs = 0
           events.push({ type: 'vfx', key: 'fx_charge_aura_lv1' })
           events.push({ type: 'sfx', key: 'charge_start' })
         } else {
@@ -120,20 +127,24 @@ export class PlayerCombat {
 
       if (this.charging && intent.shootHeld) {
         const nextChargeLevel = this.resolveChargeLevel(now - this.chargeStartedAt)
+        this.chargeElapsedMs = Math.max(0, now - this.chargeStartedAt)
         this.chargeLevel = nextChargeLevel
         if (nextChargeLevel > 0 && nextChargeLevel > this.chargeCueLevel) {
           this.chargeCueLevel = nextChargeLevel
+          events.push({ type: 'vfx', key: `fx_charge_aura_lv${nextChargeLevel}` })
           events.push({ type: 'sfx', key: 'charge_loop' })
         }
       }
 
       if (this.charging && intent.shootReleased) {
-        const level = this.flags.enableChargeShot ? this.resolveChargeLevel(now - this.chargeStartedAt) : 0
+        const level = canChargeShot ? this.resolveChargeLevel(now - this.chargeStartedAt) : 0
         this.fireProjectile(events, level, facing)
         this.charging = false
         this.chargeLevel = 0
         this.chargeCueLevel = 0
+        this.chargeElapsedMs = 0
         this.transientChargeReleased = true
+        this.transientReleasedChargeLevel = level
       }
 
       const canSlash = this.flags.enableSword && !dashing
@@ -145,7 +156,6 @@ export class PlayerCombat {
           this.getSwordWindow(grounded, this.slashDirection).startupFrames
         )
         this.slashHitboxFired = false
-        events.push({ type: 'vfx', key: `fx_sword_trail_dir_${this.slashDirection}` })
         events.push({ type: 'sfx', key: 'sword_swing' })
       }
     }
@@ -158,9 +168,15 @@ export class PlayerCombat {
     }
   }
 
-  receiveDamage(damage: number, grounded: boolean, facing: 1 | -1, tier: HitTier = 'light'): boolean {
-    if (this.iFramesRemainingMs > 0) {
-      return false
+  receiveDamage(
+    damage: number,
+    grounded: boolean,
+    knockbackDirection: 1 | -1,
+    tier: HitTier = 'light',
+    options: { bypassIFrames?: boolean; knockback?: { x: number; y: number } } = {}
+  ): { accepted: boolean; events: PlayerRuntimeEvent[] } {
+    if (this.iFramesRemainingMs > 0 && !options.bypassIFrames) {
+      return { accepted: false, events: [] }
     }
 
     this.hooks.onDamageAccepted(damage)
@@ -168,20 +184,28 @@ export class PlayerCombat {
     this.hitstunRemainingMs = tier === 'heavy' ? this.damage.hitstunMs.heavy : this.damage.hitstunMs.light
     this.pendingDamageTier = tier
 
-    const knockback = grounded ? this.damage.knockback.ground : this.damage.knockback.air
-    this.hooks.onKnockback(knockback.x * -facing, knockback.y)
-
-    if (this.flags.enableHitstop) {
-      this.hitstopRemainingFrames = tier === 'heavy' ? 4 : 2
+    const configuredKnockback = grounded ? this.damage.knockback.ground : this.damage.knockback.air
+    const knockback = options.knockback ?? {
+      x: configuredKnockback.x * knockbackDirection,
+      y: configuredKnockback.y
     }
+    this.hooks.onKnockback(knockback.x, knockback.y)
 
     if (this.blaster.chargeCancelOnHit) {
       this.charging = false
       this.chargeLevel = 0
       this.chargeCueLevel = 0
+      this.chargeElapsedMs = 0
     }
 
-    return true
+    const events: PlayerRuntimeEvent[] = []
+    if (tier === 'heavy') {
+      events.push({ type: 'vfx', key: 'fx_shake_camera_heavy' })
+      events.push({ type: 'hitstop', frames: 10 })
+    } else {
+      events.push({ type: 'hitstop', frames: 4 })
+    }
+    return { accepted: true, events }
   }
 
   resetForRespawn(): void {
@@ -189,6 +213,7 @@ export class PlayerCombat {
     this.charging = false
     this.chargeStartedAt = 0
     this.chargeLevel = 0
+    this.chargeElapsedMs = 0
     this.slashDirection = 'e'
     this.slashPhase = null
     this.slashPhaseRemainingMs = 0
@@ -200,6 +225,7 @@ export class PlayerCombat {
     this.pendingDamageTier = undefined
     this.transientShotFired = false
     this.transientChargeReleased = false
+    this.transientReleasedChargeLevel = 0
     this.chargeCueLevel = 0
   }
 
@@ -214,9 +240,12 @@ export class PlayerCombat {
     return {
       shotFired: this.transientShotFired,
       chargeLevel: this.chargeLevel,
+      chargeElapsedMs: this.chargeElapsedMs,
       charging: this.charging,
       chargeReleased: this.transientChargeReleased,
+      releasedChargeLevel: this.transientReleasedChargeLevel,
       slashActive: this.slashPhase != null,
+      slashGrounded: this.slashPhase != null ? this.slashGrounded : undefined,
       slashDirection: this.slashPhase != null ? this.slashDirection : undefined,
       slashPhase: this.slashPhase ?? undefined,
       hitstunRemainingMs: this.hitstunRemainingMs,
@@ -241,6 +270,7 @@ export class PlayerCombat {
       this.slashPhaseRemainingMs = this.framesToMs(
         this.getSwordWindow(this.slashGrounded, this.slashDirection).activeFrames
       )
+      events.push({ type: 'vfx', key: `fx_sword_trail_dir_${this.slashDirection}` })
       if (!this.slashHitboxFired) {
         const window = this.getSwordWindow(this.slashGrounded, this.slashDirection)
         events.push({
@@ -251,9 +281,11 @@ export class PlayerCombat {
             grounded: this.slashGrounded
           }
         })
-        events.push({ type: 'vfx', key: 'fx_hit_spark' })
         if (this.flags.enableHitstop && window.hitstopFrames > 0) {
           events.push({ type: 'hitstop', frames: window.hitstopFrames })
+          if (window.hitstopFrames >= 4) {
+            events.push({ type: 'vfx', key: 'fx_shake_camera_medium' })
+          }
         }
         this.slashHitboxFired = true
       }
@@ -278,28 +310,11 @@ export class PlayerCombat {
       return
     }
 
-    const request: SpawnProjectileRequest =
-      chargeLevel === 0
-        ? {
-            type: 'pellet',
-            chargeLevel,
-            facing,
-            speed: this.blaster.pelletSpeed,
-            damage: this.blaster.pelletDamage,
-            scale: 1,
-            pierce: 0,
-            impactFxKey: 'fx_impact_small'
-          }
-        : {
-            type: 'charge',
-            chargeLevel,
-            facing,
-            speed: this.blaster.perLevelProjectile[chargeLevel].speed,
-            damage: this.blaster.perLevelProjectile[chargeLevel].damage,
-            scale: this.blaster.perLevelProjectile[chargeLevel].size,
-            pierce: this.blaster.perLevelProjectile[chargeLevel].pierce,
-            impactFxKey: this.blaster.perLevelProjectile[chargeLevel].impactFxKey
-          }
+    const request: SpawnProjectileRequest = {
+      type: chargeLevel === 0 ? 'pellet' : 'charge',
+      chargeLevel,
+      facing
+    }
 
     this.nextFireAt = this.player.scene.time.now + this.blaster.fireRateMs
     this.transientShotFired = true
@@ -312,15 +327,17 @@ export class PlayerCombat {
       this.charging = false
       this.chargeLevel = 0
       this.chargeCueLevel = 0
+      this.chargeElapsedMs = 0
     }
 
     if (this.flags.enableChargeShot && this.blaster.chargeCancelOnSlash && this.slashPhase != null) {
       this.charging = false
       this.chargeLevel = 0
       this.chargeCueLevel = 0
+      this.chargeElapsedMs = 0
     }
 
-    this.player.setFlipX(facing === -1)
+    this.player.setFlipX(shouldFlipPlayerSpriteForFacing(facing))
   }
 
   private resolveChargeLevel(heldMs: number): 0 | 1 | 2 | 3 | 4 {

@@ -5,7 +5,7 @@ import { getGeneratedEnemyDefinition } from '../content/enemies'
 import { EnemyCombat } from './EnemyCombat'
 import { EnemyMotor } from './EnemyMotor'
 import { EnemyAI } from './EnemyAI'
-import { DamageEvent, EnemyDefinition, EnemyRuntimeContext, EnemyState } from './types'
+import { DamageEvent, EnemyDefinition, EnemyPatrolBounds, EnemyRuntimeContext, EnemyState } from './types'
 
 function firstAvailableFrame(
   texture: Phaser.Textures.Texture,
@@ -49,6 +49,7 @@ export type EnemyEntityOptions = {
   enableAI: boolean
   enableProjectiles: boolean
   definitionOverride?: EnemyDefinition
+  patrolBounds?: EnemyPatrolBounds
 }
 
 export class EnemyEntity {
@@ -58,6 +59,7 @@ export class EnemyEntity {
   readonly context: EnemyRuntimeContext
   readonly sprite: Phaser.Physics.Arcade.Sprite
   readonly spawnPosition: Phaser.Math.Vector2
+  readonly patrolBounds?: EnemyPatrolBounds
 
   state: EnemyState = 'idle'
   facing: 1 | -1 = 1
@@ -78,6 +80,7 @@ export class EnemyEntity {
     this.definition = definition
     this.context = context
     this.spawnPosition = new Phaser.Math.Vector2(options.x, options.y)
+    this.patrolBounds = options.patrolBounds
 
     const textureInfo = resolveEnemyTexture(context.scene, typeKey)
     const sprite = context.enemyGroup.create(

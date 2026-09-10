@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { ProjectileSystem } from '../projectiles'
+import type { PlayerDamageRequest, PlayerDamageResult } from '../player/types'
 
 export type EnemyMovementType = 'walker' | 'hopper' | 'flyer' | 'turret' | 'drone' | 'crawler'
 
@@ -115,7 +116,7 @@ export interface EnemyRuntimeContext {
   projectileGroup: Phaser.Physics.Arcade.Group
   projectileSystem: ProjectileSystem
   worldPlatforms?: Phaser.Physics.Arcade.StaticGroup
-  applyDamageToPlayer: (amount: number) => void
+  applyDamageToPlayer: (request: PlayerDamageRequest) => PlayerDamageResult
   onEnemyDefeated: (sprite: Phaser.Physics.Arcade.Sprite) => void
   playAnimationSafe: (
     target: Phaser.GameObjects.Sprite | Phaser.Physics.Arcade.Sprite | undefined,
@@ -135,6 +136,11 @@ export interface EnemyLevelMarker {
   spawnLeadX?: number
   retireTriggerX?: number
   persistent?: boolean
+}
+
+export interface EnemyPatrolBounds {
+  minX: number
+  maxX: number
 }
 
 export interface EnemySpawnWave {

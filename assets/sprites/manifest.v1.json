@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generatedAt": "2026-02-13",
+  "generatedAt": "2026-03-13",
   "entries": [
     {
       "id": "boss-sentinel-rook",
@@ -156,11 +156,28 @@
       "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/move/shoot frame synthesis."
     },
     {
+      "id": "boss-omega-core",
+      "bossId": "omega_core",
+      "atlasKey": "atlas_omega_core",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/bosses/omega_core.png",
+        "runtimeData": "/assets/sprites/bosses/omega_core.json",
+        "localImagePath": "assets/sprites/bosses/omega_core.png",
+        "localDataPath": "assets/sprites/bosses/omega_core.json"
+      },
+      "notes": "Original Omega Core pixel-art source generated with the built-in image-generation workflow, chroma-keyed locally, and assembled into deterministic idle/move/shoot frames."
+    },
+    {
       "id": "enemies-enemy_gunner_bot",
       "atlasKey": "atlas_enemy_gunner_bot",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 40,
+        "height": 40
       },
       "status": "ready",
       "source": {
@@ -169,7 +186,7 @@
         "localImagePath": "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.png",
         "localDataPath": "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "player-player_main",
@@ -191,8 +208,8 @@
       "id": "enemies-enemy_rocket_bot",
       "atlasKey": "atlas_enemy_rocket_bot",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 40,
+        "height": 40
       },
       "status": "ready",
       "source": {
@@ -201,14 +218,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.png",
         "localDataPath": "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_slicer_bot",
       "atlasKey": "atlas_enemy_slicer_bot",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 40,
+        "height": 40
       },
       "status": "ready",
       "source": {
@@ -217,14 +234,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.png",
         "localDataPath": "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_armored_bot",
       "atlasKey": "atlas_enemy_armored_bot",
       "frame": {
         "width": 48,
-        "height": 48
+        "height": 40
       },
       "status": "ready",
       "source": {
@@ -233,14 +250,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.png",
         "localDataPath": "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_shock_hopper",
       "atlasKey": "atlas_enemy_shock_hopper",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 40,
+        "height": 40
       },
       "status": "ready",
       "source": {
@@ -249,14 +266,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.png",
         "localDataPath": "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_bouncer",
       "atlasKey": "atlas_enemy_bouncer",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 40,
+        "height": 34
       },
       "status": "ready",
       "source": {
@@ -265,14 +282,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.png",
         "localDataPath": "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_mine_bot",
       "atlasKey": "atlas_enemy_mine_bot",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 42,
+        "height": 32
       },
       "status": "ready",
       "source": {
@@ -281,14 +298,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.png",
         "localDataPath": "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_frost_turret",
       "atlasKey": "atlas_enemy_frost_turret",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 42,
+        "height": 34
       },
       "status": "ready",
       "source": {
@@ -297,14 +314,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.png",
         "localDataPath": "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_laser_eye",
       "atlasKey": "atlas_enemy_laser_eye",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 38,
+        "height": 28
       },
       "status": "ready",
       "source": {
@@ -313,14 +330,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.png",
         "localDataPath": "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_drone",
       "atlasKey": "atlas_enemy_drone",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 36,
+        "height": 28
       },
       "status": "ready",
       "source": {
@@ -329,14 +346,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_drone/enemy_drone.png",
         "localDataPath": "assets/sprites/enemies/enemy_drone/enemy_drone.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_fly_trap",
       "atlasKey": "atlas_enemy_fly_trap",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 38,
+        "height": 30
       },
       "status": "ready",
       "source": {
@@ -345,14 +362,14 @@
         "localImagePath": "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.png",
         "localDataPath": "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "enemies-enemy_shield_drone",
       "atlasKey": "atlas_enemy_shield_drone",
       "frame": {
-        "width": 48,
-        "height": 48
+        "width": 38,
+        "height": 30
       },
       "status": "ready",
       "source": {
@@ -361,7 +378,7 @@
         "localImagePath": "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.png",
         "localDataPath": "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.atlas.json"
       },
-      "notes": "Generated from source/bosses/boss_roster_sheet_free_v1_20260310_180000.png built from free OpenGameArt mech sprites via deterministic component extraction and rigged idle/run/attack/death frame synthesis."
+      "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
       "id": "projectiles-projectiles_core",

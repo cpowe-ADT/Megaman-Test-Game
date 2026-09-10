@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import type { DigitalButtonPad } from '../input/DigitalButtonPad'
 import type { PlayerIntent } from './types'
 
 type ActionKeys = {
@@ -16,31 +17,34 @@ export class PlayerController {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly cursors: Phaser.Types.Input.Keyboard.CursorKeys,
-    private readonly actionKeys: ActionKeys
+    private readonly actionKeys: ActionKeys,
+    private readonly virtualButtons?: DigitalButtonPad
   ) {
     this.jumpKey = this.scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
   }
 
   sampleIntent(facing: 1 | -1): PlayerIntent {
-    const left = Boolean(this.cursors.left?.isDown)
-    const right = Boolean(this.cursors.right?.isDown)
-    const up = Boolean(this.cursors.up?.isDown)
-    const down = Boolean(this.cursors.down?.isDown)
+    const virtual = this.virtualButtons?.sample()
+    const left = Boolean(this.cursors.left?.isDown || virtual?.left.held)
+    const right = Boolean(this.cursors.right?.isDown || virtual?.right.held)
+    const up = Boolean(this.cursors.up?.isDown || virtual?.up.held)
+    const down = Boolean(this.cursors.down?.isDown || virtual?.down.held)
 
     const moveAxis: -1 | 0 | 1 = left && !right ? -1 : right && !left ? 1 : 0
 
     const now = this.scene.time.now
     const jumpSuppressed = now < this.jumpSuppressedUntilMs
-    const rawJumpHeld = Boolean(this.jumpKey?.isDown)
+    const rawJumpHeld = Boolean(this.jumpKey?.isDown || virtual?.jump.held)
     const jumpHeld = rawJumpHeld && !jumpSuppressed
-    const shootHeld = Boolean(this.actionKeys.shoot?.isDown)
+    const shootHeld = Boolean(this.actionKeys.shoot?.isDown || virtual?.shoot.held)
+    const dashHeld = Boolean(this.actionKeys.dash?.isDown || virtual?.dash.held)
 
     const rawJumpPressed = rawJumpHeld && !this.previousJumpHeldRaw
     const rawJumpReleased = !rawJumpHeld && this.previousJumpHeldRaw
     const jumpPressed = rawJumpPressed && !jumpSuppressed
     const jumpReleased = rawJumpReleased
-    const shootPressed = shootHeld && !this.previousShootHeld
-    const shootReleased = !shootHeld && this.previousShootHeld
+    const shootPressed = (shootHeld && !this.previousShootHeld) || Boolean(virtual?.shoot.pressed)
+    const shootReleased = (!shootHeld && this.previousShootHeld) || Boolean(virtual?.shoot.released)
 
     this.previousJumpHeldRaw = rawJumpHeld
     this.previousShootHeld = shootHeld
@@ -53,11 +57,14 @@ export class PlayerController {
       jumpPressed,
       jumpHeld,
       jumpReleased,
-      dashPressed: Phaser.Input.Keyboard.JustDown(this.actionKeys.dash),
+      dashPressed: Phaser.Input.Keyboard.JustDown(this.actionKeys.dash) || Boolean(virtual?.dash.pressed),
+      dashHeld,
+      dashReleased:
+        Phaser.Input.Keyboard.JustUp(this.actionKeys.dash) || Boolean(virtual?.dash.released),
       shootPressed,
       shootHeld,
       shootReleased,
-      slashPressed: Phaser.Input.Keyboard.JustDown(this.actionKeys.saber),
+      slashPressed: Phaser.Input.Keyboard.JustDown(this.actionKeys.saber) || Boolean(virtual?.saber.pressed),
       crouchHeld: down,
       aim: { x: aimX, y: aimY }
     }

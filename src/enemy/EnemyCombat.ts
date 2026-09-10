@@ -170,7 +170,13 @@ export class EnemyCombat {
     }
 
     this.attackHitApplied = true
-    this.context.applyDamageToPlayer(this.definition.stats.damage)
+    this.context.applyDamageToPlayer({
+      amount: this.definition.stats.damage,
+      tier: this.definition.stats.damage >= 2 ? 'heavy' : 'light',
+      sourceType: 'enemy_melee',
+      sourceId: String(this.sprite.data?.get?.('enemyFrameworkId') ?? this.definition.typeKey),
+      direction: this.context.player.x >= this.sprite.x ? 1 : -1
+    })
   }
 
   private fireProjectilePattern(now: number, facing: 1 | -1, attack: EnemyAttackConfig): void {
@@ -211,7 +217,12 @@ export class EnemyCombat {
       projectile,
       origin,
       facing,
-      aim
+      aim,
+      {
+        sourceType: 'enemy_projectile',
+        sourceId: String(this.sprite.data?.get?.('enemyFrameworkId') ?? this.definition.typeKey),
+        attackId: this.definition.attack.projectileKey ?? projectile.key
+      }
     )
   }
 }

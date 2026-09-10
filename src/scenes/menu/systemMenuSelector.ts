@@ -2,6 +2,8 @@ export type SystemMenuSource = 'Game' | 'StageSelect'
 
 export type SystemMenuAction =
   | 'resume'
+  | 'controls'
+  | 'progression'
   | 'save_game'
   | 'load_game'
   | 'new_game'
@@ -19,6 +21,8 @@ export function buildSystemMenuOptions(source: SystemMenuSource, hasActiveRun: b
   if (source === 'Game') {
     return [
       { id: 'resume', label: 'Resume', enabled: true },
+      { id: 'controls', label: 'Controls', enabled: true },
+      { id: 'progression', label: 'Progression', enabled: true },
       { id: 'save_game', label: 'Save Game', enabled: true },
       { id: 'load_game', label: 'Load Save', enabled: hasActiveRun },
       { id: 'new_game', label: 'Start New', enabled: true },
@@ -28,6 +32,8 @@ export function buildSystemMenuOptions(source: SystemMenuSource, hasActiveRun: b
   }
 
   return [
+    { id: 'controls', label: 'Controls', enabled: true },
+    { id: 'progression', label: 'Progression', enabled: true },
     { id: 'load_game', label: 'Continue (Load Save)', enabled: hasActiveRun },
     { id: 'new_game', label: 'Start New', enabled: true },
     { id: 'clear_save', label: 'Clear Save Data', enabled: true },

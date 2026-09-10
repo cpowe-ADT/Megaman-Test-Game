@@ -35,7 +35,16 @@ export class EnemySpawner {
     }
   }
 
-  spawn(typeKey: string, x: number, y: number, explicitId?: string): EnemyEntity | null {
+  spawn(
+    typeKey: string,
+    x: number,
+    y: number,
+    options?: {
+      explicitId?: string
+      patrolMinX?: number
+      patrolMaxX?: number
+    }
+  ): EnemyEntity | null {
     const resolvedDefinition = this.resolveDefinition(typeKey)
     if (!resolvedDefinition) {
       console.warn(`[EnemySpawner] Unknown enemy type '${typeKey}'`)
@@ -45,14 +54,22 @@ export class EnemySpawner {
       return null
     }
 
-    const id = explicitId ?? `enemy_${this.idSeed++}`
+    const id = options?.explicitId ?? `enemy_${this.idSeed++}`
+    const hasPatrolBounds =
+      typeof options?.patrolMinX === 'number' && typeof options?.patrolMaxX === 'number'
     const entity = new EnemyEntity(this.context, typeKey, {
       id,
       x,
       y,
       enableAI: this.options.enableAI,
       enableProjectiles: this.options.enableProjectiles,
-      definitionOverride: resolvedDefinition
+      definitionOverride: resolvedDefinition,
+      patrolBounds: hasPatrolBounds
+        ? {
+            minX: Math.min(options?.patrolMinX as number, options?.patrolMaxX as number),
+            maxX: Math.max(options?.patrolMinX as number, options?.patrolMaxX as number)
+          }
+        : undefined
     })
     this.enemies.set(id, entity)
 
@@ -86,6 +103,18 @@ export class EnemySpawner {
     })
 
     this.debugOverlay?.update(this.getEntities())
+  }
+
+  pauseAnimations(): void {
+    this.enemies.forEach((entity) => {
+      entity.sprite.anims.pause()
+    })
+  }
+
+  resumeAnimations(): void {
+    this.enemies.forEach((entity) => {
+      entity.sprite.anims.resume()
+    })
   }
 
   applyDamageToSprite(sprite: Phaser.Physics.Arcade.Sprite, event: DamageEvent): boolean {
@@ -161,7 +190,7 @@ export class EnemySpawner {
         return
       }
 
-      const spawned = this.spawn(wave.typeKey, wave.x, wave.y, wave.id)
+      const spawned = this.spawn(wave.typeKey, wave.x, wave.y, { explicitId: wave.id })
       if (spawned) {
         wave.consumed = true
       }
@@ -191,7 +220,11 @@ export class EnemySpawner {
         return
       }
 
-      const spawned = this.spawn(marker.typeKey, marker.x, marker.y, marker.id)
+      const spawned = this.spawn(marker.typeKey, marker.x, marker.y, {
+        explicitId: marker.id,
+        patrolMinX: marker.patrolMinX,
+        patrolMaxX: marker.patrolMaxX
+      })
       if (!spawned) {
         return
       }

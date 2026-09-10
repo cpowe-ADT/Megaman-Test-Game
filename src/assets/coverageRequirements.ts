@@ -25,7 +25,8 @@ export const REQUIRED_BOSS_IDS: readonly BossId[] = [
   'ferro_blade',
   'mire_wraith',
   'gale_vixen',
-  'glacier_ronin'
+  'glacier_ronin',
+  'omega_core'
 ] as const
 
 export const REQUIRED_MANIFEST_ENTRY_IDS = [

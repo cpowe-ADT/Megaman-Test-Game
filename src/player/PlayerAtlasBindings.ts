@@ -4,6 +4,8 @@ export type PlayerAtlasBinding = {
   end?: number
 }
 
+const SLASH_FRAME_END = 3
+
 const DIRECT_BINDINGS: Record<string, PlayerAtlasBinding> = {
   player_idle: { prefixes: ['player_main/idle/'], start: 0, end: 3 },
   player_idle_blink: { prefixes: ['player_main/idle/'], start: 2, end: 3 },
@@ -18,6 +20,8 @@ const DIRECT_BINDINGS: Record<string, PlayerAtlasBinding> = {
   player_jump_rise: { prefixes: ['player_main/jump_rise/'], start: 0, end: 0 },
   player_jump_apex: { prefixes: ['player_main/jump_apex/'], start: 0, end: 0 },
   player_fall: { prefixes: ['player_main/fall/'], start: 0, end: 0 },
+  player_wall_slide: { prefixes: ['player_main/wall_slide/'], start: 0, end: 0 },
+  player_wall_jump: { prefixes: ['player_main/wall_jump/'], start: 0, end: 0 },
   player_land: { prefixes: ['player_main/land/'], start: 0, end: 0 },
   player_dash_start: { prefixes: ['player_main/dash_start/'], start: 0, end: 0 },
   player_dash_loop: { prefixes: ['player_main/dash_loop/'], start: 0, end: 0 },
@@ -74,13 +78,13 @@ export function resolvePlayerAtlasBinding(animationKey: string): PlayerAtlasBind
   if (animationKey.startsWith('player_slash_ground_')) {
     const dir = animationKey.slice('player_slash_ground_'.length)
     const group = GROUND_SLASH_GROUPS[dir] ?? GROUND_SLASH_GROUPS.e
-    return { prefixes: [`player_main/${group}/`], start: 0, end: 0 }
+    return { prefixes: [`player_main/${group}/`], start: 0, end: SLASH_FRAME_END }
   }
 
   if (animationKey.startsWith('player_slash_air_')) {
     const dir = animationKey.slice('player_slash_air_'.length)
     const group = AIR_SLASH_GROUPS[dir] ?? AIR_SLASH_GROUPS.e
-    return { prefixes: [`player_main/${group}/`], start: 0, end: 0 }
+    return { prefixes: [`player_main/${group}/`], start: 0, end: SLASH_FRAME_END }
   }
 
   return { prefixes: ['player_main/idle/'], start: 0, end: 0 }

@@ -7,6 +7,34 @@ export const PROJECTILES_ATLAS_KEY = 'atlas_projectiles_core'
 export const PLAYER_BULLET_FRAME = 'projectiles_core/core/000'
 export const ENEMY_BULLET_FRAME = 'projectiles_core/core/009'
 
+const PLAYER_WEAPON_FRAMES: Record<string, string> = {
+  Buster: 'projectiles_core/core/000',
+  ArcSlash: 'projectiles_core/core/006',
+  FlameSerpent: 'projectiles_core/core/003',
+  HydroLance: 'projectiles_core/core/001',
+  ThunderSpike: 'projectiles_core/core/004',
+  QuakeKnuckle: 'projectiles_core/core/011',
+  MagcutDisc: 'projectiles_core/core/017',
+  AcidGlob: 'projectiles_core/core/012',
+  AeroDarts: 'projectiles_core/core/005',
+  FrostShatter: 'projectiles_core/core/002'
+}
+
+const PLAYER_CHARGE_FRAMES: Record<1 | 2 | 3 | 4, string> = {
+  1: 'projectiles_core/core/000',
+  2: 'projectiles_core/core/001',
+  3: 'projectiles_core/core/006',
+  4: 'projectiles_core/core/007'
+}
+
+export function resolvePlayerWeaponFrame(weaponId: string): string {
+  return PLAYER_WEAPON_FRAMES[weaponId] ?? PLAYER_BULLET_FRAME
+}
+
+export function resolvePlayerChargeFrame(level: 1 | 2 | 3 | 4): string {
+  return PLAYER_CHARGE_FRAMES[level]
+}
+
 function createEnemyDefinition(config: {
   id: string
   frame: string
@@ -52,6 +80,30 @@ function createEnemyDefinition(config: {
   }
 }
 
+function createEnemyBoomerangDefinition(): ProjectileDefinition {
+  return {
+    id: 'boss_mag_disc',
+    owner: 'enemy',
+    pool: 'enemy',
+    speed: 250,
+    damage: 2,
+    lifetimeMs: 3200,
+    maxVelocityX: 640,
+    maxVelocityY: 640,
+    visual: {
+      textureKey: PROJECTILES_ATLAS_KEY,
+      frame: 'projectiles_core/core/017',
+      depth: 1000,
+      scale: 1.45,
+      tint: 0xc9e2ff,
+      blendMode: 'ADD',
+      flipXWithDirection: false
+    },
+    behavior: { kind: 'boomerang', returnAfterMs: 520, returnSpeed: 310, homeOffsetY: -8 },
+    hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: 1 }
+  }
+}
+
 function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
   const weapon = getWeaponConfig(weaponId)
   const style = weapon.projectile.style
@@ -67,12 +119,15 @@ function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
     maxVelocityY: 640,
     visual: {
       textureKey: PROJECTILES_ATLAS_KEY,
-      frame: PLAYER_BULLET_FRAME,
+      frame: resolvePlayerWeaponFrame(weapon.id),
       depth: 2,
       scale: weapon.scale,
       tint: weapon.tint,
       flipXWithDirection: true
     },
+    // Enemy movement colliders hug their feet. Keep a generous, centered combat
+    // sensor so a muzzle-height pellet cannot pass over short ground enemies.
+    hitbox: weapon.id === 'Buster' ? { width: 14, height: 54 } : { width: 16, height: 46 },
     behavior:
       style === 'wave'
         ? {
@@ -116,10 +171,14 @@ function createChargeDefinition(level: 1 | 2 | 3 | 4): ProjectileDefinition {
     maxVelocityY: 640,
     visual: {
       textureKey: PROJECTILES_ATLAS_KEY,
-      frame: PLAYER_BULLET_FRAME,
+      frame: resolvePlayerChargeFrame(level),
       depth: 2,
       scale: charge.size,
       flipXWithDirection: true
+    },
+    hitbox: {
+      width: 14 + level * 4,
+      height: 54 + level * 2
     },
     behavior: { kind: 'standard' },
     hitPolicy: {
@@ -145,7 +204,12 @@ export function resolvePlayerProjectileId(
 
 export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
   const weaponIds = Array.from(
-    new Set<string>(['Buster', ...Object.values(BOSS_ROSTER).map((boss) => boss.weaponReward.id)])
+    new Set<string>([
+      'Buster',
+      ...Object.values(BOSS_ROSTER)
+        .map((boss) => boss.weaponReward?.id)
+        .filter((id): id is NonNullable<typeof id> => Boolean(id))
+    ])
   )
 
   return [
@@ -162,6 +226,54 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
       lifetimeMs: 2500,
       tint: 0xff3b30
     }),
+    createEnemyDefinition({
+      id: 'boss_fire_orb',
+      frame: 'projectiles_core/core/003',
+      speed: 170,
+      damage: 2,
+      lifetimeMs: 2800,
+      gravityY: 330,
+      scale: 1.7,
+      tint: 0xff7a2f
+    }),
+    createEnemyDefinition({
+      id: 'boss_water_lance',
+      frame: 'projectiles_core/core/001',
+      speed: 285,
+      damage: 1,
+      lifetimeMs: 2400,
+      scale: 1.45,
+      tint: 0x75ddff
+    }),
+    createEnemyDefinition({
+      id: 'boss_arc_shard',
+      frame: 'projectiles_core/core/004',
+      speed: 245,
+      damage: 1,
+      lifetimeMs: 2200,
+      scale: 1.25,
+      tint: 0xffee78
+    }),
+    createEnemyDefinition({
+      id: 'boss_acid_glob',
+      frame: 'projectiles_core/core/012',
+      speed: 165,
+      damage: 2,
+      lifetimeMs: 2800,
+      gravityY: 300,
+      scale: 1.55,
+      tint: 0x75f06c
+    }),
+    createEnemyDefinition({
+      id: 'boss_static_orb',
+      frame: 'projectiles_core/core/015',
+      speed: 205,
+      damage: 1,
+      lifetimeMs: 2800,
+      scale: 1.45,
+      tint: 0x8df5ff
+    }),
+    createEnemyBoomerangDefinition(),
     createEnemyDefinition({
       id: 'enemy_shot_basic',
       frame: 'projectiles_core/core/009',
