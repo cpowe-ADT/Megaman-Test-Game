@@ -48,7 +48,8 @@ Command meanings and usage rules live in `TESTING.md`.
 | Cycle weapon | D / E |
 | Cycle weapon backward | Q |
 | Stage Select checkpoint cycle | L / R |
-| Return / back | Esc |
+| Pause menu (weapon, sub tank, options, quit) / back | Esc |
+| Options (Title) | O |
 
 You can also open the in-game `Controls` screen from the title menu and the system menu.
 

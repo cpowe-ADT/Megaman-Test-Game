@@ -143,6 +143,7 @@ When changing these contracts:
 - `render_game_to_text()` adds `stageIntro` (`phase`, `active`), `ticker` (the toast and radio lane), `story` (intro state, policy, seen flags), `settings`, `save` (story flags, sub tanks, difficulty, completion), `prologue` and `ending` on their scenes, and `dialogue` on Stage Select while a milestone plays.
 - `stageDebug.advanceStageIntro()` / `skipStageIntro()` / `storyState()` / `setLives(n)` / `setSubTanks(count, fills)` are automation-only. `window.narrativeDebug.advance()` / `skip()` / `state()` exist while the Prologue or Ending scene is active.
 - Story flags mark at the moment a sequence starts, so reading every line and skipping produce identical `save.storyFlags`.
+- `render_game_to_text()` also reports `systemMenu` (source, cursor index, option ids) while the pause menu or route console is open, `options` while the Options scene is open, and `gameOver` (cursor, auto-continue countdown). The in-game `SystemMenu` still handles `save_game` / `load_game` programmatically for automation even though the visible menu autosaves.
 
 ## Handling Flaky Browser Validation
 - Fix the smallest reproducible issue first.

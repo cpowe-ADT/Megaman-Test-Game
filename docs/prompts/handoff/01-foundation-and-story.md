@@ -4,13 +4,9 @@
 
 Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; Craig approved STOP 1.0b; Phase 1.1 implementation and automated gates are complete, with Craig’s STOP 1.1 approval recorded below. Phase 1.2 is implemented with automated evidence green; STOP 1.2 awaits Craig’s title/subtitle review. Session 01a ends at that STOP. The separate enemy ecology request remains a planning supplement; phases 1.3–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 
-Session 01a review supplement (2026-09-10): the four confirmed defects and the repeat-key scroll regression are repaired and green (see `EVAL-P1-REVIEW-001`); the repairs are in the worktree awaiting Craig's commit. STOP 1.2 (title treatment and subtitle) is still awaiting Craig's answer; the recommended answer is yes. Next session is 01b: Phase 1.3 story bible and script, then Phase 1.6 stage briefs.
-
-Session 01b (2026-09-10): Phase 1.3 is complete and committed (`0e4ea1b`, EVAL-P1-006 gate PASS; Craig's reading of the script is the review half at STOP 1.3). Phase 1.6 briefs are written (`docs/design/stage-briefs.md`, EVAL-P1-012 pending Craig's approval at STOP 1.6). Phases 1.4 and 1.5 (session 01c) have not begun.
-
 ## Branch and final commit
 
-Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`, `refactor: unify scene input actions (EVAL-P1-010)`. Enemy plan: `cc3b91c5e872e6fff0519f44c505632f1891bc7e`. Final prompt commit: pending; later slices remain.
+Branch: `codex/mega-runtime-and-assets-pass`. Commits in order: baseline `35a1fba`, CI `bf216ac`, input actions `fb0e553`, enemy plan `cc3b91c`, classic campaign `475ab82`, identity `6fa380e`, review repairs `7a425e2`, story `0e4ea1b`, briefs `db6ee99`, narrative surfaces `12bbae3`, pause/options/autosave `f84c95a`, exit bookkeeping (this commit).
 
 ## What changed (by area, with file paths)
 
@@ -215,6 +211,13 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 | sub_tank | Store up to four tanks | Use surface remains Phase 1.5 |
 | arc_slash | Saber release emits one arc | Explicit identity independent of equipped special |
 
+### Session 01c (Phases 1.4 and 1.5)
+
+- Narrative runtime: `src/scenes/game/StoryDirector.ts` (policy, seen flags, card and briefing, radio pair, boss intro and defeat, first-weakness hint), `src/scenes/game/StageIntroSequence.ts`, `src/ui/StageIntroPresenter.ts`, `src/ui/ToastLane.ts`, `src/scenes/PrologueScene.ts`, `src/scenes/EndingScene.ts` (replaces `CompletionScene`), `src/narrative/storyFlags.ts`, `scripts/credits/build-credits.mjs` -> `src/content/credits.generated.ts`. Milestones play on the Stage Select return; the `district_restored` line replaces the cleared-tile text.
+- Config and systems: `AUTOMATION.storyIntro` (`?storyIntro=off`), typed `Settings` with `onChange` and audio volume scaling, `Save.storyFlags` transport, `Save.subTankFill`, `Save.markStorySeen`, `Save.setSubTankFill`, `Save.deleteAll`, `src/systems/subTanks.ts`, roster `shortName` labels with `bossHudLabel`.
+- Shell: `SystemMenu` is the pause menu for `Game` (weapon and sub-tank cycle rows, Resume, Controls, Options, Quit) and the route console for Stage Select; `OptionsScene`; `GameOverScene` Continue/Quit with auto-continue; Title continue label and `O` options key; HUD `RETRY`; autosave at entry, checkpoints and respawns.
+- `Game.ts`: 3,805 -> 3,700 lines. Removed `devInit`'s hook block (now `src/scenes/game/GameDebugHooks.ts`) and the dialogue line builder (now the director); added the director, lane, pause inventory, sub-tank drink, autosave and screen-shake gate.
+
 ## Decisions made (each with the reason and what it forecloses)
 
 - Craig approved STOP 1.0b verbatim: "approved lets go the the next level". Accepted input decision: cancel only the pending charge when opening the system menu; require a fresh trigger after resume. This avoids deferred firing or a stuck charge without resetting health, cooldowns, or invulnerability. It forecloses banking a charge through pause; This is the accepted pause behavior going into Phase 1.1.
@@ -223,6 +226,12 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 - Craig approved STOP 1.0 verbatim: "approved yes commit it and you remeber i want oen tha tworks on graphics where you use your chat gpt image or editign skils to create ebtter vwtor files and  asytem doto doi it if you ahve to pgoram somethign to do it you can".
 - Applied the approved ignore additions (`tmp/`, `output/`, `__pycache__/`, `*.py[cod]`), retained build-required `types/`, and committed the baseline as `35a1fba`. Staged content excluded scratch, private runtime assets, and caches; existing Markdown hard-break whitespace and an original blank EOF were preserved.
 - Graphics requirement: keep a dedicated Art Director/Animator seat for original asset production using ChatGPT image generation/editing, with editable vector files where appropriate and a reproducible import/validation pipeline. Engineering may build tooling for that workflow. Generated raster art is not described as editable SVG; use genuine vector paths for scalable interface/icons and preserve layered or source raster assets for sprites. No Capcom-derived public assets; existing art pilot reviews and STOPs remain mandatory. This CI slice adds no art.
+
+- Story flags mark at sequence start, so skip and full read converge (rule 5 of the charter). Consequence: a boss intro seen once in a campaign does not replay on re-entry unless Replay Story is on; smoke `33b` enables replay before its same-session restart.
+- `storyIntro=off` disables prologue, card, briefing, radio, milestones and the ending pages (the ending opens on the campaign record) but never boss dialogue, which existing scenarios and the sweep rely on.
+- The in-game pause menu keeps the `SystemMenu` scene key and a linear cursor so the other model's lifecycle and touch scenarios keep working; `save_game`/`load_game` stay as programmatic actions for those scenarios while the visible menu autosaves.
+- A fresh stage entry shows the card and plays the briefing only when it starts at the first checkpoint; a resumed run shows neither.
+- Difficulty lives on the save (per campaign), not in settings; Options edits it in place.
 
 ### Phase 1.1 implementation and review
 
@@ -488,6 +497,14 @@ All paths below are under `output/phase-1-2/`; the Phase1.2 commit containing th
 - Visual observations: complete title/subtitle and Warden Select header fit at native448×252; public WREN HUD and base sprite remain bright/readable; private HUD/art pairing is preserved; dialogue proper names and hero token are canonical. Existing toast overlap, oversized touch controls, fades, private boss effects-only/low silhouettes and phase-label truncation remain documented debt. Scenario8 PNG precedes its controlled body probe; sweep state and later screenshots are not simultaneous.
 - QA and Orchestrator closed source review for identity/dialogue and the boundary lifecycle repair. Orchestrator opened all181 captures, including the client, and read the final samples. Director inspected the focused identity sets, all53 final smoke captures and all40 final sweep captures. Both visual reviews are closed with no remaining blocker. EVAL-P1-005 is an automated gate PASS; Craig’s title treatment/subtitle decision remains STOP1.2. No Phase1.3, asset generation, flagged public build, push or deployment.
 
+### Exit gate evidence (2026-09-10, tree at the exit commit)
+
+- `npm run verify` stages: `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`, `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`, `Test summary: 12 passed, 0 failed`, `# tests 248`, `# pass 248`, `# fail 0`, `✓ built in 4.03s`, `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; the smoke stage of that run stopped at `33-classic-stage-select` because the scenario reached New Campaign by a hard-coded row index that the new console order moved; after selecting the row by id, `SMOKE_PORT=4442 npm run test:smoke` -> `Smoke test complete.`, `output/web-game-smoke/summary.json` status `pass`, 49/49 scenarios.
+- `SWEEP_PORT=4441 npm run test:visual-sweep` -> `Mission visual sweep complete.`, `output/mission-visual-sweep/summary.json` 10/10 missions pass.
+- `wc -l src/scenes/Game.ts` -> 3700 (3,805 at prompt entry; 3,928 at the baseline).
+- Ledger: `EVAL-P1-001` to `EVAL-P1-012` PASS (`P1-002` remote run URL still pending Craig's push; `P1-012` briefs approved by proceeding).
+- Screenshots for the STOP review: `output/web-game-smoke/34-prologue-flow/shot-{prologue-page-1,stage-card,briefing}.png`, `35-radio-ticker/shot-radio-iona.png`, `36-ending-flow/shot-{card-1,record}.png`, `38b-pause-weapon-select/shot-paused.png`, `38-options-persist/shot-options-changed.png`.
+
 ## Open risks and known debt
 
 - Audited enemy attack dispatch/aim/interruption, terrain sensing and animation-event routing gaps are recorded in `docs/working/enemy-ecology-and-variant-plan.md`; they remain prerequisites for future variants, not fixes delivered by this planning supplement.
@@ -500,6 +517,12 @@ All paths below are under `output/phase-1-2/`; the Phase1.2 commit containing th
 - The existing Omega art is recorded as original generated work in its manifest/progress history, but its attribution registry lacks a complete source/author/license entry; resolve in the asset phase without inventing a license.
 - Scenario4 now captures true Title as shot0 and retains Controls separately. Base preview artwork is existing work, not final WREN design; original hero/logo/UI production remains at Prompt03 STOPs.
 - The production Phaser chunk warning is accepted debt under ADR-0002.
+
+- Story surfaces are text-first by design: the dialogue overlay reserves a 48x48 portrait slot at x=8, the ending reserves the top 120px for district cards, Stage Select tiles reserve 32x32; prompt 03 fills them without a relayout.
+- The ending's credits scroll speed and the campaign-record rank formula are placeholders for prompt 04 (`EndingScene.buildCampaignRecord`, the `28 ms per px` tween).
+- `ToastLane` shows one item at a time; a radio pair takes nine seconds, so a checkpoint reached during a radio line queues its toast behind it.
+- Touch controls have no weapon-switch buttons yet (prompt 04 decision); the pause menu's weapon row is the touch-friendly path meanwhile.
+- The `Pause` scene was removed; `GameOverScene` no longer clears the pause overlay by key.
 
 ## Inputs for prompt 02 (an explicit list: files to read, decisions to honor, numbers to keep)
 
@@ -520,3 +543,13 @@ All paths below are under `output/phase-1-2/`; the Phase1.2 commit containing th
 - Classic placement table (prompt 01 section 1.1) decides which `sub_tank` locations hold a Sub Tank (Tide, Basalt, Mire, Glacier); the briefs place every `heart_tank` and `sub_tank` as a gated secret and every `capsule` on the main route.
 - `difficultyRating` in `campaign.ts` already matches the briefs (1, 1, 2, 2, 2, 2, 3, 3, 3, 3).
 - `Game.ts` is 3,807 lines (+2 from the token values); Phase 1.4 extracts the debug-hook block so the prompt exits at or below 3,805.
+
+### Session 01c additions (surfaces and shell)
+
+- The story switch: every new smoke scenario or sweep mission that must not wait on story text uses the base URLs (they carry `storyIntro=off`); anything testing story uses `storyUrl`.
+- Checkpoint radio binding: checkpoint index 1 fires `<stageId>_radio` unless the checkpoint carries `radioSequenceId`; the level format v2 compiler must set `radioSequenceId` on the checkpoint that the brief names as the radio beat.
+- `StoryDirector.onCheckpoint(index, checkpoint)` is the only entry for checkpoint toasts and radio; `Game.showStageToast` routes through the lane. Mini-boss callouts (prompt 02) should enqueue `<stageId>_miniboss` on the lane through the director (add `onMinibossGate()` next to `onWeaknessHit()`).
+- Automation hooks to keep: `stageDebug.advanceStageIntro/skipStageIntro/storyState/setLives/setSubTanks`, `narrativeDebug.advance/skip/state`, payloads `stageIntro`, `ticker`, `story`, `settings`, `save`, `systemMenu`, `options`, `gameOver`, `prologue`, `ending`.
+- Death economy constants: `LIVES_PER_STAGE_ENTRY = 3`, `GAME_OVER_AUTO_CONTINUE_MS = 5000`, `resolveContinueCheckpoint(difficulty, checkpointId)`; prompt 02's difficulty table plugs into `Save.load().difficulty`.
+- `Settings.get().screenShake` gates `Game.onCameraShake`; `reducedFlashing` is stored but unused until prompt 04.
+- The pause menu reads `Game.getPauseInventory()`; new inventory (heart tanks, capsules) only needs that function updated.

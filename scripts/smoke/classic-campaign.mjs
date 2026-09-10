@@ -86,7 +86,11 @@ export async function runClassicCampaignScenario(name, { outputDir, titleUrl, re
     assert.ok(stored.upgradeUnlocks.includes('arc_slash'));assert.ok(!stored.weaponsUnlocked.includes('ArcSlash'));assert.ok(stored.stats.clearTimeMsByStage.tutorial_sentinel>=0)
     // Replacing an existing campaign is transactional even after changing every choice.
     const before=await page.evaluate(()=>localStorage.getItem('save.v1'))
-    await tapKey(page,'Escape');await tapKey(page,'ArrowDown');await tapKey(page,'ArrowDown');await tapKey(page,'ArrowDown');await page.keyboard.down('Shift');await tapKey(page,'Enter');await page.keyboard.up('Shift')
+    await tapKey(page,'Escape')
+    await page.waitForFunction(()=>window.__phaserGame.scene.isActive('SystemMenu'),{},{timeout:4000})
+    const newGameSteps=await page.evaluate(()=>{const menu=window.__phaserGame.scene.getScene('SystemMenu');const target=menu.options.findIndex(o=>o.id==='new_game');return (target-menu.index+menu.options.length)%menu.options.length})
+    for(let step=0;step<newGameSteps;step++)await tapKey(page,'ArrowDown')
+    await page.keyboard.down('Shift');await tapKey(page,'Enter');await page.keyboard.up('Shift')
     await waitForState(page,s=>s.scene==='NewCampaign'&&s.newCampaign.randomizerAvailable===true);await tapKey(page,'ArrowRight');await tapKey(page,'Escape')
     assert.equal(await page.evaluate(()=>localStorage.getItem('save.v1')),before)
     await page.goto(`${titleUrl}&seed=${'W'.repeat(64)}`)
