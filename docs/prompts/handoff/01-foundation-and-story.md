@@ -2,11 +2,11 @@
 
 ## Status: PARTIAL (list what is missing and why)
 
-Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; STOP 1.0b is awaiting Craig’s reply. The separate enemy ecology request is a planning supplement only; phases 1.1–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
+Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; Craig approved STOP 1.0b; Phase 1.1 implementation and automated gates are complete, with Craig’s STOP 1.1 review pending. The separate enemy ecology request remains a planning supplement; phases 1.2–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 
 ## Branch and final commit
 
-Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`, `refactor: unify scene input actions (EVAL-P1-010)`. Final prompt commit: pending; later slices remain.
+Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`, `refactor: unify scene input actions (EVAL-P1-010)`. Enemy plan: `cc3b91c5e872e6fff0519f44c505632f1891bc7e`. Final prompt commit: pending; later slices remain.
 
 ## What changed (by area, with file paths)
 
@@ -145,24 +145,106 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 - Orchestrator, Director and QA completed draft review. Final wording preserves ordinary contact/older projectiles, separates proposed enemy interruption from pending player-charge policy, distinguishes Phase 02 placeholder behavior from Phase 03 original art acceptance, retains archive fiction and original graphics authorization, and requires a narrow pure controller rather than an AI rewrite.
 - Engineer read the final brief and audit JSON/logs; documentation completeness and docs-only test/build gates passed below. No screenshot, smoke, runtime, or asset changes were made.
 
+### Phase 1.1 design memo — EVAL-P1-003 / 004 / 011
+
+- Understand: make the default campaign an authored, open eight-warden route while preserving seeded Randomizer saves and tests.
+- Understand: give every Classic upgrade a real runtime effect, expose truthful stage information, and count campaign statistics now.
+- Director intent: full-width 3×3 grid, preview below, readable full titles, 32×32 portrait reservations, pips, own rewards and weaknesses at 448×252.
+- Mode seam: `progression/types.ts`, `seed.ts`, and `state.ts` carry explicit mode; missing mode remains legacy Randomizer.
+- Compatibility: one-argument `createFreshProgressionState(seed)` remains Randomizer; new user saves and New Campaign explicitly select Classic.
+- Classic seed is literal `classic`; URL seeds apply only to explicit Randomizer, never to an existing save.
+- Transport rejects unknown modes and cross-mode imports before any write; a mode-less transport is Randomizer.
+- New Campaign seam: one cancel-safe chooser for Title and both system-menu callers; difficulty starts Normal and persists for Phase 02.
+- Randomizer availability: completed game or central `modifier` action held at chooser entry; opening/cancelling cannot erase a save.
+- Upgrade seam: a pure mode-aware resolver feeds player motor, combat, projectile affordability/spawn and contact damage handling.
+- Classic follows the table below; legacy Randomizer retains helmet checkpoint access, body +2 HP and its prior chip effects.
+- Damage rule: body armor scales ordinary damage, while fatal fall damage remains fatal; fractional HP survives save/load without rounding.
+- Buster damage must be applied once at projectile creation and not again on bosses; failed projectile allocation spends no energy.
+- ArcSlash uses an explicit saber-release projectile identity, damage 2/speed 260/life 600; it never enters the cycling weapon list.
+- Arms cap both charge cues and released shots at tier 3 unless owned; legs gate Classic air dash; helmet suppresses contact hurt response only.
+- Statistics proposal: count active gameplay time excluding pauses/dialogue; count each lethal defeat once and successful boss-clear time once.
+- Statistics proposal: secrets count unique heart/sub location claims; keep elapsed time in memory and flush at existing save/claim/checkpoint boundaries.
+- Transport proposal: reset run-specific statistics on import because the payload does not carry source timing; preserve validated story flags for later registry filtering.
+- Save seam: normalize/clone/fallback/import preserve mode, difficulty, stats, storyFlags and finite fractional active-run HP.
+- Content seam: campaign district/difficulty metadata; StageSelect layout/model; typed debug grants and concise automation state.
+- Red first: new Classic world/transport, fractional-save/statistics and actual upgrade-consumer tests; untouched Randomizer tests remain regression authority.
+- Browser checks: Classic scenario 33, Randomizer assertion in 4b, ArcSlash release in 12, chooser cancel/held-confirm and native layout evidence.
+- Gates: focused tests/browser then full test/build/sprites/smoke, one final visual sweep and separate develop-web-game client; preserve and open every capture.
+- Budget: extract typed debug/upgrade/stats seams so Game.ts stays below 3846 lines; no suppression or art work in this slice.
+- Review: QA/Director/Orchestrator inspect code and artifacts before commit; record these provisional statistics/compatibility choices at STOP 1.1.
+- Carry forward: original graphics authorization and the enemy ecology plan at `cc3b91c5e872e6fff0519f44c505632f1891bc7e` remain scheduled at their existing later STOPs.
+
+| Rule | Classic | Relay Randomizer compatibility |
+| --- | --- | --- |
+| Entry and stage access | Tutorial first in UI; all eight wardens available afterward | Seeded stage-access rewards and existing route |
+| Seed | Literal `classic` | Seeded/generated, visible with reroll; URL seed only on explicit creation |
+| Boss rewards | Own warden weapon; tutorial `arc_slash` | Existing seeded placements |
+| Weakness | Fixed elemental cycle; Buster always works | Existing seeded profiles/strictness |
+| Final gate | Exactly eight medals | Existing seeded gate and full-clear prerequisites |
+| New Campaign | Default; Normal difficulty preselected | Available after completion or Shift at entry |
+| Legacy saves/transports | Explicit mode required | Missing mode preserves Randomizer; cross-mode imports rejected |
+| Upgrade compatibility | Exact table below, no legacy extras | Existing checkpoint/HP/chip effects retained |
+
+| Stage | Boss clear | Capsule | Sub location | Heart location | Bonus pickup |
+| --- | --- | --- | --- | --- | --- |
+| tutorial_sentinel | arc_slash | hp_refill_large | — | — | hp_refill_large |
+| pyro_maw | FlameSerpent | chip_buster_plus | hp_refill_large | heart_tank | hp_refill_large |
+| tide_reaver | HydroLance | chip_quick_charge | sub_tank | heart_tank | hp_refill_large |
+| volt_hopper | ThunderSpike | armor_legs | hp_refill_large | heart_tank | hp_refill_large |
+| basalt_titan | QuakeKnuckle | armor_body | sub_tank | heart_tank | hp_refill_large |
+| ferro_blade | MagcutDisc | armor_arms | hp_refill_large | heart_tank | hp_refill_large |
+| mire_wraith | AcidGlob | chip_weapon_plus | sub_tank | heart_tank | hp_refill_large |
+| gale_vixen | AeroDarts | chip_speedster | hp_refill_large | heart_tank | hp_refill_large |
+| glacier_ronin | FrostShatter | armor_helmet | sub_tank | heart_tank | hp_refill_large |
+
+| Upgrade | Classic runtime effect | Consumer / risk |
+| --- | --- | --- |
+| armor_helmet | No hitstun from enemy/boss contact | Keep damage/iframes; suppress pending hurt-state trigger |
+| armor_body | Ordinary damage ×0.75 | Fractional HP transport; fall remains lethal |
+| armor_arms | Unlock charge tier 4 | Both held cue and release cap |
+| armor_legs | Unlock one air dash per airtime | Landing resets entitlement |
+| chip_quick_charge | All charge thresholds ×0.7 | Boundary tests through combat |
+| chip_speedster | Run/dash speed ×1.12 | Body velocity cap; Classic wall-jump unchanged |
+| chip_weapon_plus | Special energy cost −1, minimum 1 | Check reduced affordability before spawn; Buster stays free |
+| chip_buster_plus | Uncharged Buster pellet damage 2 | Same damage on enemies/bosses, no duplicate bonus |
+| heart_tank | Max HP +2 per unique tank | Existing eight-tank cap |
+| sub_tank | Store up to four tanks | Use surface remains Phase 1.5 |
+| arc_slash | Saber release emits one arc | Explicit identity independent of equipped special |
+
 ## Decisions made (each with the reason and what it forecloses)
 
-- Proposed input decision for STOP 1.0b: cancel only the pending charge when opening the system menu; require a fresh trigger after resume. This avoids deferred firing or a stuck charge without resetting health, cooldowns, or invulnerability. It forecloses banking a charge through pause; Craig can revise this at the STOP.
+- Craig approved STOP 1.0b verbatim: "approved lets go the the next level". Accepted input decision: cancel only the pending charge when opening the system menu; require a fresh trigger after resume. This avoids deferred firing or a stuck charge without resetting health, cooldowns, or invulnerability. It forecloses banking a charge through pause; This is the accepted pause behavior going into Phase 1.1.
 - No runtime sensor adjustment: the existing 14×54 Buster sensor demonstrably damages the shortest enemy; changing it without a current failure could regress platform/world-bound behavior.
 - Stronger test evidence: missing targets and other damage sources must fail, so a green smoke result proves actual uncharged pellet contact.
 - Craig approved STOP 1.0 verbatim: "approved yes commit it and you remeber i want oen tha tworks on graphics where you use your chat gpt image or editign skils to create ebtter vwtor files and  asytem doto doi it if you ahve to pgoram somethign to do it you can".
 - Applied the approved ignore additions (`tmp/`, `output/`, `__pycache__/`, `*.py[cod]`), retained build-required `types/`, and committed the baseline as `35a1fba`. Staged content excluded scratch, private runtime assets, and caches; existing Markdown hard-break whitespace and an original blank EOF were preserved.
 - Graphics requirement: keep a dedicated Art Director/Animator seat for original asset production using ChatGPT image generation/editing, with editable vector files where appropriate and a reproducible import/validation pipeline. Engineering may build tooling for that workflow. Generated raster art is not described as editable SVG; use genuine vector paths for scalable interface/icons and preserve layered or source raster assets for sprites. No Capcom-derived public assets; existing art pilot reviews and STOPs remain mandatory. This CI slice adds no art.
 
+### Phase 1.1 implementation and review
+
+- `src/progression/{types,seed,state,presentation,upgrades,statistics}.ts` now separate authored Classic progression from compatible seeded Randomizer worlds. Classic stored worlds and imports normalize to the canonical 43-location layout; explicit unknown/cross-mode imports fail before writes. Existing `tests/progression-state.test.ts` is unchanged.
+- `src/systems/Save.ts` defaults new users to Classic/Normal, preserves positive fractional HP, difficulty, story flags and statistics, and keeps mode-less existing saves Randomizer. The shared `NewCampaignScene.ts` and pure `menu/newCampaignModel.ts` open without writes, allow cancellation without losing the active run, and commit exactly once after fresh confirmation. Shift is read from the central physical-input hub even when a system menu owns input.
+- `src/player/` consumes the pure Classic upgrade table immediately on pickup/grant/reentry. Helmet removes contact hitstun and forced hurt animation while retaining damage, iframes and knockback. Body armor preserves lethal-fall semantics. Arms cap charge cues and release consistently; legs permit one air dash per airtime; Speedster scales Classic run/dash only. Randomizer retains existing helmet checkpoint access, body +2 HP, movement ×1.15 including wall jumps and legacy boss damage bonuses; its preexisting unused quick-charge helper is not newly enabled by this slice.
+- `src/projectiles/firePlayerShot.ts` checks discounted cost before allocation, spends nothing on allocation failure, and applies ordinary Buster damage once. ArcSlash carries an explicit identity through the actual saber release, uses damage 2/speed 260/lifetime 600ms, and leaves the equipped special weapon and its energy unchanged. Rejected/orphan/repeated/fast-tap releases are covered. Blocking dialogue now cancels pending charge and saber release through the same narrow seam already approved for menus; no cooldown, HP or iframe reset occurs.
+- Statistics count active control time in memory, flush at lifecycle/checkpoint/claim/manual save and valid load, count each lethal defeat once, retain each stage's first successful boss-clear time, and deduplicate heart/sub secrets. Successful progression imports reset statistics because source timing is absent; validated string story flags remain for Phase 1.4 registry filtering. These semantics remain explicit recommendations for STOP 1.1 review.
+- `src/content/campaign.ts` adds all ten district names and provisional 1–3 difficulty ratings. The native Stage Select grid reserves 32×32 portraits, shows full names/pips, mode/warden count, own rewards and owned-weapon weakness revelation, with preview below. Its selected outer tile stroke replaces the inner outline that crossed glyphs. Independent text/panel bounds and the 64-character wide seed case pass at 448×252; Director and Orchestrator opened and approved the corrected native captures.
+- `src/scenes/game/ProgressionDebugHooks.ts` owns validated automation-only `grantWeapon`/`grantUpgrade` hooks, merging Game hooks and exposing only those two in Stage Select. The held-input lifecycle fixture now checks that ownership precisely. `main.ts` exposes mode, chooser, stats/upgrades and native layout evidence; architecture/testing/quality-gate docs describe the updated contracts.
+- QA and Orchestrator closed source review for mode transport, actual motor/combat/fire consumers, save-time flushing, fractional HP, helmet animation, charge cancellation and hook lifetimes. `Game.ts` shrank 3846→3805 lines; it remains the only existing `@ts-nocheck` file. No graphics or deeper-enemy implementation belongs in this slice.
+- Full verification exposed scenario 29's timing contamination: its own live mine bot emitted `enemy_mine_drop`, which legitimately intercepted the ordinary Buster before contact. A traced reproduction records no prior hostile bullets and clash `sourceId=enemy_1`; no runtime hitbox/input repair was justified. Scenarios 29 and 33b now clear prior hostile projectiles and construct the isolated target with AI and projectile emission disabled, restoring spawner flags afterward. The normal collider, Arcade physics, HP and damage reception remain active; bounded observed-contact waits replace fixed waits. Strict 5→4/5→3 assertions remain; separate scenarios 17/19 still prove interception and charged survival.
+- STOP recommendations not silently added: keep literal Randomizer eligibility (`gameCompleted` or Shift at opening); consider persistent earned access later. ArcSlash is a free saber ability with no separate energy bank. Keep the exact Classic/legacy split and the statistics/import semantics above. Original graphics authorization, editable-vector/source pipeline and deeper-monster planning remain scheduled at their existing Phase 1.6/02/03 STOPs.
+
 ## Content inventory (tables: stages, bosses, dialogue sequences, assets, audio cues; counts, not prose)
 
 | Inventory | Count | Status |
 | --- | --- | --- |
-| Stages | 10 | Existing campaign; unchanged in Phase 1.0 |
-| Bosses | 10 | Existing roster; unchanged in Phase 1.0 |
-| Dialogue sequences | 20 + 3 milestones | Existing v1; unchanged in Phase 1.0 |
+| Stages | 10 | District and provisional difficulty metadata added in Phase 1.1 |
+| Bosses | 10 | Existing roster; unchanged |
+| Dialogue sequences | 20 + 3 milestones | Existing v1; unchanged |
 | Runtime assets | 153 | Developer build, including private overrides |
-| Audio cues | 6 | Existing music cue map; unchanged in Phase 1.0 |
+| Audio cues | 6 | Existing music cue map; unchanged |
+| Classic item placements | 43 | 3 tutorial + 5 per warden |
+| Classic armor/chips and saber ability | 8 + 1 | Four armor, four chips, ArcSlash |
+| Classic heart/sub tanks | 8 + 4 | Location claims; sub-tank use remains Phase 1.5 |
 
 ## Evidence (every exit-gate eval: command, result line, artifact path, commit)
 
@@ -233,12 +315,42 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 - EVAL-ENEMY-PLAN-001 is PASS for documentation completeness only in the planning commit containing this record. It does not approve variant/pilot targets, prove working monsters, satisfy runtime/art evals, or release STOP 1.0b. Existing phase eval statuses are unchanged; the input SHA is now pinned as `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`.
 - Text and log artifacts were opened and inspected. The 132-line working brief covers all actual families/stages, source-verified prerequisites, the recommended one-family/two-biome pilot, local routines, measurable future evidence, original graphics workflow, and pending phase ownership. All gameplay and asset decisions remain for their existing STOP reviews.
 
+### Classic campaign and upgrade evidence — EVAL-P1-003 / 004 / 011
+
+All paths below are under `output/phase-1-1/`; commit is the Phase 1.1 commit containing this record. The overall first `verify` invocation failed its smoke component; its successful unchanged runtime components plus the final full smoke supply the final verify coverage.
+
+| Command / check | Result line / exit | Artifact |
+| --- | --- | --- |
+| Initial Classic/upgrade checks before implementation | Missing `generateClassicWorld` / `upgrades` modules; `# pass 0`; `# fail 2`; expected exit 1 | `01-classic-upgrades-red.log` |
+| Fast saber tap and canonical stored-Classic regressions before repair | `# pass 14`; `# fail 2`; expected exit 1 | `05-review-red.log` |
+| Dialogue charge precondition regression before cancellation | `blocking dialogue must cancel pending charge`; `true !== false`; expected exit 1 | `15-dialogue-charge-precondition-red.log`; `dialogue-charge-red/` |
+| Native selected-outline geometry before correction | `selection outline crosses title`; expected exit 1 | `16-selection-outline-red.log`; `selection-outline-red/` |
+| `node --loader ./tools/ts-node-loader.mjs --test tests/progression-classic.test.ts tests/upgrades.test.ts tests/campaign-session.test.ts tests/progression-state.test.ts tests/save-system.test.ts tests/player-combat.test.ts tests/player-motor.test.ts` | `# pass 65`; `# fail 0`; exit 0 | `17-focused-tests-final.log` |
+| Seven selected browser cases before ownership fixture update | 6 pass, 1 fail (obsolete blanket no-stageDebug assertion); exit 1 | `19-focused-final.log`; `focused-lifecycle-failure/summary.json` |
+| Ownership-specific held-input lifecycle case after fixture correction | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1 pass; exit 0 | `20-lifecycle-contract.log`; `lifecycle-contract-green/summary.json` |
+| `npm run verify`: sprite component | `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`; `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`; component exit 0 | `21-verify.log` |
+| `npm run verify`: test component | `Test summary: 12 passed, 0 failed`; `# pass 218`; `# fail 0`; component exit 0 | `21-verify.log` |
+| `npm run verify`: build component | `✓ built in 3.81s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; component exit 0 | `21-verify.log` |
+| `npm run verify`: first full smoke | `Expected exactly one uncharged Buster damage: 5 -> 4 HP.`; actual 5; 37 earlier passes then fail; overall verify exit 1 | `21-verify.log`; `full-smoke-first-failure/summary.json` |
+| Scenario 29 traced reproduction | Same strict 5→4 assertion fails; own target `enemy_1` emits `enemy_mine_drop`, prior hostile bullets empty; exit 1 | `22-pellet-clash-trace.log`; `pellet-clash-trace-red/29-pellet-hits-short-enemy/pellet-evidence.json` |
+| Isolated ordinary/upgraded pellet plus unchanged clash scenarios | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 4 pass; exit 0 | `24-isolated-pellet-and-clashes.log`; `isolated-pellet-and-clashes-green/summary.json` |
+| Final full `SMOKE_PORT=4400 npm run test:smoke` | `Full smoke summary: 41/41 pass, 0 fail, 0 skipped.`; exit 0 | `25-full-smoke-final.log`; `full-smoke/summary.json` |
+| `SWEEP_PORT=4400 npm run test:visual-sweep` | `Mission visual sweep complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/mission-visual-sweep`; 10/10 pass; exit 0 | `27-visual-sweep.log`; `visual-sweep/summary.json` |
+| Repository develop-web-game client plus artifact assertion | `Skill client artifacts valid: Game state, shot-0.png, 0 browser-error files; player=(60,214), shots=1, mode=classic.`; exit 0 | `29-skill-client.log`; `skill-client/` |
+| Source budget / compatibility audit | `Game size audit PASS: 3805 lines (baseline3846; net-41).`; `Scene input audit PASS: 0 scene-owned raw key reads.`; only existing suppression and legacy tests unchanged; exit 0 | `26-source-audit.log` |
+
+- Honest red classification: `10-helmet-adapter-red.log` is an import-loader failure, not a semantic helmet failure; actual browser 33b proves no contact hurt animation. Attempts 13/14 did not reproduce pending charge because their setup lacked a true Buster-charge precondition; attempt 15 established charging and failed before the narrow fix. Initial API/geometry fixture mistakes were corrected to existing contracts, not used to justify runtime API changes.
+- Engineer opened every retained screenshot through `focused-contact-manifest.txt` (41 PNGs, seven sheets), `pellet-review-contact-manifest.txt` (54 additional PNGs, nine sheets), and `final-contact-manifest.txt` (50 final PNGs, nine sheets). Native 33 captures show all eight open, Flame Serpent reward, weakness `???` then Hydro Lance, full titles/pips, separated footer and wide seed wrapping. Gameplay shows standing armor-damaged player, live damaged mine bot, ArcSlash and separated HUD; existing toasts, oversized touch controls, fades and private artwork remain documented debt.
+- Engineer also opened all 40 final sweep captures through `sweep-contact-manifest.txt` (seven sheets) and the original native `skill-client/shot-0.png`, with its state JSON. Sweep actor/terrain/dialogue presentation remains visible; Volt’s private strip, Glacier’s low silhouette, repeated checkpoint toasts and truncated boss phase labels remain known debt. The skill capture shows the grounded player and one ordinary Buster projectile in Classic, with no browser errors.
+- QA closed source and fixture review; Orchestrator and Director opened all final 50 smoke and 40 sweep captures, plus native Classic captures, with no new blocker. Orchestrator also opened the native skill PNG/state. All slice-owned browser/server processes have stopped; preexisting user development servers remain untouched. EVAL-P1-003 and EVAL-P1-011 automated gates are PASS.
+- EVAL-P1-004 automated gate and Director/Orchestrator visual review are green, but the ledger stays PENDING until Craig answers STOP 1.1. This partial handoff does not claim Prompt 01's Exit Gate.
+
 ## Open risks and known debt
 
 - Audited enemy attack dispatch/aim/interruption, terrain sensing and animation-event routing gaps are recorded in `docs/working/enemy-ecology-and-variant-plan.md`; they remain prerequisites for future variants, not fixes delivered by this planning supplement.
 
-- The historical scenario-29 failure did not reproduce; this slice repairs its permissive test assertion, not an unproven runtime defect.
-- `src/scenes/Game.ts` starts at 3,928 lines with the existing `@ts-nocheck`; no growth or new suppression is permitted.
+- Scenario 29 did not reproduce at Phase 1.0 entry. During Phase 1.1, a traced failure proved the target mine bot intercepted the pellet with its own mine; the collision fixture is now isolated, with no runtime sensor change.
+- `src/scenes/Game.ts` is now 3,805 lines (3,928 at entry), with the one existing `@ts-nocheck`; later prompts must continue shrinking it.
 - Private player/boss overrides are developer assets, not public release assets; public stripping remains future prompt work. Volt's effects-only private cells and Glacier's low silhouette require art review in prompt 03.
 - Sweep `state-boss-room.json` is sampled before movement/attack checks, while `boss-room.png` is captured afterward; they prove different points in the same encounter and must not be described as simultaneous.
 - Existing checkpoint toast overlap, truncated phase labels, Gale cloud seams, and low-contrast private boss art remain visible; a green baseline gate is not final art approval.
@@ -248,5 +360,6 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 
 ## Inputs for prompt 02 (an explicit list: files to read, decisions to honor, numbers to keep)
 
+- Keep Phase 1.1 mode/placement/upgrade tables and the explicit compatibility/statistics recommendations above; STOP 1.1 remains pending. Difficulty values are provisional until Phase 1.6, with gameplay difficulty tuning in Prompt 02.
 - Not ready: prompt 01 exit conditions are incomplete. Read the completed version of this file before starting prompt 02.
 - Carry `docs/working/enemy-ecology-and-variant-plan.md` into Phase 1.6 stage briefs and the completed Prompt 02/03 handoffs. Preserve Craig’s request for deeper monsters, stage-specific features and a living world; its family/variant/pilot recommendations remain pending the existing STOP reviews.

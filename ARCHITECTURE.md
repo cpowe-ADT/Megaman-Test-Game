@@ -32,6 +32,16 @@ Scenes and the player controller consume named actions; keyboard aliases and sup
 
 `src/systems/Settings.ts` validates and persists bindings in `settings.v1`, merges partial binding changes, falls back safely for malformed data, and preserves other settings fields for the options slice. Rebinding UI and gamepad input remain prompt 04 work.
 
+## Campaign, upgrades and statistics
+
+`NewCampaignScene` is the shared, cancel-safe entry from Title and both system menus. Its pure `newCampaignModel` defaults to Normal/Classic. Only a completed campaign or Shift held at entry exposes Relay Randomizer; no storage changes occur until Start. `Save.difficulty` stores the choice for the later difficulty system. `Settings` continues to own bindings; its full options schema arrives in Phase 1.4.
+
+`progression/seed.ts` generates the fixed Classic world independently from the seeded Randomizer. Classic has the tutorial plus all eight wardens in its access set, the authored placement table, WeaknessTable-derived weaknesses and an eight-medal final gate. User-new saves explicitly use Classic; the one-argument seeded factory and missing-mode legacy saves/transports retain Randomizer semantics. Transport imports reject cross-mode/unknown-mode payloads before writing; Classic normalization restores its authored world rules. Stage Select uses a full-width nine-tile grid with 32×32 portrait reservations and a description/reward preview below.
+
+`progression/upgrades.ts` resolves Classic modifiers for combat, motor and shot creation. Randomizer retains its prior checkpoint/HP/chip behavior. `projectiles/firePlayerShot.ts` checks the reduced cost before allocation and spends only after success. Classic Buster Plus changes only ordinary pellet damage at spawn, so boss damage cannot add the bonus twice. ArcSlash is an explicit saber-release projectile identity with no cycling slot or energy bank; pending input cancellation prevents a deferred release through a blocking overlay.
+
+`progression/statistics.ts` holds each mission's elapsed time in memory. Existing checkpoint/claim/manual-save/return boundaries flush total active time; valid manual reload flushes outgoing total time while restoring the saved mission clock. Active time excludes pause/dialogue/victory and inactive-player intervals. Defeats count once per life; successful boss location claims record the first clear time, and unique heart/sub location claims count secrets. Progression imports reset run statistics because their payload carries no source timing. Finite positive fractional HP survives active-run normalization and scene restoration; fatal falls remain fatal despite body armor. Story flags are retained as bounded unique strings until the Phase 1.4 registry-aware filter.
+
 ## Known Architectural Debt
 - `src/scenes/Game.ts` is still the main complexity hotspot and remains under `@ts-nocheck`.
 - The runtime currently mixes older scene-owned logic with newer subsystem modules.

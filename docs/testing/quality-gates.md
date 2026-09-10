@@ -51,3 +51,11 @@ Before considering a broader release or handoff complete:
 - Production preview smoke passes with `npm run test:smoke:preview` when a change touches packaging, deploy readiness, or runtime asset loading.
 - Visual sweep writes `output/mission-visual-sweep/summary.json` with truthful per-mission status, including `hung_after_artifacts` when cleanup times out after artifacts already exist.
 - Known risks are called out in the final summary and `progress.md`.
+
+## Phase 1.1 campaign coverage
+
+The current smoke surface includes `33-classic-stage-select` (true empty-storage chooser, Classic tutorial clear/reward/weakness, native bounds and long seed) and `33b-classic-upgrade-runtime` (armor/save/time and actual shot consumers). Existing smoke pages explicitly initialize a legacy Randomizer fixture; `4b` asserts its mode, and `12` additionally checks independent ArcSlash release identity/count/energy. Existing movement/touch scenario bodies remain unchanged.
+
+The two new mode fields, pending chooser state, layout evidence and automation-only weapon/upgrade grants are specified in [TESTING.md](../../TESTING.md#classic-campaign-automation-additions). Run focused new/legacy unit checks, then affected smoke; substantive campaign changes require all verify components and a visual sweep for the stage layout/global upgrade presentation. Open every generated PNG; a state/bounds assertion does not replace visual review.
+
+Scenario `29-pellet-hits-short-enemy` isolates a live mine bot with its normal collider/HP and AI/projectile emission disabled, clears prior hostile projectiles, then requires one ordinary Buster shot to reduce that same target from 5 to 4 HP. Its retained clash trace distinguishes interception from a hitbox miss; separate projectile-clash scenarios cover interception.

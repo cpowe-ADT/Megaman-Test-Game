@@ -96,6 +96,7 @@ export class SceneInputActions {
     return this.state.sample(this.scene.game.loop.frame, [this.rawHeld()], this.hub.owns(this.scene), this.deferGameplay() ? gameplayActions : [])
   }
   deferGameplayWhile(predicate: () => boolean): void { this.deferGameplay = predicate }
+  isHeld(action: InputAction): boolean { return Boolean(this.rawHeld()[action]) }
   confirmReleased(): boolean { return !this.rawHeld().confirm }
   reset(): void { this.state.reset(this.rawHeld()) }
   pulse(action: InputAction): void { this.captureSourceChange(() => { this.pulses[action] = true }) }

@@ -17,6 +17,7 @@ export class PlayerMotor {
   private isAirDashing = false
   private wasGrounded = false
   private movementSpeedMultiplier = 1
+  private wallJumpSpeedMultiplier = 1
 
   constructor(
     private readonly player: Phaser.Physics.Arcade.Sprite,
@@ -84,7 +85,7 @@ export class PlayerMotor {
       const horizontal =
         this.movement.wallJumpVelocityX *
         boostMultiplier *
-        this.movementSpeedMultiplier *
+        this.wallJumpSpeedMultiplier *
         (wallSide === -1 ? 1 : -1)
       body.setVelocityX(horizontal)
       body.setVelocityY(this.movement.wallJumpVelocityY)
@@ -220,7 +221,8 @@ export class PlayerMotor {
     return this.facing
   }
 
-  setMovementSpeedMultiplier(multiplier: number): void {
+  setMovementSpeedMultiplier(multiplier: number, wallJumpMultiplier = multiplier): void {
+    this.wallJumpSpeedMultiplier = normalizeMovementSpeedMultiplier(wallJumpMultiplier)
     this.movementSpeedMultiplier = normalizeMovementSpeedMultiplier(multiplier)
   }
 }

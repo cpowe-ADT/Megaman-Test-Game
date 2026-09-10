@@ -1,4 +1,10 @@
 // @ts-nocheck
+import { firePlayerShot } from '../projectiles/firePlayerShot'
+import { resolveUpgradeModifiers, upgradeEffectLabel } from '../progression/upgrades'
+import { CampaignSessionStatistics } from '../progression/statistics'
+import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
+import { createPauseOverlay } from './game/createPauseOverlay'
+import { openNewCampaign } from './NewCampaignScene'
 import Phaser from 'phaser'
 import AudioService from '../audio'
 import { BossController } from '../bosses/BossController'
@@ -352,6 +358,11 @@ export class Game extends Phaser.Scene {
   private activeStageId = 'pyro_maw'
   private loadedFromSave = false
   private progressionSave = Save.load()
+  private sessionStats = new CampaignSessionStatistics()
+  private flushStatistics(): void {
+    this.progressionSave = this.sessionStats.flush(Save.load())
+    Save.save(this.progressionSave)
+  }
   private bossUsingPlaceholder = false
   private stageBackgroundLayers: Phaser.GameObjects.TileSprite[] = []
   private stageBackgroundBackdrop?: Phaser.GameObjects.Graphics
@@ -662,6 +673,7 @@ export class Game extends Phaser.Scene {
     this.currentCheckpointIndex += 1
     this.respawnPoint = new Phaser.Math.Vector2(nextCheckpoint.x, nextCheckpoint.y)
     this.currentCheckpointId = nextCheckpoint.id
+    this.flushStatistics()
     Save.unlockCheckpoint(this.activeStageId, nextCheckpoint.id)
     this.progressionSave = Save.load()
     this.showStageToast(`Checkpoint ${this.currentCheckpointIndex + 1}`, 900)
@@ -689,7 +701,7 @@ export class Game extends Phaser.Scene {
     const speedMultiplier = getMovementSpeedMultiplier(this.progressionSave)
     const limits = resolvePlayerPhysicsLimits(PLAYER_GAMEPLAY_CONFIG, speedMultiplier)
     this.player.setMaxVelocity(limits.maxVelocityX, limits.maxVelocityY)
-    this.newPlayerRuntime?.setMovementSpeedMultiplier(speedMultiplier)
+    this.newPlayerRuntime?.setUpgradeModifiers(resolveUpgradeModifiers(this.progressionSave))
   }
 
   private applySelectedCheckpoint(stageId: string, checkpointId?: string | null): void {
@@ -774,12 +786,13 @@ export class Game extends Phaser.Scene {
   }
 
   private collectProgressionLocation(locationId: string): void {
+    this.flushStatistics()
     const previous = this.progressionSave
     const claim = claimLocationCheck(previous, locationId as any)
     if (claim.duplicate) {
       return
     }
-    const next = claim.nextSave
+    const next = this.sessionStats.claim(claim.nextSave, locationId, claim.duplicate)
     Save.save(next)
     this.progressionSave = Save.load()
     this.applyProgressionStateToRuntime(previous, this.progressionSave, claim.itemId)
@@ -787,19 +800,8 @@ export class Game extends Phaser.Scene {
 
   private applyProgressionStateToRuntime(previous: any, next: any, itemId: string | null): void {
     if (itemId) {
-      const itemLabel = getProgressionItemLabel(itemId).toUpperCase()
-      if (
-        itemId.startsWith('access_') ||
-        itemId.startsWith('armor_') ||
-        itemId.startsWith('chip_') ||
-        itemId === 'heart_tank' ||
-        itemId === 'sub_tank' ||
-        this.progressionSave.weaponsUnlocked.includes(itemId)
-      ) {
-        this.showStageToast(`CHECK SECURED • ${itemLabel}`, 1100)
-      } else {
-        this.showStageToast(`CHECK SECURED • ${itemLabel}`, 900)
-      }
+      const effect = upgradeEffectLabel(itemId, next.progressionWorld?.progressionMode === 'classic')
+      this.showStageToast(effect ? `${getProgressionItemLabel(itemId).toUpperCase()} · ${effect}` : `CHECK SECURED • ${getProgressionItemLabel(itemId).toUpperCase()}`, effect ? 1800 : 1100)
     }
 
     if (previous.weaponsUnlocked.join(',') !== next.weaponsUnlocked.join(',')) {
@@ -954,6 +956,7 @@ export class Game extends Phaser.Scene {
   }
 
   private freezeForDialogue(): void {
+    this.newPlayerRuntime?.cancelPendingCharge()
     this.physics.world.pause()
     this.newPlayerRuntime?.pauseAnimations?.()
     this.enemySpawner?.pauseAnimations?.()
@@ -993,6 +996,8 @@ export class Game extends Phaser.Scene {
     if (!this.player || this.fallingToDeath) {
       return
     }
+    this.sessionStats.defeat()
+    this.flushStatistics()
     this.playerHp = 0
     this.player.data?.set?.('hp', this.playerHp)
     this.hud?.updatePlayerHp(this.playerHp, this.playerMaxHp)
@@ -1680,6 +1685,8 @@ export class Game extends Phaser.Scene {
     this.loadedFromSave = loadFromSave
     this.progressionSave = Save.load()
     const activeRun = loadFromSave ? Save.loadActiveRun() : null
+    this.sessionStats = new CampaignSessionStatistics(activeRun?.stageElapsedMs)
+    installProgressionDebugHooks(this, (previous, next, item) => { this.progressionSave = next; this.applyProgressionStateToRuntime(previous, next, item) })
     const stageId = activeRun?.stageId ?? (data as any)?.stageId ?? ((data as any)?.bossId as string) ?? 'pyro_maw'
     const stage = getCampaignStage(stageId)
     const bossIdFromQuery = AUTOMATION.enabled ? (params?.get('bossId') as BossId | null) : null
@@ -2038,10 +2045,12 @@ export class Game extends Phaser.Scene {
     })
     this.bossSceneEvents.bind()
 
+    this.applyProgressionMovementModifiers()
     this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
   }
 
   update(_time: number, delta: number): void {
+    this.sessionStats.tick(delta, Boolean(this.player?.active && !this.paused && !this.victoryTriggered && !this.dialogueOverlay?.isActive() && !this.victoryModal?.isOpen()))
     if (this.hitstopRemainingFrames > 0) {
       this.hitstopRemainingFrames -= 1
       if (this.hitstopRemainingFrames <= 0) {
@@ -2138,35 +2147,7 @@ export class Game extends Phaser.Scene {
   }
 
   private createPauseOverlay(width: number, height: number): void {
-    const overlay = this.add.container(0, 0)
-    overlay.setScrollFactor(0)
-    overlay.setDepth(900)
-
-    const dim = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.55)
-    dim.setScrollFactor(0)
-
-    const label = this.add.text(width / 2, height / 2, 'Paused', {
-      fontFamily: 'monospace',
-      fontSize: '22px',
-      color: '#ffffff',
-      backgroundColor: 'rgba(8, 12, 20, 0.75)',
-      padding: { x: 12, y: 8 },
-      align: 'center'
-    })
-    label.setOrigin(0.5)
-    label.setScrollFactor(0)
-    label.setShadow(2, 2, '#000000', 4, true, true)
-
-    overlay.add([dim, label])
-    overlay.setVisible(false)
-    this.pauseOverlay = overlay
-
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      overlay.destroy(true)
-      if (this.pauseOverlay === overlay) {
-        this.pauseOverlay = undefined
-      }
-    })
+    this.pauseOverlay = createPauseOverlay(this, width, height)
   }
 
   private openSystemMenu(): void {
@@ -2310,6 +2291,7 @@ export class Game extends Phaser.Scene {
 
   private fireBulletFromRuntime(config: {
     type: 'pellet' | 'charge'
+    weaponId?: 'ArcSlash'
     chargeLevel: 0 | 1 | 2 | 3 | 4
     facing: 1 | -1
   }): boolean {
@@ -2317,36 +2299,10 @@ export class Game extends Phaser.Scene {
       return false
     }
     const currentWeapon = this.getCurrentWeaponConfig()
-    const isBuster = currentWeapon.id === 'Buster'
-    if (isBuster && this.playerBullets.countActive(true) >= 3) {
-      return false
-    }
-    const currentEnergy = this.weaponEnergyById[currentWeapon.id] ?? currentWeapon.maxEnergy
-    if (!canAffordPlayerShot(currentEnergy, currentWeapon.energyCost)) {
-      AudioService.playSfx('ui_cancel')
-      return false
-    }
-
-    const shotFacing = config.facing
-    const offsetX = shotFacing === -1 ? -8 : 8
-    const bulletX = this.player.x + offsetX
-    const bulletY = this.player.y - 6
-    const shot = resolvePlayerShot({
-      weaponId: currentWeapon.id,
-      intent: config,
-      x: bulletX,
-      y: bulletY
-    })
-    const bullet = this.projectileSystem?.spawn(shot.spawnRequest)
-    if (!bullet) {
-      return false
-    }
-
-    this.weaponEnergyById[currentWeapon.id] = energyAfterPlayerShot(
-      currentEnergy,
-      shot.energyCost,
-      true
-    )
+    const fired = firePlayerShot({ request: config, equippedWeaponId: currentWeapon.id, availableEnergy: this.weaponEnergyById[currentWeapon.id] ?? currentWeapon.maxEnergy, x: this.player.x + (config.facing === -1 ? -8 : 8), y: this.player.y - 6, activeBusterCount: this.playerBullets.countActive(true), modifiers: resolveUpgradeModifiers(this.progressionSave), spawn: request => this.projectileSystem?.spawn(request) })
+    if (!fired) return false
+    const { projectile: bullet, shot } = fired
+    this.weaponEnergyById[currentWeapon.id] = fired.remainingEnergy
     this.devRegister(bullet, 'bullet')
     this.syncWeaponHud()
     const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
@@ -2821,6 +2777,7 @@ export class Game extends Phaser.Scene {
         showToast(this, 'No valid saved game found.', 1200)
         return
       }
+      this.flushStatistics()
       this.scene.restart({
         bossId: run.bossId,
         stageId: run.stageId,
@@ -2830,9 +2787,7 @@ export class Game extends Phaser.Scene {
     }
 
     if (action === 'new_game') {
-      Save.startNewCampaign()
-      this.setPaused(false)
-      this.scene.start('Title')
+      openNewCampaign(this, () => this.setPaused(false))
       return
     }
 
@@ -2853,6 +2808,7 @@ export class Game extends Phaser.Scene {
     reason: string,
     options: { toastMessage?: string; focusBossId?: string | null; requireConfirmRelease?: boolean } = {}
   ): void {
+    this.flushStatistics()
     this.victoryModal?.destroy()
     this.victoryModal = undefined
     this.setPaused(false)
@@ -2868,13 +2824,15 @@ export class Game extends Phaser.Scene {
     if (!this.activeBossId) {
       return null
     }
+    this.flushStatistics()
     const stageId = ((this as any).stageId as string | undefined) ?? this.activeStageId
     return {
       version: 2,
       savedAt: Date.now(),
+      stageElapsedMs: this.sessionStats.stageElapsedMs,
       stageId,
       bossId: this.activeBossId,
-      playerHp: Math.max(1, Math.round(this.playerHp)),
+      playerHp: Math.max(Number.EPSILON, this.playerHp),
       playerMaxHp: Math.max(1, Math.round(this.playerMaxHp)),
       playerLives: Math.max(0, Math.round(this.playerLives)),
       currentWeaponIndex: Math.max(0, Math.round(this.currentWeaponIndex)),
@@ -2891,7 +2849,7 @@ export class Game extends Phaser.Scene {
     }
 
     this.playerMaxHp = Math.max(1, Math.round(run.playerMaxHp))
-    this.playerHp = Phaser.Math.Clamp(Math.round(run.playerHp), 1, this.playerMaxHp)
+    this.playerHp = Phaser.Math.Clamp(run.playerHp, Number.EPSILON, this.playerMaxHp)
     this.playerLives = Math.max(0, Math.round(run.playerLives))
     const weaponIndexFromId =
       typeof run.currentWeaponId === 'string' ? this.weapons.indexOf(run.currentWeaponId) : -1
@@ -2968,14 +2926,14 @@ export class Game extends Phaser.Scene {
       profile: weaknessProfile,
       weaponId,
       chargeLevel,
-      hasArmsUpgrade: this.progressionSave.upgradeUnlocks.includes('armor_arms')
+      hasArmsUpgrade: resolveUpgradeModifiers(this.progressionSave).hasArmsUpgrade
     })
     if (multiplier <= 0) {
       this.recordCombatHit('player', 'boss', dmg, hitKind, false, 'blocked-by-weakness-rules')
       this.showBossHitFeedback(weaponId, multiplier, 'BLOCKED')
       return
     }
-    const damageBonus =
+    const damageBonus = this.progressionSave.progressionWorld?.progressionMode === 'classic' ? 0 :
       weaponId === 'Buster' ? getBusterDamageBonus(this.progressionSave) : getWeaponDamageBonus(this.progressionSave)
     const scaledDamage = Math.max(1, Math.round((dmg + damageBonus) * multiplier))
     const controller = this.bossController
@@ -3553,7 +3511,7 @@ export class Game extends Phaser.Scene {
     this.recordCombatHit(
       debugSource,
       'player',
-      request.amount,
+      result.amount,
       request.sourceType,
       result.accepted,
       `${request.sourceId}:${result.reason}`
@@ -3638,6 +3596,7 @@ export class Game extends Phaser.Scene {
         this.player.setAcceleration(0, 0)
         this.player.clearTint()
         this.player.setActive(true).setVisible(true)
+        this.sessionStats.respawn()
         this.newPlayerRuntime?.resetForRespawn(1000)
         this.resumeRespawnCombatState()
         this.syncWeaponHud()

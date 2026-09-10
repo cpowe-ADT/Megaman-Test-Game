@@ -17,6 +17,7 @@ import type {
 } from './types'
 
 const UPGRADE_LABELS: Record<ProgressionUpgradeId, string> = {
+  arc_slash: 'Arc Slash',
   armor_helmet: 'Helmet Armor',
   armor_arms: 'Arms Armor',
   armor_body: 'Body Armor',
@@ -85,6 +86,7 @@ export function getBossWeaknessLabel(
   fallback = 'Unknown'
 ): string {
   const profile = getBossWeaknessProfile(save, bossId)
+  if (save.progressionWorld?.progressionMode === 'classic' && profile && !profile.weaknessWeaponIds.some(id => save.weaponsUnlocked.includes(id))) return '???'
   const labels = profile?.weaknessWeaponIds
     .map((weaponId) => getWeaponDisplayName(weaponId))
     .filter((label, index, array) => label.length > 0 && array.indexOf(label) === index) ?? []

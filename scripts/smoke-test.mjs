@@ -1,3 +1,4 @@
+import { runClassicCampaignScenario, runClassicUpgradeScenario } from './smoke/classic-campaign.mjs'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -43,6 +44,15 @@ const robotMasterStageIds = [
   'gale_vixen',
   'glacier_ronin'
 ]
+
+// Existing regression scenarios explicitly retain their original Randomizer fixture.
+async function newSmokePage(browser) {
+  const page = await browser.newPage()
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('save.v1')) localStorage.setItem('save.v1', JSON.stringify({ weaponsUnlocked: [], clearedBosses: [], tutorialCleared: false, finalBossCleared: false, gameCompleted: false }))
+  })
+  return page
+}
 
 function getSmokeServerConfig() {
   if (smokeServerMode === 'preview') {
@@ -438,7 +448,7 @@ async function runVictoryReturnScenario(name, confirmMode) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -527,7 +537,7 @@ async function runChargeShotScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -601,7 +611,7 @@ async function runKeyboardEnterStartScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -649,7 +659,7 @@ async function runClickOnlyStageSelectScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -710,7 +720,7 @@ async function runTitleControlsScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -767,7 +777,7 @@ async function runStageSelectProgressionSummaryScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -789,6 +799,8 @@ async function runStageSelectProgressionSummaryScenario(name) {
     await page.evaluate(() => window.dispatchEvent(new Event('resize')))
 
     await waitForState(page, (state) => state.scene === 'StageSelect')
+    const modeState = await readState(page)
+    if (modeState.stageSelect?.progressionMode !== 'relay_randomizer') throw new Error('Expected explicit Randomizer regression fixture.')
     await tapKey(page, 'Escape')
     await waitForPageCheck(page, () => Boolean(window.__phaserGame?.scene?.isActive?.('SystemMenu')))
     await page.evaluate(() => {
@@ -839,7 +851,7 @@ async function runProgressionImportTruthScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -970,7 +982,7 @@ async function runBossRoomActivationScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1027,7 +1039,7 @@ async function runCheckpointRespawnScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1100,7 +1112,7 @@ async function runEnemyStreamingScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1179,7 +1191,7 @@ async function runFinalRouteUnlockScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1244,7 +1256,7 @@ async function runWeaponSwitchAndEnergyScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1322,6 +1334,18 @@ async function runWeaponSwitchAndEnergyScenario(name) {
       )
     }
 
+    await page.evaluate(() => window.stageDebug.grantUpgrade('arc_slash'))
+    await advanceFrames(page, 30)
+    const beforeArc = await readState(page)
+    await page.keyboard.down('c')
+    await advanceFrames(page, 3)
+    const heldArc = await readState(page)
+    if (heldArc.combatDebug.player.shotsFiredTotal !== beforeArc.combatDebug.player.shotsFiredTotal) throw new Error('Arc fired before saber release.')
+    await page.keyboard.up('c')
+    const arcState = await waitForState(page, state => state.combatDebug?.player?.lastProjectile?.weaponId === 'ArcSlash')
+    if (arcState.combatDebug.player.shotsFiredTotal !== beforeArc.combatDebug.player.shotsFiredTotal + 1 || arcState.playerState.weapon !== 'FlameSerpent' || arcState.combatDebug.player.lastProjectile.energyCost !== 0) throw new Error('Arc release identity/count/energy contract failed.')
+    fs.writeFileSync(path.join(scenarioDir,'arc-evidence.json'),JSON.stringify({beforeArc,heldArc,arcState},null,2))
+
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
       path.join(scenarioDir, 'state-0.json'),
@@ -1346,7 +1370,7 @@ async function runLoadSaveRestoreScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1438,7 +1462,7 @@ async function runCorruptSaveRejectedScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1536,7 +1560,7 @@ async function runUnifiedPlayerDamageScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
   page.on('console', (msg) => {
     if (msg.type() === 'error') errors.push({ type: 'console.error', text: msg.text() })
@@ -1788,7 +1812,7 @@ async function runCompletionReturnScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1857,7 +1881,7 @@ async function runMenuAudioInputScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -1939,7 +1963,7 @@ async function runMusicCueScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2019,7 +2043,7 @@ async function runProjectileClashScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2075,7 +2099,7 @@ async function runProjectileClashSurviveScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2135,7 +2159,7 @@ async function runPickupRecoveryScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2224,7 +2248,7 @@ async function runBossGateLockScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2296,7 +2320,7 @@ async function runFinalUnlockFromLastClearScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2388,7 +2412,7 @@ async function runBossRoomRespawnScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2479,7 +2503,7 @@ async function runExtendedStageScenario(name) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2546,7 +2570,7 @@ async function openGameplayPage(name, targetUrl = url) {
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
-  const page = await browser.newPage()
+  const page = await newSmokePage(browser)
   const errors = []
 
   page.on('console', (msg) => {
@@ -2845,18 +2869,47 @@ async function runPelletHitsShortEnemyScenario(name) {
       const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
       window.stageDebug?.setPlayerX?.(150)
       scene?.newPlayerRuntime?.resetForRespawn?.(30000)
+      const describeProjectile = (bullet) => ({
+        x: bullet.x, y: bullet.y, vx: bullet.body?.velocity?.x, vy: bullet.body?.velocity?.y,
+        sourceId: bullet.data?.get('sourceId'), attack: bullet.data?.get('attack'),
+        projectileId: bullet.data?.get('projectileId')
+      })
+      const priorHostileProjectiles = (scene?.bossBullets?.getChildren?.() ?? [])
+        .filter((bullet) => bullet.active).map(describeProjectile)
+      window.__pelletClashTrace = []
+      const router = scene?.projectileCollisionRouter
+      const originalClash = router.handleProjectileClash.bind(router)
+      router.handleProjectileClash = (playerBullet, enemyBullet) => {
+        window.__pelletClashTrace.push({ timeMs: scene.time.now,
+          player: describeProjectile(playerBullet), enemy: describeProjectile(enemyBullet) })
+        return originalClash(playerBullet, enemyBullet)
+      }
       scene?.enemySpawner?.getEntities?.().forEach((entity) => entity?.destroy?.())
       scene?.enemySpawner?.enemies?.clear?.()
       scene?.enemySpawner?.levelMarkers?.clear?.()
       scene?.enemySpawner?.activeMarkerIds?.clear?.()
       scene?.enemySpawner?.retiredMarkerIds?.clear?.()
-      const entity = window.spawnEnemyDebug?.(
-        'enemy_mine_bot',
-        Number(scene?.player?.x ?? 150) + 68,
-        Number(scene?.player?.y ?? 0)
-      )
+      // This scenario measures pellet/body contact; projectile interception has its own scenarios.
+      for (const bullet of scene?.bossBullets?.getChildren?.() ?? []) {
+        if (bullet.active) scene?.projectileSystem?.recycle?.(bullet)
+      }
+      const spawnOptions = scene.enemySpawner.options
+      const previousOptions = { enableAI: spawnOptions.enableAI, enableProjectiles: spawnOptions.enableProjectiles }
+      let entity
+      try {
+        spawnOptions.enableAI = false
+        spawnOptions.enableProjectiles = false
+        entity = window.spawnEnemyDebug?.(
+          'enemy_mine_bot',
+          Number(scene?.player?.x ?? 150) + 68,
+          Number(scene?.player?.y ?? 0)
+        )
+      } finally {
+        Object.assign(spawnOptions, previousOptions)
+      }
       window.__pelletTestEnemyId = entity?.id ?? null
-      return { id: entity?.id ?? null, hp: Number(entity?.combat?.currentHp ?? -1) }
+      return { id: entity?.id ?? null, hp: Number(entity?.combat?.currentHp ?? -1),
+        timeMs: scene.time.now, priorHostileProjectiles, targetAttacksDisabled: true }
     })
     if (baseline.hp <= 0) {
       throw new Error('Expected a live short enemy for the pellet hitbox scenario.')
@@ -2886,7 +2939,16 @@ async function runPelletHitsShortEnemyScenario(name) {
           .filter((bullet) => bullet.active).map(bounds)
       }
     })
-    await advanceFrames(page, 36)
+    let contactWaitError = null
+    try {
+      await waitForPageCheck(page, () => {
+        const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
+        const target = scene?.enemySpawner?.getEntities?.().find((entity) => entity.id === window.__pelletTestEnemyId)
+        return Number(target?.combat?.currentHp ?? 5) < 5
+      }, 2500, 'ordinary pellet to contact the isolated live short enemy')
+    } catch (error) {
+      contactWaitError = String(error)
+    }
 
     const result = await page.evaluate(() => {
       const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
@@ -2903,7 +2965,8 @@ async function runPelletHitsShortEnemyScenario(name) {
     const state = await readState(page)
     await captureScenarioState(page, scenarioDir, 0, state)
     const evidence = {
-      baseline, result, geometry,
+      baseline, result, geometry, contactWaitError,
+      clashes: await page.evaluate(() => window.__pelletClashTrace),
       shot: state?.combatDebug?.player?.lastProjectile,
       shotsFired: Number(state?.combatDebug?.player?.shotsFiredTotal ?? 0) -
         Number(beforeShot?.combatDebug?.player?.shotsFiredTotal ?? 0),
@@ -3336,6 +3399,10 @@ async function main() {
     await executeSmokeScenario(summary, '4d-progression-import-truth', () =>
       runProgressionImportTruthScenario('4d-progression-import-truth')
     )
+
+    await executeSmokeScenario(summary, '33-classic-stage-select', () => runClassicCampaignScenario('33-classic-stage-select', { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }))
+
+    await executeSmokeScenario(summary, '33b-classic-upgrade-runtime', () => runClassicUpgradeScenario('33b-classic-upgrade-runtime', { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }))
 
     await executeSmokeScenario(summary, '5-boss-clear-enter-return', () =>
       runVictoryReturnScenario('5-boss-clear-enter-return', 'enter')

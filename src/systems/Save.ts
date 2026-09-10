@@ -12,11 +12,16 @@ import {
   type ProgressionTransportPayload,
   type ProgressionWorldSnapshot
 } from '../progression/index'
+import { freshStatistics, normalizeStatistics, type CampaignStatistics } from '../progression/statistics'
+import type { Difficulty, ProgressionMode } from '../progression/types'
 import { CAMPAIGN_STAGES, type CampaignStageId } from '../content/campaign'
 import { buildWeaponOrder } from '../content/weapons'
 
 // [REGION: SAVE-SYSTEM - BEGIN]
 export type SaveData = {
+  difficulty: Difficulty
+  stats: CampaignStatistics
+  storyFlags: string[]
   weaponsUnlocked: string[]
   gameOverCounts: Record<string, number>
   clearedBosses: string[]
@@ -37,6 +42,7 @@ export type SaveData = {
 
 export type ActiveRunSaveData = {
   version: 2
+  stageElapsedMs?: number
   savedAt: number
   stageId: string
   bossId: string
@@ -61,8 +67,9 @@ export type ActiveRunValidationResult =
   | { valid: false; run: null; reason: ActiveRunValidationReason }
 
 const KEY = 'save.v1'
-const FALLBACK_PROGRESSION = createFreshProgressionState()
+const FALLBACK_PROGRESSION = createFreshProgressionState('classic', 'classic')
 const FALLBACK: SaveData = {
+  difficulty: 'normal', stats: freshStatistics(), storyFlags: [],
   weaponsUnlocked: [],
   gameOverCounts: {},
   clearedBosses: [],
@@ -124,6 +131,7 @@ function cloneActiveRun(run: ActiveRunSaveData | null | undefined): ActiveRunSav
   }
   return {
     version: 2,
+    stageElapsedMs: Math.max(0, finiteNumber(run.stageElapsedMs, 0)),
     savedAt: Number(run.savedAt ?? Date.now()),
     stageId: String(run.stageId ?? ''),
     bossId: String(run.bossId ?? ''),
@@ -227,10 +235,11 @@ export function validateActiveRun(save: SaveData, raw: unknown): ActiveRunValida
     reason: null,
     run: {
       version: 2,
+      stageElapsedMs: Math.max(0, finiteNumber(candidate.stageElapsedMs, 0)),
       savedAt: Math.max(0, Math.round(finiteNumber(candidate.savedAt, 0))),
       stageId: stage.id,
       bossId: stage.bossId,
-      playerHp: clampInteger(candidate.playerHp, 1, playerMaxHp, playerMaxHp),
+      playerHp: finiteNumber(candidate.playerHp, playerMaxHp) > 0 ? Math.min(playerMaxHp, finiteNumber(candidate.playerHp, playerMaxHp)) : 1,
       playerMaxHp,
       playerLives: clampInteger(candidate.playerLives, 0, 9, 3),
       currentWeaponIndex,
@@ -244,6 +253,9 @@ export function validateActiveRun(save: SaveData, raw: unknown): ActiveRunValida
 
 function normalize(data: SaveData): SaveData {
   const normalizedProgression = ensureProgressionState({
+    difficulty: (data.difficulty === 'assist' || data.difficulty === 'veteran' ? data.difficulty : 'normal') as Difficulty,
+    stats: normalizeStatistics(data.stats),
+    storyFlags: uniqueStrings(data.storyFlags).filter(id => id.length <= 120).slice(0, 512),
     weaponsUnlocked: uniqueStrings(data.weaponsUnlocked),
     gameOverCounts: data.gameOverCounts ? { ...data.gameOverCounts } : {},
     clearedBosses: uniqueStrings(data.clearedBosses),
@@ -329,8 +341,12 @@ export const Save = {
   load(): SaveData {
     return read()
   },
-  save(data: SaveData): void {
-    persist(data)
+  exists(): boolean {
+    const storage = getStorage()
+    try { return storage ? storage.getItem(KEY) != null : memoryCache != null } catch { return memoryCache != null }
+  },
+  save(data: Omit<SaveData, 'difficulty' | 'stats' | 'storyFlags'> & Partial<Pick<SaveData, 'difficulty' | 'stats' | 'storyFlags'>>): void {
+    persist(data as SaveData)
   },
   saveActiveRun(run: ActiveRunSaveData): boolean {
     const state = read()
@@ -351,10 +367,10 @@ export const Save = {
     return Boolean(read().activeRun)
   },
   clearAll(): void {
-    persist({ ...FALLBACK, ...createFreshProgressionState() })
+    persist({ ...FALLBACK, ...createFreshProgressionState('classic', 'classic') })
   },
-  startNewCampaign(): void {
-    persist({ ...FALLBACK, ...createFreshProgressionState() })
+  startNewCampaign(options: { mode?: ProgressionMode; seed?: string; difficulty?: Difficulty } = {}): void {
+    persist({ ...FALLBACK, stats: freshStatistics(), difficulty: options.difficulty ?? 'normal', ...createFreshProgressionState(options.seed ?? 'classic', options.mode ?? 'classic') })
   },
   addWeapon(weaponId: string): void {
     if (!weaponId) {
@@ -414,8 +430,8 @@ export const Save = {
   },
   importProgression(payload: ProgressionTransportPayload): void {
     const state = read()
-    state.activeRun = null
-    persist(importProgressionTransport(state, payload))
+    const imported = importProgressionTransport(state, payload)
+    persist({ ...imported, activeRun: null, stats: freshStatistics() })
   }
 }
 // [REGION: SAVE-SYSTEM - END]

@@ -1,3 +1,6 @@
+import { WeaknessTable } from '../bosses/types'
+import { BOSS_ROSTER } from '../bosses/roster'
+import { getWeaponConfig } from '../content/weapons'
 import { getRobotMasterStages, ROBOT_MASTER_STAGE_IDS, TUTORIAL_STAGE_ID, type CampaignStageId } from '../content/campaign'
 import {
   ALL_UPGRADE_IDS,
@@ -124,6 +127,7 @@ export function generateProgressionWorld(seed = PROGRESSION_SEED_DEFAULT): Progr
 
   return {
     version: 1,
+    progressionMode: 'relay_randomizer',
     seed,
     startingStageIds: [TUTORIAL_STAGE_ID, firstStage],
     stageChain,
@@ -132,4 +136,28 @@ export function generateProgressionWorld(seed = PROGRESSION_SEED_DEFAULT): Progr
     weaknessProfiles,
     finalGate: chooseFinalGateRules(rng)
   }
+}
+
+/** Authored campaign: stageChain is presentation order, never an access chain. */
+export function generateClassicWorld(): ProgressionWorldSnapshot {
+  const stages = getRobotMasterStages()
+  const capsules: ProgressionItemId[] = ['chip_buster_plus', 'chip_quick_charge', 'armor_legs', 'armor_body', 'armor_arms', 'chip_weapon_plus', 'chip_speedster', 'armor_helmet']
+  const placements: ProgressionWorldSnapshot['placements'] = {
+    [getLocationCheckId(TUTORIAL_STAGE_ID, 'boss_clear')]: 'arc_slash',
+    [getLocationCheckId(TUTORIAL_STAGE_ID, 'capsule')]: 'hp_refill_large',
+    [getLocationCheckId(TUTORIAL_STAGE_ID, 'pickup_bonus')]: 'hp_refill_large'
+  }
+  const weaknessProfiles: ProgressionWorldSnapshot['weaknessProfiles'] = {}
+  stages.forEach((stage, index) => {
+    const stageId = stage.id as CampaignStageId
+    placements[getLocationCheckId(stageId, 'boss_clear')] = stage.rewardWeaponId!
+    placements[getLocationCheckId(stageId, 'capsule')] = capsules[index]
+    placements[getLocationCheckId(stageId, 'heart_tank')] = 'heart_tank'
+    placements[getLocationCheckId(stageId, 'sub_tank')] = index % 2 ? 'sub_tank' : 'hp_refill_large'
+    placements[getLocationCheckId(stageId, 'pickup_bonus')] = 'hp_refill_large'
+    const weakElement = WeaknessTable[BOSS_ROSTER[stage.bossId].element]
+    const weapon = stages.find(candidate => getWeaponConfig(candidate.rewardWeaponId!).element === weakElement)!.rewardWeaponId!
+    weaknessProfiles[stage.bossId] = createBossWeaknessProfile(stage.bossId, weapon)
+  })
+  return { version: 1, progressionMode: 'classic', seed: 'classic', startingStageIds: [TUTORIAL_STAGE_ID, ...ROBOT_MASTER_STAGE_IDS], stageChain: [...ROBOT_MASTER_STAGE_IDS], placements, weaknessStrictness: 'weakness_and_buster', weaknessProfiles, finalGate: { rules: [{ category: 'medals', required: 8 }] } }
 }

@@ -78,7 +78,8 @@ export async function runInputLifecycleScenario(name, { openGameplayPage, closeG
     evidence.heldConfirm = await readState(page)
     assert.equal(evidence.heldConfirm.stageSelect.confirmArmed, false)
     assert.equal(evidence.heldConfirm.stageSelect.transitionPending, false)
-    assert.equal(await page.evaluate(() => 'stageDebug' in window || 'bossDebug' in window), false)
+    assert.equal(await page.evaluate(() => 'bossDebug' in window), false)
+    assert.deepEqual(await page.evaluate(() => Object.keys(window.stageDebug ?? {}).sort()), ['grantUpgrade', 'grantWeapon'])
     await page.keyboard.down('NumpadEnter') // OS repeat remains physically held
     await advanceFrames(page, 5)
     assert.equal((await readState(page)).stageSelect.confirmArmed, false)

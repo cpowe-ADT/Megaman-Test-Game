@@ -34,11 +34,11 @@ export type WeaponRuntimeConfig = {
 const SPECIAL_WEAPON_OVERRIDES: Partial<Record<WeaponRuntimeId, Partial<WeaponRuntimeConfig>>> = {
   ArcSlash: {
     damage: 2,
-    speed: 300,
+    speed: 260,
     scale: 1.15,
     tint: 0xd9d9ff,
     allowCharge: false,
-    projectile: { style: 'standard', lifetimeMs: 820, pierce: 0 }
+    projectile: { style: 'standard', lifetimeMs: 600, pierce: 0 }
   },
   FlameSerpent: {
     damage: 3,

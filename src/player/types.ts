@@ -12,6 +12,7 @@ export type PlayerIntent = {
   shootHeld: boolean
   shootReleased: boolean
   slashPressed: boolean
+  slashReleased?: boolean
   crouchHeld: boolean
   aim: { x: number; y: number }
 }
@@ -93,6 +94,7 @@ export type PlayerResolvedState = {
 
 export type SpawnProjectileRequest = {
   type: 'pellet' | 'charge'
+  weaponId?: 'ArcSlash'
   chargeLevel: 0 | 1 | 2 | 3 | 4
   facing: 1 | -1
 }

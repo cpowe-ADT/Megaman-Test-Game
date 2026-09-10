@@ -1,3 +1,4 @@
+import type { UpgradeModifiers } from '../progression/upgrades'
 import { getWeaponConfig, type WeaponRuntimeConfig } from '../content/weapons'
 import { PLAYER_GAMEPLAY_CONFIG } from '../player/config'
 import { resolvePlayerProjectileId } from './definitions/coreProjectiles'
@@ -19,6 +20,7 @@ export type ResolvedPlayerShot = {
 
 export function resolvePlayerShot(options: {
   weaponId: string
+  modifiers?: UpgradeModifiers
   intent: PlayerShotIntent
   x: number
   y: number
@@ -35,10 +37,11 @@ export function resolvePlayerShot(options: {
     projectileId,
     weapon,
     chargeLevel,
-    energyCost: weapon.energyCost,
+    energyCost: weapon.energyCost > 0 ? Math.max(1, weapon.energyCost - (options.modifiers?.specialEnergyDiscount ?? 0)) : 0,
     impactFxKey,
     spawnRequest: {
       id: projectileId,
+      ...(weapon.id === 'Buster' && chargeLevel === 0 && options.modifiers ? { damage: options.modifiers.busterPelletDamage } : {}),
       x: options.x,
       y: options.y,
       direction: options.intent.facing,

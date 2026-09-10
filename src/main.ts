@@ -1,3 +1,4 @@
+import { NewCampaignScene } from './scenes/NewCampaignScene'
 import Phaser from 'phaser'
 import AudioService from './audio'
 import { Boot } from './scenes/Boot'
@@ -45,7 +46,7 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   pixelArt: STRICT_PIXEL_RENDER_POLICY.pixelArt,
-  scene: [Boot, Preload, Title, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, PauseScene, GameOverScene, CompletionScene]
+  scene: [Boot, Preload, Title, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, PauseScene, GameOverScene, CompletionScene]
 }
 
 ;(config as any).resolution = runtimeResolution
@@ -219,8 +220,14 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     payload.progressionSummary = progressionSummaryScene.debugSummary ?? null
   }
 
+  const newCampaign = activeScenes.find(active => active.scene.key === 'NewCampaign') as NewCampaignScene | undefined
+  if (newCampaign) payload.newCampaign = { ...newCampaign.model.selection(), randomizerAvailable: newCampaign.model.randomizerAvailable, confirmArmed: newCampaign.confirmArmed }
+
   if (scene.scene.key === 'StageSelect') {
     payload.stageSelect = {
+      progressionMode: (scene as any).saveData?.progressionWorld?.progressionMode ?? 'relay_randomizer',
+      tiles: (scene as any).getLayoutEvidence?.() ?? [],
+      panels: (scene as any).getPanelEvidence?.() ?? null,
       index: scene.index ?? 0,
       page: scene.currentPage ?? 0,
       transitionPending: Boolean(scene.requestedTransition),
@@ -254,6 +261,9 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
       loadedFromSave: Boolean(scene.loadedFromSave)
     }
     payload.progression = {
+      progressionMode: (scene as any).progressionSave?.progressionWorld?.progressionMode ?? 'relay_randomizer',
+      stats: (scene as any).progressionSave?.stats ?? null,
+      upgrades: (scene as any).progressionSave?.upgradeUnlocks ?? [],
       unlockedStages: scene.progressionSave?.stageAccessUnlocked ?? [],
       collectedChecks: scene.progressionSave?.collectedChecks?.length ?? 0,
       pendingItems: scene.progressionSave?.pendingProgressionItems ?? [],

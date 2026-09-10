@@ -1,4 +1,6 @@
 import type Phaser from 'phaser'
+import { resolveUpgradeModifiers, type UpgradeModifiers } from '../progression/upgrades'
+import type { PlayerDamageRequest } from './types'
 import { shouldFlipPlayerSpriteForFacing } from './config'
 import type { PlayerFeatureFlags } from './featureFlags'
 import type { BlasterConfig, SwordConfig, DamageConfig, Direction8 } from './config'
@@ -45,6 +47,10 @@ type DamageHooks = {
 }
 
 export class PlayerCombat {
+  private modifiers: UpgradeModifiers = resolveUpgradeModifiers({})
+  private saberReleaseArmed = false
+  setUpgradeModifiers(modifiers: UpgradeModifiers): void { this.modifiers = modifiers }
+
   private nextFireAt = 0
   private charging = false
   private chargeStartedAt = 0
@@ -149,6 +155,7 @@ export class PlayerCombat {
 
       const canSlash = this.flags.enableSword && !dashing
       if (canSlash && intent.slashPressed && this.slashPhase == null) {
+        this.saberReleaseArmed = true
         this.slashDirection = resolveEightDirection(intent.aim, facing, this.sword.aimDeadzone)
         this.slashGrounded = grounded
         this.slashPhase = 'startup'
@@ -158,6 +165,11 @@ export class PlayerCombat {
         this.slashHitboxFired = false
         events.push({ type: 'sfx', key: 'sword_swing' })
       }
+      if (intent.slashReleased) {
+        if (this.saberReleaseArmed && this.modifiers.arcSlash) events.push({ type: 'projectile', request: { type: 'pellet', weaponId: 'ArcSlash', chargeLevel: 0, facing } })
+        this.saberReleaseArmed = false
+      }
+
     }
 
     this.updateSlashPhase(deltaMs, events)
@@ -173,16 +185,19 @@ export class PlayerCombat {
     grounded: boolean,
     knockbackDirection: 1 | -1,
     tier: HitTier = 'light',
-    options: { bypassIFrames?: boolean; knockback?: { x: number; y: number } } = {}
+    options: { bypassIFrames?: boolean; knockback?: { x: number; y: number }; sourceType?: PlayerDamageRequest['sourceType'] } = {}
   ): { accepted: boolean; events: PlayerRuntimeEvent[] } {
     if (this.iFramesRemainingMs > 0 && !options.bypassIFrames) {
       return { accepted: false, events: [] }
     }
 
-    this.hooks.onDamageAccepted(damage)
+    this.saberReleaseArmed = false
+    const contact = options.sourceType === 'enemy_contact' || options.sourceType === 'boss_contact'
+    const suppressHurt = contact && !this.modifiers.contactHitstun
+    this.hooks.onDamageAccepted(damage * (options.sourceType === 'fall' ? 1 : this.modifiers.damageTakenMultiplier))
     this.iFramesRemainingMs = this.damage.iFramesMs
-    this.hitstunRemainingMs = tier === 'heavy' ? this.damage.hitstunMs.heavy : this.damage.hitstunMs.light
-    this.pendingDamageTier = tier
+    this.hitstunRemainingMs = suppressHurt ? 0 : tier === 'heavy' ? this.damage.hitstunMs.heavy : this.damage.hitstunMs.light
+    this.pendingDamageTier = suppressHurt ? undefined : tier
 
     const configuredKnockback = grounded ? this.damage.knockback.ground : this.damage.knockback.air
     const knockback = options.knockback ?? {
@@ -209,6 +224,7 @@ export class PlayerCombat {
   }
 
   cancelPendingCharge(): void {
+    this.saberReleaseArmed = false
     this.charging = false
     this.chargeStartedAt = 0
     this.chargeLevel = 0
@@ -217,6 +233,7 @@ export class PlayerCombat {
   }
 
   resetForRespawn(): void {
+    this.saberReleaseArmed = false
     this.nextFireAt = 0
     this.charging = false
     this.chargeStartedAt = 0
@@ -349,8 +366,8 @@ export class PlayerCombat {
   }
 
   private resolveChargeLevel(heldMs: number): 0 | 1 | 2 | 3 | 4 {
-    const [l1, l2, l3, l4] = this.blaster.chargeThresholdsMs
-    if (heldMs >= l4) return 4
+    const [l1, l2, l3, l4] = this.blaster.chargeThresholdsMs.map(value => value * this.modifiers.chargeTimeMultiplier)
+    if (heldMs >= l4) return this.modifiers.maxChargeLevel
     if (heldMs >= l3) return 3
     if (heldMs >= l2) return 2
     if (heldMs >= l1) return 1

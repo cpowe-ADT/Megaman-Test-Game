@@ -15,7 +15,7 @@ export class PlayerController {
       moveAxis, jumpPressed: input.jump.pressed && !suppressed, jumpHeld: input.jump.held && !suppressed,
       jumpReleased: input.jump.released, dashPressed: input.dash.pressed, dashHeld: input.dash.held,
       dashReleased: input.dash.released, shootPressed: input.shoot.pressed, shootHeld: input.shoot.held,
-      shootReleased: input.shoot.released, slashPressed: input.saber.pressed, crouchHeld: down,
+      shootReleased: input.shoot.released, slashPressed: input.saber.pressed, slashReleased: input.saber.released, crouchHeld: down,
       aim: { x: moveAxis !== 0 ? moveAxis : aimY !== 0 ? 0 : facing, y: aimY }
     }
   }

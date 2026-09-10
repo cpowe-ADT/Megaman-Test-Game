@@ -1,3 +1,4 @@
+import { openNewCampaign } from './NewCampaignScene'
 import Phaser from 'phaser'
 import AudioService from '../audio'
 import InputActions from '../input/InputActions'
@@ -149,8 +150,7 @@ export class Title extends Phaser.Scene {
     const newCampaignHandler = () => {
       AudioService.unlock()
       AudioService.playSfx('ui_confirm')
-      Save.clearAll()
-      this.startTutorial()
+      openNewCampaign(this)
     }
     const controlsHandler = () => this.openControls()
     InputActions.forScene(this).onPressed('newCampaign', newCampaignHandler)
@@ -165,6 +165,7 @@ export class Title extends Phaser.Scene {
   }
 
   private handlePrimaryAction(): void {
+    if (!Save.exists()) { openNewCampaign(this); return }
     if (Save.hasActiveRun()) {
       const run = Save.loadActiveRun()
       if (run) {

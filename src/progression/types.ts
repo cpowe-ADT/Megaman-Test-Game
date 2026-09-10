@@ -1,9 +1,13 @@
 import type { BossId, WeaponId } from '../bosses/types'
 import type { CampaignStageId } from '../content/campaign'
 
+export type ProgressionMode = 'classic' | 'relay_randomizer'
+export type Difficulty = 'assist' | 'normal' | 'veteran'
+
 export type StageAccessItemId = `access_${Exclude<CampaignStageId, 'tutorial_sentinel' | 'omega_fortress'>}`
 
 export type ProgressionUpgradeId =
+  | 'arc_slash'
   | 'armor_helmet'
   | 'armor_arms'
   | 'armor_body'
@@ -77,6 +81,8 @@ export type ProgressionLocationDefinition = {
 
 export type ProgressionWorldSnapshot = {
   version: 1
+  // Missing mode in v1 saves means the original seeded Randomizer.
+  progressionMode?: ProgressionMode
   seed: string
   startingStageIds: CampaignStageId[]
   stageChain: Exclude<CampaignStageId, 'tutorial_sentinel' | 'omega_fortress'>[]
@@ -91,6 +97,7 @@ export type ProgressionWorldSnapshot = {
 export type ProgressionTransportPayload = {
   version: 1
   slotData: {
+    progressionMode?: ProgressionMode
     seed: string
     startingStageIds: CampaignStageId[]
     weaknessStrictness: WeaknessStrictness

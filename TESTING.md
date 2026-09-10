@@ -30,6 +30,7 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
 
 ## Current Test Surface
 - `tests/`
+  - `progression-classic.test.ts`, `upgrades.test.ts`, and `campaign-session.test.ts` cover authored worlds, mode-safe transport, actual combat/motor/shot consumers, fractional HP, and campaign timing
   - Logic, contracts, scene flow, save systems, render policy, platform rules, sprite validation, debug-state helpers
   - `tests/input-actions.test.ts` covers aggregated source edges, fast taps, immutable snapshots, hitstop queues/ownership, aliases, and persisted partial remaps
   - Dialogue schema/resolver coverage plus pure playback advance/skip parity
@@ -38,6 +39,10 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
   - Boss-framework logic and controller behavior
 - `scripts/smoke-test.mjs`
   - Browser smoke validation and artifact capture
+  - Existing regression pages explicitly initialize a legacy Randomizer save; this preserves their original route/upgrades. Scenario 33 starts with genuinely empty storage and creates Classic through the chooser
+  - `33-classic-stage-select` proves cancel-safe difficulty/mode selection, Shift eligibility, native layout bounds, a 64-character seed, tutorial clear, own reward and weakness discovery
+  - `33b-classic-upgrade-runtime` proves fractional body armor and reload, helmet pose, outgoing play-time flush, two-damage enemy pellet, exact discounted-energy fire, neutral boss adapter damage and pending-charge cancellation at dialogue
+  - `12-weapon-switch-energy` also verifies ArcSlash emits once on saber release with its own identity and zero energy cost while a special remains equipped
   - Starts a dedicated Vite smoke server with HMR/watch reloads disabled for deterministic long-run scenarios
   - `13e-input-source-lifecycle` covers repeated pause/resume, pending-charge cancellation, fast menu taps, held Enter/Escape across nested menu return, held/repeated Numpad confirmation, modal underlay isolation, and debug hooks across Game shutdown/reentry
   - Required movement/touch scenarios `13d-movement-feel` and `4c-touch-controls` remain unchanged
@@ -138,3 +143,13 @@ When changing these contracts:
 
 ## Merge Expectations
 A change is not ready if the relevant gate for its risk profile was skipped. When in doubt, escalate to the next stronger command rather than documenting exceptions.
+
+### Classic campaign automation additions
+
+`render_game_to_text().stageSelect.progressionMode` and `.progression.progressionMode` report `classic` or `relay_randomizer`. Stage Select also reports tile and panel bounds/difficulty ratings; `newCampaign` reports the pending mode/difficulty/seed and confirmation readiness. These are diagnostic state, not a second gameplay authority.
+
+With automation enabled, `stageDebug.grantWeapon(id)` accepts the eight warden weapon IDs and `stageDebug.grantUpgrade(id)` accepts armor/chips plus `arc_slash`. Both validate IDs, persist the grant and refresh the active Game/Stage Select consumer immediately; they return false for an unknown ID. Hooks are removed on scene shutdown. Existing boss damage and location-claim paths remain the authority for clears.
+
+New Campaign interprets `?seed=` only when explicitly creating Randomizer. Classic always stores `classic`; existing saves are never reseeded by URL navigation. A mode-less v1 transport is Randomizer, and mismatched imports report an error without clearing the current active run. The complete current rules and legacy compatibility boundary are documented in `ARCHITECTURE.md`.
+
+Scenario `29-pellet-hits-short-enemy` isolates a live mine bot with its normal collider/HP and AI/projectile emission disabled, clears prior hostile projectiles, then requires one ordinary Buster shot to reduce that same target from 5 to 4 HP. Its retained clash trace distinguishes interception from a hitbox miss; separate projectile-clash scenarios cover interception.

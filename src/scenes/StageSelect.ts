@@ -1,3 +1,6 @@
+import { openNewCampaign } from './NewCampaignScene'
+import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
+import { countClearedRobotMasters } from '../content/campaign'
 import Phaser from 'phaser'
 import AudioService from '../audio'
 import { ORDERED_BOSSES } from '../bosses/roster'
@@ -35,6 +38,8 @@ type SlotEntry = {
   name: Phaser.GameObjects.Text
   meta: Phaser.GameObjects.Text
   badge: Phaser.GameObjects.Text
+  portrait: Phaser.GameObjects.Rectangle
+  weakness: Phaser.GameObjects.Text
   stageIndex: number | null
 }
 
@@ -54,7 +59,7 @@ const ROWS = 3
 const PAGE_SIZE = COLUMNS * ROWS
 
 const FONT = {
-  title: '22px monospace',
+  title: '13px monospace',
   subtitle: '8px monospace',
   slotTitle: '8px monospace',
   slotMeta: '7px monospace',
@@ -103,7 +108,6 @@ export class StageSelect extends Phaser.Scene {
 
   private saveData: SaveData = Save.load()
 
-  private cursor?: Phaser.GameObjects.Rectangle
   private previewTitle?: Phaser.GameObjects.Text
   private bossNameText?: Phaser.GameObjects.Text
   private infoText?: Phaser.GameObjects.Text
@@ -112,6 +116,8 @@ export class StageSelect extends Phaser.Scene {
   private previewSprite?: Phaser.GameObjects.Sprite
   private previewMaskShape?: Phaser.GameObjects.Graphics
   private pageIndicator?: Phaser.GameObjects.Text
+  private headerProgress?: Phaser.GameObjects.Text
+  private footerControls?: Phaser.GameObjects.Text
   private footerStatus?: Phaser.GameObjects.Text
   private toastHandle?: Phaser.GameObjects.Container
 
@@ -149,17 +155,12 @@ export class StageSelect extends Phaser.Scene {
     this.createPreviewPanel()
     this.createFooter()
 
-    this.cursor = this.add
-      .rectangle(0, 0, this.layout.slotWidth - 8, this.layout.slotHeight - 8)
-      .setStrokeStyle(2, 0xffffff, 0.95)
-      .setFillStyle(0xffffff, 0)
-      .setDepth(10)
-
     this.refreshPage()
     this.setSelection(this.index)
     this.applyPostReturnState()
     this.events.on(Phaser.Scenes.Events.RESUME, this.refreshFromSave, this)
 
+    installProgressionDebugHooks(this, () => this.refreshFromSave())
     this.registerKeyboardShortcuts()
     InputActions.init(this)
 
@@ -194,31 +195,10 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private computeLayout(width: number, height: number): Layout {
-    const outerPad = 8
-    const headerHeight = 36
-    const footerHeight = 28
-    const contentGap = 5
-    const previewWidth = 160
-
-    const headerRect = new Phaser.Geom.Rectangle(outerPad, outerPad, width - outerPad * 2, headerHeight)
-    const footerRect = new Phaser.Geom.Rectangle(
-      outerPad,
-      height - outerPad - footerHeight,
-      width - outerPad * 2,
-      footerHeight
-    )
-
-    const contentTop = headerRect.bottom + contentGap
-    const contentBottom = footerRect.y - contentGap
-    const contentHeight = contentBottom - contentTop
-
-    const previewRect = new Phaser.Geom.Rectangle(width - outerPad - previewWidth, contentTop, previewWidth, contentHeight)
-    const gridRect = new Phaser.Geom.Rectangle(
-      outerPad,
-      contentTop,
-      previewRect.x - outerPad - contentGap,
-      contentHeight
-    )
+    const headerRect = new Phaser.Geom.Rectangle(8, 4, width - 16, 28)
+    const gridRect = new Phaser.Geom.Rectangle(8, 36, width - 16, 146)
+    const previewRect = new Phaser.Geom.Rectangle(8, 186, width - 16, 40)
+    const footerRect = new Phaser.Geom.Rectangle(8, height - 22, width - 16, 18)
 
     const slotGapX = 4
     const slotGapY = 4
@@ -258,8 +238,8 @@ export class StageSelect extends Phaser.Scene {
       })
       .setOrigin(0.5, 0)
 
-    this.add
-      .text(layout.headerRect.centerX, layout.headerRect.bottom - 3, '8 ROBOT MASTERS + OMEGA  •  T TUTORIAL  •  F FINAL', {
+    this.headerProgress = this.add
+      .text(layout.headerRect.centerX, layout.headerRect.bottom - 3, '', {
         font: FONT.subtitle,
         color: COLOR.textMuted,
         align: 'center'
@@ -320,80 +300,19 @@ export class StageSelect extends Phaser.Scene {
           .setOrigin(1, 0)
           .setVisible(false)
 
+        const portrait = this.add.rectangle(x - layout.slotWidth / 2 + 20, y - layout.slotHeight / 2 + 20, 32, 32).setStrokeStyle(1, COLOR.borderMuted).setFillStyle(0x07142a, .5)
+        const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted })
         this.slots.push(new Phaser.Math.Vector2(x, y))
-        this.slotEntries.push({ rect, name, meta, badge, stageIndex: null })
+        this.slotEntries.push({ rect, name, meta, badge, portrait, weakness, stageIndex: null })
       }
     }
   }
 
   private createPreviewPanel(): void {
-    const layout = this.layout!
-
-    this.add
-      .rectangle(
-        layout.previewRect.centerX,
-        layout.previewRect.centerY,
-        layout.previewRect.width,
-        layout.previewRect.height,
-        COLOR.panel,
-        0.9
-      )
-      .setStrokeStyle(2, COLOR.border, 0.85)
-
-    this.previewTitle = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 5, '', {
-        font: FONT.panelTitle,
-        color: COLOR.textAccent,
-        align: 'center',
-        wordWrap: { width: layout.previewRect.width - 20, useAdvancedWrap: true }
-      })
-      .setOrigin(0.5, 0)
-
-    this.bossNameText = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 17, '', {
-        font: FONT.panelName,
-        color: COLOR.text,
-        align: 'center'
-      })
-      .setOrigin(0.5, 0)
-
-    this.previewGlow = this.add
-      .ellipse(layout.previewRect.centerX, layout.previewRect.y + 72, 88, 64, COLOR.border, 0.16)
-      .setStrokeStyle(2, COLOR.borderMuted, 0.35)
-
-    this.previewSprite = this.add
-      .sprite(layout.previewRect.centerX, layout.previewRect.y + 75, 'atlas_sentinel_rook', 'sentinel_rook/idle/000')
-      .setVisible(false)
-
-    this.previewMaskShape = this.add.graphics().setVisible(false)
-    this.previewMaskShape.fillStyle(0xffffff)
-    this.previewMaskShape.fillRect(
-      layout.previewRect.x + 4,
-      layout.previewRect.y + 33,
-      layout.previewRect.width - 8,
-      76
-    )
-    this.previewSprite.setMask(this.previewMaskShape.createGeometryMask())
-
-    this.infoText = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 109, '', {
-        font: FONT.panelBody,
-        color: COLOR.textMuted,
-        align: 'center',
-        wordWrap: { width: layout.previewRect.width - 18, useAdvancedWrap: true },
-        lineSpacing: 1
-      })
-      .setOrigin(0.5, 0)
-
-    this.detailsText = this.add
-      .text(layout.previewRect.centerX, layout.previewRect.y + 132, '', {
-        font: FONT.panelBody,
-        color: COLOR.text,
-        align: 'center',
-        wordWrap: { width: layout.previewRect.width - 18, useAdvancedWrap: true },
-        lineSpacing: 1
-      })
-      .setOrigin(0.5, 0)
+    const r = this.layout!.previewRect
+    this.add.rectangle(r.centerX, r.centerY, r.width, r.height, COLOR.panel, .9).setStrokeStyle(1, COLOR.border)
+    this.infoText = this.add.text(r.x + 5, r.y + 3, '', { font: FONT.panelBody, color: COLOR.text, wordWrap: { width: r.width - 10 }, lineSpacing: 0 })
+    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: '7px monospace', color: COLOR.textMuted })
   }
 
   private createFooter(): void {
@@ -403,8 +322,8 @@ export class StageSelect extends Phaser.Scene {
       .rectangle(layout.footerRect.centerX, layout.footerRect.centerY, layout.footerRect.width, layout.footerRect.height, COLOR.panel, 0.86)
       .setStrokeStyle(1, COLOR.borderMuted, 0.8)
 
-    this.add
-      .text(layout.footerRect.centerX, layout.footerRect.y + 5, 'ARROWS MOVE  •  L/R CHECKPOINT  •  ENTER DEPLOY', {
+    this.footerControls = this.add
+      .text(layout.footerRect.centerX, layout.footerRect.y + 1, 'ARROWS MOVE · L/R CHECKPOINT · ENTER DEPLOY · ESC MENU', {
         font: FONT.footer,
         color: COLOR.textMuted,
         align: 'center'
@@ -412,15 +331,16 @@ export class StageSelect extends Phaser.Scene {
       .setOrigin(0.5, 0)
 
     this.footerStatus = this.add
-      .text(layout.footerRect.centerX, layout.footerRect.bottom - 4, '', {
+      .text(layout.footerRect.centerX, layout.footerRect.y + 10, '', {
         font: FONT.footer,
         color: COLOR.textAccent,
         align: 'center'
       })
-      .setOrigin(0.5, 1)
+      .setOrigin(0.5, 0)
   }
 
   private refreshPage(): void {
+    this.headerProgress?.setText(`WARDENS ${countClearedRobotMasters(this.saveData)}/8 · ${this.saveData.progressionWorld?.progressionMode === 'classic' ? 'CLASSIC' : 'RELAY RANDOMIZER'} · T TUTORIAL · F FINAL`)
     const totalPages = Math.max(1, Math.ceil(this.stages.length / this.pageSize))
     this.currentPage = Phaser.Math.Clamp(this.currentPage, 0, totalPages - 1)
     const start = this.currentPage * this.pageSize
@@ -446,14 +366,12 @@ export class StageSelect extends Phaser.Scene {
       const accessible = isStageAccessible(this.saveData, stageId)
       const cleared = isCampaignStageCleared(this.saveData, stageId)
       const checkProgress = this.getStageCheckProgress(stage.id)
-      slot.name.setText(truncateLabel(stage.selectLabel, 11))
+      slot.name.setText(stage.selectLabel)
       slot.name.setColor(cleared ? COLOR.textCleared : COLOR.text)
-      slot.meta.setText(
-        `${cleared ? 'CLEARED' : accessible ? 'OPEN' : 'LOCKED'}  •  CHECKS ${checkProgress.collected}/${checkProgress.total}`
-      )
-      slot.meta.setColor(cleared ? '#8793ad' : accessible ? '#9ec2ff' : '#6f8cb8')
-      slot.badge.setText(cleared ? 'DEFEATED' : '')
-      slot.badge.setVisible(cleared)
+      slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
+      slot.weakness.setText(stage.id === FINAL_STAGE_ID ? `WARDENS ${countClearedRobotMasters(this.saveData)}/8` : `WEAK: ${getBossWeaknessLabel(this.saveData, stage.bossId)}`)
+      slot.meta.setColor(cleared ? '#8793ad' : '#9ec2ff')
+      slot.badge.setVisible(false)
 
       this.layoutSlotText(slot)
     })
@@ -465,11 +383,9 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private layoutSlotText(slot: SlotEntry): void {
-    const slotWidth = slot.rect.width
-    const slotHeight = slot.rect.height
-    slot.name.setPosition(slot.rect.x, slot.rect.y - 8)
-    slot.meta.setPosition(slot.rect.x, slot.rect.y + 6)
-    slot.badge.setPosition(slot.rect.x + slotWidth / 2 - 5, slot.rect.y - slotHeight / 2 + 3)
+    const left = slot.rect.x - slot.rect.width / 2, top = slot.rect.y - slot.rect.height / 2
+    slot.name.setOrigin(0, 0).setPosition(left + 40, top + 4).setWordWrapWidth(slot.rect.width - 44)
+    slot.meta.setOrigin(0, 0).setPosition(left + 40, top + 27)
   }
 
   private registerKeyboardShortcuts(): void {
@@ -519,8 +435,7 @@ export class StageSelect extends Phaser.Scene {
     }
 
     if (action === 'new_game') {
-      Save.startNewCampaign()
-      this.scene.start('Title')
+      openNewCampaign(this)
       return
     }
 
@@ -613,8 +528,6 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private updateSelectionVisuals(): void {
-    const selectedSlotIndex = this.slotEntries.findIndex((slot) => slot.stageIndex === this.index)
-
     this.slotEntries.forEach((slot) => {
       if (slot.stageIndex == null) {
         return
@@ -637,127 +550,26 @@ export class StageSelect extends Phaser.Scene {
         )
     })
 
-    if (!this.cursor || selectedSlotIndex === -1) {
-      this.cursor?.setVisible(false)
-      return
-    }
-
-    const slotPos = this.slots[selectedSlotIndex]
-    if (!slotPos) {
-      this.cursor.setVisible(false)
-      return
-    }
-
-    this.cursor.setVisible(true)
-    this.cursor.setPosition(slotPos.x, slotPos.y)
   }
 
   private updatePreview(): void {
     const stage = this.stages[this.index]
-    const entry = stage ? ORDERED_BOSSES.find((boss) => boss.id === stage.bossId) : null
-    if (
-      !stage ||
-      !entry ||
-      !this.previewTitle ||
-      !this.bossNameText ||
-      !this.infoText ||
-      !this.detailsText ||
-      !this.previewGlow ||
-      !this.previewSprite
-    ) {
-      return
-    }
-
-    const blueprint = entry.blueprint
-    const isCleared = isCampaignStageCleared(this.saveData, stage.id)
-    const accessible = isStageAccessible(this.saveData, stage.id)
-    const checkpointIds = this.getAccessibleCheckpointIdsForStage(stage.id)
-    const checkpointId = this.getSelectedCheckpointForStage(stage.id)
-    const checkpointLabel = formatCheckpointLabel(checkpointId)
-    const checkProgress = this.getStageCheckProgress(stage.id)
-    const finalGate = stage.id === FINAL_STAGE_ID ? evaluateFinalGate(this.saveData) : null
-    const weaknessLabel = getBossWeaknessLabel(this.saveData, stage.bossId, entry.weakTo)
-    const rewardLabel = getStageBossRewardLabel(
-      this.saveData,
-      stage.id,
-      stage.rewardWeaponId ? blueprint.weaponReward?.displayName ?? stage.rewardWeaponId : 'Tutorial intel'
-    )
-    const requirementLabel =
-      !accessible && stage.id !== FINAL_STAGE_ID ? getStageAccessRequirementLabel(stage.id) : null
-
-    this.previewTitle.setText(truncateLabel(stage.introCallout, 24))
-    this.bossNameText.setText(blueprint.codename)
-    this.previewGlow.setFillStyle(blueprint.theme.glow, 0.18)
-    this.previewGlow.setStrokeStyle(2, blueprint.theme.primary, 0.55)
-    this.updatePreviewSprite(stage.bossId)
-    this.infoText.setText(
-      `${blueprint.element.toUpperCase()}  •  WEAK: ${truncateLabel(weaknessLabel, 14).toUpperCase()}\n${truncateLabel(stage.arenaLabel, 14).toUpperCase()}  •  ${
-        isCleared ? 'CLEARED' : accessible ? 'OPEN' : 'LOCKED'
-      }`
-    )
-    this.detailsText.setText(
-      `REWARD: ${truncateLabel(rewardLabel, 18)}\nCHECKPOINT: ${truncateLabel(checkpointLabel, 16)} (${checkpointIds.length})\nCHECKS ${checkProgress.collected}/${checkProgress.total}\n${
-        finalGate
-          ? truncateLabel(`Gate: ${getFinalGateProgressLabel(this.saveData)}`, 26)
-          : requirementLabel
-            ? truncateLabel(`Needs: ${requirementLabel}`, 26)
-          : isCleared
-            ? 'MISSION RECORD COMPLETE'
-            : 'READY FOR DEPLOYMENT'
-      }`
-    )
+    if (!stage || !this.infoText || !this.detailsText) return
+    const cleared = isCampaignStageCleared(this.saveData, stage.id)
+    const checks = this.getStageCheckProgress(stage.id)
+    const checkpoint = formatCheckpointLabel(this.getSelectedCheckpointForStage(stage.id))
+    const reward = getStageBossRewardLabel(this.saveData, stage.id)
+    const weakness = stage.id === FINAL_STAGE_ID ? '—' : getBossWeaknessLabel(this.saveData, stage.bossId)
+    this.infoText.setText(cleared ? `MISSION RECORD COMPLETE · ${stage.district}` : stage.description)
+    this.detailsText.setText(`REWARD: ${reward} · WEAK: ${weakness}\n${checkpoint} · CHECKS ${checks.collected}/${checks.total}`)
   }
 
-  private updatePreviewSprite(bossId: string): void {
-    if (!this.previewSprite) {
-      return
-    }
-
-    const atlasKey = `atlas_${bossId}`
-    if (!this.textures.exists(atlasKey)) {
-      this.previewSprite.setVisible(false)
-      return
-    }
-
-    const idleFrames = this.getPreviewFrames(atlasKey, `${bossId}/idle/`)
-    const fallbackFrames =
-      idleFrames.length > 0
-        ? idleFrames
-        : this.textures
-            .get(atlasKey)
-            .getFrameNames()
-            .filter((name) => name !== '__BASE')
-            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    const frameNames = fallbackFrames.length > 0 ? fallbackFrames : ['__BASE']
-    if (frameNames.length === 0 || frameNames[0] === '__BASE') {
-      this.previewSprite.setVisible(false)
-      return
-    }
-
-    const animationKey = `stage-select-preview-${bossId}`
-    if (!this.anims.exists(animationKey)) {
-      this.anims.create({
-        key: animationKey,
-        frames: frameNames.map((frame) => ({ key: atlasKey, frame })),
-        frameRate: Math.min(8, Math.max(4, frameNames.length * 2)),
-        repeat: -1
-      })
-    }
-
-    this.previewSprite.setVisible(true)
-    this.previewSprite.setTexture(atlasKey, frameNames[0])
-    const previewFrame = this.textures.getFrame(atlasKey, frameNames[0])
-    const scale = previewFrame ? Math.min(1.5, 58 / Math.max(previewFrame.width, previewFrame.height)) : 1.15
-    this.previewSprite.setScale(scale)
-    this.previewSprite.play(animationKey, true)
+  getPanelEvidence() {
+    return { selectionOutline: this.slotEntries.find(slot => slot.stageIndex === this.index)?.rect.getBounds(), preview: this.layout?.previewRect, footer: this.layout?.footerRect, description: this.infoText?.getBounds(), details: this.detailsText?.getBounds(), footerControls: this.footerControls?.getBounds(), footerStatus: this.footerStatus?.getBounds() }
   }
 
-  private getPreviewFrames(atlasKey: string, prefix: string): string[] {
-    return this.textures
-      .get(atlasKey)
-      .getFrameNames()
-      .filter((name) => name !== '__BASE' && name.startsWith(prefix))
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  getLayoutEvidence() {
+    return this.slotEntries.map(slot => ({ title: slot.name.text, stageId: slot.stageIndex == null ? null : this.stages[slot.stageIndex].id, difficultyRating: slot.stageIndex == null ? null : this.stages[slot.stageIndex].difficultyRating, nameBounds: slot.name.getBounds(), tileBounds: slot.rect.getBounds(), portraitBounds: slot.portrait.getBounds(), weaknessBounds: slot.weakness.getBounds() }))
   }
 
   private updateDebugSelectionState(): void {

@@ -1,3 +1,4 @@
+import { resolveUpgradeModifiers, type UpgradeModifiers } from '../progression/upgrades'
 import Phaser from 'phaser'
 import { type SceneInputActions } from '../input/InputActions'
 import type { DigitalButtonPad } from '../input/DigitalButtonPad'
@@ -34,6 +35,12 @@ type RuntimeHooks = {
 }
 
 export class NewPlayerRuntime {
+  private modifiers = resolveUpgradeModifiers({})
+  setUpgradeModifiers(modifiers: UpgradeModifiers): void {
+    this.modifiers = modifiers
+    this.combat.setUpgradeModifiers(modifiers)
+    this.motor.setMovementSpeedMultiplier(modifiers.movementSpeedMultiplier, modifiers.wallJumpSpeedMultiplier)
+  }
   private readonly controller: PlayerController
   private readonly motor: PlayerMotor
   private readonly combat: PlayerCombat
@@ -113,7 +120,7 @@ export class NewPlayerRuntime {
 
   update(now: number, deltaMs: number): void {
     const intent = this.controller.sampleIntent(this.motor.getFacing())
-    const motorSnapshot = this.motor.update(intent, deltaMs, this.flags.enableAirDash)
+    const motorSnapshot = this.motor.update(intent, deltaMs, this.flags.enableAirDash && this.modifiers.allowAirDash)
 
     const combatResult = this.combat.update(
       intent,
@@ -170,6 +177,7 @@ export class NewPlayerRuntime {
       request.direction ?? ((-this.motor.getFacing()) as 1 | -1),
       tier,
       {
+        sourceType: request.sourceType,
         bypassIFrames: request.bypassIFrames,
         knockback: request.knockback
       }
@@ -179,12 +187,13 @@ export class NewPlayerRuntime {
     if (damageResult.accepted) {
       this.consumeCombatEvents(damageResult.events)
       this.lastDamageTier = tier
-      this.hooks.setAnimation(tier === 'heavy' ? 'player_hurt_heavy' : 'player_hurt_light')
+      const contact = request.sourceType === 'enemy_contact' || request.sourceType === 'boss_contact'
+      if (!contact || this.modifiers.contactHitstun) this.hooks.setAnimation(tier === 'heavy' ? 'player_hurt_heavy' : 'player_hurt_light')
     }
     return {
       accepted: damageResult.accepted,
       reason: damageResult.accepted ? 'accepted' : 'iframes',
-      amount: damageResult.accepted ? Math.max(0, request.amount) : 0,
+      amount: damageResult.accepted ? Math.max(0, request.amount) * (request.sourceType === 'fall' ? 1 : this.modifiers.damageTakenMultiplier) : 0,
       request
     }
   }

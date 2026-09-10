@@ -1,6 +1,6 @@
 import { FINAL_STAGE_ID, getCampaignStage, ROBOT_MASTER_STAGE_IDS, TUTORIAL_STAGE_ID } from '../content/campaign'
 import { getWeaponConfig } from '../content/weapons'
-import { generateProgressionWorld } from './seed'
+import { generateClassicWorld, generateProgressionWorld } from './seed'
 import {
   ALL_UPGRADE_IDS,
   PROGRESSION_LOCATIONS,
@@ -15,6 +15,7 @@ import type {
   PendingProgressionItem,
   ProgressionConsumableId,
   ProgressionItemId,
+  ProgressionMode,
   ProgressionSaveLike,
   ProgressionTransportPayload,
   ProgressionUpgradeId,
@@ -46,6 +47,7 @@ const VALID_PROGRESSION_ITEM_IDS = new Set<string>([
   ...ROBOT_MASTER_ACCESS_IDS,
   ...ROBOT_MASTER_WEAPON_IDS,
   ...ALL_UPGRADE_IDS,
+  'arc_slash',
   'heart_tank',
   'sub_tank',
   ...Object.keys(HP_ITEM_AMOUNT)
@@ -130,6 +132,7 @@ function cloneWorld(world: ProgressionWorldSnapshot | null | undefined): Progres
   }
   return {
     version: 1,
+    progressionMode: world.progressionMode ?? 'relay_randomizer',
     seed: String(world.seed ?? ''),
     startingStageIds: [...(world.startingStageIds ?? [])],
     stageChain: [...(world.stageChain ?? [])],
@@ -151,7 +154,7 @@ export function ensureProgressionState<T extends ProgressionSaveLike>(
   save: T,
   seed = 'local-default'
 ): T {
-  const world = cloneWorld(save.progressionWorld) ?? generateProgressionWorld(seed)
+  const world = save.progressionWorld?.progressionMode === 'classic' ? generateClassicWorld() : cloneWorld(save.progressionWorld) ?? generateProgressionWorld(seed)
   const stageAccessUnlocked = uniqueStrings(save.stageAccessUnlocked)
   const collectedChecks = uniqueStrings(save.collectedChecks)
   const clearedBosses = uniqueStrings(save.clearedBosses)
@@ -205,7 +208,7 @@ export function ensureProgressionState<T extends ProgressionSaveLike>(
   }
 }
 
-export function createFreshProgressionState(seed = 'local-default'): Pick<
+export function createFreshProgressionState(seed = 'local-default', mode: ProgressionMode = 'relay_randomizer'): Pick<
   ProgressionSaveLike,
   | 'progressionWorld'
   | 'stageAccessUnlocked'
@@ -217,7 +220,7 @@ export function createFreshProgressionState(seed = 'local-default'): Pick<
   | 'subTanks'
   | 'pendingProgressionItems'
 > {
-  const world = generateProgressionWorld(seed)
+  const world = mode === 'classic' ? generateClassicWorld() : generateProgressionWorld(seed)
   const unlockedCheckpoints: Record<string, string[]> = {
     [TUTORIAL_STAGE_ID]: [],
     [FINAL_STAGE_ID]: []
@@ -286,7 +289,7 @@ export function getAccessibleCheckpointIds(
     return []
   }
   const next = ensureProgressionState(save)
-  if (next.upgradeUnlocks?.includes('armor_helmet')) {
+  if (next.progressionWorld?.progressionMode !== 'classic' && next.upgradeUnlocks?.includes('armor_helmet')) {
     return [...allCheckpointIds]
   }
   const unlocked = uniqueStrings(next.unlockedCheckpoints?.[stageId] ?? [])
@@ -400,7 +403,7 @@ export function applyProgressionItem<T extends ProgressionSaveLike>(
     } as T
   }
 
-  if (itemId.startsWith('armor_') || itemId.startsWith('chip_')) {
+  if (itemId === 'arc_slash' || itemId.startsWith('armor_') || itemId.startsWith('chip_')) {
     return {
       ...next,
       upgradeUnlocks: pushUnique(uniqueStrings(next.upgradeUnlocks), itemId)
@@ -437,6 +440,7 @@ export function exportProgressionTransport(save: ProgressionSaveLike): Progressi
   return {
     version: 1,
     slotData: {
+      progressionMode: next.progressionWorld?.progressionMode ?? 'relay_randomizer',
       seed: String(next.progressionWorld?.seed ?? ''),
       startingStageIds: [...(next.progressionWorld?.startingStageIds ?? [])],
       weaknessStrictness: next.progressionWorld?.weaknessStrictness ?? 'weakness_and_buster',
@@ -472,6 +476,9 @@ export function parseProgressionTransport(raw: string): ProgressionTransportPayl
   if (!slotData || typeof slotData !== 'object') {
     throw new Error('Progression snapshot is missing slotData.')
   }
+
+  const progressionMode = slotData.progressionMode ?? 'relay_randomizer'
+  if (progressionMode !== 'classic' && progressionMode !== 'relay_randomizer') throw new Error('Unknown progression mode.')
 
   const seed = String((slotData as { seed?: unknown }).seed ?? '').trim().slice(0, MAX_SEED_LENGTH)
   if (!seed) {
@@ -528,6 +535,7 @@ export function parseProgressionTransport(raw: string): ProgressionTransportPayl
   return {
     version: 1,
     slotData: {
+      progressionMode,
       seed,
       startingStageIds: startingStageIds as any,
       weaknessStrictness,
@@ -554,7 +562,9 @@ export function importProgressionTransport<T extends ProgressionSaveLike>(
   payload: ProgressionTransportPayload
 ): T {
   payload = sanitizeProgressionTransportPayload(payload)
-  const generatedWorld = generateProgressionWorld(payload.slotData.seed)
+  const mode = payload.slotData.progressionMode ?? 'relay_randomizer'
+  if (mode !== (save.progressionWorld?.progressionMode ?? 'relay_randomizer')) throw new Error('Progression mode mismatch: start a matching campaign before importing.')
+  const generatedWorld = mode === 'classic' ? generateClassicWorld() : generateProgressionWorld(payload.slotData.seed)
   let next = ensureProgressionState({
     ...save,
     weaponsUnlocked: [],
@@ -564,9 +574,7 @@ export function importProgressionTransport<T extends ProgressionSaveLike>(
     gameCompleted: false,
     progressionWorld: {
       ...generatedWorld,
-      startingStageIds: [...payload.slotData.startingStageIds],
-      weaknessStrictness: payload.slotData.weaknessStrictness,
-      finalGate: { rules: [...payload.slotData.finalGate.rules] }
+      ...(mode === 'classic' ? {} : { startingStageIds: [...payload.slotData.startingStageIds], weaknessStrictness: payload.slotData.weaknessStrictness, finalGate: { rules: [...payload.slotData.finalGate.rules] } })
     },
     stageAccessUnlocked: [],
     collectedChecks: [...payload.checkedLocations],
@@ -632,7 +640,7 @@ export function getPlayerMaxHpFromSave(save: ProgressionSaveLike): number {
   const next = ensureProgressionState(save)
   const baseHp = 8
   const heartBonus = Math.max(0, Math.min(8, Number(next.heartTanks ?? 0))) * 2
-  const bodyBonus = uniqueStrings(next.upgradeUnlocks).includes('armor_body') ? 2 : 0
+  const bodyBonus = next.progressionWorld?.progressionMode !== 'classic' && uniqueStrings(next.upgradeUnlocks).includes('armor_body') ? 2 : 0
   return baseHp + heartBonus + bodyBonus
 }
 
@@ -649,7 +657,7 @@ export function getChargeTimeMultiplier(save: ProgressionSaveLike): number {
 }
 
 export function getMovementSpeedMultiplier(save: ProgressionSaveLike): number {
-  return ensureProgressionState(save).upgradeUnlocks?.includes('chip_speedster') ? 1.15 : 1
+  return ensureProgressionState(save).upgradeUnlocks?.includes('chip_speedster') ? (save.progressionWorld?.progressionMode === 'classic' ? 1.12 : 1.15) : 1
 }
 
 export function getWeaponMaxEnergy(weaponId: string): number {

@@ -48,6 +48,8 @@ export type StageArenaDefinition = {
 
 export type CampaignStageDefinition = {
   id: string
+  district: string
+  difficultyRating: 1 | 2 | 3
   kind: CampaignStageKind
   bossId: BossId
   runtimeBossConfigId?: string
@@ -137,6 +139,7 @@ export type CampaignStageId = typeof TUTORIAL_STAGE_ID | typeof FINAL_STAGE_ID |
 
 export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> = {
   tutorial_sentinel: {
+    district: 'Drill Hangar', difficultyRating: 1,
     id: TUTORIAL_STAGE_ID,
     kind: 'tutorial',
     bossId: 'sentinel_rook',
@@ -181,6 +184,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   pyro_maw: {
+    district: 'Heat Works', difficultyRating: 1,
     id: 'pyro_maw',
     kind: 'robot_master',
     bossId: 'pyro_maw',
@@ -226,6 +230,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   tide_reaver: {
+    district: 'Water District', difficultyRating: 2,
     id: 'tide_reaver',
     kind: 'robot_master',
     bossId: 'tide_reaver',
@@ -269,6 +274,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   volt_hopper: {
+    district: 'Power District', difficultyRating: 2,
     id: 'volt_hopper',
     kind: 'robot_master',
     bossId: 'volt_hopper',
@@ -314,6 +320,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   basalt_titan: {
+    district: 'Structural Works', difficultyRating: 2,
     id: 'basalt_titan',
     kind: 'robot_master',
     bossId: 'basalt_titan',
@@ -356,6 +363,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   ferro_blade: {
+    district: 'Transit Security', difficultyRating: 2,
     id: 'ferro_blade',
     kind: 'robot_master',
     bossId: 'ferro_blade',
@@ -401,6 +409,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   mire_wraith: {
+    district: 'Medicine District', difficultyRating: 3,
     id: 'mire_wraith',
     kind: 'robot_master',
     bossId: 'mire_wraith',
@@ -443,6 +452,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   gale_vixen: {
+    district: 'Weather District', difficultyRating: 3,
     id: 'gale_vixen',
     kind: 'robot_master',
     bossId: 'gale_vixen',
@@ -486,6 +496,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   glacier_ronin: {
+    district: 'Public Archives', difficultyRating: 3,
     id: 'glacier_ronin',
     kind: 'robot_master',
     bossId: 'glacier_ronin',
@@ -531,6 +542,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     }
   },
   omega_fortress: {
+    district: 'Central Core', difficultyRating: 3,
     id: FINAL_STAGE_ID,
     kind: 'final',
     bossId: 'omega_core',
