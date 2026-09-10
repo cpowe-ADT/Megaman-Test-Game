@@ -1,4 +1,5 @@
 import { runInputFocusLossScenario } from './smoke/input-focus-loss.mjs'
+import { runEndingFlowScenario, runPrologueFlowScenario, runRadioTickerScenario, runStoryReplaySkipScenario } from './smoke/story-surfaces.mjs'
 import { assertBossBoundaryLifecycle } from './smoke/boss-boundary-lifecycle.mjs'
 import assert from 'node:assert/strict'
 import { runClassicCampaignScenario, runClassicUpgradeScenario } from './smoke/classic-campaign.mjs'
@@ -14,9 +15,11 @@ const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT ?? 4173)
 const smokeServerMode = String(process.env.SMOKE_SERVER ?? 'dev').trim()
 const serverUrl = `http://${host}:${port}/`
-const url = `http://${host}:${port}?renderer=canvas&automation=1&startScene=StageSelect`
-const touchUrl = `http://${host}:${port}?renderer=canvas&automation=1&startScene=StageSelect&touchControls=1`
-const titleUrl = `http://${host}:${port}?renderer=canvas&automation=1`
+const url = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off&startScene=StageSelect`
+const touchUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off&startScene=StageSelect&touchControls=1`
+const titleUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off`
+/** Story surfaces on: for the narrative scenarios only. */
+const storyUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=on`
 const outputDir = path.resolve('output/web-game-smoke')
 const smokeSummaryPath = path.join(outputDir, 'summary.json')
 const smokeOnlyScenarios = new Set(
@@ -1911,9 +1914,14 @@ async function runCompletionReturnScenario(name) {
 
     await waitForState(page, (state) => state.scene === 'Game' && state.victory?.modalOpen === true)
     await tapKey(page, 'Enter')
-    await waitForState(page, (state) => state.scene === 'CompletionScene')
+    // storyIntro=off opens the ending on the campaign record; Enter reaches the credits, Esc finishes to Title.
+    await waitForState(page, (state) => state.scene === 'EndingScene' && state.ending?.phase === 'record')
+    await page.locator('canvas').screenshot({ path: path.join(scenarioDir, 'shot-record.png') })
     await tapKey(page, 'Enter')
-    const finalState = await waitForState(page, (state) => state.scene === 'StageSelect')
+    await waitForState(page, (state) => state.scene === 'EndingScene' && state.ending?.phase === 'credits')
+    await tapKey(page, 'Escape')
+    // The ending returns to Title; with startScene=StageSelect in the automation URL, Title redirects there at once.
+    const finalState = await waitForState(page, (state) => (state.scene === 'Title' || state.scene === 'StageSelect') && state.save?.gameCompleted === true, 10000)
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(finalState, null, 2))
@@ -3495,6 +3503,11 @@ async function main() {
     await executeSmokeScenario(summary, '13d-movement-feel', () =>
       runMovementFeelScenario('13d-movement-feel')
     )
+    const storyDeps = { outputDir, storyUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }
+    await executeSmokeScenario(summary, '34-prologue-flow', () => runPrologueFlowScenario('34-prologue-flow', storyDeps))
+    await executeSmokeScenario(summary, '35-radio-ticker', () => runRadioTickerScenario('35-radio-ticker', storyDeps))
+    await executeSmokeScenario(summary, '36-ending-flow', () => runEndingFlowScenario('36-ending-flow', storyDeps))
+    await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     await executeSmokeScenario(summary, '13f-input-focus-loss', () => runInputFocusLossScenario('13f-input-focus-loss', { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }))
 
     await executeSmokeScenario(summary, '14-completion-return-flow', () =>

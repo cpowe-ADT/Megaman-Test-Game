@@ -12,7 +12,10 @@ import { ControlsScene } from './scenes/ControlsScene'
 import { ProgressionSummaryScene } from './scenes/ProgressionSummaryScene'
 import GameOverScene from './scenes/GameOverScene'
 import PauseScene from './scenes/PauseScene'
-import { CompletionScene } from './scenes/CompletionScene'
+import { EndingScene } from './scenes/EndingScene'
+import { PrologueScene } from './scenes/PrologueScene'
+import { Settings } from './systems/Settings'
+import { Save } from './systems/Save'
 import { AUTOMATION } from './config/automation'
 import { STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
 import { resolvePlayerFeatureFlags } from './player/featureFlags'
@@ -47,7 +50,7 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   pixelArt: STRICT_PIXEL_RENDER_POLICY.pixelArt,
-  scene: [Boot, Preload, Title, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, PauseScene, GameOverScene, CompletionScene]
+  scene: [Boot, Preload, Title, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, PauseScene, GameOverScene, PrologueScene, EndingScene]
 }
 
 ;(config as any).resolution = runtimeResolution
@@ -224,6 +227,20 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
   if (progressionSummaryScene) {
     payload.progressionSummary = progressionSummaryScene.debugSummary ?? null
   }
+  payload.settings = Settings.get()
+  const saveState = Save.load()
+  payload.save = {
+    exists: Save.exists(),
+    storyFlags: saveState.storyFlags,
+    subTanks: saveState.subTanks,
+    subTankFill: saveState.subTankFill,
+    difficulty: saveState.difficulty,
+    gameCompleted: saveState.gameCompleted,
+    hasActiveRun: Boolean(saveState.activeRun)
+  }
+  if (scene.scene.key === 'Prologue') payload.prologue = (scene as any).getDebugState?.() ?? null
+  if (scene.scene.key === 'EndingScene') payload.ending = (scene as any).getDebugState?.() ?? null
+  if (scene.scene.key === 'StageSelect') payload.dialogue = (scene as any).dialogueOverlay?.getDebugState?.() ?? { active: false }
 
   const newCampaign = activeScenes.find(active => active.scene.key === 'NewCampaign') as NewCampaignScene | undefined
   if (newCampaign) payload.newCampaign = { ...newCampaign.model.selection(), randomizerAvailable: newCampaign.model.randomizerAvailable, confirmArmed: newCampaign.confirmArmed }
@@ -310,6 +327,9 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
       speakerName: null,
       text: null
     }
+    payload.stageIntro = (scene as any).storyDirector?.getDebugState?.().intro ?? { phase: 'idle', active: false, cardRemainingMs: 0 }
+    payload.story = (scene as any).storyDirector?.getDebugState?.() ?? null
+    payload.ticker = (scene as any).toastLane?.getDebugState?.() ?? null
     payload.projectiles = {
       playerActive: scene.playerBullets?.getTotalUsed?.() ?? 0,
       bossActive: scene.bossBullets?.getTotalUsed?.() ?? 0

@@ -25,6 +25,7 @@
     "sprites:placeholders": "python3 scripts/sprites/generate-placeholder-atlases.py",
     "sprites:prompts": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/build-image-prompts.mjs",
     "story:script": "node scripts/story/build-script.mjs",
+    "credits:build": "node scripts/credits/build-credits.mjs",
     "enemies:export": "node --loader ./tools/ts-node-loader.mjs scripts/enemies/export-catalog.mjs",
     "verify": "npm run sprites:validate && npm run test && npm run build && npm run test:smoke",
     "probe:boss": "vite --open /debug/boss-probe.html",

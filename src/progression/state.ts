@@ -450,7 +450,8 @@ export function exportProgressionTransport(save: ProgressionSaveLike): Progressi
     },
     checkedLocations,
     receivedItems,
-    checkpoints: { ...(next.unlockedCheckpoints ?? {}) }
+    checkpoints: { ...(next.unlockedCheckpoints ?? {}) },
+    storyFlags: uniqueStrings(save.storyFlags)
   }
 }
 

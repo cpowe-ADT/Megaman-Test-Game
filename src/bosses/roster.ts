@@ -66,6 +66,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Systems Nominal',
+        shortName: 'NOMINAL',
         threshold: 1,
         enraged: false,
         description: 'Demonstrates hop, shot, and stomp slowly for onboarding.',
@@ -74,6 +75,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Override Mode',
+        shortName: 'OVERRIDE',
         threshold: 0.55,
         enraged: true,
         description: 'Combines stomp shock with hop follow-ups; shorter warning windows.',
@@ -147,6 +149,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Serpent Stream',
+        shortName: 'SERPENT',
         state: 'shoot',
         description: 'Continuous flamethrower that sweeps horizontally.',
         telegraph: { telegraphMs: 320, warningFx: 'glow', anchor: 'self' },
@@ -157,6 +160,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Ignition Dash',
+        shortName: 'IGNITION',
         state: 'dash',
         description: 'Ground dash leaving burning puddles that linger.',
         telegraph: { telegraphMs: 280, warningFx: 'fan-lines', anchor: 'self' },
@@ -178,6 +182,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Combustion Stable',
+        shortName: 'STABLE',
         threshold: 1,
         enraged: false,
         description: 'Alternates between lobs and flame streams with long pauses.',
@@ -186,6 +191,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Thermal Runaway',
+        shortName: 'THERMAL',
         threshold: 0.55,
         enraged: true,
         description: 'Ignition Dash leaves larger puddles; Serpent Stream sweeps faster.',
@@ -277,6 +283,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Riptide Crash',
+        shortName: 'RIPTIDE',
         state: 'special',
         description: 'Ceiling cling then diagonal dive leaving puddles upon impact.',
         telegraph: { telegraphMs: 360, warningFx: 'reticle', anchor: 'target' },
@@ -289,6 +296,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Surface Patrol',
+        shortName: 'PATROL',
         threshold: 1,
         enraged: false,
         description: 'Alternates hover shots and grounded lances.',
@@ -297,6 +305,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Abyssal Surge',
+        shortName: 'ABYSSAL',
         threshold: 0.55,
         enraged: true,
         description: 'Introduces Riptide Crash and faster levitation strafes.',
@@ -370,6 +379,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Capacitor Charge',
+        shortName: 'CAPACITOR',
         state: 'jump',
         description: 'High parabolic leap that drops charged mines on apex.',
         telegraph: { telegraphMs: 280, warningFx: 'glow', anchor: 'self' },
@@ -402,6 +412,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Charge Cycling',
+        shortName: 'CYCLING',
         threshold: 1,
         enraged: false,
         description: 'Performs hop into rail shot loops.',
@@ -493,6 +504,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Basalt Barrage',
+        shortName: 'BARRAGE',
         state: 'summon',
         description: 'Raises stone pillars that erupt sequentially.',
         telegraph: { telegraphMs: 420, warningFx: 'reticle', anchor: 'target' },
@@ -522,6 +534,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Core Fracture',
+        shortName: 'FRACTURE',
         threshold: 0.55,
         enraged: true,
         description: 'Shockwaves travel faster; Barrage adds falling debris.',
@@ -624,6 +637,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Discipline Mode',
+        shortName: 'DISCIPLINE',
         threshold: 1,
         enraged: false,
         description: 'Alternates between disc throws and short teleports.',
@@ -632,6 +646,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Relentless Mode',
+        shortName: 'RELENTLESS',
         threshold: 0.55,
         enraged: true,
         description: 'Adds Polar Snare and chains teleports twice in a row.',
@@ -831,6 +846,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Turbine Slice',
+        shortName: 'TURBINE',
         state: 'dash',
         description: 'Spins into a horizontal cyclone that travels across the arena.',
         telegraph: { telegraphMs: 240, warningFx: 'wave', anchor: 'self' },
@@ -943,6 +959,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Glacier Slide',
+        shortName: 'ICE SLIDE',
         state: 'dash',
         description: 'Slides across the floor leaving icy residue.',
         telegraph: { telegraphMs: 280, warningFx: 'wave', anchor: 'self' },
@@ -981,6 +998,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Breaking Point',
+        shortName: 'BREAKPOINT',
         threshold: 0.55,
         enraged: true,
         description: 'Slides extend longer, icicle rain overlaps zones.',
@@ -1045,6 +1063,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Directive Volley',
+        shortName: 'DIRECTIVE',
         state: 'shoot',
         description: 'Fires a disciplined reactor-bolt spread that closes the safest lane.',
         telegraph: { telegraphMs: 360, warningFx: 'fan-lines', anchor: 'self' },
@@ -1054,6 +1073,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Lockdown Pulse',
+        shortName: 'LOCKDOWN',
         state: 'special',
         description: 'Pulses three floor sectors in sequence to force a reposition.',
         telegraph: { telegraphMs: 460, warningFx: 'reticle', anchor: 'target' },
@@ -1072,6 +1092,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Override Cascade',
+        shortName: 'CASCADE',
         state: 'summon',
         description: 'Combines falling command shards with persistent denial zones.',
         telegraph: { telegraphMs: 520, warningFx: 'wave', anchor: 'target' },
@@ -1083,6 +1104,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Compliance Protocol',
+        shortName: 'COMPLIANCE',
         threshold: 1,
         enraged: false,
         description: 'Tests movement discipline with volleys and floor lockdowns.',
@@ -1091,6 +1113,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Enforcement Protocol',
+        shortName: 'ENFORCEMENT',
         threshold: 0.62,
         enraged: true,
         description: 'Adds armored rams between shortened projectile cycles.',
@@ -1099,6 +1122,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Absolute Override',
+        shortName: 'ABSOLUTE',
         threshold: 0.3,
         enraged: true,
         description: 'Overlaps the learned hazard families in a final command cascade.',

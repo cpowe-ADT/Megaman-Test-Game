@@ -137,6 +137,13 @@ When changing these contracts:
 - update this file and `docs/testing/quality-gates.md`,
 - mention the change in `progress.md`.
 
+## Story Surfaces In Automation
+- `?storyIntro=off` disables the prologue, stage card, briefing, radio ticker, Stage Select milestones and the ending pages. The smoke base URLs and the visual sweep set it, so existing scenarios never wait on story text. Boss intro and defeat dialogue still play (existing contracts) and honor seen flags.
+- Scenarios `34-prologue-flow`, `35-radio-ticker`, `36-ending-flow` and `37-story-replay-skip` use `storyIntro=on` (`storyUrl` in `scripts/smoke-test.mjs`).
+- `render_game_to_text()` adds `stageIntro` (`phase`, `active`), `ticker` (the toast and radio lane), `story` (intro state, policy, seen flags), `settings`, `save` (story flags, sub tanks, difficulty, completion), `prologue` and `ending` on their scenes, and `dialogue` on Stage Select while a milestone plays.
+- `stageDebug.advanceStageIntro()` / `skipStageIntro()` / `storyState()` / `setLives(n)` / `setSubTanks(count, fills)` are automation-only. `window.narrativeDebug.advance()` / `skip()` / `state()` exist while the Prologue or Ending scene is active.
+- Story flags mark at the moment a sequence starts, so reading every line and skipping produce identical `save.storyFlags`.
+
 ## Handling Flaky Browser Validation
 - Fix the smallest reproducible issue first.
 - Prefer state predicates and pure deterministic tests over timing sleeps. `advanceTime` is an animation-frame wait, not a deterministic stepping guarantee.

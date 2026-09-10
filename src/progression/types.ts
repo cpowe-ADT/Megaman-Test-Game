@@ -108,9 +108,12 @@ export type ProgressionTransportPayload = {
   checkedLocations: LocationCheckId[]
   receivedItems: ProgressionItemId[]
   checkpoints: Record<string, string[]>
+  /** Seen story ids; sanitized against the dialogue registry on import. */
+  storyFlags?: string[]
 }
 
 export type ProgressionSaveLike = {
+  storyFlags?: string[]
   weaponsUnlocked: string[]
   clearedBosses: string[]
   tutorialCleared: boolean

@@ -5,6 +5,8 @@ import { Save } from '../systems/Save'
 import AudioService from '../audio'
 import { getCampaignStage, TUTORIAL_STAGE_ID } from '../content/campaign'
 import { NewCampaignModel } from './menu/newCampaignModel'
+import { shouldPlayStory } from '../narrative/storyFlags'
+import { currentStoryPolicy } from './game/StoryDirector'
 import { addMenuBackdrop, addMenuPanel, MENU_FONT_CODE } from '../ui/menu/menuTheme'
 
 type Entry = { source: string; randomizerAvailable: boolean; onCancel?: () => void }
@@ -51,7 +53,8 @@ export class NewCampaignScene extends Phaser.Scene {
     this.committed=true;Save.startNewCampaign(this.model.selection());AudioService.playSfx('ui_confirm')
     this.scene.stop(this.entry.source)
     const stage=getCampaignStage(TUTORIAL_STAGE_ID)
-    this.scene.start('Game',{stageId:stage.id,bossId:stage.bossId,runtimeBossConfigId:stage.runtimeBossConfigId})
+    const next={stageId:stage.id,bossId:stage.bossId,runtimeBossConfigId:stage.runtimeBossConfigId}
+    if(shouldPlayStory(Save.load().storyFlags,'prologue',currentStoryPolicy()))this.scene.start('Prologue',{next});else this.scene.start('Game',next)
   }
   private cancel(): void { if(this.committed)return;this.scene.resume(this.entry.source);this.entry.onCancel?.();this.scene.stop() }
 }

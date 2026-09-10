@@ -87,6 +87,8 @@ export interface TelegraphSpec {
 
 export interface AttackPattern {
   name: string
+  /** HUD label, at most 12 characters; defaults to `name`. */
+  shortName?: string
   state: BossStateKey
   description: string
   telegraph: TelegraphSpec
@@ -102,6 +104,8 @@ export interface AttackPattern {
 
 export interface PhaseDefinition {
   name: string
+  /** HUD label, at most 12 characters; defaults to `name`. */
+  shortName?: string
   threshold: number
   enraged: boolean
   description: string
@@ -165,3 +169,9 @@ export type BossId =
   | 'gale_vixen'
   | 'glacier_ronin'
   | 'omega_core'
+
+/** The HUD phase panel is 64px wide at a 7px font: twelve characters. */
+export const BOSS_HUD_LABEL_MAX = 12
+export function bossHudLabel(entry: { name: string; shortName?: string }): string {
+  return (entry.shortName ?? entry.name).toUpperCase()
+}

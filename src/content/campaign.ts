@@ -42,7 +42,7 @@ export type StageArenaDefinition = {
   spawn: { x: number; y: number }
   bossSpawn: { x: number; y: number }
   bossRoom: StageBossRoomDefinition
-  checkpoints: Array<{ id: string; x: number; y: number; triggerX: number }>
+  checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
   hazards: Array<{ id: string; x: number; y: number }>
   midPlatforms: StagePlatformDefinition[]
 }

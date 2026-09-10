@@ -16,6 +16,10 @@ import { DEBUG_UI } from '../config/debug'
 import { showToast } from '../core/navigation'
 import InputActions from '../input/InputActions'
 import { Save, SaveData } from '../systems/Save'
+import { DIALOGUE_REGISTRY, resolveDialogueText } from '../content/dialogue/index'
+import { shouldPlayStory } from '../narrative/storyFlags'
+import { DialogueOverlayController } from '../ui/DialogueOverlayController'
+import { currentStoryPolicy, resolvePlaybackLines } from './game/StoryDirector'
 import { DebugOverlay } from '../ui/DebugOverlay'
 import {
   evaluateFinalGate,
@@ -112,6 +116,8 @@ export class StageSelect extends Phaser.Scene {
   private previewTitle?: Phaser.GameObjects.Text
   private bossNameText?: Phaser.GameObjects.Text
   private infoText?: Phaser.GameObjects.Text
+  /** Milestone playback on the return from a clear; automation reads its state. */
+  dialogueOverlay?: DialogueOverlayController
   private detailsText?: Phaser.GameObjects.Text
   private previewGlow?: Phaser.GameObjects.Ellipse
   private previewSprite?: Phaser.GameObjects.Sprite
@@ -407,6 +413,10 @@ export class StageSelect extends Phaser.Scene {
     actions.onPressed('finalRoute', () => this.launchFinalRoute())
     actions.onPressed('confirm', () => this.handleKeyboardConfirm())
     actions.onPressed('cancel', () => {
+      if (this.dialogueOverlay?.isActive()) {
+        this.dialogueOverlay.skip()
+        return
+      }
       if (!this.scene.isActive('SystemMenu')) {
         AudioService.playSfx('ui_cancel')
         this.scene.launch('SystemMenu', { sourceScene: 'StageSelect' })
@@ -463,6 +473,7 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private move(delta: number): void {
+    if (this.dialogueOverlay?.isActive()) return
     const total = this.stages.length
     if (total === 0) {
       return
@@ -565,7 +576,11 @@ export class StageSelect extends Phaser.Scene {
     const checkpoint = formatCheckpointLabel(this.getSelectedCheckpointForStage(stage.id))
     const reward = getStageBossRewardLabel(this.saveData, stage.id)
     const weakness = stage.id === FINAL_STAGE_ID ? '—' : getBossWeaknessLabel(this.saveData, stage.bossId)
-    this.infoText.setText(cleared ? `MISSION RECORD COMPLETE · ${stage.district}` : stage.description)
+    const restored = cleared ? DIALOGUE_REGISTRY.getStageSequence(stage.id as any, 'district_restored') : undefined
+    const restoredText = restored
+      ? resolveDialogueText(restored.lines[0].text, { districtName: stage.district, hero: IDENTITY.HERO_CALLSIGN })
+      : `MISSION RECORD COMPLETE · ${stage.district}`
+    this.infoText.setText(cleared ? restoredText : stage.description)
     const access = stage.id !== FINAL_STAGE_ID && !isStageAccessible(this.saveData, stage.id) ? `NEEDS: ${getStageAccessRequirementLabel(stage.id)}` : `${checkpoint} · CHECKS ${checks.collected}/${checks.total}`
     this.detailsText.setText(`REWARD: ${reward} · WEAK: ${weakness}\n${access}`)
   }
@@ -616,6 +631,9 @@ export class StageSelect extends Phaser.Scene {
     this.registry.remove('ui.stageSelect.focusBossId')
     this.registry.remove('ui.stageSelect.returnReason')
     this.registry.remove('ui.stageSelect.requireConfirmRelease')
+    const milestoneCount = this.registry.get('ui.stageSelect.milestoneCount') as number | null | undefined
+    this.registry.remove('ui.stageSelect.milestoneCount')
+    this.playMilestone(milestoneCount ?? null)
   }
 
   private findNextUnclearedIndex(fromIndex: number): number | null {
@@ -651,8 +669,24 @@ export class StageSelect extends Phaser.Scene {
     this.startSceneTransition(transition.scene, transition.data as Record<string, unknown>)
   }
 
+  /** Count milestones play here, once, blocking and skippable, after the qualifying clear. */
+  private playMilestone(clearedCount: number | null): void {
+    if (clearedCount === null) return
+    const milestone = DIALOGUE_REGISTRY.getMilestone(clearedCount)
+    if (!milestone || !shouldPlayStory(this.saveData.storyFlags, milestone.id, currentStoryPolicy())) return
+    Save.markStorySeen(milestone.id)
+    this.saveData = Save.load()
+    const lines = resolvePlaybackLines(milestone.id, milestone.lines, {
+      hero: IDENTITY.HERO_CALLSIGN,
+      clearedCount,
+      remainingCount: Math.max(0, 8 - clearedCount)
+    })
+    this.dialogueOverlay = new DialogueOverlayController(this)
+    this.dialogueOverlay.play(lines, () => {})
+  }
+
   private handleKeyboardConfirm(): void {
-    if (!this.confirmArmed || this.scene.isActive('SystemMenu')) {
+    if (!this.confirmArmed || this.scene.isActive('SystemMenu') || this.dialogueOverlay?.isActive()) {
       return
     }
     if (this.manualSelectionRequired) {

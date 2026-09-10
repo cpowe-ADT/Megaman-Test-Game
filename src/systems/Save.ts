@@ -16,12 +16,17 @@ import { freshStatistics, normalizeStatistics, type CampaignStatistics } from '.
 import type { Difficulty, ProgressionMode } from '../progression/types'
 import { CAMPAIGN_STAGES, type CampaignStageId } from '../content/campaign'
 import { buildWeaponOrder } from '../content/weapons'
+import { DIALOGUE_REGISTRY } from '../content/dialogue/index'
+import { markStorySeen, sanitizeStoryFlags } from '../narrative/storyFlags'
+import { normalizeSubTankFill } from './subTanks'
 
 // [REGION: SAVE-SYSTEM - BEGIN]
 export type SaveData = {
   difficulty: Difficulty
   stats: CampaignStatistics
   storyFlags: string[]
+  /** 0 to 1 fill per owned sub tank; length always equals `subTanks`. */
+  subTankFill: number[]
   weaponsUnlocked: string[]
   gameOverCounts: Record<string, number>
   clearedBosses: string[]
@@ -69,7 +74,7 @@ export type ActiveRunValidationResult =
 const KEY = 'save.v1'
 const FALLBACK_PROGRESSION = createFreshProgressionState('classic', 'classic')
 const FALLBACK: SaveData = {
-  difficulty: 'normal', stats: freshStatistics(), storyFlags: [],
+  difficulty: 'normal', stats: freshStatistics(), storyFlags: [], subTankFill: [],
   weaponsUnlocked: [],
   gameOverCounts: {},
   clearedBosses: [],
@@ -256,6 +261,7 @@ function normalize(data: SaveData): SaveData {
     difficulty: (data.difficulty === 'assist' || data.difficulty === 'veteran' ? data.difficulty : 'normal') as Difficulty,
     stats: normalizeStatistics(data.stats),
     storyFlags: uniqueStrings(data.storyFlags).filter(id => id.length <= 120).slice(0, 512),
+    subTankFill: normalizeSubTankFill(data.subTankFill, Number(data.subTanks ?? 0)),
     weaponsUnlocked: uniqueStrings(data.weaponsUnlocked),
     gameOverCounts: data.gameOverCounts ? { ...data.gameOverCounts } : {},
     clearedBosses: uniqueStrings(data.clearedBosses),
@@ -292,6 +298,7 @@ function normalize(data: SaveData): SaveData {
   const activeRun = validateActiveRun(normalizedProgression, data.activeRun)
   return {
     ...normalizedProgression,
+    subTankFill: normalizeSubTankFill(data.subTankFill, Number(normalizedProgression.subTanks ?? 0)),
     activeRun: activeRun.valid ? activeRun.run : null
   }
 }
@@ -345,7 +352,7 @@ export const Save = {
     const storage = getStorage()
     try { return storage ? storage.getItem(KEY) != null : memoryCache != null } catch { return memoryCache != null }
   },
-  save(data: Omit<SaveData, 'difficulty' | 'stats' | 'storyFlags'> & Partial<Pick<SaveData, 'difficulty' | 'stats' | 'storyFlags'>>): void {
+  save(data: Omit<SaveData, 'difficulty' | 'stats' | 'storyFlags' | 'subTankFill'> & Partial<Pick<SaveData, 'difficulty' | 'stats' | 'storyFlags' | 'subTankFill'>>): void {
     persist(data as SaveData)
   },
   saveActiveRun(run: ActiveRunSaveData): boolean {
@@ -426,13 +433,26 @@ export const Save = {
   setSelectedCheckpoint(stageId: string, checkpointId: string): void {
     persist(setSelectedCheckpoint(read(), stageId, checkpointId))
   },
+  markStorySeen(...ids: string[]): void {
+    const state = read()
+    const next = markStorySeen(state.storyFlags, ...ids)
+    if (next.length === state.storyFlags.length) return
+    state.storyFlags = next
+    persist(state)
+  },
+  setSubTankFill(fills: number[]): void {
+    const state = read()
+    state.subTankFill = normalizeSubTankFill(fills, state.subTanks)
+    persist(state)
+  },
   exportProgression(): ProgressionTransportPayload {
     return exportProgressionTransport(read())
   },
   importProgression(payload: ProgressionTransportPayload): void {
     const state = read()
     const imported = importProgressionTransport(state, payload)
-    persist({ ...imported, activeRun: null, stats: freshStatistics() })
+    const storyFlags = sanitizeStoryFlags((payload as { storyFlags?: unknown }).storyFlags, DIALOGUE_REGISTRY.getRequiredStoryIds())
+    persist({ ...imported, storyFlags, activeRun: null, stats: freshStatistics() })
   }
 }
 // [REGION: SAVE-SYSTEM - END]

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { Settings, VOLUME_STEPS, type SettingsData } from '../systems/Settings'
 import { MUSIC_ASSETS, type MusicCueId } from './musicLibrary'
 import { SFX_ASSETS, type SfxAssetKey } from './sfxLibrary'
 
@@ -19,6 +20,26 @@ class PlaceholderAudioService {
   private currentMusicCue?: MusicCueId
   private requestedMusicCue?: MusicCueId
   private musicScene?: Phaser.Scene
+  private musicVolumeScale = 1
+  private sfxVolumeScale = 1
+  private musicVolumeStep = VOLUME_STEPS
+  private sfxVolumeStep = VOLUME_STEPS
+  private currentMusicBaseVolume = 1
+
+  constructor() {
+    this.applySettings(Settings.get())
+    Settings.onChange((settings) => this.applySettings(settings))
+  }
+
+  /** Reads the device volume steps; live music follows immediately. */
+  applySettings(settings: Pick<SettingsData, 'musicVolume' | 'sfxVolume'>): void {
+    this.musicVolumeStep = settings.musicVolume
+    this.sfxVolumeStep = settings.sfxVolume
+    this.musicVolumeScale = settings.musicVolume / VOLUME_STEPS
+    this.sfxVolumeScale = settings.sfxVolume / VOLUME_STEPS
+    const music = this.currentMusic as (Phaser.Sound.BaseSound & { setVolume?: (value: number) => unknown }) | undefined
+    music?.setVolume?.(this.currentMusicBaseVolume * this.musicVolumeScale)
+  }
 
   unlock(): void {
     const context = this.ensureContext()
@@ -268,11 +289,13 @@ class PlaceholderAudioService {
     }
   }
 
-  getDebugState(): { enabled: boolean; unlocked: boolean; musicCue: MusicCueId | null } {
+  getDebugState(): { enabled: boolean; unlocked: boolean; musicCue: MusicCueId | null; musicVolume: number; sfxVolume: number } {
     return {
       enabled: this.enabled,
       unlocked: this.unlocked,
-      musicCue: this.currentMusicCue ?? this.requestedMusicCue ?? null
+      musicCue: this.currentMusicCue ?? this.requestedMusicCue ?? null,
+      musicVolume: this.musicVolumeStep,
+      sfxVolume: this.sfxVolumeStep
     }
   }
 
@@ -315,7 +338,7 @@ class PlaceholderAudioService {
 
     try {
       scene.sound.play(asset.key, {
-        volume: asset.volume,
+        volume: asset.volume * this.sfxVolumeScale,
         rate: asset.rate,
         detune: asset.detune
       })
@@ -368,9 +391,10 @@ class PlaceholderAudioService {
     this.currentMusicCue = cue
 
     try {
+      this.currentMusicBaseVolume = asset.volume
       const sound = scene.sound.add(asset.key, {
         loop: true,
-        volume: asset.volume
+        volume: asset.volume * this.musicVolumeScale
       })
       this.currentMusic = sound
       sound.play()

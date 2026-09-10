@@ -48,11 +48,11 @@ test('keyboard aliases merge Numpad Enter and Space confirm, and D/E weapon cycl
 })
 
 test('validated bindings persist across store recreation without losing future settings', () => {
-  let saved = JSON.stringify({ musicVolume: 0.4 })
+  let saved = JSON.stringify({ futureSetting: 0.4 })
   const storage = { getItem: () => saved, setItem: (_key: string, value: string) => { saved = value } }
   new SettingsStore(storage).update({ bindings: { jump: ['KeyJ'] } })
   const settings = new SettingsStore(storage).get()
-  assert.equal(settings.musicVolume, 0.4)
+  assert.equal(settings.futureSetting, 0.4)
   assert.deepEqual(settings.bindings.jump, ['KeyJ'])
   assert.equal(resolveKeyboardActions(new Set(['KeyJ']), settings.bindings).jump, true)
   assert.equal(resolveKeyboardActions(new Set(['Space']), settings.bindings).jump, false)

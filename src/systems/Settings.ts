@@ -1,6 +1,24 @@
 import { ACTION_NAMES, DEFAULT_BINDINGS, type InputBindings } from '../input/ActionState'
 type SettingsStorage = { getItem(key: string): string | null; setItem(key: string, value: string): void }
-export type SettingsData = Record<string, unknown> & { bindings: InputBindings }
+
+/** Device-level preferences (key `settings.v1`). Campaign state lives in `save.v1`. */
+export type KnownSettings = {
+  bindings: InputBindings
+  /** 0 to 10 steps. */
+  musicVolume: number
+  sfxVolume: number
+  screenShake: boolean
+  /** Replay story surfaces that were already seen. */
+  storyReplay: boolean
+  /** Caps flash frequency; prompt 04 wires the consumers. */
+  reducedFlashing: boolean
+}
+/** Known fields plus any newer build's keys, preserved untouched. */
+export type SettingsData = KnownSettings & Record<string, unknown>
+export const SETTINGS_DEFAULTS: Omit<KnownSettings, 'bindings'> = Object.freeze({
+  musicVolume: 8, sfxVolume: 8, screenShake: true, storyReplay: false, reducedFlashing: false
+})
+export const VOLUME_STEPS = 10
 const KEY = 'settings.v1'
 const keyCodes = new Set([
   ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(key => `Key${key}`),
@@ -20,26 +38,50 @@ export function validateBindings(value: unknown): InputBindings {
   }
   return Object.freeze(bindings)
 }
+function volumeStep(value: unknown, fallback: number): number {
+  const n = Number(value)
+  return Number.isFinite(n) ? Math.max(0, Math.min(VOLUME_STEPS, Math.round(n))) : fallback
+}
+function bool(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback
+}
+export function validateSettings(value: unknown): SettingsData {
+  const raw = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  // Unknown keys survive so a newer build's settings are not erased by an older one.
+  return {
+    ...raw,
+    bindings: validateBindings(raw.bindings),
+    musicVolume: volumeStep(raw.musicVolume, SETTINGS_DEFAULTS.musicVolume),
+    sfxVolume: volumeStep(raw.sfxVolume, SETTINGS_DEFAULTS.sfxVolume),
+    screenShake: bool(raw.screenShake, SETTINGS_DEFAULTS.screenShake),
+    storyReplay: bool(raw.storyReplay, SETTINGS_DEFAULTS.storyReplay),
+    reducedFlashing: bool(raw.reducedFlashing, SETTINGS_DEFAULTS.reducedFlashing)
+  }
+}
 export class SettingsStore {
-  private memory: SettingsData = { bindings: DEFAULT_BINDINGS }
+  private memory: SettingsData = validateSettings({})
+  private readonly listeners = new Set<(settings: SettingsData) => void>()
   constructor(private readonly storage?: SettingsStorage) {}
   get(): SettingsData {
     try {
       const raw = this.storage?.getItem(KEY)
       if (!raw) return this.memory
-      const parsed = JSON.parse(raw)
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return this.memory
-      // Later settings slices own other fields; preserve them while validating bindings.
-      return { ...parsed, bindings: validateBindings(parsed.bindings) }
+      return validateSettings(JSON.parse(raw))
     } catch { return this.memory }
   }
-  update(patch: Record<string, unknown>): SettingsData {
+  update(patch: Partial<SettingsData> & Record<string, unknown>): SettingsData {
     const previous = this.get()
     const bindingPatch = patch.bindings && typeof patch.bindings === 'object' && !Array.isArray(patch.bindings)
       ? patch.bindings : {}
-    this.memory = { ...previous, ...patch, bindings: validateBindings({ ...previous.bindings, ...bindingPatch }) }
+    this.memory = validateSettings({ ...previous, ...patch, bindings: { ...previous.bindings, ...bindingPatch } })
     try { this.storage?.setItem(KEY, JSON.stringify(this.memory)) } catch { /* Storage can be unavailable. */ }
+    this.listeners.forEach(listener => listener(this.memory))
     return this.memory
+  }
+  /** Consumers such as the audio service subscribe once; the unsubscribe is returned. */
+  onChange(listener: (settings: SettingsData) => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
   }
 }
 function browserStorage(): SettingsStorage | undefined {

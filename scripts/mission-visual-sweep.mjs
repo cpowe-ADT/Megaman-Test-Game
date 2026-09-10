@@ -5,7 +5,7 @@ import { chromium } from 'playwright'
 
 const host = '127.0.0.1'
 const port = Number(process.env.SWEEP_PORT ?? 4173)
-const url = `http://${host}:${port}?renderer=canvas&automation=1&startScene=StageSelect`
+const url = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off&startScene=StageSelect`
 const outputRoot = path.resolve('output/mission-visual-sweep')
 const visualSweepSummaryPath = path.join(outputRoot, 'summary.json')
 const STAGE_SELECT_STATE_TIMEOUT_MS = 10_000
