@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import { openNewCampaign } from './NewCampaignScene'
 import Phaser from 'phaser'
 import AudioService from '../audio'
@@ -42,36 +43,29 @@ export class Title extends Phaser.Scene {
     this.add.rectangle(width / 2 - 174, 34, 4, 38, MENU_COLORS.cyan, 0.95)
     this.add.rectangle(width / 2 + 174, 34, 4, 38, MENU_COLORS.cyan, 0.95)
 
-    styleMenuHeading(this.add.text(width / 2 - 7, 30, 'MEGA CORE', {
+    styleMenuHeading(this.add.text(width / 2, 30, IDENTITY.GAME_TITLE, {
       fontFamily: MENU_FONT_DISPLAY,
       fontSize: '30px',
       color: '#f5f8ff',
       stroke: '#06132a',
       strokeThickness: 3
-    }).setOrigin(0.5))
-    styleMenuHeading(this.add.text(width / 2 + 119, 30, 'X', {
-      fontFamily: MENU_FONT_DISPLAY,
-      fontSize: '30px',
-      color: '#5de1ff',
-      stroke: '#173f72',
-      strokeThickness: 3
-    }).setOrigin(0.5))
+    }).setOrigin(0.5).setName('identity-title'))
 
-    this.add.rectangle(width / 2, 68, 216, 17, 0x06142a, 0.98)
+    this.add.rectangle(width / 2, 68, 360, 17, 0x06142a, 0.98)
       .setStrokeStyle(1, MENU_COLORS.cyan, 0.55)
-    this.add.rectangle(width / 2 - 108, 68, 3, 11, MENU_COLORS.cyan, 0.95)
-    this.add.rectangle(width / 2 + 108, 68, 3, 11, MENU_COLORS.cyan, 0.95)
-    this.add.text(width / 2, 68, 'THE ROBOT MASTER PROTOCOL', {
+    this.add.rectangle(width / 2 - 180, 68, 3, 11, MENU_COLORS.cyan, 0.95)
+    this.add.rectangle(width / 2 + 180, 68, 3, 11, MENU_COLORS.cyan, 0.95)
+    this.add.text(width / 2, 68, IDENTITY.GAME_SUBTITLE, {
       fontFamily: MENU_FONT_CODE,
       fontSize: '9px',
       color: '#ccecff',
-      letterSpacing: 1.5
-    }).setOrigin(0.5)
+      letterSpacing: 0.5
+    }).setOrigin(0.5).setName('identity-subtitle')
 
     const primaryLabel = Save.hasActiveRun()
       ? 'Continue active mission'
       : saveData.tutorialCleared
-        ? 'Open Robot Master Select'
+        ? `Open ${IDENTITY.WARDEN_TERM} Select`
         : 'Begin the Sentinel tutorial'
 
     this.add.rectangle(width / 2, 116, width - 92, 51, 0x081a34, 0.96)
@@ -128,7 +122,7 @@ export class Title extends Phaser.Scene {
     this.add.text(
       width / 2,
       222,
-      `TUTORIAL  ${saveData.tutorialCleared ? 'CLEARED' : 'PENDING'}    MASTERS  ${countClearedRobotMasters(saveData)}/8    FINAL  ${
+      `TUTORIAL  ${saveData.tutorialCleared ? 'CLEARED' : 'PENDING'}    ${IDENTITY.WARDEN_TERM_PLURAL}  ${countClearedRobotMasters(saveData)}/8    FINAL  ${
         saveData.gameCompleted ? 'COMPLETED' : Save.isFinalRouteUnlocked() ? 'READY' : 'LOCKED'
       }`,
       {

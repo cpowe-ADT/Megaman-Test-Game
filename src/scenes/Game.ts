@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { IDENTITY } from '../content/identity'
 import { firePlayerShot } from '../projectiles/firePlayerShot'
 import { resolveUpgradeModifiers, upgradeEffectLabel } from '../progression/upgrades'
 import { CampaignSessionStatistics } from '../progression/statistics'
@@ -926,7 +927,7 @@ export class Game extends Phaser.Scene {
     const stage = getCampaignStage(stageId)
     const clearedCount = countClearedRobotMasters(this.progressionSave)
     const values: DialogueInterpolationValues = {
-      hero: 'Relay',
+      hero: IDENTITY.HERO_CALLSIGN,
       rewardLabel: getStageBossRewardLabel(
         this.progressionSave,
         stage.id,
@@ -2193,8 +2194,7 @@ export class Game extends Phaser.Scene {
       this.bossBody?.data?.get?.('name') ??
       this.bossName ??
       '??'
-    const bossLabelName = typeof bossLabelRaw === 'string' ? bossLabelRaw : String(bossLabelRaw)
-    this.hud.setNames('MEGA MAN X', bossLabelName)
+    this.hud.setNames(IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, String(bossLabelRaw))
     this.hud.setWeaponName(getWeaponDisplayName(this.getCurrentWeaponId()))
     this.hud.setWeaponColor(this.getCurrentWeaponConfig().tint)
     this.hud.setLives(this.playerLives)
@@ -2669,7 +2669,7 @@ export class Game extends Phaser.Scene {
         this.handleReturnToStageSelect('victory', {
           toastMessage:
             stage.id === TUTORIAL_STAGE_ID
-              ? 'Tutorial cleared. Warden Select unlocked.'
+              ? `Tutorial cleared. ${IDENTITY.WARDEN_TERM} Select unlocked.`
               : finalRouteUnlocked
                 ? `${bossName} freed! Omega Fortress unlocked.`
                 : `${bossName} freed!`,

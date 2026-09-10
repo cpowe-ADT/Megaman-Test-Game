@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import { openNewCampaign } from './NewCampaignScene'
 import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
 import { countClearedRobotMasters } from '../content/campaign'
@@ -231,12 +232,16 @@ export class StageSelect extends Phaser.Scene {
       .setStrokeStyle(2, COLOR.border, 0.8)
 
     this.add
-      .text(layout.headerRect.centerX, layout.headerRect.y + 1, 'ROBOT MASTER SELECT', {
+      .text(layout.headerRect.x + 8, layout.headerRect.y + 1, `${IDENTITY.WARDEN_TERM} SELECT`, {
         font: FONT.title,
         color: COLOR.text,
         letterSpacing: 1
       })
-      .setOrigin(0.5, 0)
+      .setOrigin(0, 0).setName('identity-stage-title')
+
+    this.add.text(layout.headerRect.right - 8, layout.headerRect.y + 4,
+      `8 ${IDENTITY.WARDEN_TERM_PLURAL} + ${IDENTITY.ANTAGONIST_NAME.split(' ')[0]}`,
+      { font: FONT.subtitle, color: COLOR.textMuted }).setOrigin(1, 0).setName('identity-stage-caption')
 
     this.headerProgress = this.add
       .text(layout.headerRect.centerX, layout.headerRect.bottom - 3, '', {
@@ -340,7 +345,7 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private refreshPage(): void {
-    this.headerProgress?.setText(`WARDENS ${countClearedRobotMasters(this.saveData)}/8 · ${this.saveData.progressionWorld?.progressionMode === 'classic' ? 'CLASSIC' : 'RELAY RANDOMIZER'} · T TUTORIAL · F FINAL`)
+    this.headerProgress?.setText(`${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(this.saveData)}/8 · ${this.saveData.progressionWorld?.progressionMode === 'classic' ? 'CLASSIC' : 'RELAY RANDOMIZER'} · T TUTORIAL · F FINAL`)
     const totalPages = Math.max(1, Math.ceil(this.stages.length / this.pageSize))
     this.currentPage = Phaser.Math.Clamp(this.currentPage, 0, totalPages - 1)
     const start = this.currentPage * this.pageSize
@@ -369,7 +374,7 @@ export class StageSelect extends Phaser.Scene {
       slot.name.setText(stage.selectLabel)
       slot.name.setColor(cleared ? COLOR.textCleared : COLOR.text)
       slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
-      slot.weakness.setText(stage.id === FINAL_STAGE_ID ? `WARDENS ${countClearedRobotMasters(this.saveData)}/8` : `WEAK: ${getBossWeaknessLabel(this.saveData, stage.bossId)}`)
+      slot.weakness.setText(stage.id === FINAL_STAGE_ID ? `${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(this.saveData)}/8` : `WEAK: ${getBossWeaknessLabel(this.saveData, stage.bossId)}`)
       slot.meta.setColor(cleared ? '#8793ad' : '#9ec2ff')
       slot.badge.setVisible(false)
 

@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import Phaser from 'phaser'
 import spriteManifestData from '../../assets/sprites/manifest.v1.json'
 import { getLoadableAtlasEntries } from '../assets/manifest'
@@ -29,7 +30,7 @@ export class Preload extends Phaser.Scene {
   preload(): void {
     const mergedManifest = mergeSpriteManifest(
       spriteManifestData as SpriteSheetManifestV1,
-      __PRIVATE_SPRITE_MANIFEST_DATA__
+      IDENTITY.DEV_SKIN.enabled ? __PRIVATE_SPRITE_MANIFEST_DATA__ : null
     )
     const manifestValidation = validateSpriteManifest(mergedManifest)
     if (!manifestValidation.valid) {

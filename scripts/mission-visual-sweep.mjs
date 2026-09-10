@@ -283,7 +283,7 @@ function assertBossRoomState(state, bossId) {
   }
 }
 
-async function sampleBossMovement(page, bossId) {
+async function sampleBossMovement(page, bossId, artifactDir) {
   const samples = []
   let phaseForced = false
 
@@ -295,6 +295,9 @@ async function sampleBossMovement(page, bossId) {
       const bossRoom = scene?.activeBossRoom ?? null
       return {
         bossX: Math.round(scene?.bossController?.x ?? scene?.bossTarget?.x ?? 0),
+        bossRawX: Number(scene?.bossController?.x ?? scene?.bossTarget?.x ?? 0),
+        bossBodyX: Number(scene?.bossController?.body?.x ?? 0),
+        bossVelocityX: Number(scene?.bossController?.body?.velocity?.x ?? 0),
         bossY: Math.round(scene?.bossController?.y ?? scene?.bossTarget?.y ?? 0),
         playerX: Math.round(scene?.player?.x ?? 0),
         bossRoom,
@@ -325,6 +328,7 @@ async function sampleBossMovement(page, bossId) {
     }
   }
 
+  fs.writeFileSync(path.join(artifactDir, 'boss-movement-samples.json'), JSON.stringify(samples, null, 2))
   const room = samples[0]?.bossRoom
   if (!room) {
     throw new Error(`[${bossId}] missing boss room data while sampling boss movement`)
@@ -502,8 +506,7 @@ async function captureMission(browser, slot, summary) {
     assertBossRoomState(bossRoomState, stageId)
     fs.writeFileSync(path.join(dir, 'state-boss-room.json'), JSON.stringify(bossRoomState, null, 2))
 
-    const samples = await sampleBossMovement(page, stageId)
-    fs.writeFileSync(path.join(dir, 'boss-movement-samples.json'), JSON.stringify(samples, null, 2))
+    await sampleBossMovement(page, stageId, dir)
     await page.evaluate(() => {
       const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
       const room = scene?.activeBossRoom

@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import Phaser from 'phaser'
 import AudioService from '../audio'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
@@ -14,7 +15,7 @@ export class CompletionScene extends Phaser.Scene {
     const { width, height } = this.scale
     this.cameras.main.setBackgroundColor('#050913')
 
-    this.add.text(width / 2, 74, 'OMEGA CORE DEFEATED', {
+    this.add.text(width / 2, 74, `${IDENTITY.ANTAGONIST_NAME} DEFEATED`, {
       fontFamily: 'monospace',
       fontSize: '24px',
       color: '#f5f8ff',
@@ -22,7 +23,7 @@ export class CompletionScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 124, 'The final route is clear.\nAll eight wardens are free.\nThe districts choose their future.', {
+    this.add.text(width / 2, 124, `The final route is clear.\nAll eight ${IDENTITY.WARDEN_TERM_PLURAL.toLowerCase()} are free.\nThe districts choose their future.`, {
       fontFamily: 'monospace',
       fontSize: '14px',
       color: '#cfe8ff',

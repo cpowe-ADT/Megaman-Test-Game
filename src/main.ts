@@ -1,3 +1,4 @@
+import { IDENTITY } from './content/identity'
 import { NewCampaignScene } from './scenes/NewCampaignScene'
 import Phaser from 'phaser'
 import AudioService from './audio'
@@ -213,6 +214,10 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     scene: scene.scene.key,
     activeScenes: activeScenes.map((activeScene) => activeScene.scene.key),
     ready: true,
+    identity: { title: IDENTITY.GAME_TITLE, heroCallsign: IDENTITY.HERO_CALLSIGN,
+      devSkinEnabled: IDENTITY.DEV_SKIN.enabled,
+      heroLabel: (scene as any).hud?.tPlayer?.text ?? null },
+    spriteManifest: scene.registry.get('sprite_manifest_summary') ?? null,
     timeMs: Math.round(scene.time?.now ?? 0)
   }
 

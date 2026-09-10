@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import Phaser from 'phaser'
 import InputActions from '../input/InputActions'
 import { Save } from '../systems/Save'
@@ -26,7 +27,7 @@ export class NewCampaignScene extends Phaser.Scene {
     this.model = new NewCampaignModel(entry.randomizerAvailable, urlSeed)
     addMenuBackdrop(this); addMenuPanel(this,224,126,432,236)
     this.add.text(224,22,'NEW CAMPAIGN',{fontFamily:MENU_FONT_CODE,fontSize:'18px',color:'#f5f8ff'}).setOrigin(.5)
-    this.add.text(224,50, Save.exists() ? 'Starting replaces the current campaign and saved mission.' : 'Choose difficulty. The eight wardens await.', {fontFamily:MENU_FONT_CODE,fontSize:'8px',color:'#a9c9f2'}).setOrigin(.5)
+    this.add.text(224,50, Save.exists() ? 'Starting replaces the current campaign and saved mission.' : `Choose difficulty. The eight ${IDENTITY.WARDEN_TERM_PLURAL.toLowerCase()} await.`, {fontFamily:MENU_FONT_CODE,fontSize:'8px',color:'#a9c9f2'}).setOrigin(.5)
     this.lines = [80,108,136,173].map((y,index) => this.add.text(224,y,'',{fontFamily:MENU_FONT_CODE,fontSize:'11px',color:'#ffffff',align:'center',wordWrap:{width:400,useAdvancedWrap:true}}).setOrigin(.5).setInteractive({useHandCursor:true}).on('pointerdown',()=> { this.row=index; if(index===3) this.start(); else this.change(1); this.render() }))
     this.add.text(224,220,'ARROWS CHOOSE   ENTER START   ESC CANCEL',{fontFamily:MENU_FONT_CODE,fontSize:'8px',color:'#a9c9f2'}).setOrigin(.5)
     const actions=InputActions.forScene(this)

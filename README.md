@@ -1,4 +1,4 @@
-# Mega Man Game
+# OMEGA RELAY
 
 A Phaser 3 + TypeScript + Vite action-platformer prototype with a playable stage-select flow, boss encounters, a modularizing gameplay runtime, and local-first sprite/tooling pipelines.
 

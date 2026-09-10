@@ -2,7 +2,7 @@
 
 ## Status: PARTIAL (list what is missing and why)
 
-Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; Craig approved STOP 1.0b; Phase 1.1 implementation and automated gates are complete, with Craig’s STOP 1.1 review pending. The separate enemy ecology request remains a planning supplement; phases 1.2–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
+Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; Craig approved STOP 1.0b; Phase 1.1 implementation and automated gates are complete, with Craig’s STOP 1.1 approval recorded below. Phase 1.2 is implemented with automated evidence green; STOP 1.2 awaits Craig’s title/subtitle review. Session 01a ends at that STOP. The separate enemy ecology request remains a planning supplement; phases 1.3–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 
 ## Branch and final commit
 
@@ -233,6 +233,55 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 - Full verification exposed scenario 29's timing contamination: its own live mine bot emitted `enemy_mine_drop`, which legitimately intercepted the ordinary Buster before contact. A traced reproduction records no prior hostile bullets and clash `sourceId=enemy_1`; no runtime hitbox/input repair was justified. Scenarios 29 and 33b now clear prior hostile projectiles and construct the isolated target with AI and projectile emission disabled, restoring spawner flags afterward. The normal collider, Arcade physics, HP and damage reception remain active; bounded observed-contact waits replace fixed waits. Strict 5→4/5→3 assertions remain; separate scenarios 17/19 still prove interception and charged survival.
 - STOP recommendations not silently added: keep literal Randomizer eligibility (`gameCompleted` or Shift at opening); consider persistent earned access later. ArcSlash is a free saber ability with no separate energy bank. Keep the exact Classic/legacy split and the statistics/import semantics above. Original graphics authorization, editable-vector/source pipeline and deeper-monster planning remain scheduled at their existing Phase 1.6/02/03 STOPs.
 
+### Phase 1.2 design memo — EVAL-P1-005
+
+- Approval: Craig replied verbatim, "There shoudl be 1 or 2 more porompts lets complete those"; Orchestrator accepts STOP 1.1 and authorizes the final part-01a identity slice only.
+- Pin Phase 1.1 and approved EVAL-P1-003/004/011 to `475ab82f39d31121e868d4bdd86f983f9bd82428`; no Phase 1.3 work.
+- Understand: give the game one original public identity without changing its mechanics, story structure or art assets.
+- Director: exact OMEGA RELAY title, centered at224/30 in30px display font (28px only if actual bounds require); remove detached X.
+- Director: full EIGHT WARDENS. ONE MANUFACTURED CRISIS. subtitle on360px rail at224/68,9px font and at most0.5px spacing; no ellipsis.
+- Identity seam: one frozen IDENTITY object with all exact prompt constants and nested frozen DEV_SKIN; public flag1 always disables private skin.
+- Source-authority choice: include a nested frozen WARDEN_NAMES map for the eight existing names, preserving IDs/casing and avoiding a second naming authority.
+- Dialogue adapter seam: override bundled proper speaker names from identity before registry construction, retaining generic hero interpolation and the unchanged v1 document/schema.
+- Public HUD uses WREN; developer HUD label is conditional on non-null private manifest and public flag not1. Narrative hero token always uses WREN.
+- Asset-selection seam: Preload merges private only when DEV_SKIN.enabled; flagged development preview must report base manifest and zero private overrides.
+- Packaging boundary: no public dist is produced; Vite private-file copying and original base-art replacement remain Phase04/03 debt, respectively.
+- UI seams: Title, HUD, Game token/name, StageSelect title/descriptor/terms, Completion and existing roster/campaign proper names; README/index/package/lock and old player-art comment.
+- Stage Select must retain its approved grid/preview/footer geometry and explicitly include 8 WARDENS + OMEGA alongside WARDEN SELECT without overlap.
+- Red first: execute the actual identity source under manifest/environment truth-table inputs, assert top/nested freezes/exact data and meaningful lexical scan fixtures; then scan all required TypeScript sources.
+- Browser proof: scenario4 captures true native Title as shot0 before Controls; retain Controls separately and verify return. Check actual title/subtitle bounds, HUD label and manifest choice in both developer and flagged base previews.
+- Focused gates precede one full verify coverage, global-HUD sweep and separate repository develop-web-game client; preserve and open every produced PNG/JSON.
+- Record ledger/progress/canonical testing and charter facts, keep Game.ts at or below3805 lines, obtain read-only source/artifact reviews, commit then STOP1.2.
+- Carry original ChatGPT graphics/editable-vector pipeline authorization and deeper enemy ecology plan forward; this slice creates no assets and releases no later STOP.
+
+### Phase 1.2 gate repair memo — boss boundary lifecycle
+
+- Understand: the otherwise green identity verification exposed a preexisting strict Volt-room bounds failure in the visual sweep.
+- Preserve: first sweep failed at rounded x1353 against outer max1352; its later samples were not written because validation threw first.
+- Diagnose: retained Volt trace did not repeat that outer failure, but proved POST_UPDATE x1350.5667 beyond safe1348 after worldstep/controller clamps.
+- Cause: Arcade applies pending body delta to the container in Body.postUpdate after the existing worldstep listener and scene update.
+- Narrow design: run the final guard after Arcade POST_UPDATE and synchronize body position from the clamped container; preserve y, vertical velocity and existing room margins.
+- Red first: use actual browser controller/body event sequence with queued outward displacement at both edges; assert synchronized final positions, preserved vertical motion and subsequent inward movement.
+- Lifetime check: the final guard must detach when its controller is destroyed.
+- Tooling correction: persist sweep movement samples before assertions, including raw container/body positions; keep the same thresholds and sample count.
+- Gates: focused boundary browser case first, then repeat affected full runtime verification and the sweep; no tolerance increase or gameplay tuning.
+- Scope: no new art/story; Game.ts budget unchanged; document this evidence-driven gate repair in the identity commit.
+
+### Phase 1.2 implementation and review
+
+- `src/content/identity.ts` exports frozen IDENTITY and nested frozen DEV_SKIN/WARDEN_NAMES objects. Exact public constants match the prompt; the extra eight-name map preserves existing names/casing while making identity the source for campaign/roster display names. Internal `robot_master`, `ROBOT_MASTER_STAGE_IDS` and `robot_master_clear_count` IDs remain unchanged as Prompt04 cleanup debt.
+- Title now renders one centered OMEGA RELAY text object with the exact full subtitle on its widened rail. Measured native title bounds are x101–347 (246px) and subtitle x126.5–321.5 (195px). Warden Select places its title left and `8 WARDENS + OMEGA` right on the first header row; neither intersects the existing mode/progress row. Grid, names, pips, portrait reservations, preview and footer retain the approved Phase1.1 geometry.
+- Title/HUD/Game/menus/Completion/roster/campaign terms now consume identity. README, HTML title and package/lock names are updated and asserted; the player override comment no longer names the franchise. Narrative `{hero}` always resolves WREN, even when the developer HUD uses the private label.
+- `src/content/dialogue/index.ts` adapts proper speaker display names from identity before creating the generic registry, preserving v1 schema/authored lines, hero token and input objects. A deliberately stale valid speaker document failed against the actual adapter before repair; all eight warden labels plus operator/antagonist now follow identity rather than the JSON’s duplicated labels.
+- `Preload.ts` follows DEV_SKIN when choosing private versus base atlas merge. Six actual-module cases cover null/present manifest × unset/0/1 public flag; only present plus not1 enables private. A missing compile-time global is handled as no private skin for headless logic tests.
+- Native browser proof separates Title (`shot-0.png`), Controls (`shot-1-controls.png`), Warden Select (`shot-2-stage-select.png`) and HUD (`shot-3-hud.png`). State includes actual geometry, identity/HUD/manifest pairing and resolved WREN dialogue. Initial base capture occurred during entry fade; preserved it, then waited for the actual camera fade completion for the final bright capture without a runtime timing change.
+- Public-flag evidence uses a development server only: WREN, `manifestMode=base`, zero private overrides. Ordinary developer evidence retains its private HUD/art pairing. No flagged dist is produced, no public artifact is distributed and no asset is created; Vite private-file copying remains Prompt04 packaging debt, and existing base artwork still needs original-art acceptance in Prompt03.
+- QA closed source review, including actual-module freeze/truth-table tests, the lexical source scan and stale-dialogue adapter fixture. Director/Orchestrator opened all12 focused native screenshots and corresponding JSON; title/subtitle and bright base WREN HUD are approved by the review seats. Craig’s title treatment/subtitle decision remains STOP1.2.
+- `Game.ts` remains3805 lines; adding the identity import is offset by removing a redundant string-conversion variable, preserving the original spacing and only existing top-of-file suppression. The first typecheck exposed old Game type errors because an import temporarily preceded that directive; restored its original placement, then the focused typecheck passed. This is an editing-order correction, not new suppression or claimed debt removal.
+
+- The first sweep failed Volt’s unchanged outer bound (rounded1353 >1352). A retained trace then showed a safe-bound overshoot1350.5667 >1348 without repeating that outer failure. The controlled actual controller/Arcade lifecycle fixture reproduced both outer failures (right1353.3333, left950.6667), then passed after the three-line repair: final clamp on scene POST_UPDATE, body synchronization and matching destruction unsubscribe. It preserves vertical position/velocity and allows the next inward step; no margins or tuning changed.
+- Scenario8’s screenshot/state precede the controlled boundary probe; `boundary-lifecycle.json` is the proof for both edges and listener cleanup. The sweep now persists raw X/body/velocity samples before assertions so failures retain diagnostics. QA and Orchestrator closed the repair source review; the full runtime gates are repeated because this code changed after the first green identity verify.
+
 ## Content inventory (tables: stages, bosses, dialogue sequences, assets, audio cues; counts, not prose)
 
 | Inventory | Count | Status |
@@ -343,7 +392,45 @@ All paths below are under `output/phase-1-1/`; commit is the Phase 1.1 commit co
 - Engineer opened every retained screenshot through `focused-contact-manifest.txt` (41 PNGs, seven sheets), `pellet-review-contact-manifest.txt` (54 additional PNGs, nine sheets), and `final-contact-manifest.txt` (50 final PNGs, nine sheets). Native 33 captures show all eight open, Flame Serpent reward, weakness `???` then Hydro Lance, full titles/pips, separated footer and wide seed wrapping. Gameplay shows standing armor-damaged player, live damaged mine bot, ArcSlash and separated HUD; existing toasts, oversized touch controls, fades and private artwork remain documented debt.
 - Engineer also opened all 40 final sweep captures through `sweep-contact-manifest.txt` (seven sheets) and the original native `skill-client/shot-0.png`, with its state JSON. Sweep actor/terrain/dialogue presentation remains visible; Volt’s private strip, Glacier’s low silhouette, repeated checkpoint toasts and truncated boss phase labels remain known debt. The skill capture shows the grounded player and one ordinary Buster projectile in Classic, with no browser errors.
 - QA closed source and fixture review; Orchestrator and Director opened all final 50 smoke and 40 sweep captures, plus native Classic captures, with no new blocker. Orchestrator also opened the native skill PNG/state. All slice-owned browser/server processes have stopped; preexisting user development servers remain untouched. EVAL-P1-003 and EVAL-P1-011 automated gates are PASS.
-- EVAL-P1-004 automated gate and Director/Orchestrator visual review are green, but the ledger stays PENDING until Craig answers STOP 1.1. This partial handoff does not claim Prompt 01's Exit Gate.
+- At the Phase1.1 commit, EVAL-P1-004 awaited Craig’s review despite green automation/review-seat evidence. Craig approved it at Phase1.2 entry (verbatim reply above); its ledger row now pins PASS to `475ab82`. This partial handoff does not claim Prompt01’s Exit Gate.
+
+### Identity evidence — EVAL-P1-005
+
+All paths below are under `output/phase-1-2/`; the Phase1.2 commit containing this record pins this evidence. This is a completed slice, not Prompt01’s Exit Gate.
+
+| Command / check | Literal result / classification | Artifact |
+| --- | --- | --- |
+| Initial actual-identity/lexical tests | `# pass 1`; `# fail 8`; expected exit1: old source labels plus missing new module | `01-identity-red.log` |
+| Actual dialogue adapter with stale valid labels, before repair | `# pass 9`; `# fail 1`; expected stale-name assertion red | `09-dialogue-name-red.log` |
+| `node --loader ./tools/ts-node-loader.mjs --test tests/identity-strings.test.ts tests/dialogue-content.test.ts` | `# pass 17`; `# fail 0`; exit0 | `10-identity-dialogue-green.log` |
+| Native private identity smoke4 | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1pass,40filter skips; exit0 | `05-focused-private.log`; `focused-private/` |
+| Native base identity smoke4, actual fade complete | Same completion line; 1pass,40filter skips; exit0 | `08-focused-base-final.log`; `focused-base-final/` |
+| First full `npm run verify`, before boundary repair | `Verify PASS; full smoke summary: 41/41 pass, 0 fail, 0 skipped.`; exit0 | `11-verify.log`; `full-smoke/` |
+| First visual sweep | `[volt_hopper] boss left the room bounds (1353 not in 952-1352)`; exit1 after3 earlier missions passed | `12-visual-sweep.log`; `visual-sweep-first-failure/` |
+| Retained Volt trace | Outer bounds passed; safe-bound overshoot1350.5667 >1348 reproduced, not the original outer failure | `13-volt-boundary-trace.log`; `volt-boundary-trace/volt_hopper/` |
+| Actual post-update boundary fixture, before repair | `boss must remain inside safe bounds after Arcade postUpdate`; expected exit1; x950.6667/1353.3333 | `14-boundary-lifecycle-red.log`; `boundary-lifecycle-red/8-boss-room-activation/boundary-lifecycle.json` |
+| Same fixture after repair | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1pass,40filter skips; exit0 | `15-boundary-lifecycle-green.log`; `boundary-lifecycle-green/` |
+| Final `SMOKE_PORT=4400 npm run verify`: sprites | `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`; `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)` | `16-verify-final.log` |
+| Final verify: tests | `Test summary: 12 passed, 0 failed`; `# pass 228`; `# fail 0` | `16-verify-final.log` |
+| Final verify: build | `✓ built in 4.08s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.` | `16-verify-final.log` |
+| Final verify: full smoke | `Final verify PASS; full smoke summary: 41/41 pass, 0 fail, 0 skipped.`; overall exit0 | `16-verify-final.log`; `full-smoke-final/summary.json` |
+| `SWEEP_PORT=4400 npm run test:visual-sweep` | `Mission visual sweep complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/mission-visual-sweep`; `Final visual sweep PASS: 10/10 missions; strict room bounds unchanged.`; exit0 | `17-visual-sweep-final.log`; `visual-sweep-final/summary.json` |
+| Separate repository develop-web-game client, public-flag development server | `Skill client artifacts valid: native448x252 Game, WREN, base manifest/0 overrides, 1 ordinary Buster shot, 0 browser-error files.`; exit0 | `19-skill-client.log`; `skill-client/` |
+| Source and budget audit | `Game size audit PASS: 3805 lines (baseline 3805; net 0).`; sole existing suppression; original tests unchanged | `source-audit.log` |
+
+| Private manifest | Public flag | Actual DEV_SKIN | HUD / selected manifest |
+| --- | --- | --- | --- |
+| null | unset | false | WREN / base |
+| null | 0 | false | WREN / base |
+| null | 1 | false | WREN / base |
+| present | unset | true | MEGA MAN X / base+private |
+| present | 0 | true | MEGA MAN X / base+private |
+| present | 1 | false | WREN / base |
+
+- The six actual-module tests prove the truth table; browser evidence proves present/unset (11 overrides) and present/1 (zero overrides) with actual HUD labels and WREN narrative lines. Title remains OMEGA RELAY in every mode. This is identity/manifest preview evidence, not a flagged dist or public-release approval.
+- Engineer opened every produced capture:12 focused,53 first-verify,22 boundary/failure,53 final-smoke,40 final-sweep and1 skill PNG (181 total). The complete maps are `focused-contact-manifest.txt`, `final-contact-manifest.txt` (first verify), `bounds-contact-manifest.txt`, `verified-contact-manifest.txt` (final verify), `sweep-contact-manifest.txt`, plus `skill-client/shot-0.png`. Matching JSON was read/parsed; final sweep includes180 retained movement samples with Volt1292–1348.
+- Visual observations: complete title/subtitle and Warden Select header fit at native448×252; public WREN HUD and base sprite remain bright/readable; private HUD/art pairing is preserved; dialogue proper names and hero token are canonical. Existing toast overlap, oversized touch controls, fades, private boss effects-only/low silhouettes and phase-label truncation remain documented debt. Scenario8 PNG precedes its controlled body probe; sweep state and later screenshots are not simultaneous.
+- QA and Orchestrator closed source review for identity/dialogue and the boundary lifecycle repair. Orchestrator opened all181 captures, including the client, and read the final samples. Director inspected the focused identity sets, all53 final smoke captures and all40 final sweep captures. Both visual reviews are closed with no remaining blocker. EVAL-P1-005 is an automated gate PASS; Craig’s title treatment/subtitle decision remains STOP1.2. No Phase1.3, asset generation, flagged public build, push or deployment.
 
 ## Open risks and known debt
 
@@ -355,11 +442,12 @@ All paths below are under `output/phase-1-1/`; commit is the Phase 1.1 commit co
 - Sweep `state-boss-room.json` is sampled before movement/attack checks, while `boss-room.png` is captured afterward; they prove different points in the same encounter and must not be described as simultaneous.
 - Existing checkpoint toast overlap, truncated phase labels, Gale cloud seams, and low-contrast private boss art remain visible; a green baseline gate is not final art approval.
 - The existing Omega art is recorded as original generated work in its manifest/progress history, but its attribution registry lacks a complete source/author/license entry; resolve in the asset phase without inventing a license.
-- `4-title-controls/shot-0.png` currently shows the Controls screen. Phase 1.2 must explicitly capture Title when reviewing the new identity.
+- Scenario4 now captures true Title as shot0 and retains Controls separately. Base preview artwork is existing work, not final WREN design; original hero/logo/UI production remains at Prompt03 STOPs.
 - The production Phaser chunk warning is accepted debt under ADR-0002.
 
 ## Inputs for prompt 02 (an explicit list: files to read, decisions to honor, numbers to keep)
 
-- Keep Phase 1.1 mode/placement/upgrade tables and the explicit compatibility/statistics recommendations above; STOP 1.1 remains pending. Difficulty values are provisional until Phase 1.6, with gameplay difficulty tuning in Prompt 02.
+- Keep Phase 1.1 mode/placement/upgrade tables and the explicit compatibility/statistics recommendations above; STOP 1.1 is approved; STOP 1.2 remains pending. Difficulty values are provisional until Phase 1.6, with gameplay difficulty tuning in Prompt 02.
+- Keep IDENTITY as the runtime public-name authority, including frozen warden names and the dialogue speaker adapter. Internal snake-case IDs remain stable; public packaging/private-file stripping still requires Prompt04, and the preview base art still requires Prompt03 original-art review.
 - Not ready: prompt 01 exit conditions are incomplete. Read the completed version of this file before starting prompt 02.
 - Carry `docs/working/enemy-ecology-and-variant-plan.md` into Phase 1.6 stage briefs and the completed Prompt 02/03 handoffs. Preserve Craig’s request for deeper monsters, stage-specific features and a living world; its family/variant/pilot recommendations remain pending the existing STOP reviews.

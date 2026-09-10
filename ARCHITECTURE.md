@@ -42,6 +42,12 @@ Scenes and the player controller consume named actions; keyboard aliases and sup
 
 `progression/statistics.ts` holds each mission's elapsed time in memory. Existing checkpoint/claim/manual-save/return boundaries flush total active time; valid manual reload flushes outgoing total time while restoring the saved mission clock. Active time excludes pause/dialogue/victory and inactive-player intervals. Defeats count once per life; successful boss location claims record the first clear time, and unique heart/sub location claims count secrets. Progression imports reset run statistics because their payload carries no source timing. Finite positive fractional HP survives active-run normalization and scene restoration; fatal falls remain fatal despite body armor. Story flags are retained as bounded unique strings until the Phase 1.4 registry-aware filter.
 
+## Identity and developer skin
+
+`src/content/identity.ts` exports one frozen `IDENTITY` with exact public title/subtitle, hero/unit/operator/antagonist terms and a frozen map of the eight existing warden names. Title, HUD, campaign/roster, menus and dialogue speaker labels consume it. The generic dialogue registry and authored v1 JSON remain unchanged; the bundled-content adapter replaces proper display names from identity before registry construction, while the hero interpolation token always resolves to the canonical callsign.
+
+Private skin is enabled only when the compiled private manifest is non-null and `VITE_PUBLIC_BUILD` is not `1`; nested skin data is frozen too. Preload follows that decision when merging atlases, and only the developer HUD may use its alternative hero label. A flagged development preview uses WREN plus the base manifest. Ordinary Vite output still copies private assets, and the base artwork is not final original release art; production stripping and art acceptance remain later gates. Internal `robot_master` identifiers stay compatible until their planned cleanup.
+
 ## Known Architectural Debt
 - `src/scenes/Game.ts` is still the main complexity hotspot and remains under `@ts-nocheck`.
 - The runtime currently mixes older scene-owned logic with newer subsystem modules.
@@ -55,3 +61,5 @@ Scenes and the player controller consume named actions; keyboard aliases and sup
 - Repo map: `docs/architecture/repo-map.md`
 - Testing/merge gates: `docs/testing/quality-gates.md`
 - Architecture ADRs: `docs/adr/0001-runtime-modularization.md`, `docs/adr/0002-bundle-size-strategy.md`
+
+The boss controller finalizes its horizontal room clamp on scene `POST_UPDATE`, after Arcade applies pending body displacement, and synchronizes the body from the corrected container. The guard preserves vertical movement and removes its listener on destruction; scene/world-step clamps alone cannot enforce the rendered final position.

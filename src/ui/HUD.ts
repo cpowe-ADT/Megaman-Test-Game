@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import Phaser from 'phaser'
 import { getHudLayout } from './hudLayout'
 
@@ -82,7 +83,7 @@ export class HUD {
     this.root.add(this.gBoss)
 
     const layout = getHudLayout(scene.scale.width)
-    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, 'MEGA MAN X', 9)
+    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, 9)
     this.root.add(this.tPlayer)
 
     this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', 9)

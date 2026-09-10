@@ -93,6 +93,7 @@ export class BossController extends Phaser.GameObjects.Container {
       return
     }
     this.x = clampedX
+    this.body.updateFromGameObject()
     this.body.setVelocityX(0)
     this.airborneVelocityX = 0
   }
@@ -139,9 +140,9 @@ export class BossController extends Phaser.GameObjects.Container {
     this.body.setAllowGravity(true)
     this.body.setCollideWorldBounds(true)
     this.body.setMaxVelocity(460, 560)
-    scene.physics.world.on('worldstep', this.enforceRoomBoundsAfterPhysics)
+    scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.enforceRoomBoundsAfterPhysics)
     this.once(Phaser.GameObjects.Events.DESTROY, () => {
-      scene.physics.world.off('worldstep', this.enforceRoomBoundsAfterPhysics)
+      scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.enforceRoomBoundsAfterPhysics)
     })
 
     const body = this.body

@@ -1,3 +1,5 @@
+import { assertBossBoundaryLifecycle } from './smoke/boss-boundary-lifecycle.mjs'
+import assert from 'node:assert/strict'
 import { runClassicCampaignScenario, runClassicUpgradeScenario } from './smoke/classic-campaign.mjs'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
@@ -721,6 +723,7 @@ async function runTitleControlsScenario(name) {
     args: ['--use-gl=angle', '--use-angle=swiftshader']
   })
   const page = await newSmokePage(browser)
+  await page.setViewportSize({ width: 448, height: 252 })
   const errors = []
 
   page.on('console', (msg) => {
@@ -741,7 +744,18 @@ async function runTitleControlsScenario(name) {
     await page.waitForTimeout(400)
     await page.evaluate(() => window.dispatchEvent(new Event('resize')))
 
-    await waitForState(page, (state) => state.scene === 'Title')
+    const titleState = await waitForState(page, (state) => state.scene === 'Title')
+    const titleEvidence = await page.evaluate(() => {
+      const scene = window.__phaserGame.scene.getScene('Title')
+      const describe = name => { const text = scene.children.getByName(name); const b = text.getBounds(); return { text: text.text, x:b.x,y:b.y,width:b.width,height:b.height } }
+      return { title:describe('identity-title'), subtitle:describe('identity-subtitle') }
+    })
+    assert.equal(titleEvidence.title.text, 'OMEGA RELAY')
+    assert.equal(titleEvidence.subtitle.text, 'EIGHT WARDENS. ONE MANUFACTURED CRISIS.')
+    assert.ok(titleEvidence.title.x >= 58 && titleEvidence.title.x + titleEvidence.title.width <= 390, 'title must fit between cyan accents')
+    assert.ok(titleEvidence.subtitle.x >= 56 && titleEvidence.subtitle.x + titleEvidence.subtitle.width <= 392, 'full subtitle must fit rail')
+    assert.ok(titleEvidence.title.y + titleEvidence.title.height < titleEvidence.subtitle.y, 'title and subtitle must not overlap')
+    await page.locator('canvas').screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     await tapKey(page, 'c')
 
     const controlsState = await waitForState(
@@ -749,7 +763,7 @@ async function runTitleControlsScenario(name) {
       (state) => Array.isArray(state.activeScenes) && state.activeScenes.includes('Controls')
     )
 
-    await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    await page.locator('canvas').screenshot({ path: path.join(scenarioDir, 'shot-1-controls.png') })
 
     await tapKey(page, 'Escape')
     const finalState = await waitForState(
@@ -757,7 +771,32 @@ async function runTitleControlsScenario(name) {
       (state) => state.scene === 'Title' && (!Array.isArray(state.activeScenes) || !state.activeScenes.includes('Controls'))
     )
 
-    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify({ controlsState, finalState }, null, 2))
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await waitForState(page, state => state.scene === 'StageSelect')
+    const stageHeader = await page.evaluate(() => {
+      const scene=window.__phaserGame.scene.getScene('StageSelect')
+      const describe=name=>{const t=scene.children.getByName(name), b=t.getBounds();return {text:t.text,x:b.x,y:b.y,width:b.width,height:b.height}}
+      const progress=scene.headerProgress.getBounds()
+      return {title:describe('identity-stage-title'),caption:describe('identity-stage-caption'),progress:{x:progress.x,y:progress.y,width:progress.width,height:progress.height}}
+    })
+    assert.equal(stageHeader.title.text,'WARDEN SELECT');assert.equal(stageHeader.caption.text,'8 WARDENS + OMEGA')
+    assert.ok(stageHeader.title.x+stageHeader.title.width<stageHeader.caption.x,'stage title and descriptor must not overlap')
+    for(const text of [stageHeader.title,stageHeader.caption]) assert.ok(text.y+text.height<=stageHeader.progress.y,'stage descriptor must fit above progress')
+    await page.locator('canvas').screenshot({ path:path.join(scenarioDir,'shot-2-stage-select.png') })
+    await tapKey(page,'Enter')
+    await waitForState(page,state=>state.scene==='Game'&&state.newPlayer?.locomotion?.grounded===true)
+    await waitForPageCheck(page,()=>!window.__phaserGame.scene.getScene('Game').cameras.main.fadeEffect.isRunning,2500,'entry fade to finish before HUD capture')
+    const gameplayState=await readState(page)
+    const expectedPrivate=fs.existsSync('assets/private/runtime/private-sprite-overrides.manifest.json')&&process.env.VITE_PUBLIC_BUILD!=='1'
+    assert.equal(gameplayState.identity.devSkinEnabled,expectedPrivate)
+    assert.equal(gameplayState.identity.heroLabel,expectedPrivate?'MEGA MAN X':'WREN')
+    assert.equal(gameplayState.spriteManifest.manifestMode,expectedPrivate?'base+private':'base')
+    assert.equal(gameplayState.spriteManifest.privateOverrideEntries>0,expectedPrivate)
+    const dialogue=await page.evaluate(()=>window.__phaserGame.scene.getScene('Game').buildDialogueLines('tutorial_sentinel','boss_intro'))
+    assert.ok(dialogue.some(line=>line.text.startsWith('WREN,')))
+    assert.ok(dialogue.some(line=>line.speakerId==='hero'&&line.speakerName==='WREN'))
+    await page.locator('canvas').screenshot({ path:path.join(scenarioDir,'shot-3-hud.png') })
+    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify({ titleState,titleEvidence,controlsState,finalState,stageHeader,gameplayState,dialogue }, null, 2))
 
     if (errors.length > 0) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
@@ -1020,6 +1059,8 @@ async function runBossRoomActivationScenario(name) {
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(finalState, null, 2))
+
+    await assertBossBoundaryLifecycle(page, scenarioDir)
 
     if (errors.length > 0) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))

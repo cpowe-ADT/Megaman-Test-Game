@@ -133,7 +133,7 @@ export function resolvePlayerPhysicsLimits(
   }
 }
 
-// The imported Mega Man X override sheets are authored facing left by default.
+// The imported developer override sheets are authored facing left by default.
 export function shouldFlipPlayerSpriteForFacing(facing: 1 | -1): boolean {
   return facing === 1
 }

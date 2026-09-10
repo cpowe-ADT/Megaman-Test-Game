@@ -30,6 +30,7 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
 
 ## Current Test Surface
 - `tests/`
+  - `identity-strings.test.ts` executes the actual frozen identity under six private/public flag combinations, checks the exact constants/eight-name map, scans source strings/comments with word boundaries, and proves stale bundled dialogue speaker names normalize to identity
   - `progression-classic.test.ts`, `upgrades.test.ts`, and `campaign-session.test.ts` cover authored worlds, mode-safe transport, actual combat/motor/shot consumers, fractional HP, and campaign timing
   - Logic, contracts, scene flow, save systems, render policy, platform rules, sprite validation, debug-state helpers
   - `tests/input-actions.test.ts` covers aggregated source edges, fast taps, immutable snapshots, hitstop queues/ownership, aliases, and persisted partial remaps
@@ -42,6 +43,7 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
   - Existing regression pages explicitly initialize a legacy Randomizer save; this preserves their original route/upgrades. Scenario 33 starts with genuinely empty storage and creates Classic through the chooser
   - `33-classic-stage-select` proves cancel-safe difficulty/mode selection, Shift eligibility, native layout bounds, a 64-character seed, tutorial clear, own reward and weakness discovery
   - `33b-classic-upgrade-runtime` proves fractional body armor and reload, helmet pose, outgoing play-time flush, two-damage enemy pellet, exact discounted-energy fire, neutral boss adapter damage and pending-charge cancellation at dialogue
+  - `8-boss-room-activation` also runs the actual controller/Arcade post-update boundary sequence at both safe edges, preserving vertical motion, body alignment, inward movement and listener cleanup. Its `shot-0.png`/`state-0.json` precede the controlled probe; `boundary-lifecycle.json` records the probe before assertions
   - `12-weapon-switch-energy` also verifies ArcSlash emits once on saber release with its own identity and zero energy cost while a special remains equipped
   - Starts a dedicated Vite smoke server with HMR/watch reloads disabled for deterministic long-run scenarios
   - `13e-input-source-lifecycle` covers repeated pause/resume, pending-charge cancellation, fast menu taps, held Enter/Escape across nested menu return, held/repeated Numpad confirmation, modal underlay isolation, and debug hooks across Game shutdown/reentry
@@ -58,6 +60,7 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
   - Launches Omega through the ninth Stage Select tile and verifies authored attacks plus phase-two transitions for every boss
   - Enforces one authoritative boss actor with exactly one visible sprite for every mission; runtime facing is exposed from the same player-target source used by attacks
   - Asserts typed boss attack starts, active lifecycle frames, action-specific animation families, motion intent, locked-facing agreement, room bounds, and authored active-hazard caps
+  - Persists `boss-movement-samples.json` before movement assertions, including raw container X, body X and horizontal velocity; the strict room bounds and sample count remain unchanged
   - Writes `output/mission-visual-sweep/summary.json` with per-mission `pass`/`fail`/`hung_after_artifacts` status and cleanup-timeout classification
 
 ## Required Gate Selection
@@ -153,3 +156,11 @@ With automation enabled, `stageDebug.grantWeapon(id)` accepts the eight warden w
 New Campaign interprets `?seed=` only when explicitly creating Randomizer. Classic always stores `classic`; existing saves are never reseeded by URL navigation. A mode-less v1 transport is Randomizer, and mismatched imports report an error without clearing the current active run. The complete current rules and legacy compatibility boundary are documented in `ARCHITECTURE.md`.
 
 Scenario `29-pellet-hits-short-enemy` isolates a live mine bot with its normal collider/HP and AI/projectile emission disabled, clears prior hostile projectiles, then requires one ordinary Buster shot to reduce that same target from 5 to 4 HP. Its retained clash trace distinguishes interception from a hitbox miss; separate projectile-clash scenarios cover interception.
+
+### Identity and private-skin preview
+
+`render_game_to_text().identity` reports the canonical title/callsign, actual HUD hero label and private-skin flag; `.spriteManifest` reports the actual loaded atlas mode and private override count. These distinguish public naming from asset selection.
+
+`4-title-controls` now captures the true native448×252 Title as `shot-0.png`, Controls as `shot-1-controls.png`, Warden Select as `shot-2-stage-select.png`, and the stage HUD as `shot-3-hud.png`. It asserts title/subtitle/header bounds, Controls return, actual HUD/manifest pairing and WREN in resolved tutorial dialogue. HUD capture waits for the actual entry fade to finish. All evidence is in `state-0.json`.
+
+Run `VITE_PUBLIC_BUILD=1 SMOKE_ONLY=4-title-controls SMOKE_PORT=4400 npm run test:smoke` to preview public naming with the base manifest and zero private overrides on a development server. An ordinary run uses private art/label only when a private manifest exists. This flag preview is not a distributable public build: Vite still copies private files into ordinary developer builds, and the base artwork awaits original-art production. Packaging/stripping validation remains Prompt04; this identity slice does not produce a flagged dist.

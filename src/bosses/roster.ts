@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import { BossBlueprint, BossId, WeaknessTable } from './types'
 
 const PX = (w: number, h: number) => ({ x: w, y: h })
@@ -117,7 +118,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   pyro_maw: {
     id: 'pyro_maw',
-    codename: 'PYRO MAW',
+    codename: IDENTITY.WARDEN_NAMES.pyro_maw.toUpperCase(),
     element: 'Fire',
     arena: 'Smelter Crucible',
     introCallout: 'INFERNAL ENGINE',
@@ -229,7 +230,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   tide_reaver: {
     id: 'tide_reaver',
-    codename: 'TIDE REAVER',
+    codename: IDENTITY.WARDEN_NAMES.tide_reaver.toUpperCase(),
     element: 'Water',
     arena: 'Pressure Lock Reservoir',
     introCallout: 'ABYSSAL HUNTER',
@@ -340,7 +341,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   volt_hopper: {
     id: 'volt_hopper',
-    codename: 'VOLT HOPPER',
+    codename: IDENTITY.WARDEN_NAMES.volt_hopper.toUpperCase(),
     element: 'Lightning',
     arena: 'Capacitor Rooftops',
     introCallout: 'KINETIC CAPACITOR',
@@ -453,10 +454,10 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   basalt_titan: {
     id: 'basalt_titan',
-    codename: 'BASALT TITAN',
+    codename: IDENTITY.WARDEN_NAMES.basalt_titan.toUpperCase(),
     element: 'Earth',
     arena: 'Faultline Forge',
-    introCallout: 'SEISMIC WARDEN',
+    introCallout: `SEISMIC ${IDENTITY.WARDEN_TERM}`,
     theme: { primary: 0x9b6b4a, accent: 0xffd7a0, glow: 0xc48c5a, trail: 0x6a4127 },
     baseStats: {
       maxHp: 36,
@@ -565,7 +566,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   ferro_blade: {
     id: 'ferro_blade',
-    codename: 'FERRO BLADE',
+    codename: IDENTITY.WARDEN_NAMES.ferro_blade.toUpperCase(),
     element: 'Metal',
     arena: 'Magnetized Foundry',
     introCallout: 'VECTOR DUELIST',
@@ -690,7 +691,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   mire_wraith: {
     id: 'mire_wraith',
-    codename: 'MIRE WRAITH',
+    codename: IDENTITY.WARDEN_NAMES.mire_wraith.toUpperCase(),
     element: 'Toxic',
     arena: 'Biohazard Labyrinth',
     introCallout: 'NEBULOUS CORRUPTOR',
@@ -801,7 +802,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   gale_vixen: {
     id: 'gale_vixen',
-    codename: 'GALE VIXEN',
+    codename: IDENTITY.WARDEN_NAMES.gale_vixen.toUpperCase(),
     element: 'Wind',
     arena: 'Aerial Skybridge',
     introCallout: 'SONIC SABOTEUR',
@@ -913,7 +914,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   glacier_ronin: {
     id: 'glacier_ronin',
-    codename: 'GLACIER RONIN',
+    codename: IDENTITY.WARDEN_NAMES.glacier_ronin.toUpperCase(),
     element: 'Ice',
     arena: 'Frozen Bastion',
     introCallout: 'CRYO SWORDMASTER',
@@ -1024,7 +1025,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   omega_core: {
     id: 'omega_core',
-    codename: 'OMEGA CORE',
+    codename: IDENTITY.ANTAGONIST_NAME,
     element: 'Normal',
     arena: 'Omega Citadel Command Vault',
     introCallout: 'CENTRAL DIRECTIVE',
