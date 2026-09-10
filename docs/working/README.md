@@ -1,7 +1,7 @@
 # Working Docs
 - Status: canonical
 - Owner scope: repo
-- Last reviewed: 2026-03-06
+- Last reviewed: 2026-09-10
 
 This folder holds useful planning and audit material that may lag behind runtime reality.
 
@@ -19,3 +19,4 @@ This folder holds useful planning and audit material that may lag behind runtime
 - `orchestrated-completion-audit.md`
 - `supervised-game-completion-plan.md`
 - `boss-animation-and-fight-rebuild-plan.md`
+- `enemy-ecology-and-variant-plan.md` — proposed enemy behavior, district routines and original variant-art plan; documentation only, no gameplay approval.

@@ -2,11 +2,11 @@
 
 ## Status: PARTIAL (list what is missing and why)
 
-Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is complete with gates and review green in the EVAL-P1-010 commit containing this handoff; phases 1.1–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
+Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; STOP 1.0b is awaiting Craig’s reply. The separate enemy ecology request is a planning supplement only; phases 1.1–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 
 ## Branch and final commit
 
-Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: the `refactor: unify scene input actions (EVAL-P1-010)` commit containing this handoff; its exact SHA is printed at STOP 1.0b and will be pinned by the next slice. Final prompt commit: pending; later slices remain.
+Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`, `refactor: unify scene input actions (EVAL-P1-010)`. Final prompt commit: pending; later slices remain.
 
 ## What changed (by area, with file paths)
 
@@ -113,6 +113,38 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 - Orchestrator independently inspected all five focused-green and four lifecycle-green PNGs plus earlier failure captures. Evidence shows HP 8 preserved, paused iframe values unchanged, shots unchanged on resume then fresh shots 0→1→2→3, and held Numpad unarmed/nonpending until release. Engineer opened all 13 focused/failure/lifecycle images through three contact sheets indexed in `output/phase-1-0b/focused-contact-manifest.txt`.
 - Visible outcome: readable selected menu rows, Title, player/shot, and separated HUD. Existing oversized touch controls, StageSelect truncation/toast/preview overflow, fade captures, and private branding remain future-phase debt. No new art or layout change belongs to this slice.
 
+### Enemy ecology planning supplement design memo — EVAL-ENEMY-PLAN-001
+
+- Understand: Craig wants deeper monsters, stage-specific behavior and features, and a world that feels alive.
+- Understand: capture that direction as a bounded implementation brief without starting the pending gameplay phases.
+- Scope: documentation only while STOP 1.0b remains pending; no Phase 1.1, runtime code, asset generation, or gameplay evidence.
+- Intended file: `docs/working/enemy-ecology-and-variant-plan.md`, explicitly marked working/proposed.
+- Index links: add the brief to `docs/README.md` and `docs/working/README.md`.
+- Durable record: link the brief from this partial handoff, a separate ledger supplement row, and `progress.md`.
+- Existing state: read the actual twelve enemy families and ten campaign stages before proposing variants.
+- Design coverage: each family needs a role, behavior change, visual distinction, telegraph, counterplay, and an observable world routine.
+- Stage coverage: each stage needs a distinct ecological purpose and a bounded encounter/variant proposal.
+- World-life rule: routines must communicate purpose while preserving readable combat and predictable collision/damage behavior.
+- Scope control: recommend a small Pyro pilot first; any broader rollout remains contingent on the existing phase reviews.
+- Architecture: reuse the typed enemy/content/animation/spawner seams; avoid new scene-local systems and Game.ts growth.
+- Graphics: original ChatGPT concepts/edits, genuine vectors only where appropriate, and reproducible source/prompt/edit/atlas lineage.
+- QA: define measurable future acceptance for telegraphs, counterplay, variants, routines, placement, and performance.
+- Failing check first: create an output-only document audit that fails before the new brief exists.
+- Audit meaning: verify document completeness, real inventory coverage, source links, scope boundaries, and future acceptance; never claim implemented monsters.
+- Synthesis: wait for Director/QA/Orchestrator recommendations before drafting the final brief.
+- Gates: focused document audit, then docs-only `npm run test` and `npm run build`; no new browser screenshots or smoke run.
+- Prior evidence: pin the completed input commit `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341` without changing its eval status.
+- Commit boundary: obtain Orchestrator draft-review feedback before the documentation commit; all gameplay/art STOPs remain pending.
+
+### Enemy ecology planning supplement completed
+
+- Draft: `docs/working/enemy-ecology-and-variant-plan.md`, indexed in `docs/README.md` and `docs/working/README.md`. All 12 real family IDs and 10 stage IDs are mapped to proposed behavior, visual distinction, tells, counterplay, local routines and future phase ownership.
+- Director/QA synthesis recommends one mine-bot family in Pyro/Mire, with two biome variants and a 2–3-screen lab before real-stage integration. The initial audit mistakenly required two families; its fixture was corrected to one family/two variants after synthesis without changing the design to satisfy that mistake. Both pre-document red logs are retained.
+- Verified prerequisite gaps are documented, including variant/presentation identity, resolution precedence, aim commitment, stun cancellation, terrain sensing, shallow validation and unconsumed animation events. No runtime correction or new asset is implemented in this supplement.
+- `EVAL-ENEMY-PLAN-001` measures documentation completeness only. It cannot approve the pilot, prove working monsters, change existing phase evals, or release the pending STOP 1.0b.
+- Orchestrator, Director and QA completed draft review. Final wording preserves ordinary contact/older projectiles, separates proposed enemy interruption from pending player-charge policy, distinguishes Phase 02 placeholder behavior from Phase 03 original art acceptance, retains archive fiction and original graphics authorization, and requires a narrow pure controller rather than an AI rewrite.
+- Engineer read the final brief and audit JSON/logs; documentation completeness and docs-only test/build gates passed below. No screenshot, smoke, runtime, or asset changes were made.
+
 ## Decisions made (each with the reason and what it forecloses)
 
 - Proposed input decision for STOP 1.0b: cancel only the pending charge when opening the system menu; require a fresh trigger after resume. This avoids deferred firing or a stuck charge without resetting health, cooldowns, or invulnerability. It forecloses banking a charge through pause; Craig can revise this at the STOP.
@@ -170,25 +202,40 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 
 | Command / check | Result line / exit | Artifact | Commit |
 | --- | --- | --- | --- |
-| Initial pure input tests | Missing `src/input/ActionState.ts`; exit 1, expected red | `output/phase-1-0b/01-input-red.log` | input slice |
-| Focused review regressions before fixes | `# pass 13`; `# fail 3`; exit 1 | `output/phase-1-0b/04-review-regressions-red.log` | input slice |
-| Initial focused smoke | `Timed out waiting for state condition (touch dash to engage) after 3000ms`; exit 1 | `output/phase-1-0b/07-focused-smoke.log`; `focused-failure-1/summary.json`; `touch-trace.json` in the same phase directory | input slice |
-| `node --loader ./tools/ts-node-loader.mjs --test tests/input-actions.test.ts tests/player-combat.test.ts` | `# pass 19`; `# fail 0`; exit 0 | `output/phase-1-0b/18-final-focused-tests.log` | input slice |
-| `SMOKE_ONLY=4c-touch-controls,6-boss-clear-numpad-return,13d-movement-feel,15-menu-audio-and-input-stability npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 4 pass, 34 filter skips, exit 0 | `output/phase-1-0b/13-focused-smoke.log`; `output/phase-1-0b/focused-touch-green/summary.json` | input slice |
-| `SMOKE_ONLY=13e-input-source-lifecycle npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1 pass, 38 filter skips, exit 0 | `output/phase-1-0b/17-lifecycle-smoke.log`; `output/phase-1-0b/lifecycle-green/summary.json` | input slice |
-| `npm run test` | `Test summary: 12 passed, 0 failed`; `# pass 198`; `# fail 0`; exit 0 | `output/phase-1-0b/19-full-test.log` | input slice |
-| `npm run build` | `✓ built in 3.43s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0b/20-full-build.log` | input slice |
-| `npm run sprites:validate` | `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`; `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`; exit 0 | `output/phase-1-0b/21-sprites-validate.log` | input slice |
-| `npm run test:smoke` | `Full smoke summary: 39/39 pass, 0 fail, 0 skipped.`; exit 0 | `output/phase-1-0b/22-full-smoke.log`; `output/phase-1-0b/full-smoke/summary.json` | input slice |
-| Repository develop-web-game client and artifact assertion | `Skill client artifacts valid: Game state, shot-0.png, 0 browser-error files; player=(81,214), shots=1.`; exit 0 | `output/phase-1-0b/24-skill-client.log`; `output/phase-1-0b/skill-client/` | input slice |
-| Source budget and required smoke audit | `Scene input audit PASS: 0 scene-owned raw key reads across src/scenes/.`; `Game size audit PASS: 3846 lines (baseline 3928; net -82).`; required 4c/13d source unchanged; only existing suppression; exit 0 | `output/phase-1-0b/25-source-audit.log` | input slice |
+| Initial pure input tests | Missing `src/input/ActionState.ts`; exit 1, expected red | `output/phase-1-0b/01-input-red.log` | `fb0e553` |
+| Focused review regressions before fixes | `# pass 13`; `# fail 3`; exit 1 | `output/phase-1-0b/04-review-regressions-red.log` | `fb0e553` |
+| Initial focused smoke | `Timed out waiting for state condition (touch dash to engage) after 3000ms`; exit 1 | `output/phase-1-0b/07-focused-smoke.log`; `focused-failure-1/summary.json`; `touch-trace.json` in the same phase directory | `fb0e553` |
+| `node --loader ./tools/ts-node-loader.mjs --test tests/input-actions.test.ts tests/player-combat.test.ts` | `# pass 19`; `# fail 0`; exit 0 | `output/phase-1-0b/18-final-focused-tests.log` | `fb0e553` |
+| `SMOKE_ONLY=4c-touch-controls,6-boss-clear-numpad-return,13d-movement-feel,15-menu-audio-and-input-stability npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 4 pass, 34 filter skips, exit 0 | `output/phase-1-0b/13-focused-smoke.log`; `output/phase-1-0b/focused-touch-green/summary.json` | `fb0e553` |
+| `SMOKE_ONLY=13e-input-source-lifecycle npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1 pass, 38 filter skips, exit 0 | `output/phase-1-0b/17-lifecycle-smoke.log`; `output/phase-1-0b/lifecycle-green/summary.json` | `fb0e553` |
+| `npm run test` | `Test summary: 12 passed, 0 failed`; `# pass 198`; `# fail 0`; exit 0 | `output/phase-1-0b/19-full-test.log` | `fb0e553` |
+| `npm run build` | `✓ built in 3.43s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0b/20-full-build.log` | `fb0e553` |
+| `npm run sprites:validate` | `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`; `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`; exit 0 | `output/phase-1-0b/21-sprites-validate.log` | `fb0e553` |
+| `npm run test:smoke` | `Full smoke summary: 39/39 pass, 0 fail, 0 skipped.`; exit 0 | `output/phase-1-0b/22-full-smoke.log`; `output/phase-1-0b/full-smoke/summary.json` | `fb0e553` |
+| Repository develop-web-game client and artifact assertion | `Skill client artifacts valid: Game state, shot-0.png, 0 browser-error files; player=(81,214), shots=1.`; exit 0 | `output/phase-1-0b/24-skill-client.log`; `output/phase-1-0b/skill-client/` | `fb0e553` |
+| Source budget and required smoke audit | `Scene input audit PASS: 0 scene-owned raw key reads across src/scenes/.`; `Game size audit PASS: 3846 lines (baseline 3928; net -82).`; required 4c/13d source unchanged; only existing suppression; exit 0 | `output/phase-1-0b/25-source-audit.log` | `fb0e553` |
 
 - The first separate skill client completed but captured StageSelect; this failed its Game-state assertion and is preserved in `skill-client-initial/` with `23-skill-client.log`. Extending startup and sending a second explicit confirm burst produced the final Game capture; no runtime change was made for client readiness.
 - Engineer opened all 44 final smoke PNGs through eight native-cell sheets (`output/phase-1-0b/contact-sheets/final-01.png` through `final-08.png`), plus the original charge-shot capture and both native skill PNGs. Dialogue, menu selection, weapon/saber shots, actor position, and separated HUD remain visible; known toast/title/touch/private-art debt is unchanged. Full PNG index: `output/phase-1-0b/final-contact-manifest.txt`.
-- QA closed final source review; Orchestrator and Director opened all eight final contact sheets covering all 44 PNGs, inspected the full 39-pass summary, and found no new input-related visual blocker. The whole final browser tree is preserved in `output/phase-1-0b/full-smoke/`; the contact manifest records original capture paths with identical preserved copies there. EVAL-P1-010 is PASS in the input commit containing this row.
+- QA closed final source review; Orchestrator and Director opened all eight final contact sheets covering all 44 PNGs, inspected the full 39-pass summary, and found no new input-related visual blocker. The whole final browser tree is preserved in `output/phase-1-0b/full-smoke/`; the contact manifest records original capture paths with identical preserved copies there. EVAL-P1-010 is PASS at `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`.
 - No new multi-mission visuals, atlas, or boss presentation changed, so the already-inspected ten-mission baseline sweep remains the relevant visual evidence. The full verify components (sprites, tests, build, smoke) all passed separately for this input slice.
 
+### Enemy planning supplement evidence — EVAL-ENEMY-PLAN-001
+
+| Command / check | Result line / exit | Artifact | Commit |
+| --- | --- | --- | --- |
+| `node output/enemy-design-plan/audit-enemy-plan.mjs` before brief | `Enemy plan documentation audit FAIL: 12 families, 10 stages, 0 future acceptance rows; 57 missing requirements.`; exit 1 | `output/enemy-design-plan/01-doc-audit-red.log`; `audit-red.json` | planning supplement |
+| Same audit after synthesis-corrected one-family pilot fixture, still before brief | `Enemy plan documentation audit FAIL: 12 families, 10 stages, 0 future acceptance rows; 57 missing requirements.`; exit 1 | `output/enemy-design-plan/02-synthesized-audit-red.log` | planning supplement |
+| Same audit after reviewed brief | `Enemy plan documentation audit PASS: 12 families, 10 stages, 10 future acceptance rows; 0 missing requirements.`; exit 0 | `output/enemy-design-plan/03-doc-audit-green.log`; `audit-green.json` | planning supplement |
+| `npm run test` | `Test summary: 12 passed, 0 failed`; `# pass 198`; `# fail 0`; exit 0 | `output/enemy-design-plan/04-docs-test.log` | planning supplement |
+| `npm run build` | `✓ built in 3.70s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/enemy-design-plan/05-docs-build.log` | planning supplement |
+
+- EVAL-ENEMY-PLAN-001 is PASS for documentation completeness only in the planning commit containing this record. It does not approve variant/pilot targets, prove working monsters, satisfy runtime/art evals, or release STOP 1.0b. Existing phase eval statuses are unchanged; the input SHA is now pinned as `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`.
+- Text and log artifacts were opened and inspected. The 132-line working brief covers all actual families/stages, source-verified prerequisites, the recommended one-family/two-biome pilot, local routines, measurable future evidence, original graphics workflow, and pending phase ownership. All gameplay and asset decisions remain for their existing STOP reviews.
+
 ## Open risks and known debt
+
+- Audited enemy attack dispatch/aim/interruption, terrain sensing and animation-event routing gaps are recorded in `docs/working/enemy-ecology-and-variant-plan.md`; they remain prerequisites for future variants, not fixes delivered by this planning supplement.
 
 - The historical scenario-29 failure did not reproduce; this slice repairs its permissive test assertion, not an unproven runtime defect.
 - `src/scenes/Game.ts` starts at 3,928 lines with the existing `@ts-nocheck`; no growth or new suppression is permitted.
@@ -202,3 +249,4 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 ## Inputs for prompt 02 (an explicit list: files to read, decisions to honor, numbers to keep)
 
 - Not ready: prompt 01 exit conditions are incomplete. Read the completed version of this file before starting prompt 02.
+- Carry `docs/working/enemy-ecology-and-variant-plan.md` into Phase 1.6 stage briefs and the completed Prompt 02/03 handoffs. Preserve Craig’s request for deeper monsters, stage-specific features and a living world; its family/variant/pilot recommendations remain pending the existing STOP reviews.

@@ -78,6 +78,7 @@ This repository uses an authority-based documentation structure. Start here when
 | `docs/working/consultant-audit.md` | working | UX and pipeline audit findings |
 | `docs/working/orchestrated-completion-audit.md` | working | Five-persona completion audit, ticket backlog, and three-shot execution plan |
 | `docs/working/supervised-game-completion-plan.md` | working | Current supervised, staged plan for save, combat, content, story, visual, and release completion |
+| `docs/working/enemy-ecology-and-variant-plan.md` | working | Proposed enemy families, district routines, readable variants and bounded pilot; planning only, existing STOPs remain pending |
 | `docs/working/boss-animation-and-fight-rebuild-plan.md` | working | Code-based plan for grounded/intentional-aerial boss motion, action-specific animation, original sprite production, fight strategy, and arena dynamics |
 | `docs/working/README.md` | canonical | repo | Local index and usage rules for working docs |
 | `docs/prompts/README.md` | working | Completion prompt package: orchestrator charter, four build prompts, eval ledger, handoffs. Start here to finish the game. |
