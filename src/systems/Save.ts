@@ -377,6 +377,12 @@ export const Save = {
   clearAll(): void {
     persist({ ...FALLBACK, ...createFreshProgressionState('classic', 'classic') })
   },
+  /** Removes the campaign entirely, so the next launch is a first launch. */
+  deleteAll(): void {
+    memoryCache = null
+    const storage = getStorage()
+    try { storage?.removeItem(KEY) } catch (error) { console.warn('Failed to delete save data', error) }
+  },
   startNewCampaign(options: { mode?: ProgressionMode; seed?: string; difficulty?: Difficulty } = {}): void {
     persist({ ...FALLBACK, stats: freshStatistics(), difficulty: options.difficulty ?? 'normal', ...createFreshProgressionState(options.seed ?? 'classic', options.mode ?? 'classic') })
   },

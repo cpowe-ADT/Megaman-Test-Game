@@ -11,7 +11,7 @@ export const DEFAULT_BINDINGS: InputBindings = Object.freeze({
 })
 export const SHORTCUT_BINDINGS = {
   pagePrev: ['KeyQ'], pageNext: ['KeyE'], checkpointNext: ['KeyL'], checkpointPrev: ['KeyR'],
-  tutorial: ['KeyT'], finalRoute: ['KeyF'], newCampaign: ['KeyN'], controls: ['KeyC'],
+  tutorial: ['KeyT'], finalRoute: ['KeyF'], newCampaign: ['KeyN'], controls: ['KeyC'], options: ['KeyO'],
   copyProgression: ['KeyC'], downloadProgression: ['KeyD'], pasteProgression: ['KeyV'], uploadProgression: ['KeyU'],
   debugOverlay: ['Backquote'], debugDump: ['KeyD'], debugPhysics: ['Backslash'], debugPlayer: ['F2'],
   modifier: ['ShiftLeft', 'ShiftRight']

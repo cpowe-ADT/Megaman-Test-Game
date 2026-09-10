@@ -11,7 +11,7 @@ import { SystemMenu } from './scenes/SystemMenu'
 import { ControlsScene } from './scenes/ControlsScene'
 import { ProgressionSummaryScene } from './scenes/ProgressionSummaryScene'
 import GameOverScene from './scenes/GameOverScene'
-import PauseScene from './scenes/PauseScene'
+import { OptionsScene } from './scenes/OptionsScene'
 import { EndingScene } from './scenes/EndingScene'
 import { PrologueScene } from './scenes/PrologueScene'
 import { Settings } from './systems/Settings'
@@ -50,7 +50,7 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   pixelArt: STRICT_PIXEL_RENDER_POLICY.pixelArt,
-  scene: [Boot, Preload, Title, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, PauseScene, GameOverScene, PrologueScene, EndingScene]
+  scene: [Boot, Preload, Title, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, GameOverScene, PrologueScene, EndingScene, OptionsScene]
 }
 
 ;(config as any).resolution = runtimeResolution
@@ -239,6 +239,11 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     hasActiveRun: Boolean(saveState.activeRun)
   }
   if (scene.scene.key === 'Prologue') payload.prologue = (scene as any).getDebugState?.() ?? null
+  const systemMenu = activeScenes.find((active) => active.scene.key === 'SystemMenu') as any
+  if (systemMenu) payload.systemMenu = systemMenu.getDebugState?.() ?? null
+  const optionsScene = activeScenes.find((active) => active.scene.key === 'Options') as any
+  if (optionsScene) payload.options = optionsScene.getDebugState?.() ?? null
+  if (scene.scene.key === 'GameOver') payload.gameOver = (scene as any).getDebugState?.() ?? null
   if (scene.scene.key === 'EndingScene') payload.ending = (scene as any).getDebugState?.() ?? null
   if (scene.scene.key === 'StageSelect') payload.dialogue = (scene as any).dialogueOverlay?.getDebugState?.() ?? { active: false }
 

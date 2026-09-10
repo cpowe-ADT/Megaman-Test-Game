@@ -95,7 +95,7 @@ export class HUD {
     this.tLives = mkText(
       scene.scale.width - 20,
       scene.scale.height - 12,
-      'LIVES ×03',
+      'RETRY ×03',
       10,
       1,
       1
@@ -123,7 +123,7 @@ export class HUD {
 
   setLives(n: number): void {
     const count = Math.max(0, n)
-    this.tLives.setText(`LIVES ×${count.toString().padStart(2, '0')}`)
+    this.tLives.setText(`RETRY ×${count.toString().padStart(2, '0')}`)
   }
 
   drawBar(

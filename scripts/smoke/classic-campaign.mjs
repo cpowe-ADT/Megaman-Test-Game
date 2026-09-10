@@ -182,7 +182,8 @@ export async function runClassicUpgradeScenario(name, { outputDir, titleUrl, rea
       return {before,after:scene.bossHp.current}
     })
     assert.equal(evidence.boss.before-evidence.boss.after,2)
-    await page.evaluate(()=>{ window.stageDebug.grantUpgrade('arc_slash');window.__phaserGame.scene.getScene('Game').scene.restart({stageId:'pyro_maw',bossId:'pyro_maw'}) })
+    // The boss intro was already seen this session; story replay must be on for it to play again after the restart.
+    await page.evaluate(()=>{ localStorage.setItem('settings.v1',JSON.stringify({storyReplay:true}));window.stageDebug.grantUpgrade('arc_slash');window.__phaserGame.scene.getScene('Game').scene.restart({stageId:'pyro_maw',bossId:'pyro_maw'}) })
     await waitForState(page,s=>s.scene==='Game'&&!s.stageRuntime.bossEncounterActive&&s.newPlayer?.locomotion?.grounded)
     await page.evaluate(()=>window.__phaserGame.scene.getScene('Game').newPlayerRuntime.resetForRespawn(30000))
     if((await readState(page)).playerState.weapon!=='Buster') await tapKey(page,'q')

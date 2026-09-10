@@ -15,6 +15,9 @@ import { bossHudLabel } from '../bosses/types'
 import { installGameDebugHooks, uninstallGameDebugHooks } from './game/GameDebugHooks'
 import { StoryDirector, pendingMilestoneId } from './game/StoryDirector'
 import { ToastLane } from '../ui/ToastLane'
+import { Settings } from '../systems/Settings'
+import { drinkSubTank, fillSubTankFromPickup } from '../systems/subTanks'
+import type { PauseInventory } from './menu/systemMenuSelector'
 import { getBossDefinitionById } from '../boss/config'
 import {
   countClearedRobotMasters,
@@ -88,7 +91,6 @@ import { BossSceneEventBindings } from '../boss/framework/BossSceneEventBindings
 import { BossUIBinder } from '../boss/framework/BossUIBinder'
 import { JumpController } from './game/JumpController'
 import { evaluatePauseState } from './game/pauseLogic'
-import PauseScene from './PauseScene'
 import GameOverScene from './GameOverScene'
 import type { SystemMenuAction } from './menu/systemMenuSelector'
 import {
@@ -175,6 +177,7 @@ export class Game extends Phaser.Scene {
   }
 
   private onCameraShake = (config: { intensity: number; duration: number }) => {
+    if (!Settings.get().screenShake) return
     this.cameras.main.shake(config.duration, config.intensity)
   }
 
@@ -370,6 +373,7 @@ export class Game extends Phaser.Scene {
   }
   private bossUsingPlaceholder = false
   private storyDirector?: StoryDirector
+  private selectedSubTank = 0
   private toastLane?: ToastLane
   private stageBackgroundLayers: Phaser.GameObjects.TileSprite[] = []
   private stageBackgroundBackdrop?: Phaser.GameObjects.Graphics
@@ -682,6 +686,7 @@ export class Game extends Phaser.Scene {
     this.currentCheckpointId = nextCheckpoint.id
     this.flushStatistics()
     Save.unlockCheckpoint(this.activeStageId, nextCheckpoint.id)
+    this.autosaveActiveRun()
     this.progressionSave = Save.load()
     if (this.storyDirector) {
       this.storyDirector.onCheckpoint(this.currentCheckpointIndex, nextCheckpoint)
@@ -1466,9 +1471,6 @@ export class Game extends Phaser.Scene {
     })
 
     const manager = this.scene.manager
-    if (!manager.keys['Pause']) {
-      this.scene.add('Pause', PauseScene, false)
-    }
     if (!manager.keys['GameOver']) {
       this.scene.add('GameOver', GameOverScene, false)
     }
@@ -1819,6 +1821,7 @@ export class Game extends Phaser.Scene {
     this.spawnProgressionPickups(stageId)
     this.applyActiveRunSnapshot(activeRun)
     this.flushPendingProgressionItems()
+    if (!activeRun) this.autosaveActiveRun()
     this.currentPhaseName = this.bossController.currentPhase.name.toUpperCase()
     this.phaseLabel.setText('BOSS GATE\nADVANCE')
     this.bossSceneEvents?.destroy()
@@ -2615,10 +2618,76 @@ export class Game extends Phaser.Scene {
       return
     }
 
+    if (action === 'sub_tank') {
+      this.drinkSelectedSubTank()
+      return
+    }
+
     if (action === 'stage_select') {
+      Save.clearActiveRun()
       this.setPaused(false)
       this.handleReturnToStageSelect('menu-exit')
     }
+  }
+
+  /** Pause-menu cycle rows: the weapon row equips as it cycles; the sub-tank row selects a tank. */
+  onSystemMenuCycle(action: SystemMenuAction, delta: number): void {
+    if (action === 'weapon') {
+      this.changeWeapon(delta)
+      return
+    }
+    if (action === 'sub_tank') {
+      const count = this.progressionSave.subTankFill?.length ?? 0
+      if (count > 0) this.selectedSubTank = (this.selectedSubTank + delta + count) % count
+    }
+  }
+
+  getPauseInventory(): PauseInventory {
+    const fills = [...(this.progressionSave.subTankFill ?? [])]
+    return {
+      weapons: this.weapons.map((weaponId) => {
+        const config = getWeaponConfig(weaponId)
+        return {
+          id: weaponId,
+          label: getWeaponDisplayName(weaponId),
+          energy: { current: Math.round(this.weaponEnergyById[weaponId] ?? config.maxEnergy), max: config.maxEnergy }
+        }
+      }),
+      currentWeaponIndex: this.currentWeaponIndex,
+      subTankFill: fills,
+      selectedSubTank: Math.min(this.selectedSubTank, Math.max(0, fills.length - 1)),
+      heartTanks: this.progressionSave.heartTanks ?? 0,
+      upgrades: [...(this.progressionSave.upgradeUnlocks ?? [])]
+    }
+  }
+
+  /** Drinks the selected tank: heals its fill ratio of max HP over 900ms and empties it. */
+  private drinkSelectedSubTank(): boolean {
+    const fills = this.progressionSave.subTankFill ?? []
+    const { fills: next, restoredRatio } = drinkSubTank(fills, this.selectedSubTank)
+    if (restoredRatio <= 0) return false
+    Save.setSubTankFill(next)
+    this.progressionSave = Save.load()
+    const total = restoredRatio * this.playerMaxHp
+    const steps = 6
+    let applied = 0
+    AudioService.playSfx('pickup_health')
+    this.time.addEvent({
+      delay: 150,
+      repeat: steps - 1,
+      callback: () => {
+        const target = Math.round((total * (applied + 1)) / steps * 100) / 100
+        this.restorePlayerHealth(target - Math.round(applied * 100) / 100)
+        applied = target
+      }
+    })
+    return true
+  }
+
+  private autosaveActiveRun(): boolean {
+    if (this.victoryTriggered || this.gameOverTriggered) return false
+    const snapshot = this.captureActiveRunSnapshot()
+    return snapshot ? Save.saveActiveRun(snapshot) : false
   }
 
   private handleReturnToStageSelect(
@@ -2714,11 +2783,8 @@ export class Game extends Phaser.Scene {
     AudioService.stopMusic()
     AudioService.playSfx('game_over')
     const stageId = ((this as any).stageId as string | undefined) ?? 'unknown'
-    if (this.scene.manager.keys['Pause']) {
-      this.scene.stop('Pause')
-    }
     if (this.scene.manager.keys['GameOver']) {
-      this.scene.start('GameOver', { stageId })
+      this.scene.start('GameOver', { stageId, checkpointId: this.currentCheckpointId ?? null })
     }
   }
   // [REGION: FLOW-HOOKS - END]
@@ -3062,6 +3128,13 @@ export class Game extends Phaser.Scene {
     const next = Phaser.Math.Clamp(this.playerHp + amount, 0, this.playerMaxHp)
     const restored = next - this.playerHp
     if (restored <= 0) {
+      // Health collected at full HP fills the first non-full sub tank.
+      const fills = this.progressionSave.subTankFill ?? []
+      const stored = fillSubTankFromPickup(fills, amount / Math.max(1, this.playerMaxHp))
+      if (stored.stored) {
+        Save.setSubTankFill(stored.fills)
+        this.progressionSave = Save.load()
+      }
       return 0
     }
     this.playerHp = next
@@ -3422,6 +3495,7 @@ export class Game extends Phaser.Scene {
         this.resumeRespawnCombatState()
         this.syncWeaponHud()
         this.fallingToDeath = false
+        this.autosaveActiveRun()
       })
     } else {
       this.fallingToDeath = false

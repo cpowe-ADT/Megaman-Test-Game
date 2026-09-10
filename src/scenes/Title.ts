@@ -62,11 +62,11 @@ export class Title extends Phaser.Scene {
       letterSpacing: 0.5
     }).setOrigin(0.5).setName('identity-subtitle')
 
-    const primaryLabel = Save.hasActiveRun()
-      ? 'Continue active mission'
-      : saveData.tutorialCleared
-        ? `Open ${IDENTITY.WARDEN_TERM} Select`
-        : 'Begin the Sentinel tutorial'
+    const minutes = Math.floor((saveData.stats?.playTimeMs ?? 0) / 60000)
+    const playTime = `${Math.floor(minutes / 60)}H ${String(minutes % 60).padStart(2, '0')}M`
+    const primaryLabel = !Save.exists()
+      ? 'Begin a new campaign'
+      : `Continue  ${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(saveData)}/8  ${playTime}`
 
     this.add.rectangle(width / 2, 116, width - 92, 51, 0x081a34, 0.96)
       .setStrokeStyle(1, MENU_COLORS.cyan, 0.75)
@@ -101,7 +101,7 @@ export class Title extends Phaser.Scene {
       letterSpacing: 1
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 193, 'ENTER  DEPLOY     C  CONTROLS     N  NEW CAMPAIGN     ESC  CLEAR RUN', {
+    this.add.text(width / 2, 193, 'ENTER  DEPLOY     C  CONTROLS     O  OPTIONS     N  NEW CAMPAIGN     ESC  CLEAR RUN', {
       fontFamily: MENU_FONT_CODE,
       fontSize: '8px',
       color: '#a9c9f2',
@@ -149,6 +149,12 @@ export class Title extends Phaser.Scene {
     const controlsHandler = () => this.openControls()
     InputActions.forScene(this).onPressed('newCampaign', newCampaignHandler)
     InputActions.forScene(this).onPressed('controls', controlsHandler)
+    InputActions.forScene(this).onPressed('options', () => {
+      AudioService.unlock()
+      AudioService.playSfx('ui_confirm')
+      this.scene.launch('Options', { returnSceneKey: 'Title' })
+      this.scene.pause()
+    })
   }
 
   private openControls(): void {

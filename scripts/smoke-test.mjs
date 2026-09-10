@@ -1,5 +1,6 @@
 import { runInputFocusLossScenario } from './smoke/input-focus-loss.mjs'
 import { runEndingFlowScenario, runPrologueFlowScenario, runRadioTickerScenario, runStoryReplaySkipScenario } from './smoke/story-surfaces.mjs'
+import { runOptionsPersistScenario, runPauseWeaponSelectScenario, runTitleContinueScenario } from './smoke/pause-options.mjs'
 import { assertBossBoundaryLifecycle } from './smoke/boss-boundary-lifecycle.mjs'
 import assert from 'node:assert/strict'
 import { runClassicCampaignScenario, runClassicUpgradeScenario } from './smoke/classic-campaign.mjs'
@@ -864,7 +865,7 @@ async function runStageSelectProgressionSummaryScenario(name) {
       if (!menu) {
         return
       }
-      menu.index = 1
+      menu.index = Math.max(0, menu.options.findIndex((option) => option.id === 'progression'))
       menu.updateCursor?.()
       menu.activateSelection?.()
     })
@@ -3508,6 +3509,10 @@ async function main() {
     await executeSmokeScenario(summary, '35-radio-ticker', () => runRadioTickerScenario('35-radio-ticker', storyDeps))
     await executeSmokeScenario(summary, '36-ending-flow', () => runEndingFlowScenario('36-ending-flow', storyDeps))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
+    const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }
+    await executeSmokeScenario(summary, '38-options-persist', () => runOptionsPersistScenario('38-options-persist', pauseDeps))
+    await executeSmokeScenario(summary, '38b-pause-weapon-select', () => runPauseWeaponSelectScenario('38b-pause-weapon-select', pauseDeps))
+    await executeSmokeScenario(summary, '38c-title-continue-autosave', () => runTitleContinueScenario('38c-title-continue-autosave', pauseDeps))
     await executeSmokeScenario(summary, '13f-input-focus-loss', () => runInputFocusLossScenario('13f-input-focus-loss', { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }))
 
     await executeSmokeScenario(summary, '14-completion-return-flow', () =>

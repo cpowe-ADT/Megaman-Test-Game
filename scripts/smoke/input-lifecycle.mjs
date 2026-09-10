@@ -24,9 +24,10 @@ export async function runInputLifecycleScenario(name, { openGameplayPage, closeG
       assert.equal((await readState(page)).newPlayer.combat.charging, false)
       assert.equal(await page.evaluate(() => window.__phaserGame.scene.getScenes(true).filter(s => s.scene.key === 'SystemMenu').length), 1)
       const index = await menuIndex()
+      const menuLength = await page.evaluate(() => window.__phaserGame.scene.getScene('SystemMenu').options.length)
       await page.keyboard.press('ArrowDown') // fast complete tap must survive between frames
       await advanceFrames(page, 3)
-      assert.equal(await menuIndex(), (index + 1) % 8)
+      assert.equal(await menuIndex(), (index + 1) % menuLength)
       await page.keyboard.down('ArrowRight')
       await advanceFrames(page, 4)
       await page.keyboard.up('x')
@@ -36,6 +37,12 @@ export async function runInputLifecycleScenario(name, { openGameplayPage, closeG
       assert.equal(shots(underlay), shots(before))
       if (cycle === 0) {
         // Enter Controls using the live menu selection, then hold Escape across resume.
+        const controlsSteps = await page.evaluate(() => {
+          const menu = window.__phaserGame.scene.getScene('SystemMenu')
+          const target = menu.options.findIndex((option) => option.id === 'controls')
+          return (target - menu.index + menu.options.length) % menu.options.length
+        })
+        for (let step = 0; step < controlsSteps; step += 1) await tapKey(page, 'ArrowDown')
         await tapKey(page, 'Enter')
         await waitForPageCheck(page, () => window.__phaserGame.scene.isActive('Controls'))
         await page.keyboard.down('Escape')
@@ -94,7 +101,8 @@ export async function runInputLifecycleScenario(name, { openGameplayPage, closeG
     await tapKey(page, 'l')
     await tapKey(page, 't')
     await advanceFrames(page, 5)
-    assert.equal(await menuIndex(), (routeMenuIndex + 1) % 6)
+    const routeMenuLength = await page.evaluate(() => window.__phaserGame.scene.getScene('SystemMenu').options.length)
+    assert.equal(await menuIndex(), (routeMenuIndex + 1) % routeMenuLength)
     const selectionAfter = (await readState(page)).stageSelect
     assert.equal(selectionAfter.index, selectionBefore.index)
     assert.equal(selectionAfter.selectedCheckpointId, selectionBefore.selectedCheckpointId)
