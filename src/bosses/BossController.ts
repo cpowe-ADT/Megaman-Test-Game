@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_WIDTH } from '../config/renderPolicy'
 import { computeBossBodyOffset, measureContactOffset } from './bossBodyAlignment'
 import { BossBlueprint, AttackPattern, type BossGroundReport, type BossId } from './types'
 import { ArenaController } from '../boss/framework/ArenaController'
@@ -113,7 +114,7 @@ export class BossController extends Phaser.GameObjects.Container {
     this.introLocked = !!config.lockIntro
     this.movementBounds = config.movementBounds ?? {
       minX: 16,
-      maxX: scene.scale.width - 16
+      maxX: GAME_WIDTH - 16
     }
     this.getActiveHazardCount = config.getActiveHazardCount ?? (() => 0)
 

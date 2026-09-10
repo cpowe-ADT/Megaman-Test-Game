@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_HEIGHT } from '../config/renderPolicy'
 import {
   shouldCollideWithOneWayPlatform,
   type OneWayCollisionProbe
@@ -172,7 +173,7 @@ export class PlatformCollisionSystem {
 
     const standingOnOneWay = this.isStandingOnOneWay(target)
     if (!standingOnOneWay) {
-      const mainGroundTop = this.scene.scale.height - 16
+      const mainGroundTop = GAME_HEIGHT - 16
       if (body.bottom >= mainGroundTop - 1) {
         return false
       }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_WIDTH, GAME_HEIGHT } from '../config/renderPolicy'
 import AudioService from '../audio'
 import { AUTOMATION } from '../config/automation'
 import { getCampaignStage } from '../content/campaign'
@@ -194,7 +195,7 @@ export class EndingScene extends Phaser.Scene {
     this.speakerText.setText('')
     this.bodyText.setText(`${IDENTITY.ANTAGONIST_NAME} DEFEATED\n\nThe districts choose their future.`)
     this.footer.setText('')
-    addMenuPanel(this, this.scale.width / 2, this.scale.height / 2, 260, 70, 0.0)
+    addMenuPanel(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 260, 70, 0.0)
     this.cameras.main.fadeOut(420, 5, 9, 19)
     this.time.delayedCall(440, () => this.scene.start('Title'))
   }

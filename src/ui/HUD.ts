@@ -1,4 +1,5 @@
 import { IDENTITY } from '../content/identity'
+import { GAME_WIDTH, GAME_HEIGHT } from '../config/renderPolicy'
 import Phaser from 'phaser'
 import { getHudLayout } from './hudLayout'
 
@@ -82,7 +83,7 @@ export class HUD {
     this.gBoss = scene.add.graphics().setScrollFactor(0)
     this.root.add(this.gBoss)
 
-    const layout = getHudLayout(scene.scale.width)
+    const layout = getHudLayout(GAME_WIDTH)
     this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, 9)
     this.root.add(this.tPlayer)
 
@@ -93,8 +94,8 @@ export class HUD {
     this.root.add(this.tBoss)
 
     this.tLives = mkText(
-      scene.scale.width - 20,
-      scene.scale.height - 12,
+      GAME_WIDTH - 20,
+      GAME_HEIGHT - 12,
       'RETRY ×03',
       10,
       1,
@@ -169,19 +170,19 @@ export class HUD {
 
   updatePlayerHp(cur: number, max: number): void {
     this.playerSnapshot = { current: cur, max }
-    const bar = getHudLayout(this.scene.scale.width).playerBar
+    const bar = getHudLayout(GAME_WIDTH).playerBar
     this.drawBar(this.gPlayer, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0x63ff88)
   }
 
   updateWeapon(cur: number, max: number): void {
     this.weaponSnapshot = { current: cur, max }
-    const bar = getHudLayout(this.scene.scale.width).weaponBar
+    const bar = getHudLayout(GAME_WIDTH).weaponBar
     this.drawBar(this.gWeapon, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, this.weaponColor)
   }
 
   updateBossHp(cur: number, max: number): void {
     this.bossSnapshot = { current: cur, max }
-    const bar = getHudLayout(this.scene.scale.width).bossBar
+    const bar = getHudLayout(GAME_WIDTH).bossBar
     this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0xff6677)
     this.gBoss.setVisible(this.bossBarVisible)
     this.tBoss.setVisible(true)
@@ -197,9 +198,9 @@ export class HUD {
 
   resize(): void {
     this.drawChrome()
-    const layout = getHudLayout(this.scene.scale.width)
+    const layout = getHudLayout(GAME_WIDTH)
     this.tBoss.setPosition(layout.bossLabel.x, layout.bossLabel.y)
-    this.tLives.setPosition(this.scene.scale.width - 20, this.scene.scale.height - 12)
+    this.tLives.setPosition(GAME_WIDTH - 20, GAME_HEIGHT - 12)
     this.tPlayer.setPosition(layout.playerLabel.x, layout.playerLabel.y)
     this.tWeapon.setPosition(layout.weaponLabel.x, layout.weaponLabel.y)
     this.tPlayer.setText(this.playerName)
@@ -218,7 +219,7 @@ export class HUD {
   }
 
   private drawChrome(): void {
-    const width = this.scene.scale.width
+    const width = GAME_WIDTH
     const layout = getHudLayout(width)
     this.gChrome.clear()
     this.gChrome.fillStyle(0x030913, 0.96)

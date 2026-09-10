@@ -166,7 +166,7 @@ export class SystemMenu extends Phaser.Scene {
     })
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      const hitIndex = this.rows.findIndex((row) => row.getBounds().contains(pointer.x, pointer.y))
+      const hitIndex = this.rows.findIndex((row) => row.getBounds().contains(pointer.worldX, pointer.worldY))
       if (hitIndex >= 0) {
         AudioService.unlock()
         this.index = hitIndex

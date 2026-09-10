@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_HEIGHT } from '../config/renderPolicy'
 import { EnemyEntity } from './EnemyEntity'
 import { EnemyCatalog } from './EnemyCatalog'
 import { EnemyDebugOverlay } from './EnemyDebugOverlay'
@@ -242,7 +243,7 @@ export class EnemySpawner {
     const playerX = this.context.player.x
     const retireTriggerX = marker.retireTriggerX ?? marker.x + 128
     const lagBehindPx = playerX - entity.sprite.x
-    const fellOutOfStage = entity.sprite.y >= this.context.scene.scale.height + 96
+    const fellOutOfStage = entity.sprite.y >= GAME_HEIGHT + 96
 
     return fellOutOfStage || (playerX >= retireTriggerX && lagBehindPx >= 72)
   }

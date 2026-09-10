@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_WIDTH, GAME_HEIGHT } from '../config/renderPolicy'
 import InputActions from '../input/InputActions'
 import { AUTOMATION } from '../config/automation'
 import { DigitalButtonPad, type DigitalButtonName } from '../input/DigitalButtonPad'
@@ -263,8 +264,8 @@ export class GameplayTouchControls {
   }
 
   private layout(): void {
-    const width = this.scene.scale.width
-    const height = this.scene.scale.height
+    const width = GAME_WIDTH
+    const height = GAME_HEIGHT
     const leftAnchor = { x: 24, y: height - 66 }
     const rightAnchor = { x: width - 92, y: height - 70 }
 

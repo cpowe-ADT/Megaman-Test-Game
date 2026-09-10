@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_WIDTH } from '../config/renderPolicy'
 import InputActions from '../input/InputActions'
 
 type ReturnToStageSelectOptions = {
@@ -41,7 +42,7 @@ function safePrepareSceneTransition(scene: Phaser.Scene): void {
 }
 
 export function showToast(scene: Phaser.Scene, message: string, durationMs = 1800): Phaser.GameObjects.Container {
-  const width = scene.scale.width
+  const width = GAME_WIDTH
   const y = scene.scene.key === 'StageSelect' ? 80 : scene.scene.key === 'Title' ? 58 : 20
   const container = scene.add.container(width / 2, y)
   container.setDepth(3000)

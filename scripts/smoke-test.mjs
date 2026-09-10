@@ -2,6 +2,7 @@ import { runInputFocusLossScenario } from './smoke/input-focus-loss.mjs'
 import { runEndingFlowScenario, runPrologueFlowScenario, runRadioTickerScenario, runStoryReplaySkipScenario } from './smoke/story-surfaces.mjs'
 import { runOptionsPersistScenario, runPauseWeaponSelectScenario, runTitleContinueScenario } from './smoke/pause-options.mjs'
 import { runBossGroundingScenario } from './smoke/boss-grounding.mjs'
+import { runHdRenderScenario } from './smoke/hd-render.mjs'
 import { assertBossBoundaryLifecycle } from './smoke/boss-boundary-lifecycle.mjs'
 import assert from 'node:assert/strict'
 import { runClassicCampaignScenario, runClassicUpgradeScenario } from './smoke/classic-campaign.mjs'
@@ -1745,7 +1746,12 @@ async function runMovementFeelScenario(name) {
         vx: Number(state?.player?.vx ?? 0),
         x: Number(state?.player?.x ?? 0),
         dashing: Boolean(state?.newPlayer?.locomotion?.dashing),
-        dashMs: Number(state?.newPlayer?.locomotion?.dashMs ?? 0)
+        dashMs: Number(state?.newPlayer?.locomotion?.dashMs ?? 0),
+        locomotion: state?.newPlayer?.locomotion ?? null,
+        input: state?.newPlayer?.input ?? state?.input ?? null,
+        ticker: state?.ticker ?? null,
+        story: state?.story ?? null,
+        dialogue: state?.dialogue ?? null
       })
     }
     await page.keyboard.up('z')
@@ -1774,7 +1780,13 @@ async function runMovementFeelScenario(name) {
           upgradeUnlocks: enableSpeedster ? [...upgrades, 'chip_speedster'] : upgrades
         }
         scene.applyProgressionMovementModifiers()
-        scene.newPlayerRuntime.resetForRespawn(0)
+        // The trace measures the motor alone. Enemy contact during the dash used to trigger
+        // hit-stop, which pauses physics and defers button presses, so the second dash never
+        // started. Long i-frames, no live enemies and a cleared hit-stop keep the trace pure.
+        scene.hitstopRemainingFrames = 0
+        scene.physics?.world?.resume?.()
+        scene.enemies?.clear?.(true, true)
+        scene.newPlayerRuntime.resetForRespawn(60000)
         scene.player.setPosition(180, scene.player.y)
         scene.player.body.setVelocity(0, 0)
         return {
@@ -1838,6 +1850,10 @@ async function runMovementFeelScenario(name) {
     const peak = (trace) => Math.max(...trace.map((sample) => Math.abs(sample.vx)))
     const basePeak = peak(baseTrace)
     const speedsterPeak = peak(speedsterTrace)
+    fs.writeFileSync(
+      path.join(scenarioDir, 'dash-traces.json'),
+      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, playerAfter: (await readState(page))?.newPlayer ?? null }, null, 2)
+    )
     if (baseLimits.maxVelocityX !== 320 || basePeak < 315 || basePeak > 321) {
       throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} peak=${basePeak}.`)
     }
@@ -3524,6 +3540,9 @@ async function main() {
     )
     await executeSmokeScenario(summary, '39-boss-grounded', () =>
       runBossGroundingScenario('39-boss-grounded', { openGameplayPage, closeGameplayPage, waitForState, waitForPageCheck, advanceFrames })
+    )
+    await executeSmokeScenario(summary, '40-hd-render', () =>
+      runHdRenderScenario('40-hd-render', { outputDir, url, readState, waitForState, advanceFrames, tapKey })
     )
     await executeSmokeScenario(summary, '15-menu-audio-and-input-stability', () =>
       runMenuAudioInputScenario('15-menu-audio-and-input-stability')

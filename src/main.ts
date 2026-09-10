@@ -17,7 +17,8 @@ import { PrologueScene } from './scenes/PrologueScene'
 import { Settings } from './systems/Settings'
 import { Save } from './systems/Save'
 import { AUTOMATION } from './config/automation'
-import { GAME_HEIGHT, GAME_WIDTH, resolveGameZoom, STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
+import { GAME_HEIGHT, GAME_WIDTH, STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
+import { describeRenderView, installHdRendering, resolveRenderScale } from './config/hdRender'
 import { resolvePlayerFeatureFlags } from './player/featureFlags'
 import { summarizeSpriteKinematics } from './tools/debug/StateSnapshot'
 import { getStageContentRetentionReport } from './content/campaign'
@@ -25,6 +26,13 @@ import { getStageContentRetentionReport } from './content/campaign'
 const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
 const rendererType = query?.get('renderer') === 'canvas' ? Phaser.CANVAS : Phaser.AUTO
 const runtimeResolution = STRICT_PIXEL_RENDER_POLICY.resolution
+// Automation pins the device pixel ratio to 1 so a 448x252 viewport renders exactly one canvas pixel per game pixel.
+const forceDprOne = query?.get('automation') === '1'
+const measureRenderScale = () =>
+  typeof window !== 'undefined'
+    ? resolveRenderScale(window.innerWidth, window.innerHeight, window.devicePixelRatio ?? 1, forceDprOne)
+    : { zoom: 1, dpr: 1, scale: 1 }
+const initialRenderScale = measureRenderScale()
 
 const config: Phaser.Types.Core.GameConfig = {
   type: rendererType,
@@ -36,12 +44,14 @@ const config: Phaser.Types.Core.GameConfig = {
     roundPixels: STRICT_PIXEL_RENDER_POLICY.roundPixels
   },
   scale: {
-    // NONE plus an integer zoom keeps every pixel and glyph crisp; FIT produced fractional scales and blurry text.
+    // The canvas is created at device resolution (448x252 times zoom times devicePixelRatio) and each
+    // scene camera zooms by the same factor, so pixel art stays on whole device pixels while text renders HD.
+    // The CSS zoom of 1/dpr maps that canvas back to CSS pixels. See config/hdRender.ts.
     mode: Phaser.Scale.NONE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
-    zoom: typeof window !== 'undefined' ? resolveGameZoom(window.innerWidth, window.innerHeight) : 1
+    width: Math.round(GAME_WIDTH * initialRenderScale.scale),
+    height: Math.round(GAME_HEIGHT * initialRenderScale.scale),
+    zoom: 1 / initialRenderScale.dpr
   },
   physics: {
     default: 'arcade',
@@ -58,15 +68,9 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config)
 
-function applyGameZoom(): void {
-  if (typeof window === 'undefined') return
-  const zoom = resolveGameZoom(window.innerWidth, window.innerHeight)
-  if (Math.abs(game.scale.zoom - zoom) > 0.001) game.scale.setZoom(zoom)
-  game.scale.refresh()
-}
+const hdRendering = installHdRendering(game, { measure: measureRenderScale })
 if (typeof window !== 'undefined') {
-  window.addEventListener('resize', applyGameZoom)
-  applyGameZoom()
+  window.addEventListener('resize', () => hdRendering.refresh())
 }
 
 type DebugWindow = Window & {
@@ -229,6 +233,7 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     scene: scene.scene.key,
     activeScenes: activeScenes.map((activeScene) => activeScene.scene.key),
     ready: true,
+    view: describeRenderView(targetGame, scene),
     identity: { title: IDENTITY.GAME_TITLE, heroCallsign: IDENTITY.HERO_CALLSIGN,
       devSkinEnabled: IDENTITY.DEV_SKIN.enabled,
       heroLabel: (scene as any).hud?.tPlayer?.text ?? null },

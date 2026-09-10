@@ -51,7 +51,7 @@ import {
 import { AUTOMATION } from '../config/automation'
 import { DEBUG_UI } from '../config/debug'
 import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP, getGameplayWorldBounds } from '../config/gameplayLayout'
-import { STRICT_PIXEL_RENDER_POLICY } from '../config/renderPolicy'
+import { GAME_HEIGHT, GAME_WIDTH, STRICT_PIXEL_RENDER_POLICY } from '../config/renderPolicy'
 import { returnToStageSelect, showToast } from '../core/navigation'
 import { DigitalButtonPad } from '../input/DigitalButtonPad'
 import InputActions, { type SceneInputActions } from '../input/InputActions'
@@ -178,7 +178,8 @@ export class Game extends Phaser.Scene {
 
   private onCameraShake = (config: { intensity: number; duration: number }) => {
     if (!Settings.get().screenShake) return
-    this.cameras.main.shake(config.duration, config.intensity)
+    // Shake amplitude is intensity * canvas width * zoom; the HD canvas is already zoom times wider.
+    this.cameras.main.shake(config.duration, config.intensity / Math.max(1, this.cameras.main.zoom))
   }
 
   private spawnGroundSlamHazard(origin: Phaser.GameObjects.GameObject, attackData?: any): void {
@@ -457,8 +458,8 @@ export class Game extends Phaser.Scene {
 
   private applyStageCameraBounds(stageId: string): void {
     const stage = getCampaignStage(stageId)
-    const worldWidth = Math.max(this.scale.width, Number(stage.arena.width ?? this.scale.width))
-    this.cameras.main.setBounds(0, 0, worldWidth, this.scale.height)
+    const worldWidth = Math.max(GAME_WIDTH, Number(stage.arena.width ?? GAME_WIDTH))
+    this.cameras.main.setBounds(0, 0, worldWidth, GAME_HEIGHT)
     this.bossRoomCameraLocked = false
   }
 
@@ -466,7 +467,7 @@ export class Game extends Phaser.Scene {
     if (!this.activeBossRoom?.lockCamera) {
       return
     }
-    const bounds = getBossRoomCameraBounds(this.activeBossRoom, this.scale.height)
+    const bounds = getBossRoomCameraBounds(this.activeBossRoom, GAME_HEIGHT)
     this.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
     this.cameras.main.scrollX = Phaser.Math.Clamp(
       this.cameras.main.scrollX,
@@ -479,7 +480,8 @@ export class Game extends Phaser.Scene {
   private buildStage(stageId: string): void {
     const stage = getCampaignStage(stageId)
     const cfg = stage.arena
-    const { width, height } = this.scale
+    const width = GAME_WIDTH
+    const height = GAME_HEIGHT
     const worldWidth = Math.max(width, Number(cfg.width ?? width))
     this.activeBossRoom = cfg.bossRoom
 
@@ -536,9 +538,9 @@ export class Game extends Phaser.Scene {
   private rebuildBossGateBarrier(): void {
     this.destroyBossGateBarrier()
     const gateWidth = 12
-    const gateHeight = Math.max(96, this.scale.height - 26)
+    const gateHeight = Math.max(96, GAME_HEIGHT - 26)
     const gate = this.add
-      .rectangle(this.bossGateLockX, this.scale.height * 0.5, gateWidth, gateHeight, 0x7ec8ff, 0.28)
+      .rectangle(this.bossGateLockX, GAME_HEIGHT * 0.5, gateWidth, gateHeight, 0x7ec8ff, 0.28)
       .setDepth(4)
       .setVisible(false)
       .setAlpha(0)
@@ -974,7 +976,7 @@ export class Game extends Phaser.Scene {
     if (!stage.arena.allowFallOff) {
       return
     }
-    if (this.player.y <= this.scale.height + 40) {
+    if (this.player.y <= GAME_HEIGHT + 40) {
       return
     }
     this.requestPlayerDamage({
@@ -1499,7 +1501,8 @@ export class Game extends Phaser.Scene {
     const runtimeDefinition = runtimeDefinitionId ? getBossDefinitionById(runtimeDefinitionId) : undefined
     const bossMaxHp = runtimeDefinition?.maxHP ?? blueprint.baseStats?.maxHp ?? 20
     const bossCodename = runtimeDefinition?.displayName ?? blueprint.codename ?? blueprint.id
-    const { width, height } = this.scale
+    const width = GAME_WIDTH
+    const height = GAME_HEIGHT
     this.cameras.main.setBackgroundColor(stage.arena.background.baseColor ?? stage.arena.backgroundColor ?? '#0e1622')
     this.cameras.main.fadeIn(140, 8, 16, 30)
 

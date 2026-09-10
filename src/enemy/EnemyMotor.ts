@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_WIDTH } from '../config/renderPolicy'
 import { EnemyDefinition, EnemyRuntimeContext } from './types'
 
 export class EnemyMotor {
@@ -105,7 +106,7 @@ export class EnemyMotor {
   }
 
   atLedge(facing: 1 | -1): boolean {
-    const worldWidth = this.context.scene.scale.width
+    const worldWidth = GAME_WIDTH
     return facing > 0 ? this.sprite.x >= worldWidth - 10 : this.sprite.x <= 10
   }
 
