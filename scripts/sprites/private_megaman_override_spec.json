@@ -56,13 +56,15 @@
     "groups": {
       "idle": {
         "mode": "source",
-        "indices": [28, 29, 30, 31],
-        "targetHeight": 42
+        "indices": [25, 26, 27, 28],
+        "targetHeight": 42,
+        "note": "2026-09-10: components 29 and 43 are severed-head fragments on the ripped sheet (the \"blob\" frame); replaced with full idle/turn poses."
       },
       "turn": {
         "mode": "source",
-        "indices": [43],
-        "targetHeight": 42
+        "indices": [34],
+        "targetHeight": 42,
+        "note": "2026-09-10: components 29 and 43 are severed-head fragments on the ripped sheet (the \"blob\" frame); replaced with full idle/turn poses."
       },
       "run": {
         "mode": "source",
@@ -285,16 +287,16 @@
       },
       "respawn": {
         "mode": "source",
-        "indices": [28, 29, 30],
+        "indices": [25, 26, 27],
         "targetHeight": 42,
         "brighten": 1.08,
-        "note": "Respawn fades through core idle silhouettes from the X4 sheet to stay visually consistent with the private override."
+        "note": "2026-09-10: components 29 and 43 are severed-head fragments on the ripped sheet (the \"blob\" frame); replaced with full idle/turn poses."
       },
       "slash_ground_e": {
         "mode": "source",
-        "indices": [43, 50, 51, 43],
+        "indices": [30, 50, 51, 30],
         "targetHeight": 42,
-        "note": "Ground slash uses player-scale X4 brace and attack poses; the direction-locked runtime arc supplies the saber silhouette."
+        "note": "2026-09-10: components 29 and 43 are severed-head fragments on the ripped sheet (the \"blob\" frame); replaced with full idle/turn poses."
       },
       "slash_ground_ne": {
         "mode": "source",

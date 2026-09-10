@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import { BossBlueprint, AttackPattern, type BossId } from './types'
+import { computeBossBodyOffset, measureContactOffset } from './bossBodyAlignment'
+import { BossBlueprint, AttackPattern, type BossGroundReport, type BossId } from './types'
 import { ArenaController } from '../boss/framework/ArenaController'
 import { BossBase } from '../boss/framework/BossBase'
 import { BossDefinition, DamageEvent, HitResult } from '../boss/framework/types'
@@ -82,6 +83,8 @@ export class BossController extends Phaser.GameObjects.Container {
   private lastLifecyclePhase: BossAttackLifecyclePhase = 'done'
   private lastMotionIntent: BossMotionIntentKind = 'hold'
   private lastGroundY = 0
+  /** Feet row relative to the container origin, measured from the idle frame. */
+  private readonly contactOffsetY: number
   private traceSequence = 0
   private readonly runtimeTraces: BossRuntimeTrace[] = []
   private awaitingActionLanding = false
@@ -146,11 +149,19 @@ export class BossController extends Phaser.GameObjects.Container {
     })
 
     const body = this.body
+    // The body bottom must sit on the drawn feet, otherwise the art floats above the floor the
+    // body is standing on. See bossBodyAlignment.ts for the container/offset math.
+    this.contactOffsetY = measureContactOffset(scene.textures, this.atlasKey, this.atlasFrames[0], this.sprite.originY)
+    const bodyOffset = computeBossBodyOffset({
+      bodyWidth: blueprint.spritePlan.frame.x,
+      bodyHeight: blueprint.spritePlan.frame.y,
+      containerWidth: this.width,
+      containerHeight: this.height,
+      contactOffsetY: this.contactOffsetY
+    })
     body.setSize(blueprint.spritePlan.frame.x, blueprint.spritePlan.frame.y)
-    body.setOffset(
-      -blueprint.spritePlan.frame.x * this.sprite.originX,
-      -blueprint.spritePlan.frame.y * (1 - this.sprite.originY)
-    )
+    body.setOffset(bodyOffset.x, bodyOffset.y)
+    body.updateFromGameObject()
 
     this.arenaController = new ArenaController({
       lockDoors: () => this.scene.events.emit('arena-lock', { id: this.runtimeDefinition.boss_id }),
@@ -285,6 +296,7 @@ export class BossController extends Phaser.GameObjects.Container {
       traceCount: this.runtimeTraces.length,
       traceTail: this.runtimeTraces.slice(-8),
       grounded: this.body?.onFloor?.() || this.body?.blocked?.down || false,
+      ground: this.getGroundReport(),
       velocity: { x: Math.round(this.body?.velocity?.x ?? 0), y: Math.round(this.body?.velocity?.y ?? 0) },
       invulnerable: this.isInvulnerable,
       facing: this.sprite.flipX ? 'west' : 'east',
@@ -364,16 +376,9 @@ export class BossController extends Phaser.GameObjects.Container {
       if (motionFrame.motionStarted) this.pushRuntimeTrace('motion_started')
       if (motionFrame.landed && !this.awaitingActionLanding) this.pushRuntimeTrace('landed')
     } else {
-      const intentionalAerial =
-        this.combatProfile?.locomotion === 'aerial' && !this.introLocked && this.lastFiredAttackId !== null
-      if (intentionalAerial) {
-        const groundY = this.lastGroundY || this.y + 76
-        const targetY = groundY - (this.blueprint.id === 'omega_core' ? 82 : 70)
-        this.body.setAllowGravity(false)
-        this.body.setVelocityY(Math.abs(targetY - this.y) < 3 ? 0 : Math.sign(targetY - this.y) * 90)
-      } else {
-        this.body.setAllowGravity(true)
-      }
+      // Between attacks every boss stands on the floor, hover bosses included; their hover_to and
+      // dive_to attacks lift them and gravity brings them back down.
+      this.body.setAllowGravity(true)
     }
 
     if (!motionFrame && grounded) {
@@ -448,6 +453,30 @@ export class BossController extends Phaser.GameObjects.Container {
     this.introLocked = false
     this.arenaController.onIntroStart()
     this.bossBrain.unlockIntro()
+  }
+
+  /**
+   * Where the drawn feet are versus the physics body. `feetToBodyGap` is 0 when the art stands
+   * exactly where the body does; `grounded` with a non-zero gap means the boss looks like it floats.
+   */
+  getGroundReport(): BossGroundReport {
+    const body = this.body
+    const feetY = this.y + this.contactOffsetY
+    return {
+      x: Math.round(this.x * 100) / 100,
+      y: Math.round(this.y * 100) / 100,
+      feetY: Math.round(feetY * 100) / 100,
+      bodyTop: Math.round((body?.top ?? this.y) * 100) / 100,
+      bodyBottom: Math.round((body?.bottom ?? this.y) * 100) / 100,
+      feetToBodyGap: Math.round(((body?.bottom ?? feetY) - feetY) * 100) / 100,
+      contactOffsetY: Math.round(this.contactOffsetY * 100) / 100,
+      grounded: body?.onFloor?.() || body?.blocked?.down || false,
+      allowGravity: body?.allowGravity ?? true,
+      velocityY: Math.round(body?.velocity?.y ?? 0),
+      lastGroundY: Math.round(this.lastGroundY),
+      motionIntent: this.lastMotionIntent,
+      lifecyclePhase: this.lastLifecyclePhase
+    }
   }
 
   getAttackFacing(): -1 | 1 {

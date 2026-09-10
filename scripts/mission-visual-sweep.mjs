@@ -346,6 +346,23 @@ async function sampleBossMovement(page, bossId, artifactDir) {
   if (!samples.some((sample) => sample.runtime?.lastFiredAttackId)) {
     throw new Error(`[${bossId}] no authored boss attack fired during the movement sample`)
   }
+  // Feet on the floor: whenever the body is grounded, the drawn feet must be where the body
+  // bottom is (otherwise the art floats above the platform), and every boss must touch the floor
+  // at least once during the sample window, hover bosses included.
+  samples.forEach((sample) => {
+    const ground = sample.runtime?.ground
+    if (!ground) {
+      throw new Error(`[${bossId}] boss ground report is missing from the runtime debug state`)
+    }
+    if (ground.grounded && Math.abs(Number(ground.feetToBodyGap)) > 1) {
+      throw new Error(
+        `[${bossId}] boss floats: feet ${ground.feetY} vs body bottom ${ground.bodyBottom} (gap ${ground.feetToBodyGap}px)`
+      )
+    }
+  })
+  if (!samples.some((sample) => sample.runtime?.ground?.grounded)) {
+    throw new Error(`[${bossId}] boss never touched the floor during the movement sample`)
+  }
   const traces = new Map()
   samples.forEach((sample) => {
     ;(sample.runtime?.traceTail ?? []).forEach((trace) => traces.set(trace.sequence, trace))

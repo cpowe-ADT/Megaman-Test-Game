@@ -1,6 +1,7 @@
 import { runInputFocusLossScenario } from './smoke/input-focus-loss.mjs'
 import { runEndingFlowScenario, runPrologueFlowScenario, runRadioTickerScenario, runStoryReplaySkipScenario } from './smoke/story-surfaces.mjs'
 import { runOptionsPersistScenario, runPauseWeaponSelectScenario, runTitleContinueScenario } from './smoke/pause-options.mjs'
+import { runBossGroundingScenario } from './smoke/boss-grounding.mjs'
 import { assertBossBoundaryLifecycle } from './smoke/boss-boundary-lifecycle.mjs'
 import assert from 'node:assert/strict'
 import { runClassicCampaignScenario, runClassicUpgradeScenario } from './smoke/classic-campaign.mjs'
@@ -3520,6 +3521,9 @@ async function main() {
     )
     await executeSmokeScenario(summary, '13e-input-source-lifecycle', () =>
       runInputLifecycleScenario('13e-input-source-lifecycle', { openGameplayPage, closeGameplayPage, readState, waitForState, waitForPageCheck, advanceFrames, tapKey, titleUrl })
+    )
+    await executeSmokeScenario(summary, '39-boss-grounded', () =>
+      runBossGroundingScenario('39-boss-grounded', { openGameplayPage, closeGameplayPage, waitForState, waitForPageCheck, advanceFrames })
     )
     await executeSmokeScenario(summary, '15-menu-audio-and-input-stability', () =>
       runMenuAudioInputScenario('15-menu-audio-and-input-stability')

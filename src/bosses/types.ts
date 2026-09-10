@@ -175,3 +175,21 @@ export const BOSS_HUD_LABEL_MAX = 12
 export function bossHudLabel(entry: { name: string; shortName?: string }): string {
   return (entry.shortName ?? entry.name).toUpperCase()
 }
+
+/** Snapshot of where a boss's drawn feet sit relative to its physics body and the floor. */
+export interface BossGroundReport {
+  x: number
+  y: number
+  feetY: number
+  bodyTop: number
+  bodyBottom: number
+  /** body bottom minus feet row; 0 means the art stands where the body stands. */
+  feetToBodyGap: number
+  contactOffsetY: number
+  grounded: boolean
+  allowGravity: boolean
+  velocityY: number
+  lastGroundY: number
+  motionIntent: string
+  lifecyclePhase: string
+}

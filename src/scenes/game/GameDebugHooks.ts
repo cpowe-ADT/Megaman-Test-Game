@@ -30,7 +30,9 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
           host.dialogueOverlay?.skip()
           host.bossController?.unlockIntro()
         },
-        hp: () => host.bossHp
+        hp: () => host.bossHp,
+        /** Feet vs body vs floor for the live boss; feetToBodyGap must be 0 when grounded. */
+        groundReport: () => host.bossController?.getGroundReport?.() ?? null
       }
       ;(window as any).stageDebug = {
         checkpointIndex: () => host.currentCheckpointIndex,

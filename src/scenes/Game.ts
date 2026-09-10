@@ -2398,10 +2398,11 @@ export class Game extends Phaser.Scene {
 
     if (
       swordHitboxIntersectsTarget(origin, hitbox, {
-        x: boss.x,
-        y: boss.y,
-        width: boss.displayWidth,
-        height: boss.displayHeight
+        // The boss is a container; its display size is not its hurt box. Use the aligned body.
+        x: boss.body?.center?.x ?? boss.x,
+        y: boss.body?.center?.y ?? boss.y,
+        width: boss.body?.width ?? boss.displayWidth,
+        height: boss.body?.height ?? boss.displayHeight
       })
     ) {
       this.applyDamageToBoss(2)

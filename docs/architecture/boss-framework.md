@@ -37,3 +37,24 @@
   - `bossDebug.unlockIntro()`
   - `bossDebug.hp()`
 - Render text output includes boss HP/phase in `window.render_game_to_text()`.
+
+## Grounding Contract (feet on the floor)
+
+A boss is a Phaser Container with one sprite child. Arcade places a container body at
+`container.y + offset.y - displayOriginY`, and a container's display origin is half its size, so a
+body offset derived from the sprite origin alone leaves the body about 20px below the drawn feet.
+The body then rests on the floor while the art floats above it. The contract:
+
+- `src/bosses/bossBodyAlignment.ts` measures the feet row of the first idle frame (lowest opaque
+  row, cached per atlas) and computes the body offset so `body.bottom === y + contactOffsetY`,
+  centred on `x`. Pure functions, unit-tested in `tests/boss-body-alignment.test.ts`.
+- Between attacks every boss keeps gravity on, hover bosses included. `hover_to` and `dive_to`
+  attacks lift them; gravity brings them back.
+- `BossController.getGroundReport()` (also `window.bossDebug.groundReport()` and
+  `bossState.runtime.ground` in `render_game_to_text`) reports `feetY`, `bodyBottom`,
+  `feetToBodyGap`, `grounded`, `allowGravity`, the motion intent and lifecycle phase.
+  `feetToBodyGap` must be 0 whenever `grounded` is true.
+- Gates: smoke scenario `39-boss-grounded` (tutorial boss settles on spawn and stays aligned
+  through a fight) and `npm run test:visual-sweep`, which fails any warden whose grounded samples
+  have a gap over 1px or who never touches the floor during the sample window.
+- Sword hits test against the aligned body rectangle, not the container's display size.
