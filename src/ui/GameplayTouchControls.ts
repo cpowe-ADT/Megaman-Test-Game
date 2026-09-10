@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import InputActions from '../input/InputActions'
 import { AUTOMATION } from '../config/automation'
 import { DigitalButtonPad, type DigitalButtonName } from '../input/DigitalButtonPad'
 
@@ -56,6 +57,8 @@ export class GameplayTouchControls {
     this.build()
     this.layout()
 
+    this.cleanupHandlers.push(InputActions.forScene(scene).onCancelled(() => this.resetInput()))
+
     const resizeHandler = () => this.layout()
     this.scene.scale.on('resize', resizeHandler)
     this.cleanupHandlers.push(() => this.scene.scale.off('resize', resizeHandler))
@@ -79,9 +82,7 @@ export class GameplayTouchControls {
     this.visible = visible
     this.root.setVisible(visible)
     if (!visible) {
-      this.pointerBindings.clear()
-      this.buttonPointerIds.clear()
-      this.buttons.reset()
+      this.resetInput()
     }
   }
 
@@ -114,6 +115,14 @@ export class GameplayTouchControls {
     this.visualResetters.clear()
     this.buttons.reset()
     this.root.destroy(true)
+  }
+
+  private resetInput(): void {
+    this.pointerBindings.clear()
+    this.buttonPointerIds.clear()
+    this.buttons.reset()
+    this.visualResetters.forEach(reset => reset())
+    this.pauseVisualReset?.()
   }
 
   private build(): void {

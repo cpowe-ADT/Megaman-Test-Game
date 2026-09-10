@@ -359,6 +359,7 @@ export const Save = {
     return cloneActiveRun(read().activeRun)
   },
   clearActiveRun(): void {
+    if (!Save.exists()) return
     const state = read()
     state.activeRun = null
     persist(state)

@@ -38,11 +38,13 @@ export class NewCampaignScene extends Phaser.Scene {
     this.render()
   }
   update(): void { if(InputActions.forScene(this).confirmReleased()) this.confirmArmed=true }
-  private move(delta: number): void { const rows=this.model.randomizerAvailable?[0,1,2,3]:[0,3];this.row=rows[(rows.indexOf(this.row)+delta+rows.length)%rows.length];this.render() }
+  private activeRows(): number[] { return this.model.randomizerAvailable ? (this.model.mode === 'classic' ? [0,1,3] : [0,1,2,3]) : [0,3] }
+  private move(delta: number): void { const rows=this.activeRows();this.row=rows[(rows.indexOf(this.row)+delta+rows.length)%rows.length];this.render() }
   private change(delta: number): void { if(this.row===0)this.model.cycleDifficulty(delta);else if(this.row===1)this.model.toggleMode();else if(this.row===2)this.model.reroll();this.render() }
   private render(): void {
+    const active=this.activeRows();if(!active.includes(this.row))this.row=3
     const rows=[`DIFFICULTY   < ${this.model.difficulty.toUpperCase()} >`, `MODE   < ${this.model.mode === 'classic'?'CLASSIC':'RELAY RANDOMIZER'} >`,this.model.mode==='relay_randomizer'?`SEED ${this.model.seed}   REROLL`:'','START CAMPAIGN']
-    this.lines.forEach((line,index)=>line.setFontSize(index===2?8:11).setText(rows[index]).setVisible(index===0||index===3||this.model.randomizerAvailable).setColor(index===this.row?'#5de1ff':'#a9c9f2'))
+    this.lines.forEach((line,index)=>line.setFontSize(index===2?8:11).setText(rows[index]).setVisible(active.includes(index)).setColor(index===this.row?'#5de1ff':'#a9c9f2'))
   }
   private start(): void {
     if(this.committed)return

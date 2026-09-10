@@ -566,7 +566,8 @@ export class StageSelect extends Phaser.Scene {
     const reward = getStageBossRewardLabel(this.saveData, stage.id)
     const weakness = stage.id === FINAL_STAGE_ID ? '—' : getBossWeaknessLabel(this.saveData, stage.bossId)
     this.infoText.setText(cleared ? `MISSION RECORD COMPLETE · ${stage.district}` : stage.description)
-    this.detailsText.setText(`REWARD: ${reward} · WEAK: ${weakness}\n${checkpoint} · CHECKS ${checks.collected}/${checks.total}`)
+    const access = stage.id !== FINAL_STAGE_ID && !isStageAccessible(this.saveData, stage.id) ? `NEEDS: ${getStageAccessRequirementLabel(stage.id)}` : `${checkpoint} · CHECKS ${checks.collected}/${checks.total}`
+    this.detailsText.setText(`REWARD: ${reward} · WEAK: ${weakness}\n${access}`)
   }
 
   getPanelEvidence() {

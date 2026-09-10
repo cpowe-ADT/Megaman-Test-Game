@@ -4,6 +4,8 @@
 
 Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; Craig approved STOP 1.0b; Phase 1.1 implementation and automated gates are complete, with Craig’s STOP 1.1 approval recorded below. Phase 1.2 is implemented with automated evidence green; STOP 1.2 awaits Craig’s title/subtitle review. Session 01a ends at that STOP. The separate enemy ecology request remains a planning supplement; phases 1.3–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 
+Session 01a review supplement (2026-09-10): the four confirmed defects and the repeat-key scroll regression are repaired and green (see `EVAL-P1-REVIEW-001`); the repairs are in the worktree awaiting Craig's commit. STOP 1.2 (title treatment and subtitle) is still awaiting Craig's answer; the recommended answer is yes. Next session is 01b: Phase 1.3 story bible and script, then Phase 1.6 stage briefs.
+
 ## Branch and final commit
 
 Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`, `refactor: unify scene input actions (EVAL-P1-010)`. Enemy plan: `cc3b91c5e872e6fff0519f44c505632f1891bc7e`. Final prompt commit: pending; later slices remain.
@@ -281,6 +283,58 @@ Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a
 
 - The first sweep failed Volt’s unchanged outer bound (rounded1353 >1352). A retained trace then showed a safe-bound overshoot1350.5667 >1348 without repeating that outer failure. The controlled actual controller/Arcade lifecycle fixture reproduced both outer failures (right1353.3333, left950.6667), then passed after the three-line repair: final clamp on scene POST_UPDATE, body synchronization and matching destruction unsubscribe. It preserves vertical position/velocity and allows the next inward step; no margins or tuning changed.
 - Scenario8’s screenshot/state precede the controlled boundary probe; `boundary-lifecycle.json` is the proof for both edges and listener cleanup. The sweep now persists raw X/body/velocity samples before assertions so failures retain diagnostics. QA and Orchestrator closed the repair source review; the full runtime gates are repeated because this code changed after the first green identity verify.
+
+### Session 01a review memo — EVAL-P1-REVIEW-001
+
+- Understand: audit everything delivered in01a against the charter and phases1.0/1.0b/1.1/1.2, then repair only demonstrated regressions or missed requirements.
+- Player-facing intent: keep the accepted controls, Classic campaign and original identity working consistently through menus, saves, combat and built runtime loading.
+- Baseline: clean `6fa380e53af489fe64d690e0f95e71e530f9c6bc`; prior evidence is immutable; Game.ts ceiling3805 and sole existing suppression remain.
+- Scope: review supplement only; STOP1.2 title/subtitle approval remains pending and no Phase1.3 or later feature is started.
+- Review seats: QA reads input/save/upgrades; Director reads UX/captures; Orchestrator reads identity/boss/requirement coverage; Engineer is the only writer.
+- Files initially touched: this partial handoff, the ledger, progress.md and fresh `output/phase-1-review/` logs/artifacts; canonical testing/charter notes may need evidence corrections.
+- Coverage: focused action/Classic/upgrade/save/session/identity tests and CI/worktree audits precede one fresh full verify, full ten-mission sweep and separate repository game client.
+- Built-loader gap: the identity slice changed Preload selection but only exercised development servers; add focused smoke4 against the actual ordinary developer build via SMOKE_SERVER=preview after the fresh build.
+- Public-label proof remains a flagged development-server/base-manifest client; no flagged dist or public distribution is created.
+- Failing-first policy: report each concrete finding, append its narrow repair design and capture a meaningful failing assertion before implementation; a fresh green audit does not justify speculative code changes.
+- Risk: quick input transitions, modal ownership, fractional HP and upgrade routing require actual consumers; preserve existing strict hit, mode and boss-boundary assertions.
+- Artifact contract: preserve every failed/successful run tree before another script overwrites its working output; open every produced PNG and inspect matching JSON.
+- Review artifacts use at most six native cells per sheet with a complete manifest for the read-only seats.
+- Completion: resolve review findings, paste literal gate lines and artifact paths, add a separate review eval/progress record, obtain final source/artifact review and commit the bounded supplement.
+- Preserve original graphics/vector pipeline authorization and deeper-monster planning at their existing future STOPs; this audit does not produce art or expand those plans.
+
+### Session 01a review repair memo — chooser visible focus
+
+- Finding from Director/root: the eligible Classic chooser includes seed row2 in keyboard navigation while rendering it as an empty string.
+- Actual sequence: Shift+New Campaign starts Classic; Down moves Difficulty→Mode, and a second Down loses the visible highlight on an empty seed row.
+- Red first: extend existing scenario33 with native focus capture and actual scene-row/text/visibility evidence before the assertion; retain failed artifacts.
+- Acceptance: ordinary Classic uses rows0/3, eligible Classic0/1/3, and Randomizer0/1/2/3; upward/downward wrapping and switching back to Classic keep visible focus.
+- Narrow seam: NewCampaignScene shares one active-row calculation between movement and row visibility; no layout, choice, storage or confirmation behavior changes.
+- Preserve the existing cancel/save-byte, long-seed, held confirmation and Classic progression checks; final full/browser-preview gates cover the same scene.
+
+### Session 01a review repair memo — first-launch Escape
+
+- Candidate: Title Escape calls Save.clearActiveRun even when no campaign exists; persisting fallback state makes the next Enter bypass first-launch difficulty selection.
+- Red first: empty storage→Title→Escape→Enter must still open NewCampaign with Normal selected, with captured scene/storage evidence and a focused Save no-write fixture.
+- Narrow seam: make clearing a nonexistent saved run a no-op while preserving actual run removal and invalid-run normalization for existing saves.
+- Acceptance: fresh users always see the required difficulty chooser; clearing an existing active run still retains progression/statistics and cancellation remains transactional.
+
+### Session 01a review repair memo — focus-loss cancellation
+
+- QA reproduced keydown→window blur before sampling: the queued press survives held.clear, starts charging with no held key and never receives a release.
+- The already-active variant can synthesize a release projectile; simply clearing edges would strand its charge instead.
+- Red first: execute actual input/action/controller/combat source with controlled browser events; cover queued/cached input, active charge, repeat-only reentry, touch union, paused underlays and cleanup.
+- Accepted policy: focus loss cancels pending charge/saber release and clears keyboard/touch/pulse/edge state; return requires a fresh trigger, with no deferred shot or menu confirmation.
+- Narrow seam: per-game blur reaches all live scene adapters; a cancellable subscription invokes the existing runtime charge cancellation and touch presenter's pointer/visual reset.
+- Preserve: normal keyboard/touch handoff, current HP/iframes, dash timers and attack cooldowns; no Game.ts growth or broad input rewrite.
+- Browser acceptance: focus loss during charge yields zero shots, fresh input works, touch pointer/glow state resets, and destroyed adapters remove subscriptions.
+- Root review adds a focused repeat-key fixture: default scrolling prevention must still run on repeated arrows/Space before suppressing action repeats.
+
+### Session 01a review repair memo — locked Randomizer guidance
+
+- Root/Director compared the approved input-slice preview with Phase1.1 and found that a locked Randomizer stage lost its access-item requirement text.
+- Red first: existing scenario4b selects locked Tide and captures native preview text/geometry before requiring NEEDS: Tide Reaver Access.
+- Narrow seam: the second preview row uses the existing getStageAccessRequirementLabel for inaccessible nonfinal stages; Classic, accessible and final previews retain checkpoint/check information.
+- Acceptance: the restored line fits the approved preview and footer boundaries, existing progression-summary flow remains intact, and no unlock rules change.
 
 ## Content inventory (tables: stages, bosses, dialogue sequences, assets, audio cues; counts, not prose)
 

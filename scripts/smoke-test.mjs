@@ -1,3 +1,4 @@
+import { runInputFocusLossScenario } from './smoke/input-focus-loss.mjs'
 import { assertBossBoundaryLifecycle } from './smoke/boss-boundary-lifecycle.mjs'
 import assert from 'node:assert/strict'
 import { runClassicCampaignScenario, runClassicUpgradeScenario } from './smoke/classic-campaign.mjs'
@@ -840,6 +841,19 @@ async function runStageSelectProgressionSummaryScenario(name) {
     await waitForState(page, (state) => state.scene === 'StageSelect')
     const modeState = await readState(page)
     if (modeState.stageSelect?.progressionMode !== 'relay_randomizer') throw new Error('Expected explicit Randomizer regression fixture.')
+    await page.setViewportSize({ width:448, height:252 })
+    await tapKey(page,'ArrowRight')
+    const lockedPreview=await page.evaluate(()=>{
+      const scene=window.__phaserGame.scene.getScene('StageSelect')
+      return {stageId:scene.stages[scene.index].id,canConfirm:scene.canConfirm,text:scene.detailsText.text,details:scene.detailsText.getBounds(),preview:scene.getPanelEvidence().preview}
+    })
+    await page.locator('canvas').screenshot({path:path.join(scenarioDir,'shot-locked-access.png')})
+    fs.writeFileSync(path.join(scenarioDir,'locked-access.json'),JSON.stringify(lockedPreview,null,2))
+    assert.equal(lockedPreview.stageId,'tide_reaver');assert.equal(lockedPreview.canConfirm,false)
+    assert.ok(lockedPreview.text.includes('NEEDS: Tide Reaver Access'),'locked Randomizer preview must name its access requirement')
+    assert.ok(lockedPreview.details.x+lockedPreview.details.width<=lockedPreview.preview.x+lockedPreview.preview.width)
+    assert.ok(lockedPreview.details.y+lockedPreview.details.height<=lockedPreview.preview.y+lockedPreview.preview.height)
+    await tapKey(page,'ArrowLeft')
     await tapKey(page, 'Escape')
     await waitForPageCheck(page, () => Boolean(window.__phaserGame?.scene?.isActive?.('SystemMenu')))
     await page.evaluate(() => {
@@ -3481,6 +3495,8 @@ async function main() {
     await executeSmokeScenario(summary, '13d-movement-feel', () =>
       runMovementFeelScenario('13d-movement-feel')
     )
+    await executeSmokeScenario(summary, '13f-input-focus-loss', () => runInputFocusLossScenario('13f-input-focus-loss', { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }))
+
     await executeSmokeScenario(summary, '14-completion-return-flow', () =>
       runCompletionReturnScenario('14-completion-return-flow')
     )

@@ -16,12 +16,17 @@ class KeyboardHub {
   private owner?: Phaser.Scene
   constructor(private readonly game: Phaser.Game) {
     const down = (event: KeyboardEvent) => {
-      this.changePhysicalSource(() => this.held.add(event.code))
+      // Block page scrolling on every keydown, including OS key repeats, before deciding whether it is a new press.
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault()
       AudioService.unlock()
+      if (event.repeat) return
+      this.changePhysicalSource(() => this.held.add(event.code))
     }
     const up = (event: KeyboardEvent) => this.changePhysicalSource(() => this.held.delete(event.code))
-    const blur = () => this.held.clear()
+    const blur = () => {
+      this.held.clear()
+      for (const scene of game.scene.getScenes(false)) adapters.get(scene)?.cancelPendingInput()
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', blur)
@@ -56,6 +61,7 @@ export class SceneInputActions {
   private readonly state = new ActionState()
   private readonly listeners = new Map<InputAction, Set<() => void>>()
   private readonly pulses: HeldActions = {}
+  private readonly cancellationListeners = new Set<() => void>()
   private buttons?: DigitalButtonPad
   private removeTouchListener?: () => void
   private deferGameplay = () => false
@@ -71,6 +77,7 @@ export class SceneInputActions {
       scene.events.off('wake', this.reset, this)
       this.removeTouchListener?.()
       this.listeners.clear()
+      this.cancellationListeners.clear()
       adapters.delete(scene)
     })
   }
@@ -99,6 +106,16 @@ export class SceneInputActions {
   isHeld(action: InputAction): boolean { return Boolean(this.rawHeld()[action]) }
   confirmReleased(): boolean { return !this.rawHeld().confirm }
   reset(): void { this.state.reset(this.rawHeld()) }
+  onCancelled(handler: () => void): () => void {
+    this.cancellationListeners.add(handler)
+    return () => { this.cancellationListeners.delete(handler) }
+  }
+  cancelPendingInput(): void {
+    for (const action of INPUT_ACTIONS) delete this.pulses[action]
+    this.buttons?.reset()
+    this.cancellationListeners.forEach(handler => handler())
+    this.state.reset(this.rawHeld())
+  }
   pulse(action: InputAction): void { this.captureSourceChange(() => { this.pulses[action] = true }) }
   onPressed(action: InputAction, handler: () => void): () => void {
     const listeners = this.listeners.get(action) ?? new Set()

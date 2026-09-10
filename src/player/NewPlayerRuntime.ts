@@ -69,6 +69,7 @@ export class NewPlayerRuntime {
   private lastKnockback = { x: 0, y: 0 }
   private destroyed = false
   private removeDebugInput?: () => void
+  private removeCancelledInput?: () => void
   private readonly debugToggleHandler = () => this.debug.toggle()
 
   constructor(
@@ -116,6 +117,7 @@ export class NewPlayerRuntime {
     }
 
     this.removeDebugInput = actions.onPressed('debugPlayer', this.debugToggleHandler)
+    this.removeCancelledInput = actions.onCancelled(() => this.cancelPendingCharge())
   }
 
   update(now: number, deltaMs: number): void {
@@ -204,6 +206,7 @@ export class NewPlayerRuntime {
     }
     this.destroyed = true
     this.removeDebugInput?.()
+    this.removeCancelledInput?.()
     this.vfxSfx.destroy()
     this.debug.destroy()
   }
