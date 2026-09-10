@@ -6,6 +6,8 @@ Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and 
 
 Session 01a review supplement (2026-09-10): the four confirmed defects and the repeat-key scroll regression are repaired and green (see `EVAL-P1-REVIEW-001`); the repairs are in the worktree awaiting Craig's commit. STOP 1.2 (title treatment and subtitle) is still awaiting Craig's answer; the recommended answer is yes. Next session is 01b: Phase 1.3 story bible and script, then Phase 1.6 stage briefs.
 
+Session 01b (2026-09-10): Phase 1.3 is complete and committed (`0e4ea1b`, EVAL-P1-006 gate PASS; Craig's reading of the script is the review half at STOP 1.3). Phase 1.6 briefs are written (`docs/design/stage-briefs.md`, EVAL-P1-012 pending Craig's approval at STOP 1.6). Phases 1.4 and 1.5 (session 01c) have not begun.
+
 ## Branch and final commit
 
 Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. CI: `bf216acc9d7c872586ff35e6902af7c5d2f5dd6c`. Input slice: `fb0e5532fe552477f6b28c9fbf2d9e06cfe64341`, `refactor: unify scene input actions (EVAL-P1-010)`. Enemy plan: `cc3b91c5e872e6fff0519f44c505632f1891bc7e`. Final prompt commit: pending; later slices remain.
@@ -505,3 +507,16 @@ All paths below are under `output/phase-1-2/`; the Phase1.2 commit containing th
 - Keep IDENTITY as the runtime public-name authority, including frozen warden names and the dialogue speaker adapter. Internal snake-case IDs remain stable; public packaging/private-file stripping still requires Prompt04, and the preview base art still requires Prompt03 original-art review.
 - Not ready: prompt 01 exit conditions are incomplete. Read the completed version of this file before starting prompt 02.
 - Carry `docs/working/enemy-ecology-and-variant-plan.md` into Phase 1.6 stage briefs and the completed Prompt 02/03 handoffs. Preserve Craig’s request for deeper monsters, stage-specific features and a living world; its family/variant/pilot recommendations remain pending the existing STOP reviews.
+
+### Session 01b additions (story and briefs)
+
+- Read first: `docs/design/stage-briefs.md` (the per-stage blueprint), `docs/story/script.md` (which line plays at which beat), `docs/story/style-guide.md` (before adding any text).
+- Dialogue contract v2 is live: `src/content/dialogue/dialogue.v2.json` is the only source of lines; `npm run story:script` regenerates `docs/story/script.md` and a test fails if it drifts. `dialogue.v1.json` stays on disk until Phase 1.4 deletes it.
+- Binding contract for prompt 02: checkpoint 2 of every stage carries `radioSequenceId` = `<stageId>_radio`; the mini-boss gate lock plays `<stageId>_miniboss`; Stage Select uses `<stageId>_restored`; briefings are `<stageId>_briefing`; finale phases are `finale_phase_1..3` on the Core's phase transitions.
+- Registry API for the surfaces (Phase 1.4): `getStageSequence(stageId, trigger)`, `getGlobalSequence('prologue' | 'epilogue' | 'credits')`, `getFinalePhase(1|2|3)`, `getFirstWeaknessMilestone()`, `getRequiredStoryIds()` for story-flag parity.
+- Tokens the resolver needs from every caller: `hero`, `rewardLabel`, `clearedCount`, `remainingCount`, `districtName`, `wardenName`; `Game.buildDialogueLines` already supplies all six.
+- Mini-boss archetype per stage (from the briefs and the callout lines): Pyro, Basalt, Glacier = `custodian_walker`; Tide, Ferro = `relay_turret_nest`; Volt, Gale = `sentry_twins`; Mire = `drill_serpent`.
+- Vertical or walled segment per stage: tutorial wall-jump shaft; Pyro, Tide, Basalt, Mire, Gale master climbs at `verticalScreens: 2`; Volt, Ferro, Glacier walled master halls; Omega Act 1 two vertical segments.
+- Classic placement table (prompt 01 section 1.1) decides which `sub_tank` locations hold a Sub Tank (Tide, Basalt, Mire, Glacier); the briefs place every `heart_tank` and `sub_tank` as a gated secret and every `capsule` on the main route.
+- `difficultyRating` in `campaign.ts` already matches the briefs (1, 1, 2, 2, 2, 2, 3, 3, 3, 3).
+- `Game.ts` is 3,807 lines (+2 from the token values); Phase 1.4 extracts the debug-hook block so the prompt exits at or below 3,805.
