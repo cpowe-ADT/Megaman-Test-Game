@@ -5,43 +5,72 @@ import type {
   DialogueSpeakerDefinition,
   DialogueSpeakerId,
   DialogueTrigger,
-  RobotMasterMilestoneCount
+  FinalePhase,
+  RobotMasterMilestoneCount,
+  StageDialogueTrigger
 } from './types'
 import type { CampaignStageId } from '../campaign'
 import { validateDialogueContent } from './validateDialogueContent'
 
+type GlobalSequenceTrigger = 'prologue' | 'epilogue' | 'credits'
+
 export class DialogueContentRegistry {
   private readonly speakers = new Map<DialogueSpeakerId, DialogueSpeakerDefinition>()
-  private readonly sequences = new Map<string, DialogueSequenceDefinition>()
+  private readonly sequencesById = new Map<string, DialogueSequenceDefinition>()
+  private readonly stageSequences = new Map<string, DialogueSequenceDefinition>()
+  private readonly globalSequences = new Map<string, DialogueSequenceDefinition>()
   private readonly milestones = new Map<RobotMasterMilestoneCount, DialogueMilestoneDefinition>()
+  private firstWeakness: DialogueMilestoneDefinition | undefined
 
   constructor(content: DialogueContentDocument) {
     for (const speaker of content.speakers) this.speakers.set(speaker.id, speaker)
     for (const sequence of content.sequences) {
-      this.sequences.set(`${sequence.stageId}:${sequence.trigger}`, sequence)
+      this.sequencesById.set(sequence.id, sequence)
+      if (sequence.stageId) {
+        this.stageSequences.set(`${sequence.stageId}:${sequence.trigger}`, sequence)
+      } else if (sequence.trigger === 'finale_phase') {
+        this.globalSequences.set(`finale_phase:${sequence.phase}`, sequence)
+      } else {
+        this.globalSequences.set(sequence.trigger, sequence)
+      }
     }
     for (const milestone of content.milestones) {
-      this.milestones.set(milestone.clearedBossCount, milestone)
+      if (milestone.kind === 'first_weakness') this.firstWeakness = milestone
+      else if (milestone.clearedBossCount) this.milestones.set(milestone.clearedBossCount, milestone)
     }
   }
 
-  getSpeaker(id: DialogueSpeakerId): DialogueSpeakerDefinition | undefined {
-    return this.speakers.get(id)
+  getSpeaker(id: DialogueSpeakerId | undefined): DialogueSpeakerDefinition | undefined {
+    return id ? this.speakers.get(id) : undefined
   }
 
   getSpeakers(): DialogueSpeakerDefinition[] {
     return [...this.speakers.values()]
   }
 
-  getSequence(
-    stageId: CampaignStageId,
-    trigger: DialogueTrigger
-  ): DialogueSequenceDefinition | undefined {
-    return this.sequences.get(`${stageId}:${trigger}`)
+  /** Stage-bound lookup; the trigger type is kept wide so existing callers compile. */
+  getSequence(stageId: CampaignStageId, trigger: DialogueTrigger): DialogueSequenceDefinition | undefined {
+    return this.stageSequences.get(`${stageId}:${trigger}`)
+  }
+
+  getStageSequence(stageId: CampaignStageId, trigger: StageDialogueTrigger): DialogueSequenceDefinition | undefined {
+    return this.stageSequences.get(`${stageId}:${trigger}`)
+  }
+
+  getGlobalSequence(trigger: GlobalSequenceTrigger): DialogueSequenceDefinition | undefined {
+    return this.globalSequences.get(trigger)
+  }
+
+  getFinalePhase(phase: FinalePhase): DialogueSequenceDefinition | undefined {
+    return this.globalSequences.get(`finale_phase:${phase}`)
+  }
+
+  getSequenceById(id: string): DialogueSequenceDefinition | undefined {
+    return this.sequencesById.get(id)
   }
 
   getSequences(): DialogueSequenceDefinition[] {
-    return [...this.sequences.values()]
+    return [...this.sequencesById.values()]
   }
 
   getMilestone(clearedBossCount: number): DialogueMilestoneDefinition | undefined {
@@ -49,7 +78,18 @@ export class DialogueContentRegistry {
   }
 
   getMilestones(): DialogueMilestoneDefinition[] {
-    return [...this.milestones.values()].sort((a, b) => a.clearedBossCount - b.clearedBossCount)
+    return [...this.milestones.values()].sort((a, b) => (a.clearedBossCount ?? 0) - (b.clearedBossCount ?? 0))
+  }
+
+  getFirstWeaknessMilestone(): DialogueMilestoneDefinition | undefined {
+    return this.firstWeakness
+  }
+
+  /** Every id a complete playthrough marks as seen; story-flag parity checks compare against this. */
+  getRequiredStoryIds(): string[] {
+    const ids = [...this.sequencesById.keys(), ...this.getMilestones().map((entry) => entry.id)]
+    if (this.firstWeakness) ids.push(this.firstWeakness.id)
+    return ids
   }
 }
 

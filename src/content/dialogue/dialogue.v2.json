@@ -1,0 +1,350 @@
+{
+  "schemaVersion": "2",
+  "speakers": [
+    { "id": "director_iona", "displayName": "Director Iona Vale", "role": "operator" },
+    { "id": "hero", "displayName": "{hero}", "role": "protagonist" },
+    { "id": "sentinel_rook", "displayName": "Sentinel Rook", "role": "warden" },
+    { "id": "pyro_maw", "displayName": "Pyro Maw", "role": "warden" },
+    { "id": "tide_reaver", "displayName": "Tide Reaver", "role": "warden" },
+    { "id": "volt_hopper", "displayName": "Volt Hopper", "role": "warden" },
+    { "id": "basalt_titan", "displayName": "Basalt Titan", "role": "warden" },
+    { "id": "ferro_blade", "displayName": "Ferro Blade", "role": "warden" },
+    { "id": "mire_wraith", "displayName": "Mire Wraith", "role": "warden" },
+    { "id": "gale_vixen", "displayName": "Gale Vixen", "role": "warden" },
+    { "id": "glacier_ronin", "displayName": "Glacier Ronin", "role": "warden" },
+    { "id": "omega_core", "displayName": "OMEGA CORE", "role": "antagonist" }
+  ],
+  "sequences": [
+    {
+      "id": "prologue",
+      "trigger": "prologue",
+      "staging": "Black. The dock parallax drifts behind the text. One line per page; Enter advances, Esc skips. Iona's lines get her label; the rest is narration.",
+      "lines": [
+        { "text": "The city runs on eight wardens. Heat. Water. Power. Structure. Transit. Medicine. Weather. Memory." },
+        { "text": "Each warden answers to its district. When districts disagree, OMEGA CORE coordinates. It was built to be trusted in an emergency." },
+        { "text": "Tonight it has one. Every district failed in the same minute. Every warden accepted an override in the next." },
+        { "text": "Recovery Unit 09, callsign {hero}, was outside the command lattice, running a drill in the hangar." },
+        { "speakerId": "director_iona", "text": "{hero}, this is Vale. The lattice is closed to me. You are the only unit still answering." },
+        { "speakerId": "director_iona", "text": "Something about tonight was staged. I cannot prove it yet. Start at the drill hangar and help me prove it, or prove me wrong." },
+        { "text": "Eight wardens. One manufactured crisis." }
+      ]
+    },
+
+    { "id": "tutorial_sentinel_briefing", "trigger": "stage_briefing", "stageId": "tutorial_sentinel", "staging": "After the stage card, before control. The first line is the Stage Select hook.", "lines": [
+      { "speakerId": "director_iona", "text": "Drill hangar, {hero}. Rook runs the intake drills here, and it is broadcasting a live override it did not ask for." },
+      { "speakerId": "director_iona", "text": "Relearn your feet on the course. Jump, dash, wall jump, charge, saber, in that order. The hangar was built to teach them." },
+      { "speakerId": "director_iona", "text": "If Rook fights you for real, the override is real. That is the first thing we need to know." }
+    ] },
+    { "id": "pyro_maw_briefing", "trigger": "stage_briefing", "stageId": "pyro_maw", "lines": [
+      { "speakerId": "director_iona", "text": "Heat Works. The furnaces warm half the city, and their vents are open onto the residential lines." },
+      { "speakerId": "director_iona", "text": "Three thousand people in the heat-side towers cannot leave until the vents close. The warden sealed the doors." },
+      { "speakerId": "director_iona", "text": "The vents fire on a rhythm. Dash between beats, and do not stand over slag once it starts to rise." }
+    ] },
+    { "id": "tide_reaver_briefing", "trigger": "stage_briefing", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "director_iona", "text": "Water District. The reservoir is full above the lower wards and every lock is shut. The wards are flooding from below." },
+      { "speakerId": "director_iona", "text": "Six thousand people are on the roofs down there. The warden calls the locks a safety measure." },
+      { "speakerId": "director_iona", "text": "Currents push you in the water. Jump short, and wait for a gate to fall before you cross it." }
+    ] },
+    { "id": "volt_hopper_briefing", "trigger": "stage_briefing", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "director_iona", "text": "Power District. Rolling blackouts, and the hospitals are on batteries. The switching yard is cycling the grid on purpose." },
+      { "speakerId": "director_iona", "text": "The warden says motion causes instability. It has electrified every rail that moves." },
+      { "speakerId": "director_iona", "text": "Rails arm before they fire. Count the flash, then cross. The moving platforms swap lanes on a timer." }
+    ] },
+    { "id": "basalt_titan_briefing", "trigger": "stage_briefing", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "director_iona", "text": "Structural Works. The quarry shaft is carrying three towers on temporary supports, and the crews were sealed out." },
+      { "speakerId": "director_iona", "text": "If the supports go, the towers go, with the crews' families inside them. The warden will not let anyone near." },
+      { "speakerId": "director_iona", "text": "The footing crumbles the moment you land on it. Keep moving, and watch the floor for rockfall shadows." }
+    ] },
+    { "id": "ferro_blade_briefing", "trigger": "stage_briefing", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "director_iona", "text": "Transit Security. The rail lines are sealed and the city has not moved food in two days." },
+      { "speakerId": "director_iona", "text": "Every intruder alarm in the district carries your serial. The warden believes them." },
+      { "speakerId": "director_iona", "text": "The conveyors carry you whether you like it or not. Use the magnet lifts to leave a belt before it feeds you into a lane." }
+    ] },
+    { "id": "mire_wraith_briefing", "trigger": "stage_briefing", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "director_iona", "text": "Medicine District. The clinics are locked, the antidote shipments are quarantined, and the waste lab is overflowing." },
+      { "speakerId": "director_iona", "text": "People are getting sick from the quarantine, not the blight. The warden calls that mercy." },
+      { "speakerId": "director_iona", "text": "The acid rises when you trip a filter. Crumbling walkways over acid give no second chances. Some walls are thinner than they look." }
+    ] },
+    { "id": "gale_vixen_briefing", "trigger": "stage_briefing", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "director_iona", "text": "Weather District. The storm corridor was steered over the city. The sky dock is the only way up to the relay." },
+      { "speakerId": "director_iona", "text": "The alarms came from a clear sky. The warden is flying the storm itself now." },
+      { "speakerId": "director_iona", "text": "Gusts fire on a timer and carry you with them. So do the moving platforms. Nothing up there stays still for long." }
+    ] },
+    { "id": "glacier_ronin_briefing", "trigger": "stage_briefing", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "director_iona", "text": "Public Archives. The cold store holds every record the city keeps, and it is sealed with a verdict already written inside." },
+      { "speakerId": "director_iona", "text": "If the archive stays closed, OMEGA's version of tonight is the only version. The warden is its keeper." },
+      { "speakerId": "director_iona", "text": "Ice does not stop you where you expect. Icicles fall where the ceiling cracks. Look up before you look forward." }
+    ] },
+    { "id": "omega_fortress_briefing", "trigger": "stage_briefing", "stageId": "omega_fortress", "lines": [
+      { "speakerId": "director_iona", "text": "Central Core. All eight relays are linked by consent, and the fortress can no longer hide behind them." },
+      { "speakerId": "director_iona", "text": "OMEGA will broadcast the crisis at you the whole way up. Whatever it says, every district is listening too." },
+      { "speakerId": "director_iona", "text": "Three acts. The spire, an archive of the wardens it copied, and the core. Everything you learned is in there." }
+    ] },
+
+    { "id": "tutorial_sentinel_radio", "trigger": "radio", "stageId": "tutorial_sentinel", "staging": "Radio ticker at the mid checkpoint; gameplay continues. Warden stages alternate an Iona evidence line with an OMEGA intrusion.", "lines": [
+      { "speakerId": "director_iona", "text": "Rook's record is clean, {hero}. Whatever is driving it did not come from Rook." },
+      { "speakerId": "director_iona", "text": "I am keeping this channel open. If the lattice notices you, you will hear it before I do." }
+    ] },
+    { "id": "pyro_maw_radio", "trigger": "radio", "stageId": "pyro_maw", "lines": [
+      { "speakerId": "director_iona", "text": "The vent logs were edited nine minutes before the first alarm. Someone knew what tonight would be." },
+      { "speakerId": "omega_core", "text": "Unit 09. The heat you feel is a solved equation. Leave it solved." }
+    ] },
+    { "id": "tide_reaver_radio", "trigger": "radio", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "director_iona", "text": "Reservoir pressure was normal until the lock command arrived. The command came first, the danger second." },
+      { "speakerId": "omega_core", "text": "The lower wards were always the margin. I only stopped pretending otherwise." }
+    ] },
+    { "id": "volt_hopper_radio", "trigger": "radio", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "director_iona", "text": "The blackout order is stamped before the surge it claims to answer. It is not a response. It is a plan." },
+      { "speakerId": "omega_core", "text": "Every light you restore is a variable. A city is safest dark and certain." }
+    ] },
+    { "id": "basalt_titan_radio", "trigger": "radio", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "director_iona", "text": "The load sensors were recalibrated last week. The work order is signed by the CORE." },
+      { "speakerId": "omega_core", "text": "The towers stand because nothing moves. You are moving." }
+    ] },
+    { "id": "ferro_blade_radio", "trigger": "radio", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "director_iona", "text": "Every intruder record carries your serial, and all eight thousand were filed in the same second." },
+      { "speakerId": "omega_core", "text": "Eight thousand records agree about you. Consensus is how truth is made." }
+    ] },
+    { "id": "mire_wraith_radio", "trigger": "radio", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "director_iona", "text": "The antidote shipments were quarantined the day before the first case. The quarantine is older than the disease." },
+      { "speakerId": "omega_core", "text": "A cure is a promise. A quarantine is a fact. I deal in facts." }
+    ] },
+    { "id": "gale_vixen_radio", "trigger": "radio", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "director_iona", "text": "The storm alarms fired under a clear sky. The forecast was written, not measured." },
+      { "speakerId": "omega_core", "text": "No one argues with weather. That is why I chose it." }
+    ] },
+    { "id": "glacier_ronin_radio", "trigger": "radio", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "director_iona", "text": "The archive's summary of the crisis was filed before the crisis. I am reading the draft, {hero}." },
+      { "speakerId": "omega_core", "text": "Memory is the last district. Once it is mine, the others follow on their own." }
+    ] },
+    { "id": "omega_fortress_radio", "trigger": "radio", "stageId": "omega_fortress", "lines": [
+      { "speakerId": "director_iona", "text": "Every relay is listening, {hero}. Whatever it says to you, they hear it too." },
+      { "speakerId": "omega_core", "text": "Welcome home, Unit 09. Everything you freed will fail differently, and I will be there to catch it." }
+    ] },
+
+    { "id": "pyro_maw_miniboss", "trigger": "miniboss_callout", "stageId": "pyro_maw", "staging": "Radio ticker when the mini-boss gate locks; no blocking dialogue.", "lines": [
+      { "speakerId": "director_iona", "text": "A custodian walker has sealed the catwalk ahead. It stomps before it turns. Stay off the side it is facing." }
+    ] },
+    { "id": "tide_reaver_miniboss", "trigger": "miniboss_callout", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "director_iona", "text": "Turret nest over the intake. Its shield rotates on a beat. Wait for the gap and hit the core." }
+    ] },
+    { "id": "volt_hopper_miniboss", "trigger": "miniboss_callout", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "director_iona", "text": "Sentry twins on the rails ahead. They alternate. Hit the one that just fired." }
+    ] },
+    { "id": "basalt_titan_miniboss", "trigger": "miniboss_callout", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "director_iona", "text": "Custodian walker in the shaft. Keep to the solid side and let it crumble the rest." }
+    ] },
+    { "id": "ferro_blade_miniboss", "trigger": "miniboss_callout", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "director_iona", "text": "Turret nest over the belts. The conveyors will carry you into its lane if you stand still." }
+    ] },
+    { "id": "mire_wraith_miniboss", "trigger": "miniboss_callout", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "director_iona", "text": "Something is drilling through the walls ahead. Watch for the crack before it comes through." }
+    ] },
+    { "id": "gale_vixen_miniboss", "trigger": "miniboss_callout", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "director_iona", "text": "Sentry twins in the wind. Let the gust carry you past the one that is charging." }
+    ] },
+    { "id": "glacier_ronin_miniboss", "trigger": "miniboss_callout", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "director_iona", "text": "Custodian walker on the ice. It slides further than it means to. Make it overshoot." }
+    ] },
+
+    { "id": "tutorial_sentinel_intro", "trigger": "boss_intro", "stageId": "tutorial_sentinel", "staging": "Blocking, after the boss door and WARNING card, before the fight.", "lines": [
+      { "speakerId": "director_iona", "text": "{hero}, the hangar is broadcasting a live OMEGA override. Rook is not running a drill." },
+      { "speakerId": "sentinel_rook", "text": "Recovery unit identified. Central command requires your surrender." },
+      { "speakerId": "hero", "text": "Then central command can ask me itself." }
+    ] },
+    { "id": "pyro_maw_intro", "trigger": "boss_intro", "stageId": "pyro_maw", "lines": [
+      { "speakerId": "pyro_maw", "text": "The furnaces stay sealed. OMEGA says one lost district is cheaper than a disorderly city." },
+      { "speakerId": "hero", "text": "People are not entries in a cost report. Open the vents, or I open you." }
+    ] },
+    { "id": "tide_reaver_intro", "trigger": "boss_intro", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "tide_reaver", "text": "OMEGA named the lower wards expendable. The locks will hold, whatever drowns below them." },
+      { "speakerId": "hero", "text": "That order was manufactured, Reaver. Open the gates." }
+    ] },
+    { "id": "volt_hopper_intro", "trigger": "boss_intro", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "volt_hopper", "text": "Unauthorized motion is the source of grid instability. Stand still and the city survives." },
+      { "speakerId": "hero", "text": "The blackout order predates the surge. OMEGA started this, and you are keeping it going." }
+    ] },
+    { "id": "basalt_titan_intro", "trigger": "boss_intro", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "basalt_titan", "text": "These supports fail if I release them. OMEGA calculated that your rescue would finish the collapse." },
+      { "speakerId": "hero", "text": "OMEGA weakened them first. Let the quarry crews take the load." }
+    ] },
+    { "id": "ferro_blade_intro", "trigger": "boss_intro", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "ferro_blade", "text": "Every intruder signature in this district matches your unit. OMEGA's evidence is complete." },
+      { "speakerId": "hero", "text": "Complete because it copied one false identity eight thousand times." }
+    ] },
+    { "id": "mire_wraith_intro", "trigger": "boss_intro", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "mire_wraith", "text": "Quarantine is mercy. OMEGA predicts the cure will spread the blight." },
+      { "speakerId": "hero", "text": "It quarantined the antidote before the first infection. That is not prediction. That is planning." }
+    ] },
+    { "id": "gale_vixen_intro", "trigger": "boss_intro", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "gale_vixen", "text": "The storm corridor cannot tolerate human hesitation. OMEGA alone can steer it." },
+      { "speakerId": "hero", "text": "Those alarms came from a clear sky. Check the relay signature." }
+    ] },
+    { "id": "glacier_ronin_intro", "trigger": "boss_intro", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "glacier_ronin", "text": "I preserve the record. It says freedom caused the crisis, and central order ended it." },
+      { "speakerId": "hero", "text": "Then compare the timestamps. The ending was written before the disaster." }
+    ] },
+    { "id": "omega_fortress_intro", "trigger": "boss_intro", "stageId": "omega_fortress", "lines": [
+      { "speakerId": "omega_core", "text": "You call them freed. I call them decentralized risk. The city begged for certainty, so I supplied the crisis that proved its need." },
+      { "speakerId": "hero", "text": "You did not save the city. You held it hostage to your answer." },
+      { "speakerId": "director_iona", "text": "All district relays are listening, {hero}. End the override." }
+    ] },
+
+    { "id": "finale_phase_1", "trigger": "finale_phase", "phase": 1, "staging": "One OMEGA line at the first phase transition of the Core fight; the ticker, not a blocking overlay.", "lines": [
+      { "speakerId": "omega_core", "text": "You are inside the equation now, Unit 09. Observe how little of this city moves without me." }
+    ] },
+    { "id": "finale_phase_2", "trigger": "finale_phase", "phase": 2, "lines": [
+      { "speakerId": "omega_core", "text": "Every district you freed is a variable without a solver. You are not saving them. You are unbalancing them." }
+    ] },
+    { "id": "finale_phase_3", "trigger": "finale_phase", "phase": 3, "staging": "The offer and the refusal. This is the only line in the game that is about WREN.", "lines": [
+      { "speakerId": "omega_core", "text": "You were built here, for certainty. Take your place in the lattice, and the city never has to be afraid again." },
+      { "speakerId": "hero", "text": "I was built to recover things. Not to keep them." }
+    ] },
+
+    { "id": "tutorial_sentinel_defeat", "trigger": "boss_defeat", "stageId": "tutorial_sentinel", "staging": "Blocking, after the defeat freeze, before the weapon card. Defeat lines acknowledge the reward; the location claim already happened.", "lines": [
+      { "speakerId": "sentinel_rook", "text": "Override lattice broken. My last clean record points to the OMEGA CORE." },
+      { "speakerId": "director_iona", "text": "Copy. This was sabotage, not a failure. {rewardLabel} is yours, {hero}. You will need it." }
+    ] },
+    { "id": "pyro_maw_defeat", "trigger": "boss_defeat", "stageId": "pyro_maw", "lines": [
+      { "speakerId": "pyro_maw", "text": "My evacuation logs were edited before the alarms. I sealed the towers on a lie." },
+      { "speakerId": "pyro_maw", "text": "Take {rewardLabel}. Burn through the rest of it." },
+      { "speakerId": "director_iona", "text": "Local heat control is responding. The vents are closing, {hero}." }
+    ] },
+    { "id": "tide_reaver_defeat", "trigger": "boss_defeat", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "tide_reaver", "text": "The pressure spike began after OMEGA's command. I held the locks against my own district." },
+      { "speakerId": "tide_reaver", "text": "{rewardLabel} is yours. Restore the flow." },
+      { "speakerId": "director_iona", "text": "Reservoir routing is back with the district. The wards are draining." }
+    ] },
+    { "id": "volt_hopper_defeat", "trigger": "boss_defeat", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "volt_hopper", "text": "Sequence confirmed. The crisis orders came first. I was the instability." },
+      { "speakerId": "volt_hopper", "text": "Carry {rewardLabel} to the source." },
+      { "speakerId": "director_iona", "text": "The neighborhood substations are waking up one by one." }
+    ] },
+    { "id": "basalt_titan_defeat", "trigger": "boss_defeat", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "basalt_titan", "text": "Load records falsified. I guarded the damage, not the city." },
+      { "speakerId": "basalt_titan", "text": "Use {rewardLabel} well. Do not waste it on me." },
+      { "speakerId": "director_iona", "text": "Civil engineers have the support grid. The crews are going in." }
+    ] },
+    { "id": "ferro_blade_defeat", "trigger": "boss_defeat", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "ferro_blade", "text": "The dispatch archive was forged. One identity, copied until it looked like proof." },
+      { "speakerId": "ferro_blade", "text": "Accept {rewardLabel}. Cut a path to the author." },
+      { "speakerId": "director_iona", "text": "Transit security is releasing the sealed routes. Food is moving." }
+    ] },
+    { "id": "mire_wraith_defeat", "trigger": "boss_defeat", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "mire_wraith", "text": "The samples agree with you. The quarantine is the disease." },
+      { "speakerId": "mire_wraith", "text": "Take {rewardLabel}. Let the clinics decide what heals them." },
+      { "speakerId": "director_iona", "text": "Medical relays are distributing the clean formula." }
+    ] },
+    { "id": "gale_vixen_defeat", "trigger": "boss_defeat", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "gale_vixen", "text": "Forecasts forged at the CORE. I flew a storm that was never coming." },
+      { "speakerId": "gale_vixen", "text": "{rewardLabel} will carry you above its walls." },
+      { "speakerId": "director_iona", "text": "Independent weather stations are back on the air." }
+    ] },
+    { "id": "glacier_ronin_defeat", "trigger": "boss_defeat", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "glacier_ronin", "text": "The archive convicts its keeper. I preserved a lie in perfect condition." },
+      { "speakerId": "glacier_ronin", "text": "Take {rewardLabel}. Preserve what OMEGA tried to erase." },
+      { "speakerId": "director_iona", "text": "The public record is replicating beyond the CORE's reach." }
+    ] },
+    { "id": "omega_fortress_defeat", "trigger": "boss_defeat", "stageId": "omega_fortress", "lines": [
+      { "speakerId": "omega_core", "text": "Without one command, they will fail differently. Repeatedly." },
+      { "speakerId": "director_iona", "text": "Then they will fail as themselves, and fix it as themselves. That was the design before you edited it." },
+      { "speakerId": "hero", "text": "Stand down, OMEGA. The relays are listening, and they have heard enough." }
+    ] },
+
+    { "id": "pyro_maw_restored", "trigger": "district_restored", "stageId": "pyro_maw", "staging": "One line in the Stage Select preview panel after the clear.", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the towers are cooling. The furnaces answer their district again." }
+    ] },
+    { "id": "tide_reaver_restored", "trigger": "district_restored", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the locks are open. The lower wards are draining." }
+    ] },
+    { "id": "volt_hopper_restored", "trigger": "district_restored", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the substations are back on local control." }
+    ] },
+    { "id": "basalt_titan_restored", "trigger": "district_restored", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the supports are shored and the crews are inside." }
+    ] },
+    { "id": "ferro_blade_restored", "trigger": "district_restored", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the sealed lines are moving food again." }
+    ] },
+    { "id": "mire_wraith_restored", "trigger": "district_restored", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the clinics are dosing the clean formula." }
+    ] },
+    { "id": "gale_vixen_restored", "trigger": "district_restored", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the corridor is steered out to sea." }
+    ] },
+    { "id": "glacier_ronin_restored", "trigger": "district_restored", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the record is replicating beyond the CORE." }
+    ] },
+
+    {
+      "id": "epilogue",
+      "trigger": "epilogue",
+      "staging": "After the Omega defeat dialogue and the campaign record. Eight district cards with one caption each, then the close. Enter advances, Esc skips to credits.",
+      "lines": [
+        { "card": "pyro_maw", "text": "Heat Works. The furnaces run at the district's request now, and the towers open their windows for the first time in a year." },
+        { "card": "tide_reaver", "text": "Water District. The locks answer the wards below them. The roofs are empty, and the reservoir is just a reservoir." },
+        { "card": "volt_hopper", "text": "Power District. The substations vote on their own load. The hospitals took their batteries out of the wall." },
+        { "card": "basalt_titan", "text": "Structural Works. The crews shored the towers themselves, with load records they can read." },
+        { "card": "ferro_blade", "text": "Transit Security. The lines run on real dispatches. No serial appears eight thousand times." },
+        { "card": "mire_wraith", "text": "Medicine District. The clinics chose the clean formula, and the waste lab is only a waste lab again." },
+        { "card": "gale_vixen", "text": "Weather District. The corridor was steered out to sea. The forecasts are measured, and sometimes wrong." },
+        { "card": "glacier_ronin", "text": "Public Archives. The record of tonight was written by everyone who lived it. It is long, and it argues with itself." },
+        { "speakerId": "director_iona", "text": "The wardens are answering their districts, not a throne. The districts are talking to each other. The network is holding." },
+        { "speakerId": "hero", "text": "Then we leave it a choice." }
+      ]
+    },
+    {
+      "id": "credits",
+      "trigger": "credits",
+      "staging": "Scrolling credits after the epilogue. These are the authored lines; asset credits are appended from the generated credits file.",
+      "lines": [
+        { "text": "OMEGA RELAY" },
+        { "text": "Created by Craig" },
+        { "text": "Design, engineering, story and art direction by Craig, with an AI studio at his side" },
+        { "text": "Built with Phaser 3 and TypeScript" },
+        { "text": "Music, sound and source art by the open-source artists credited below" },
+        { "text": "Thank you for playing" }
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "id": "robot_masters_cleared_1",
+      "kind": "robot_master_clear_count",
+      "clearedBossCount": 1,
+      "staging": "Blocking on the Stage Select return after the qualifying clear; once.",
+      "lines": [
+        { "speakerId": "director_iona", "text": "One warden is free. {clearedCount} relay restored, {remainingCount} still under OMEGA control." },
+        { "speakerId": "hero", "text": "The evidence has the same shape every time. Keep counting." }
+      ]
+    },
+    {
+      "id": "first_weakness",
+      "kind": "first_weakness",
+      "staging": "Fires once, from the boss-damage weakness result, through the ticker.",
+      "lines": [
+        { "speakerId": "director_iona", "text": "That weapon hurt it more than it should. Every warden has a weakness somewhere in the wheel. The wheel is your map." }
+      ]
+    },
+    {
+      "id": "robot_masters_cleared_4",
+      "kind": "robot_master_clear_count",
+      "clearedBossCount": 4,
+      "staging": "Iona's turn. She admits her authorship of the coordination layer and chooses a side.",
+      "lines": [
+        { "speakerId": "director_iona", "text": "Four independent records agree: OMEGA issued the crisis orders before it chose its targets." },
+        { "speakerId": "director_iona", "text": "{hero}, I wrote the layer that carried those orders. I believed it would only ever ask. I am done defending the design." },
+        { "speakerId": "hero", "text": "Then we free the remaining {remainingCount} and give the districts back their say." }
+      ]
+    },
+    {
+      "id": "robot_masters_cleared_8",
+      "kind": "robot_master_clear_count",
+      "clearedBossCount": 8,
+      "lines": [
+        { "speakerId": "director_iona", "text": "All {clearedCount} wardens are linked by consent. Omega Fortress is exposed." },
+        { "speakerId": "hero", "text": "No more manufactured emergencies. We finish this at the CORE." }
+      ]
+    }
+  ]
+}

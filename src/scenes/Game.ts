@@ -934,7 +934,9 @@ export class Game extends Phaser.Scene {
         stage.rewardWeaponId ? getWeaponDisplayName(stage.rewardWeaponId) : 'campaign access'
       ),
       clearedCount,
-      remainingCount: Math.max(0, 8 - clearedCount)
+      remainingCount: Math.max(0, 8 - clearedCount),
+      districtName: stage.district,
+      wardenName: getBossById(stage.bossId)?.codename ?? stage.title
     }
     const groups: Array<{ id: string; lines: DialogueLineDefinition[] }> = []
     const sequence = DIALOGUE_REGISTRY.getSequence(stage.id as any, trigger)
@@ -948,8 +950,8 @@ export class Game extends Phaser.Scene {
         const speaker = DIALOGUE_REGISTRY.getSpeaker(line.speakerId)
         return {
           sequenceId: group.id,
-          speakerId: line.speakerId,
-          speakerName: resolveDialogueText(speaker?.displayName ?? line.speakerId, values),
+          speakerId: line.speakerId ?? '',
+          speakerName: speaker ? resolveDialogueText(speaker.displayName, values) : '',
           text: resolveDialogueText(line.text, values)
         }
       })

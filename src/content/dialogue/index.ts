@@ -1,5 +1,5 @@
 import { IDENTITY } from '../identity'
-import dialogueContentJson from './dialogue.v1.json' with { type: 'json' }
+import dialogueContentJson from './dialogue.v2.json' with { type: 'json' }
 import { createDialogueRegistry } from './DialogueRegistry'
 import { validateDialogueContent } from './validateDialogueContent'
 

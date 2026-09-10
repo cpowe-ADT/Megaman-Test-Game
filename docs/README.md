@@ -68,6 +68,14 @@ This repository uses an authority-based documentation structure. Start here when
 | `docs/adr/0001-runtime-modularization.md` | canonical | repo | Records the decision to modularize gameplay while keeping the game playable during migration |
 | `docs/adr/0002-bundle-size-strategy.md` | canonical | repo | Records the current strategy for managing the large production bundle without destabilizing the runtime |
 
+## Story and Design Docs
+| Path | Status | Purpose |
+| --- | --- | --- |
+| `docs/story/story-bible.md` | canonical | Premise, world, cast, structure, order-independence rules, tokens, ending promise |
+| `docs/story/script.md` | canonical (generated) | Every line the game shows, generated from `src/content/dialogue/dialogue.v2.json` by `npm run story:script` |
+| `docs/story/style-guide.md` | canonical | Thirty rules for adding a line of dialogue |
+| `docs/design/stage-briefs.md` | working | Per-stage blueprint for prompt 02: fiction, mechanics, enemies, mini-boss, secrets, vertical segment, radio beat, boss room, difficulty |
+
 ## Working Docs
 | Path | Status | Purpose |
 | --- | --- | --- |

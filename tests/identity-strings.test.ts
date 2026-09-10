@@ -60,13 +60,13 @@ test('identity uses exact original public terms and preserves eight distinct war
 })
 
 test('bundled dialogue adapter overrides stale proper names while preserving generic hero tokens',async()=>{
-  const content=JSON.parse(fs.readFileSync('src/content/dialogue/dialogue.v1.json','utf8'))
+  const content=JSON.parse(fs.readFileSync('src/content/dialogue/dialogue.v2.json','utf8'))
   const identity=loadIdentity(null)
   const names={...identity.WARDEN_NAMES,director_iona:identity.OPERATOR_NAME,omega_core:identity.ANTAGONIST_NAME}
   for(const speaker of content.speakers) if(speaker.id in names)speaker.displayName='Stale bundled name'
   const registry=await import('../src/content/dialogue/DialogueRegistry')
   const validation=await import('../src/content/dialogue/validateDialogueContent')
-  const modules: Record<string,unknown>={'./dialogue.v1.json':{default:content},'./DialogueRegistry':registry,'./validateDialogueContent':validation,'../identity':{IDENTITY:identity}}
+  const modules: Record<string,unknown>={'./dialogue.v2.json':{default:content},'./DialogueRegistry':registry,'./validateDialogueContent':validation,'../identity':{IDENTITY:identity}}
   const source=fs.readFileSync('src/content/dialogue/index.ts','utf8')
   const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText
   const exports: Record<string,any>={}
