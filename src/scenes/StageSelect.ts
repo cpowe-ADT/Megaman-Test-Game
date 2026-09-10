@@ -44,6 +44,7 @@ type SlotEntry = {
   meta: Phaser.GameObjects.Text
   badge: Phaser.GameObjects.Text
   portrait: Phaser.GameObjects.Rectangle
+  portraitSprite: Phaser.GameObjects.Image
   weakness: Phaser.GameObjects.Text
   stageIndex: number | null
 }
@@ -312,9 +313,10 @@ export class StageSelect extends Phaser.Scene {
           .setVisible(false)
 
         const portrait = this.add.rectangle(x - layout.slotWidth / 2 + 20, y - layout.slotHeight / 2 + 20, 32, 32).setStrokeStyle(1, COLOR.borderMuted).setFillStyle(0x07142a, .5)
+        const portraitSprite = this.add.image(portrait.x, portrait.y, 'px').setVisible(false)
         const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted })
         this.slots.push(new Phaser.Math.Vector2(x, y))
-        this.slotEntries.push({ rect, name, meta, badge, portrait, weakness, stageIndex: null })
+        this.slotEntries.push({ rect, name, meta, badge, portrait, portraitSprite, weakness, stageIndex: null })
       }
     }
   }
@@ -350,6 +352,22 @@ export class StageSelect extends Phaser.Scene {
       .setOrigin(0.5, 0)
   }
 
+  /** The 32x32 slot shows the boss atlas idle frame until prompt 03 supplies portraits; locked stages show a silhouette. */
+  private bindPortrait(sprite: Phaser.GameObjects.Image, bossId: string, accessible: boolean, cleared: boolean): void {
+    const atlasKey = `atlas_${bossId}`
+    const frame = `${bossId}/idle/000`
+    if (!this.textures.exists(atlasKey) || !this.textures.get(atlasKey).has(frame)) {
+      sprite.setVisible(false)
+      return
+    }
+    sprite.setTexture(atlasKey, frame)
+    const fit = 30 / Math.max(sprite.width, sprite.height, 1)
+    sprite.setScale(Math.min(1, fit)).setVisible(true)
+    if (!accessible) sprite.setTint(0x1a2a4a)
+    else if (cleared) sprite.setTint(0x9fb3cc)
+    else sprite.clearTint()
+  }
+
   private refreshPage(): void {
     this.headerProgress?.setText(`${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(this.saveData)}/8 · ${this.saveData.progressionWorld?.progressionMode === 'classic' ? 'CLASSIC' : 'RELAY RANDOMIZER'} · T TUTORIAL · F FINAL`)
     const totalPages = Math.max(1, Math.ceil(this.stages.length / this.pageSize))
@@ -362,6 +380,7 @@ export class StageSelect extends Phaser.Scene {
         slot.stageIndex = null
         slot.rect.setVisible(false).disableInteractive()
         slot.name.setVisible(false)
+        slot.portraitSprite.setVisible(false)
         slot.meta.setVisible(false)
         slot.badge.setVisible(false)
         return
@@ -383,6 +402,7 @@ export class StageSelect extends Phaser.Scene {
       slot.weakness.setText(stage.id === FINAL_STAGE_ID ? `${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(this.saveData)}/8` : `WEAK: ${getBossWeaknessLabel(this.saveData, stage.bossId)}`)
       slot.meta.setColor(cleared ? '#8793ad' : '#9ec2ff')
       slot.badge.setVisible(false)
+      this.bindPortrait(slot.portraitSprite, stage.bossId, accessible, cleared)
 
       this.layoutSlotText(slot)
     })

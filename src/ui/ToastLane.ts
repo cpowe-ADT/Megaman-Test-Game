@@ -33,7 +33,8 @@ export class ToastLane {
 
   constructor(private readonly scene: Phaser.Scene) {
     const { width, height } = scene.scale
-    this.laneWidth = width - 24
+    // Leaves the bottom-right 100px to the HUD's RETRY readout.
+    this.laneWidth = width - 24 - 100
     const y = height - 15
     this.background = scene.add.rectangle(0, 0, this.laneWidth, 22, 0x07142a, 0.94).setStrokeStyle(1, 0x62b6ff, 0.8)
     this.speakerText = scene.add.text(-this.laneWidth / 2 + 8, -6, '', {
@@ -42,7 +43,7 @@ export class ToastLane {
     this.bodyText = scene.add.text(-this.laneWidth / 2 + 8, 4, '', {
       fontFamily: 'monospace', fontSize: '9px', color: '#f4f8ff'
     }).setOrigin(0, 0.5)
-    this.container = scene.add.container(width / 2, y, [this.background, this.speakerText, this.bodyText])
+    this.container = scene.add.container(12 + this.laneWidth / 2, y, [this.background, this.speakerText, this.bodyText])
     this.container.setScrollFactor(0).setDepth(3000).setVisible(false)
     if (y - 11 < GAMEPLAY_VIEWPORT_TOP) throw new Error('ToastLane must sit below the HUD band')
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy())

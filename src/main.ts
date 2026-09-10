@@ -17,7 +17,7 @@ import { PrologueScene } from './scenes/PrologueScene'
 import { Settings } from './systems/Settings'
 import { Save } from './systems/Save'
 import { AUTOMATION } from './config/automation'
-import { STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
+import { GAME_HEIGHT, GAME_WIDTH, resolveGameZoom, STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
 import { resolvePlayerFeatureFlags } from './player/featureFlags'
 import { summarizeSpriteKinematics } from './tools/debug/StateSnapshot'
 import { getStageContentRetentionReport } from './content/campaign'
@@ -36,11 +36,12 @@ const config: Phaser.Types.Core.GameConfig = {
     roundPixels: STRICT_PIXEL_RENDER_POLICY.roundPixels
   },
   scale: {
-    mode: Phaser.Scale.FIT,
+    // NONE plus an integer zoom keeps every pixel and glyph crisp; FIT produced fractional scales and blurry text.
+    mode: Phaser.Scale.NONE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 448,
-    height: 252,
-    zoom: 1
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    zoom: typeof window !== 'undefined' ? resolveGameZoom(window.innerWidth, window.innerHeight) : 1
   },
   physics: {
     default: 'arcade',
@@ -56,6 +57,17 @@ const config: Phaser.Types.Core.GameConfig = {
 ;(config as any).resolution = runtimeResolution
 
 const game = new Phaser.Game(config)
+
+function applyGameZoom(): void {
+  if (typeof window === 'undefined') return
+  const zoom = resolveGameZoom(window.innerWidth, window.innerHeight)
+  if (Math.abs(game.scale.zoom - zoom) > 0.001) game.scale.setZoom(zoom)
+  game.scale.refresh()
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', applyGameZoom)
+  applyGameZoom()
+}
 
 type DebugWindow = Window & {
   __phaserGame?: Phaser.Game
