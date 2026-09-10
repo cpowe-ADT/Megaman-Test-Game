@@ -33,7 +33,7 @@ Verified 2026-09-09 by reading the code and running `npm run test`. Do not re-de
 | Branding | `MEGA CORE X` / `THE ROBOT MASTER PROTOCOL` (`src/scenes/Title.ts:43,50,62`), `MEGA MAN X` (`src/ui/HUD.ts:85`, `src/scenes/Game.ts:2295`), `ROBOT MASTER SELECT` (`src/scenes/StageSelect.ts:265,273`), `README.md:1`, `index.html:10`, package name `phaser-web-starter`, a comment at `src/player/config.ts:136`. Gitignored private overrides include the Mega Man X player and boss atlases; `vite.config.ts` copies them into `dist/assets/private` for local developer builds. The bible already chose the original identity: `OMEGA Relay`, wardens, recovery unit, OMEGA CORE. | listed | 01, 04 |
 | Debt | `src/scenes/Game.ts` is 3,928 lines and the only `@ts-nocheck` file; its debug-hook block is `Game.ts:1251-1470`. The Phaser chunk is about 1.45MB; ADR-0002 accepts the warning. | | every prompt shrinks it |
 | Worktree | At prompt 01 entry, branch `codex/mega-runtime-and-assets-pass`. `git status --short` printed 207 lines: 107 modified tracked files (+10,632 / -5,061) and 100 untracked status entries representing 614 individual files. New `src/`, `tests/`, `docs/`, `scripts/` files and sprite sources are project work; `tmp/`, `output/`, and Python caches are scratch. `types/` is build input, including the private-manifest global declaration, and must be retained. | `tsconfig.json`, `types/private-sprite-manifest.d.ts` | 01 commits it |
-| CI | None. `.github/` does not exist. | | 01 |
+| CI | `.github/workflows/ci.yml`: push/PR Node 22 install/test/build, with a separate manual browser job that uploads `output/` even on failure. Local counterpart: `npm run ci`. Remote run URL pending Craig's push. | `.github/workflows/ci.yml`, `TESTING.md` | 01 |
 
 **Gates.**
 

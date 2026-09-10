@@ -2,11 +2,11 @@
 
 ## Status: PARTIAL (list what is missing and why)
 
-Phase 1.0 is in progress. The baseline checkpoint awaits STOP 1.0 approval; CI and phases 1.0b–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
+Phase 1.0 is in progress. Craig approved STOP 1.0 and the baseline checkpoint is committed; the CI slice is implemented and locally validated. Phases 1.0b–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 
 ## Branch and final commit
 
-Branch: `codex/mega-runtime-and-assets-pass` at `34bde56`. Final prompt commit: pending; no checkpoint commit is authorized before STOP 1.0.
+Branch: `codex/mega-runtime-and-assets-pass`. Approved baseline checkpoint: `35a1fba89ae77d5c900d65486994f5620df48834`, `checkpoint: pre-completion baseline (gates green)`. Final prompt commit: pending; CI and later slices remain.
 
 ## What changed (by area, with file paths)
 
@@ -50,11 +50,40 @@ Branch: `codex/mega-runtime-and-assets-pass` at `34bde56`. Final prompt commit: 
 - Final pellet geometry: the live projectile sensor spans y=181–235 (14×54), overlapping the mine bot's y=226–236 hurtbox; its visible art spans y=198–218 above the floor at y=236. The same identified enemy ends at 4 HP after one accepted uncharged hit. Evidence: `output/web-game-smoke/29-pellet-hits-short-enemy/pellet-evidence.json`.
 - Checkpoint manifest: `output/phase-1-0/checkpoint-candidates.json` lists 108 modified tracked files (the original 107 plus the AGENTS automation wording correction) and 118 untracked project files. Complete path lists and the unapplied `proposed-gitignore.patch` are beside it.
 
+### Phase 1.0 CI design memo — EVAL-P1-002
+
+- Understand: make the approved baseline reproducibly testable on GitHub using Node 22.
+- Understand: keep slow browser coverage available as a deliberate manual workflow with downloadable evidence.
+- Intent: every push and pull request runs the existing logic tests and production build.
+- Player-facing result: no visible gameplay change; broken integration is caught before future work lands.
+- Release Engineer acceptance: `.github/workflows/ci.yml` declares push, pull-request, and manual triggers.
+- Release Engineer acceptance: automatic checks install dependencies with `npm ci`, then run test and build.
+- Release Engineer acceptance: a separate browser job runs only for `workflow_dispatch`.
+- Browser acceptance: install Playwright Chromium, run smoke on port 4400 and the ten-mission sweep, and upload `output/` even on failure.
+- Engineer seam: add only the workflow, the `ci` package command, and corresponding testing/handoff documentation.
+- Engineer constraint: preserve existing dependency versions; add a locked Node 22 type dependency only if clean-resolution evidence proves it necessary. No gameplay, hook, or asset changes.
+- Engineer risk: local private art is absent on GitHub; the current build must continue supporting its existing public-asset fallback.
+- Engineer risk: a green local gate cannot stand in for a remote run; record the remote URL after Craig pushes.
+- Red-first check: an independent workflow audit must report the currently missing workflow and missing `ci` command.
+- Focused gate: parse workflow structure and assert trigger, Node, command, manual-job, and artifact-upload contracts.
+- Full slice gate: `npm run ci` must run `npm run test && npm run build` successfully.
+- Artifact inspection: inspect the workflow source, parsed structure report, and local gate logs; no new screenshots are expected for CI-only wiring.
+- Record: retain Craig's STOP 1.0 approval verbatim, the checkpoint SHA, and graphics-production requirements in this handoff and `progress.md`.
+- Commit: one small CI commit naming EVAL-P1-002; no push or deployment in this slice.
+
+### CI review finding: ambient Node types
+
+- QA found that `@types/node` was absent from `package.json`, the lockfile, and repository `node_modules`; the successful local typecheck resolved an ancestor installation at `/Users/thristannewman/node_modules/@types/node/package.json`.
+- Isolating automatic type discovery to an empty repository-local type root reproduced seven errors (`fs`, `path`, and `process` declarations missing), exit 2; evidence is `output/phase-1-0/19-ci-node-types-red.log`.
+- Engineer correction: declare and lock `@types/node` for Node 22, then typecheck with only repository-local types before rerunning `npm run ci`. This closes a clean-runner dependency gap without changing gameplay.
+
 ## Decisions made (each with the reason and what it forecloses)
 
 - No runtime sensor adjustment: the existing 14×54 Buster sensor demonstrably damages the shortest enemy; changing it without a current failure could regress platform/world-bound behavior.
 - Stronger test evidence: missing targets and other damage sources must fail, so a green smoke result proves actual uncharged pellet contact.
-- Awaiting Craig: add `tmp/`, `output/`, `__pycache__/`, and `*.py[cod]` to `.gitignore`, retain `types/`, and commit the reviewable checkpoint. Ignore rules remain unchanged until approval.
+- Craig approved STOP 1.0 verbatim: "approved yes commit it and you remeber i want oen tha tworks on graphics where you use your chat gpt image or editign skils to create ebtter vwtor files and  asytem doto doi it if you ahve to pgoram somethign to do it you can".
+- Applied the approved ignore additions (`tmp/`, `output/`, `__pycache__/`, `*.py[cod]`), retained build-required `types/`, and committed the baseline as `35a1fba`. Staged content excluded scratch, private runtime assets, and caches; existing Markdown hard-break whitespace and an original blank EOF were preserved.
+- Graphics requirement: keep a dedicated Art Director/Animator seat for original asset production using ChatGPT image generation/editing, with editable vector files where appropriate and a reproducible import/validation pipeline. Engineering may build tooling for that workflow. Generated raster art is not described as editable SVG; use genuine vector paths for scalable interface/icons and preserve layered or source raster assets for sprites. No Capcom-derived public assets; existing art pilot reviews and STOPs remain mandatory. This CI slice adds no art.
 
 ## Content inventory (tables: stages, bosses, dialogue sequences, assets, audio cues; counts, not prose)
 
@@ -68,24 +97,37 @@ Branch: `codex/mega-runtime-and-assets-pass` at `34bde56`. Final prompt commit: 
 
 ## Evidence (every exit-gate eval: command, result line, artifact path, commit)
 
-- `EVAL-P1-001` stays PENDING until the approved checkpoint commit exists. Recorded commands below do not imply prompt completion.
+- `EVAL-P1-001` is PASS on approved checkpoint `35a1fba`. Recorded commands below do not imply full prompt completion.
 
 | Command | Result line / exit | Artifact | Commit |
 | --- | --- | --- | --- |
-| `npm run test` (entry) | `Test summary: 12 passed, 0 failed`; `# pass 180`; `# fail 0`; exit 0 | `output/phase-1-0/01-test.log` | Pending approval |
-| `npm run build` (entry) | `✓ built in 3.72s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0/02-build.log` | Pending approval |
-| `npm run sprites:validate` | `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`; `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`; exit 0 | `output/phase-1-0/03-sprites-validate.log` | Pending approval |
-| `npm run test:smoke` (entry) | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 38/38 pass, exit 0 | `output/phase-1-0/04-baseline-smoke.log`; `output/phase-1-0/baseline-smoke/summary.json` | Pending approval |
-| `npm run test:visual-sweep` | `Mission visual sweep complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/mission-visual-sweep`; 10/10 pass, exit 0 | `output/phase-1-0/05-baseline-sweep.log`; `output/mission-visual-sweep/summary.json` | Pending approval |
-| `node --loader ./tools/ts-node-loader.mjs --test tests/pellet-hit-evidence.test.ts` (old predicate) | `# pass 1`; `# fail 4`; exit 1, expected red | `output/phase-1-0/06-pellet-evidence-red.log` | Pending approval |
-| Same focused test (strict predicate) | `# pass 5`; `# fail 0`; exit 0 | `output/phase-1-0/07-pellet-evidence-green.log` | Pending approval |
-| `SMOKE_ONLY=29-pellet-hits-short-enemy npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1 pass, 37 filter skips, exit 0 | `output/phase-1-0/08-focused-pellet-smoke.log`; `output/phase-1-0/focused-pellet-smoke/summary.json` | Pending approval |
-| `npm run test` (final) | `Test summary: 12 passed, 0 failed`; `# pass 185`; `# fail 0`; exit 0 | `output/phase-1-0/09-final-test.log` | Pending approval |
-| `npm run build` (final) | `✓ built in 3.48s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0/10-final-build.log` | Pending approval |
-| `npm run test:smoke` (final) | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; `Full smoke summary: 38/38 pass, 0 fail, 0 skipped.`; exit 0 | `output/phase-1-0/11-final-smoke.log`; `output/web-game-smoke/summary.json` | Pending approval |
-| Repository develop-web-game client + artifact check | `Skill client artifacts valid: Game state, shot-0.png, 0 browser-error files.`; exit 0 | `output/phase-1-0/12-skill-client.log`; `output/phase-1-0/skill-client/` | Pending approval |
+| `npm run test` (entry) | `Test summary: 12 passed, 0 failed`; `# pass 180`; `# fail 0`; exit 0 | `output/phase-1-0/01-test.log` | `35a1fba` |
+| `npm run build` (entry) | `✓ built in 3.72s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0/02-build.log` | `35a1fba` |
+| `npm run sprites:validate` | `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`; `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`; exit 0 | `output/phase-1-0/03-sprites-validate.log` | `35a1fba` |
+| `npm run test:smoke` (entry) | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 38/38 pass, exit 0 | `output/phase-1-0/04-baseline-smoke.log`; `output/phase-1-0/baseline-smoke/summary.json` | `35a1fba` |
+| `npm run test:visual-sweep` | `Mission visual sweep complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/mission-visual-sweep`; 10/10 pass, exit 0 | `output/phase-1-0/05-baseline-sweep.log`; `output/mission-visual-sweep/summary.json` | `35a1fba` |
+| `node --loader ./tools/ts-node-loader.mjs --test tests/pellet-hit-evidence.test.ts` (old predicate) | `# pass 1`; `# fail 4`; exit 1, expected red | `output/phase-1-0/06-pellet-evidence-red.log` | `35a1fba` |
+| Same focused test (strict predicate) | `# pass 5`; `# fail 0`; exit 0 | `output/phase-1-0/07-pellet-evidence-green.log` | `35a1fba` |
+| `SMOKE_ONLY=29-pellet-hits-short-enemy npm run test:smoke` | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; 1 pass, 37 filter skips, exit 0 | `output/phase-1-0/08-focused-pellet-smoke.log`; `output/phase-1-0/focused-pellet-smoke/summary.json` | `35a1fba` |
+| `npm run test` (final) | `Test summary: 12 passed, 0 failed`; `# pass 185`; `# fail 0`; exit 0 | `output/phase-1-0/09-final-test.log` | `35a1fba` |
+| `npm run build` (final) | `✓ built in 3.48s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0/10-final-build.log` | `35a1fba` |
+| `npm run test:smoke` (final) | `Smoke test complete. Artifacts: /Users/thristannewman/Desktop/MEGAMAN GAME/output/web-game-smoke`; `Full smoke summary: 38/38 pass, 0 fail, 0 skipped.`; exit 0 | `output/phase-1-0/11-final-smoke.log`; `output/web-game-smoke/summary.json` | `35a1fba` |
+| Repository develop-web-game client + artifact check | `Skill client artifacts valid: Game state, shot-0.png, 0 browser-error files.`; exit 0 | `output/phase-1-0/12-skill-client.log`; `output/phase-1-0/skill-client/` | `35a1fba` |
 
-- Remaining prompt-01 evals: PENDING; this session starts with Phase 1.0 only.
+- `EVAL-P1-002`: PASS locally; CI implementation commit contains this row, and its exact SHA will be recorded by the next slice. Remote run URL awaits Craig’s push. Remaining prompt-01 evals: PENDING.
+
+### CI evidence — EVAL-P1-002
+
+| Command | Result line / exit | Artifact |
+| --- | --- | --- |
+| `ruby output/phase-1-0/check-ci-workflow.rb` (before implementation) | `CI structure audit FAIL: missing .github/workflows/ci.yml; missing exact npm ci script: npm run test && npm run build`; exit 1 | `output/phase-1-0/16-ci-structure-red.log` |
+| Same parsed workflow audit (after implementation) | `CI structure audit PASS: push/PR Node22 test+build; manual-only browser job; smoke port4400; always-upload output/.`; exit 0 | `output/phase-1-0/17-ci-structure-green.log` |
+| Typecheck with an empty repository-local type root | `scripts/ensure-bullet-asset.ts(1,28): error TS2307: Cannot find module 'fs' or its corresponding type declarations.`; 7 errors, exit 2 | `output/phase-1-0/19-ci-node-types-red.log` |
+| `node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit --typeRoots ./node_modules/@types` | `Repository-only Node typecheck PASS: @types/node 22.20.2 resolved inside node_modules/.`; exit 0 | `output/phase-1-0/21-ci-node-types-green.log` |
+| `npm run ci` | `Test summary: 12 passed, 0 failed`; `# pass 185`; `# fail 0`; `✓ built in 3.55s`; `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; exit 0 | `output/phase-1-0/22-ci-final.log` |
+
+- QA and Orchestrator reviewed the workflow and clean-resolution repair; no remaining local CI blocker. No new gameplay screenshots were produced for CI-only changes; Phase 1.0 baseline capture sets remain intact.
+- Graphics-production inputs to preserve for prompt 03: extend `scripts/sprites/build-image-prompts.mjs`, `tools/sprites/intake-chatgpt-images.mjs`, `tools/sprites/slice_sheet_to_atlas.py`, and `docs/content/sprite-imagegen.md`. Record explicit repository input paths, recipes, prompt/edit lineage, hashes, source files, and licensing; use deterministic cleanup, slicing, Phaser atlas generation, and pinned SVG rasterization with native 448×252 checks. Existing reviews remain STOP 3.1 (style/pipeline, boss-cell and tile-strip pilot), 3.3a (action sheets), 3.4 (hero), and 3.5 (logo/UI). No art has been produced in this slice.
 
 ## Open risks and known debt
 

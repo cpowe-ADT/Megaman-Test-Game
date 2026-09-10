@@ -16,6 +16,7 @@
     "test:smoke:preview": "npm run build && SMOKE_SERVER=preview node scripts/smoke-test.mjs",
     "test:visual-sweep": "node scripts/mission-visual-sweep.mjs",
     "test": "npm run test:logic && npm run test:scenes",
+    "ci": "npm run test && npm run build",
     "sprites:validate": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/validate-manifest.mjs && npm run sprites:coverage",
     "sprites:coverage": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/check-coverage.mjs",
     "sprites:import": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/import-sprites.mjs",
@@ -36,6 +37,7 @@
     "phaser": "^3.80.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
     "playwright": "^1.58.2",
     "typescript": "^5.4.0",
     "vite": "^5.0.0"

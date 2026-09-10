@@ -20,6 +20,14 @@ The goal is fast feedback from deterministic tests, with browser automation rese
 | `npm run test:visual-sweep` | Cross-mission visual sweep and artifact capture | Sprite pipeline, atlas changes, boss/enemy presentation, mission-wide visual changes |
 | `npm run verify` | Combined validation gate | Required before merge for substantive gameplay, tooling, content, or asset-pipeline work |
 
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on every push and pull request with Node 22 and `npm ci`.
+The automatic job runs `npm run test` and `npm run build`; `npm run ci` runs the same checks locally.
+Use GitHub's manual `workflow_dispatch` trigger for the separate browser job; smoke does not run on pushes.
+That job installs Playwright Chromium, runs smoke with `SMOKE_PORT=4400`, then runs the visual sweep even if smoke fails.
+The browser job uploads `output/` even on failure; record the remote run URL after pushing, without treating local results as a remote pass.
+
 ## Current Test Surface
 - `tests/`
   - Logic, contracts, scene flow, save systems, render policy, platform rules, sprite validation, debug-state helpers
