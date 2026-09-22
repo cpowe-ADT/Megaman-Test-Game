@@ -8,6 +8,8 @@ const privateSpriteManifestData = existsSync(privateSpriteManifestPath)
   : null
 const smokeWatchIgnored = process.env.VITE_SMOKE === '1' ? ['**/*'] : undefined
 const smokeServerActive = process.env.VITE_SMOKE === '1'
+// Source maps are for debugging a build; the dev server has its own. Phaser's map alone is 10MB.
+const buildSourcemap = process.env.BUILD_SOURCEMAP === '1'
 
 function copyRuntimeAssetsPlugin(): Plugin {
   const sourceRoot = resolve(__dirname, 'assets')
@@ -49,7 +51,7 @@ function copyRuntimeAssetsPlugin(): Plugin {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [copyRuntimeAssetsPlugin()],
   server: {
     open: !smokeServerActive,
@@ -61,26 +63,15 @@ export default defineConfig({
     __PRIVATE_SPRITE_MANIFEST_DATA__: JSON.stringify(privateSpriteManifestData)
   },
   build: {
-    sourcemap: true,
+    sourcemap: buildSourcemap,
     rollupOptions: {
       output: {
+        // Phaser is the only manual chunk: it changes rarely, so browsers keep it cached across game
+        // updates. Splitting game code by folder (boss/content/gameplay) made chunks import each other
+        // in a cycle, and the production build threw "Cannot access 'b' before initialization" at boot.
         manualChunks(id) {
           if (id.includes('/node_modules/phaser/')) {
             return 'phaser'
-          }
-          if (id.includes('/src/boss/') || id.includes('/src/bosses/')) {
-            return 'boss'
-          }
-          if (id.includes('/src/content/')) {
-            return 'content'
-          }
-          if (
-            id.includes('/src/player/') ||
-            id.includes('/src/projectiles/') ||
-            id.includes('/src/enemy/') ||
-            id.includes('/src/physics/')
-          ) {
-            return 'gameplay'
           }
           return undefined
         }
@@ -88,8 +79,20 @@ export default defineConfig({
     }
   },
   resolve: {
-    alias: {
-      '@boss/BossController': resolve(__dirname, 'src/bosses/BossController.ts')
-    }
+    alias: [
+      { find: '@boss/BossController', replacement: resolve(__dirname, 'src/bosses/BossController.ts') },
+      // The game uses Arcade physics only. Phaser's arcade-physics build is the full engine minus
+      // Matter.js, about 10% less JavaScript to download and parse. Types still come from 'phaser'.
+      // The build takes Phaser's own minified file (smaller than re-minifying); dev keeps it readable.
+      {
+        find: /^phaser$/,
+        replacement: resolve(
+          __dirname,
+          command === 'build'
+            ? 'node_modules/phaser/dist/phaser-arcade-physics.min.js'
+            : 'node_modules/phaser/dist/phaser-arcade-physics.js'
+        )
+      }
+    ]
   }
-})
+}))
