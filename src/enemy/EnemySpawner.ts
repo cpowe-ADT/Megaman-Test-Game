@@ -98,8 +98,10 @@ export class EnemySpawner {
         return
       }
       if (!entity.sprite.active) {
+        // Defeated: nothing reads the sprite after the kill, so free it instead of leaving it hidden in the group.
         this.enemies.delete(id)
         this.onEntityRemoved(id)
+        entity.destroy()
       }
     })
 

@@ -63,6 +63,7 @@ import { resolveSwordHitboxOrigin, swordHitboxIntersectsTarget } from '../player
 import type { PlayerDamageRequest, PlayerDamageResult, ResolvedHitbox } from '../player/types'
 import { ActiveRunSaveData, Save } from '../systems/Save'
 import { queueStageBackgrounds, resolveGameStageId } from './game/stageBackgroundLoading'
+import { parkTrailEmitter, reuseParkedTrailEmitter } from '../projectiles/trailEmitterParking'
 import { DebugOverlay } from '../ui/DebugOverlay'
 import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD } from '../ui/HUD'
@@ -261,6 +262,8 @@ export class Game extends Phaser.Scene {
   private createBossProjectileTrailEmitter(
     bullet: Phaser.Physics.Arcade.Sprite
   ): Phaser.GameObjects.Particles.ParticleEmitter | null {
+    const parked = reuseParkedTrailEmitter<Phaser.GameObjects.Particles.ParticleEmitter>(bullet)
+    if (parked) return parked
     const emitter = this.add.particles(0, 0, 'px', {
       lifespan: 180,
       speed: 0,
@@ -2220,14 +2223,7 @@ export class Game extends Phaser.Scene {
     if (body) {
       body.onWorldBounds = false
     }
-    const em = (bullet as any).__trailEmitter
-    if (em && typeof em.stop === 'function') {
-      em.stop()
-      if (typeof em.destroy === 'function') {
-        em.destroy()
-      }
-      ;(bullet as any).__trailEmitter = null
-    }
+    parkTrailEmitter(bullet)
     const anyBullet = bullet as any
     const owner = (bullet.data?.get?.('owner') as string | undefined) ?? 'player'
     const group = owner === 'enemy' ? this.bossBullets : this.playerBullets

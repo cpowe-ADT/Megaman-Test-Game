@@ -67,6 +67,7 @@ const config: Phaser.Types.Core.GameConfig = {
 ;(config as any).resolution = runtimeResolution
 
 const game = new Phaser.Game(config)
+AudioService.attachGame(game)
 
 const hdRendering = installHdRendering(game, { measure: measureRenderScale })
 if (typeof window !== 'undefined') {

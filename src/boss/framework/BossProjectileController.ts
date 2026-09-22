@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { AttackPattern } from '../../bosses/types'
 import type { ProjectileSystem } from '../../projectiles'
+import { parkTrailEmitter } from '../../projectiles/trailEmitterParking'
 
 type BossProjectileOrigin = Phaser.GameObjects.GameObject & {
   x: number
@@ -469,12 +470,7 @@ export class BossProjectileController {
     this.options.playShootAnimation?.()
     this.restoreWalkAt = this.options.getNow() + 260
 
-    const existingEmitter = (bullet as any).__trailEmitter as Phaser.GameObjects.Particles.ParticleEmitter | undefined
-    if (existingEmitter) {
-      existingEmitter.stop?.()
-      existingEmitter.destroy?.()
-      ;(bullet as any).__trailEmitter = null
-    }
+    parkTrailEmitter(bullet)
 
     const emitter = this.options.createTrailEmitter(bullet)
     if (emitter) {

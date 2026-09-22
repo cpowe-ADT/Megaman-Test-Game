@@ -117,12 +117,6 @@ export class EnemyEntity {
     this.combat.update(now, this.facing)
     this.motor.update(now)
     this.animator.update(this.state, this.facing)
-
-    for (const marker of this.animator.consumeFrameMarkers()) {
-      if (marker.event === 'enable_hitbox' || marker.event === 'disable_hitbox') {
-        continue
-      }
-    }
   }
 
   applyDamage(event: DamageEvent): number {
