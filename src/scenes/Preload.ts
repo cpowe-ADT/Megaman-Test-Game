@@ -5,9 +5,8 @@ import { getLoadableAtlasEntries } from '../assets/manifest'
 import { countSpriteManifestOverrides, mergeSpriteManifest } from '../assets/privateSpriteManifest'
 import type { SpriteSheetManifestV1 } from '../assets/types'
 import { validateSpriteManifest } from '../assets/validateManifest'
-import { getMusicAssetEntries } from '../audio/musicLibrary'
 import { getSfxAssetEntries } from '../audio/sfxLibrary'
-import { getStageBackgroundAssetEntries } from '../content/stageBackgroundCatalog'
+import { residentBackgroundAssets } from './game/stageBackgroundLoading'
 import { AnimationManifest, type AnimationManifestEntry } from '../player/AnimationManifest'
 import { resolvePlayerAtlasBinding } from '../player/PlayerAtlasBindings'
 import { ensureGameplayTextures } from '../ui/gameplay/GameplayTextures'
@@ -48,19 +47,17 @@ export class Preload extends Phaser.Scene {
       }
     })
 
-    getMusicAssetEntries().forEach((entry) => {
-      if (!this.cache.audio.exists(entry.key)) {
-        this.load.audio(entry.key, entry.path)
-      }
-    })
-
+    // Music is not preloaded: each track decodes when its cue is first asked for and is evicted when
+    // nothing plays it (src/audio/MusicTrackLoader.ts, musicResidency.ts). Decoded, the four tracks
+    // held 86MB and were most of the download before the Title could show.
     getSfxAssetEntries().forEach((entry) => {
       if (!this.cache.audio.exists(entry.key)) {
         this.load.audio(entry.key, entry.path)
       }
     })
 
-    getStageBackgroundAssetEntries().forEach((entry) => {
+    // Stage backgrounds load in Game.preload() per stage; only layers other scenes draw stay resident.
+    residentBackgroundAssets().forEach((entry) => {
       if (!this.textures.exists(entry.key)) {
         this.load.image(entry.key, entry.path)
       }
@@ -70,7 +67,7 @@ export class Preload extends Phaser.Scene {
       valid: true,
       entries: manifestValidation.manifest.entries.length,
       readyAtlases: atlasEntries.length,
-      backgroundImages: getStageBackgroundAssetEntries().length,
+      backgroundImages: residentBackgroundAssets().length,
       privateOverrideEntries,
       manifestMode: privateOverrideEntries > 0 ? 'base+private' : 'base'
     })

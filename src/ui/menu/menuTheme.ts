@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_SIZE } from '../../config/renderPolicy'
 
 export const MENU_FONT_DISPLAY = '"Arial Black", "Trebuchet MS", Arial, sans-serif'
 export const MENU_FONT_BODY = '"Trebuchet MS", Arial, sans-serif'
@@ -18,7 +19,7 @@ export const MENU_COLORS = {
 } as const
 
 export function addMenuBackdrop(scene: Phaser.Scene, dimAlpha = 1): Phaser.GameObjects.Graphics {
-  const { width, height } = scene.scale
+  const { width, height } = GAME_SIZE
   const graphics = scene.add.graphics()
   graphics.fillStyle(MENU_COLORS.ink, dimAlpha)
   graphics.fillRect(0, 0, width, height)

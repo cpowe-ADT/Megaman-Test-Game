@@ -21,6 +21,7 @@ import {
   type SystemMenuOption,
   type SystemMenuSource
 } from './menu/systemMenuSelector'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 type SystemMenuData = {
   sourceScene: SystemMenuSource
@@ -53,8 +54,10 @@ export class SystemMenu extends Phaser.Scene {
     this.sourceSceneKey = data?.sourceScene === 'StageSelect' ? 'StageSelect' : 'Game'
     this.index = this.sourceSceneKey === 'Game' ? 2 : 0
     this.options = this.buildOptions()
+    // Scene instances are reused: without this, every pause kept the previous visits' destroyed backplates.
+    this.rowBackplates = []
 
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     const isGame = this.sourceSceneKey === 'Game'
     const panelWidth = isGame ? 340 : 278
     const statusHeight = isGame ? 20 : 0
@@ -247,8 +250,8 @@ export class SystemMenu extends Phaser.Scene {
   }
 
   /** Automation payload. */
-  getDebugState(): { source: SystemMenuSource; index: number; options: Array<{ id: string; label: string; enabled: boolean }> } {
-    return { source: this.sourceSceneKey, index: this.index, options: this.options.map((o) => ({ id: o.id, label: o.label, enabled: o.enabled })) }
+  getDebugState(): { source: SystemMenuSource; index: number; options: Array<{ id: string; label: string; enabled: boolean }>; rowBackplates: number } {
+    return { source: this.sourceSceneKey, index: this.index, options: this.options.map((o) => ({ id: o.id, label: o.label, enabled: o.enabled })), rowBackplates: this.rowBackplates.length }
   }
 }
 

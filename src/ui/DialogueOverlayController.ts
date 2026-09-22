@@ -5,6 +5,7 @@ import {
   type DialoguePlaybackLine,
   type DialoguePlaybackSnapshot
 } from '../narrative/DialoguePlayback'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 export class DialogueOverlayController {
   private readonly playback = new DialoguePlayback()
@@ -17,7 +18,7 @@ export class DialogueOverlayController {
   private nextAdvanceAtMs = 0
 
   constructor(private readonly scene: Phaser.Scene) {
-    const { width, height } = scene.scale
+    const { width, height } = GAME_SIZE
     const panelHeight = 112
     const panelY = height - panelHeight / 2 - 7
     const dim = scene.add.rectangle(width / 2, height / 2, width, height, 0x02050c, 0.22)

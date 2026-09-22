@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/renderPolicy'
+import { GAME_WIDTH, GAME_HEIGHT, GAME_SIZE } from '../config/renderPolicy'
 import AudioService from '../audio'
 import { AUTOMATION } from '../config/automation'
 import { getCampaignStage } from '../content/campaign'
@@ -75,7 +75,7 @@ export class EndingScene extends Phaser.Scene {
     AudioService.playMusic(this, 'completion')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => AudioService.onSceneShutdown(this))
 
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     this.cameras.main.setBackgroundColor('#050913')
     addMenuBackdrop(this, 0.6)
     this.cardBox = this.add.rectangle(width / 2, ENDING_CARD_HEIGHT / 2 + 6, width - 24, ENDING_CARD_HEIGHT - 4, MENU_COLORS.panel, 0.9)
@@ -138,7 +138,7 @@ export class EndingScene extends Phaser.Scene {
   }
 
   private render(): void {
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     this.creditsTween?.stop()
     this.creditsText?.destroy()
     this.creditsText = undefined

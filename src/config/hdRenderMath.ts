@@ -8,9 +8,19 @@ export interface RenderScale {
   zoom: number
   /** Device pixel ratio actually used (1 under automation). */
   dpr: number
-  /** Canvas pixels per game pixel: zoom * dpr, snapped to a whole number when it is within 2%. */
+  /** Canvas pixels per game pixel: zoom * dpr, snapped to a whole number when it is within 2%, at most MAX_RENDER_SCALE. */
   scale: number
+  /** CSS zoom for the canvas so it covers 448*zoom by 252*zoom CSS pixels: 1/dpr until the cap, then zoom/scale. */
+  cssZoom: number
 }
+
+/**
+ * Largest canvas pixels per game pixel. Uncapped, a 2560x1440 window on a 2x display rendered a
+ * 4480x2520 canvas (45MB per buffer, and every Text at resolution 10). At 6 the canvas is at most
+ * 2688x1512 (16MB) and the browser scales it up with nearest-neighbour, which keeps every game
+ * pixel a whole number of device pixels because 6 canvas pixels map to zoom*dpr device pixels.
+ */
+export const MAX_RENDER_SCALE = 6
 
 export function resolveRenderScale(
   parentWidth: number,
@@ -24,7 +34,10 @@ export function resolveRenderScale(
   let scale = zoom * dpr
   const rounded = Math.round(scale)
   if (rounded >= 1 && Math.abs(scale - rounded) < 0.02) scale = rounded
-  return { zoom, dpr, scale }
+  if (scale > MAX_RENDER_SCALE) {
+    return { zoom, dpr, scale: MAX_RENDER_SCALE, cssZoom: zoom / MAX_RENDER_SCALE }
+  }
+  return { zoom, dpr, scale, cssZoom: 1 / dpr }
 }
 
 /** Scroll value that keeps a top-left-origin camera inside its bounds. */

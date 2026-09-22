@@ -52,6 +52,23 @@ export async function runOptionsPersistScenario(name, { outputDir, titleUrl, rea
     assert.equal(reloaded.settings.screenShake, false)
     assert.equal(reloaded.audio.musicVolume, 6)
     await capture('reloaded')
+    // Second and third visits in one page: the scene instance is reused, so its row arrays must be
+    // rebuilt, not appended to, and a change must show on the rows that are actually on screen.
+    for (let visit = 0; visit < 2; visit += 1) {
+      await tapKey(page, 'o')
+      await waitForState(page, (state) => state.options && state.scene === 'Options')
+      if (visit === 0) {
+        await tapKey(page, 'Escape')
+        await waitForState(page, (state) => state.scene === 'Title' && !state.options)
+      }
+    }
+    await tapKey(page, 'ArrowLeft')
+    const revisited = await waitForState(page, (state) => state.settings?.musicVolume === 5 && state.options)
+    assert.equal(revisited.options.rowObjects, revisited.options.rows.length, 'one set of Options rows per visit')
+    assert.equal(revisited.options.shownValues[0], revisited.options.rows[0].value, 'the visible music row shows the new value')
+    await capture('options-revisited')
+    await tapKey(page, 'Escape')
+    await waitForState(page, (state) => state.scene === 'Title' && !state.options)
     assert.deepEqual(errors, [])
     return reloaded.settings
   } finally { await browser.close() }
@@ -108,6 +125,12 @@ export async function runPauseWeaponSelectScenario(name, { outputDir, titleUrl, 
     assert.ok(refilled.save.subTankFill[0] > 0)
     assert.equal(refilled.save.hasActiveRun, true, 'autosave keeps an active run during the stage')
     assert.equal(resumed.scene, 'Game')
+    // A second pause reuses the SystemMenu scene: one backplate per row, not one per row per visit.
+    await tapKey(page, 'Escape')
+    const repaused = await waitForState(page, (state) => state.systemMenu && state.playerState?.paused === true)
+    assert.equal(repaused.systemMenu.rowBackplates, repaused.systemMenu.options.length, 'one set of pause-menu backplates')
+    await tapKey(page, 'Escape')
+    await waitForState(page, (state) => state.playerState?.paused === false && !state.systemMenu)
     assert.deepEqual(errors, [])
     return { setup, healed: healed.playerState, tank: refilled.save.subTankFill }
   } finally { await browser.close() }

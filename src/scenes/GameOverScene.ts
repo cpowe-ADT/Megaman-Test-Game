@@ -10,6 +10,7 @@ import { Save } from '../systems/Save'
 import { addMenuBackdrop, addMenuPanel, MENU_COLORS, MENU_FONT_BODY, MENU_FONT_CODE, MENU_FONT_DISPLAY, styleMenuHeading } from '../ui/menu/menuTheme'
 import { GAME_OVER_AUTO_CONTINUE_MS, gameOverChoices, resolveContinueCheckpoint, type GameOverChoice } from './game/gameOverLogic'
 import { selectMenuIndex } from './menu/systemMenuSelector'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 export type GameOverSceneData = { stageId: string; checkpointId?: string | null }
 
@@ -34,7 +35,7 @@ export default class GameOverScene extends Phaser.Scene {
     AudioService.playMusic(this, 'title')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => AudioService.onSceneShutdown(this))
 
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     this.cameras.main.setBackgroundColor('#050913')
     addMenuBackdrop(this, 0.5)
     addMenuPanel(this, width / 2, height / 2, 300, 150)

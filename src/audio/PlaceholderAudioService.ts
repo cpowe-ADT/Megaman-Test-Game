@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
 import { Settings, VOLUME_STEPS, type SettingsData } from '../systems/Settings'
-import { MUSIC_ASSETS, type MusicCueId } from './musicLibrary'
+import { MUSIC_ASSETS, getMusicAssetEntries, type MusicCueId } from './musicLibrary'
+import { MusicTrackLoader } from './MusicTrackLoader'
+import { musicKeysToEvict } from './musicResidency'
 import { SFX_ASSETS, type SfxAssetKey } from './sfxLibrary'
 
 type SfxSequenceStep = {
@@ -20,6 +22,8 @@ class PlaceholderAudioService {
   private currentMusicCue?: MusicCueId
   private requestedMusicCue?: MusicCueId
   private musicScene?: Phaser.Scene
+  private musicGame?: Phaser.Game
+  private readonly musicLoader = new MusicTrackLoader()
   private musicVolumeScale = 1
   private sfxVolumeScale = 1
   private musicVolumeStep = VOLUME_STEPS
@@ -260,7 +264,10 @@ class PlaceholderAudioService {
 
   playMusic(scene: Phaser.Scene, cue: MusicCueId): void {
     this.musicScene = scene
+    this.musicGame = scene.game
     this.requestedMusicCue = cue
+    // Decode now even while audio is locked, so the track is ready the moment the player unlocks it.
+    this.ensureMusicLoaded(cue)
     if (!this.unlocked) {
       return
     }
@@ -289,14 +296,62 @@ class PlaceholderAudioService {
     }
   }
 
-  getDebugState(): { enabled: boolean; unlocked: boolean; musicCue: MusicCueId | null; musicVolume: number; sfxVolume: number } {
+  getDebugState(): {
+    enabled: boolean
+    unlocked: boolean
+    musicCue: MusicCueId | null
+    musicPlayingCue: MusicCueId | null
+    musicLoading: boolean
+    residentMusicKeys: string[]
+    musicVolume: number
+    sfxVolume: number
+  } {
     return {
       enabled: this.enabled,
       unlocked: this.unlocked,
-      musicCue: this.currentMusicCue ?? this.requestedMusicCue ?? null,
+      // The cue the game asked for; while its track decodes the previous one may still be playing.
+      musicCue: this.requestedMusicCue ?? this.currentMusicCue ?? null,
+      musicPlayingCue: this.currentMusicCue ?? null,
+      musicLoading: this.musicLoader.isLoading(),
+      residentMusicKeys: this.residentMusicKeys(),
       musicVolume: this.musicVolumeStep,
       sfxVolume: this.sfxVolumeStep
     }
+  }
+
+  private residentMusicKeys(): string[] {
+    const game = this.musicGame
+    if (!game) {
+      return []
+    }
+    return getMusicAssetEntries()
+      .map((entry) => entry.key)
+      .filter((key) => game.cache.audio.exists(key))
+  }
+
+  private ensureMusicLoaded(cue: MusicCueId): void {
+    const game = this.musicGame
+    const asset = MUSIC_ASSETS[cue]
+    if (!game || !asset || game.cache.audio.exists(asset.key)) {
+      return
+    }
+    // Free tracks nothing will play before decoding another one.
+    this.evictIdleMusic()
+    void this.musicLoader.load(game, asset).then((loaded) => {
+      if (loaded && this.unlocked && this.requestedMusicCue === cue) {
+        this.startRequestedMusic()
+      }
+    })
+  }
+
+  private evictIdleMusic(): void {
+    const game = this.musicGame
+    if (!game) {
+      return
+    }
+    const playingKey = this.currentMusic?.key ?? null
+    const requestedKey = this.requestedMusicCue ? MUSIC_ASSETS[this.requestedMusicCue]?.key ?? null : null
+    musicKeysToEvict(this.residentMusicKeys(), playingKey, requestedKey).forEach((key) => this.musicLoader.evict(game, key))
   }
 
   private normalizeKey(key: string): SfxAssetKey | 'none' {
@@ -378,7 +433,13 @@ class PlaceholderAudioService {
     }
 
     const asset = MUSIC_ASSETS[cue]
-    if (!asset || !scene.cache.audio.exists(asset.key)) {
+    if (!asset) {
+      return
+    }
+    if (!scene.cache.audio.exists(asset.key)) {
+      // Not decoded yet: the previous track keeps playing and this cue starts when its load resolves.
+      this.musicGame = scene.game
+      this.ensureMusicLoaded(cue)
       return
     }
 
@@ -401,6 +462,7 @@ class PlaceholderAudioService {
     } catch {
       this.currentMusic = undefined
     }
+    this.evictIdleMusic()
   }
 
   private playSequence(steps: SfxSequenceStep[]): void {

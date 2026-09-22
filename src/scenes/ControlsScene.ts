@@ -10,6 +10,7 @@ import {
   MENU_FONT_DISPLAY,
   styleMenuHeading
 } from '../ui/menu/menuTheme'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 type ControlsSceneData = {
   returnSceneKey?: string
@@ -25,7 +26,7 @@ export class ControlsScene extends Phaser.Scene {
   create(data?: ControlsSceneData): void {
     this.returnSceneKey = data?.returnSceneKey || 'Title'
 
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     const panelWidth = Math.min(width - 20, 408)
     const panelHeight = Math.min(height - 16, 228)
     const panelX = Math.round(width / 2)

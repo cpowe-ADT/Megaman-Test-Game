@@ -31,7 +31,7 @@ const forceDprOne = query?.get('automation') === '1'
 const measureRenderScale = () =>
   typeof window !== 'undefined'
     ? resolveRenderScale(window.innerWidth, window.innerHeight, window.devicePixelRatio ?? 1, forceDprOne)
-    : { zoom: 1, dpr: 1, scale: 1 }
+    : { zoom: 1, dpr: 1, scale: 1, cssZoom: 1 }
 const initialRenderScale = measureRenderScale()
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -46,12 +46,12 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     // The canvas is created at device resolution (448x252 times zoom times devicePixelRatio) and each
     // scene camera zooms by the same factor, so pixel art stays on whole device pixels while text renders HD.
-    // The CSS zoom of 1/dpr maps that canvas back to CSS pixels. See config/hdRender.ts.
+    // The CSS zoom (1/dpr, or zoom/scale above the scale cap) maps that canvas back to CSS pixels. See config/hdRender.ts.
     mode: Phaser.Scale.NONE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: Math.round(GAME_WIDTH * initialRenderScale.scale),
     height: Math.round(GAME_HEIGHT * initialRenderScale.scale),
-    zoom: 1 / initialRenderScale.dpr
+    zoom: initialRenderScale.cssZoom
   },
   physics: {
     default: 'arcade',

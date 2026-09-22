@@ -7,6 +7,7 @@ import { Settings } from '../systems/Settings'
 import { addMenuBackdrop, addMenuPanel, MENU_COLORS, MENU_FONT_BODY, MENU_FONT_CODE, MENU_FONT_DISPLAY, styleMenuHeading } from '../ui/menu/menuTheme'
 import { advanceDeleteConfirmation, applyOptionsChange, DELETE_WORD, optionsRows, type OptionsRow } from './menu/optionsModel'
 import { selectMenuIndex } from './menu/systemMenuSelector'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 type OptionsSceneData = { returnSceneKey?: string }
 
@@ -30,10 +31,14 @@ export class OptionsScene extends Phaser.Scene {
 
   create(data?: OptionsSceneData): void {
     this.returnSceneKey = data?.returnSceneKey || 'Title'
+    // Scene instances are reused: without this, every visit indexed the first visit's destroyed rows.
+    this.labels = []
+    this.values = []
+    this.backplates = []
     this.index = 0
     this.typed = ''
     this.deleting = false
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     const panelWidth = 330
     const panelHeight = 214
     const panelX = Math.round(width / 2)
@@ -66,8 +71,15 @@ export class OptionsScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { if (this.keyHandler) window.removeEventListener('keydown', this.keyHandler) })
   }
 
-  getDebugState(): { index: number; rows: OptionsRow[]; typed: string; deleting: boolean } {
-    return { index: this.index, rows: this.rows, typed: this.typed, deleting: this.deleting }
+  getDebugState(): { index: number; rows: OptionsRow[]; typed: string; deleting: boolean; rowObjects: number; shownValues: Array<string | null> } {
+    return {
+      index: this.index,
+      rows: this.rows,
+      typed: this.typed,
+      deleting: this.deleting,
+      rowObjects: this.labels.length,
+      shownValues: this.values.map((value) => (value.active ? value.text : null))
+    }
   }
 
   private currentRows(): OptionsRow[] {

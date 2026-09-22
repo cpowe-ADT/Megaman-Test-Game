@@ -8,6 +8,7 @@ import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { Save } from '../systems/Save'
 import { addMenuBackdrop, MENU_FONT_CODE } from '../ui/menu/menuTheme'
 import { resolvePlaybackLines } from './game/StoryDirector'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 export type PrologueSceneData = {
   next: { stageId: string; bossId: string; runtimeBossConfigId?: string }
@@ -40,7 +41,7 @@ export class PrologueScene extends Phaser.Scene {
     AudioService.playMusic(this, 'title')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => AudioService.onSceneShutdown(this))
 
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     this.cameras.main.setBackgroundColor('#02050c')
     addMenuBackdrop(this, 0.55)
     if (this.textures.exists('bg_dock_0')) {

@@ -9,6 +9,7 @@ import {
   serializeProgressionTransport
 } from '../progression'
 import { Save } from '../systems/Save'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 type ProgressionSummarySceneData = {
   returnSceneKey?: string
@@ -41,7 +42,7 @@ export class ProgressionSummaryScene extends Phaser.Scene {
     const save = Save.load()
     const transport = Save.exportProgression()
     const gate = evaluateFinalGate(save)
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     const panelWidth = Math.min(width - 18, 420)
     const panelHeight = Math.min(height - 14, 238)
     const panelX = Math.round(width / 2)

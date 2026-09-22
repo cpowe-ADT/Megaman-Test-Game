@@ -16,6 +16,7 @@ import {
   MENU_FONT_DISPLAY,
   styleMenuHeading
 } from '../ui/menu/menuTheme'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 export class Title extends Phaser.Scene {
   constructor() {
@@ -23,7 +24,7 @@ export class Title extends Phaser.Scene {
   }
 
   create(): void {
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
     const saveData = Save.load()
     const params =
       typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()

@@ -3,6 +3,7 @@ import type { DialogueOverlayController } from './DialogueOverlayController'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { StageIntroSequence, type StageIntroSnapshot } from '../scenes/game/StageIntroSequence'
 import { MENU_FONT_CODE, MENU_FONT_DISPLAY } from './menu/menuTheme'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 export type StageIntroPresenterOptions = {
   callout: string
@@ -23,7 +24,7 @@ export class StageIntroPresenter {
   private finished = false
 
   constructor(private readonly scene: Phaser.Scene) {
-    const { width, height } = scene.scale
+    const { width, height } = GAME_SIZE
     const black = scene.add.rectangle(width / 2, height / 2, width, height, 0x02050c, 1)
     const band = scene.add.rectangle(width / 2, height / 2, width, 44, 0x07142a, 0.98).setStrokeStyle(1, 0x62b6ff, 0.9)
     this.calloutText = scene.add.text(width / 2, height / 2 - 12, '', {

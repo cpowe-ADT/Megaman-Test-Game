@@ -129,7 +129,7 @@ export class HdCamera extends Phaser.Cameras.Scene2D.Camera {
   }
 }
 
-let current: RenderScale = { zoom: 1, dpr: 1, scale: 1 }
+let current: RenderScale = { zoom: 1, dpr: 1, scale: 1, cssZoom: 1 }
 const trackedTexts = new Set<Phaser.GameObjects.Text>()
 let factoriesPatched = false
 
@@ -217,7 +217,7 @@ export function installHdRendering(game: Phaser.Game, options: InstallHdRenderin
   const refresh = (): void => {
     const next = options.measure()
     current = next
-    if (Math.abs(game.scale.zoom - 1 / next.dpr) > 0.0001) game.scale.setZoom(1 / next.dpr)
+    if (Math.abs(game.scale.zoom - next.cssZoom) > 0.0001) game.scale.setZoom(next.cssZoom)
     const width = Math.round(GAME_WIDTH * next.scale)
     const height = Math.round(GAME_HEIGHT * next.scale)
     if (game.scale.width !== width || game.scale.height !== height) game.scale.resize(width, height)

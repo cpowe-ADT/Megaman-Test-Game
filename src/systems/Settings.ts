@@ -60,13 +60,19 @@ export function validateSettings(value: unknown): SettingsData {
 }
 export class SettingsStore {
   private memory: SettingsData = validateSettings({})
+  /** Last stored string and its validated value: input reads settings several times a frame. */
+  private parsed: { raw: string; value: SettingsData } | null = null
   private readonly listeners = new Set<(settings: SettingsData) => void>()
   constructor(private readonly storage?: SettingsStorage) {}
+  /** Storage is still read every call so outside writes (smoke fixtures, another tab) take effect; only an unchanged string skips the parse. */
   get(): SettingsData {
     try {
       const raw = this.storage?.getItem(KEY)
       if (!raw) return this.memory
-      return validateSettings(JSON.parse(raw))
+      if (this.parsed?.raw === raw) return this.parsed.value
+      const value = validateSettings(JSON.parse(raw))
+      this.parsed = { raw, value }
+      return value
     } catch { return this.memory }
   }
   update(patch: Partial<SettingsData> & Record<string, unknown>): SettingsData {
@@ -74,7 +80,11 @@ export class SettingsStore {
     const bindingPatch = patch.bindings && typeof patch.bindings === 'object' && !Array.isArray(patch.bindings)
       ? patch.bindings : {}
     this.memory = validateSettings({ ...previous, ...patch, bindings: { ...previous.bindings, ...bindingPatch } })
-    try { this.storage?.setItem(KEY, JSON.stringify(this.memory)) } catch { /* Storage can be unavailable. */ }
+    try {
+      const raw = JSON.stringify(this.memory)
+      this.storage?.setItem(KEY, raw)
+      this.parsed = { raw, value: this.memory }
+    } catch { /* Storage can be unavailable. */ }
     this.listeners.forEach(listener => listener(this.memory))
     return this.memory
   }

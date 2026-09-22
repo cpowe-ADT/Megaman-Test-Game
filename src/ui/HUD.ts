@@ -22,6 +22,8 @@ export class HUD {
   private weaponName = 'BUSTER'
   private bossName = 'BOSS • ???'
   private weaponColor = 0x58d8ff
+  /** What each bar Graphics last drew; the boss bar was rebuilt every frame with an unchanged value. */
+  private readonly drawnBars = new WeakMap<Phaser.GameObjects.Graphics, string>()
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -136,8 +138,13 @@ export class HUD {
     pct: number,
     fillColor: number
   ): void {
-    g.clear()
     const clamped = Phaser.Math.Clamp(pct, 0, 1)
+    const signature = `${x},${y},${w},${h},${clamped},${fillColor}`
+    if (this.drawnBars.get(g) === signature) {
+      return
+    }
+    this.drawnBars.set(g, signature)
+    g.clear()
     const inset = 3
     const innerX = x + inset
     const innerY = y + 2

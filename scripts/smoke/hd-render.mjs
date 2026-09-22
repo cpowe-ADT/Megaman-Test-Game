@@ -39,6 +39,54 @@ async function samplePixels(page, points, scale) {
   }, { points, scale })
 }
 
+// Every visible Text in the running scenes, in game pixels, that falls outside the 448x252 frame.
+async function textOutsideFrame(page) {
+  return page.evaluate(() => {
+    const outside = []
+    window.__phaserGame.scene.getScenes(true).forEach((scene) => {
+      const visit = (list) =>
+        list.forEach((object) => {
+          if (object.type === 'Text' && object.visible && object.alpha > 0 && object.text) {
+            const bounds = object.getBounds()
+            if (bounds.left < -1 || bounds.top < -1 || bounds.right > 449 || bounds.bottom > 253) {
+              outside.push({ scene: scene.scene.key, text: object.text.slice(0, 24), x: Math.round(bounds.x), y: Math.round(bounds.y), right: Math.round(bounds.right), bottom: Math.round(bounds.bottom) })
+            }
+          }
+          if (Array.isArray(object.list)) visit(object.list)
+        })
+      visit(scene.children.list)
+    })
+    return outside
+  })
+}
+
+// Menus lay out in game pixels (GAME_SIZE), not canvas pixels: at 2x every menu text stays inside the frame.
+async function assertMenusInsideFrame(browser, { url, waitForState, tapKey }, dir, errors) {
+  const page = await browser.newPage({ viewport: { width: 896, height: 504 } })
+  page.on('pageerror', (error) => errors.push(String(error)))
+  const report = {}
+  try {
+    await page.goto(url.replace('&startScene=StageSelect', ''), { waitUntil: 'domcontentloaded' })
+    await waitForState(page, (state) => state.scene === 'Title', 8000)
+    report.title = await textOutsideFrame(page)
+    await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-title-2x.png') })
+    await tapKey(page, 'o')
+    await waitForState(page, (state) => state.scene === 'Options' || state.options, 8000)
+    report.options = await textOutsideFrame(page)
+    await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-options-2x.png') })
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
+    report.stageSelect = await textOutsideFrame(page)
+    await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-stage-select-2x.png') })
+  } finally {
+    fs.writeFileSync(path.join(dir, 'menus-2x.json'), JSON.stringify(report, null, 2))
+    await page.close()
+  }
+  Object.entries(report).forEach(([screen, outside]) => {
+    assert.deepEqual(outside, [], `${screen} at 2x has text outside the 448x252 frame`)
+  })
+}
+
 export async function runHdRenderScenario(name, { outputDir, url, readState, waitForState, advanceFrames, tapKey }) {
   const dir = scenarioDir(outputDir, name)
   const browser = await chromium.launch({ headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader'] })
@@ -106,6 +154,8 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     assert.equal(shrunk.view.canvasWidth, 448, 'canvas follows a window resize')
     assert.equal(shrunk.view.cameraZoom, 1)
     assert.equal(shrunk.view.textResolution, 1)
+
+    await assertMenusInsideFrame(browser, deps, dir, errors)
 
     assert.equal(errors.length, 0, JSON.stringify(errors))
   } finally {

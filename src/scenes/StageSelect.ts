@@ -37,6 +37,7 @@ import {
 import type { SystemMenuAction } from './menu/systemMenuSelector'
 import { StageSelectLogic } from './stage-select/StageSelectLogic'
 import { resolveSlotClick, truncateLabel } from './stage-select/selectionContract'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 type SlotEntry = {
   rect: Phaser.GameObjects.Rectangle
@@ -152,7 +153,7 @@ export class StageSelect extends Phaser.Scene {
     this.confirmArmAvailableAt = 0
     this.confirmArmed = true
     this.manualSelectionRequired = false
-    const { width, height } = this.scale
+    const { width, height } = GAME_SIZE
 
     this.cameras.main.setBackgroundColor('#050d1a')
 

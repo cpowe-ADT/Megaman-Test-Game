@@ -62,6 +62,7 @@ import { resolvePlayerFeatureFlags } from '../player/featureFlags'
 import { resolveSwordHitboxOrigin, swordHitboxIntersectsTarget } from '../player/swordCollision'
 import type { PlayerDamageRequest, PlayerDamageResult, ResolvedHitbox } from '../player/types'
 import { ActiveRunSaveData, Save } from '../systems/Save'
+import { queueStageBackgrounds, resolveGameStageId } from './game/stageBackgroundLoading'
 import { DebugOverlay } from '../ui/DebugOverlay'
 import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD } from '../ui/HUD'
@@ -128,11 +129,6 @@ interface GameData {
 }
 
 
-
-type BossArtVisuals = {
-  atlasKey: string
-  defaultFrame: string
-}
 
 export class Game extends Phaser.Scene {
   private actions!: SceneInputActions
@@ -399,7 +395,7 @@ export class Game extends Phaser.Scene {
       {
         kind: string
         ref: (Phaser.GameObjects.GameObject & { body?: Phaser.Physics.Arcade.Body }) | undefined
-        label: Phaser.GameObjects.Text
+        label?: Phaser.GameObjects.Text
       }
     >(),
     nextId: 1
@@ -418,7 +414,8 @@ export class Game extends Phaser.Scene {
     this.clearStageBackgroundLayers()
 
     const stage = getCampaignStage(stageId)
-    const { height } = this.scale
+    // Game pixels, not this.scale (canvas pixels): the parallax canvases were 252*scale tall, 32MB at scale 6.
+    const height = GAME_HEIGHT
     const layers = stage.arena.background?.layers ?? []
     const baseColor = Phaser.Display.Color.HexStringToColor(stage.arena.background.baseColor).color
     const accentColor = layers.find((layer) => typeof layer.tint === 'number')?.tint ?? 0x4a8cff
@@ -1207,8 +1204,9 @@ export class Game extends Phaser.Scene {
     this._dev.gfx = this.add.graphics().setDepth(10000)
 
     const world = this.physics.world as any
-    world.drawDebug = false
     world.createDebugGraphic?.()
+    // createDebugGraphic() turns drawDebug on, which drew every body into this hidden graphic each frame.
+    world.drawDebug = false
     world.debugGraphic?.clear?.()
     world.debugGraphic?.setVisible?.(false)
 
@@ -1281,16 +1279,11 @@ export class Game extends Phaser.Scene {
     }
     data?.set?.('kind', kind)
 
+    // The overlay label is created in devUpdate the first time the overlay shows this entry: up to
+    // 132 Text objects per stage (player, boss, every pooled bullet) otherwise sat unused in normal play.
     let entry = this._dev.entries.get(id)
     if (!entry) {
-      const label = this.add
-        .text(anyRef.x ?? 0, (anyRef.y ?? 0) - 12, '', {
-          fontFamily: 'monospace',
-          fontSize: '8px',
-          color: '#7fffd4'
-        })
-        .setDepth(10000)
-      entry = { kind, ref, label }
+      entry = { kind, ref }
       this._dev.entries.set(id, entry)
     } else {
       entry.kind = kind
@@ -1321,11 +1314,13 @@ export class Game extends Phaser.Scene {
 
     const lines: string[] = ['` overlay  D dump  \\ physics', '─ entities near camera ─']
 
-    for (const { kind, ref, label } of this._dev.entries.values()) {
+    for (const entry of this._dev.entries.values()) {
+      const { kind, ref } = entry
       if (!ref?.active) {
-        label.setVisible(false)
+        entry.label?.setVisible(false)
         continue
       }
+      const label = (entry.label ??= this.add.text(0, 0, '', { fontFamily: 'monospace', fontSize: '8px', color: '#7fffd4' }).setDepth(10000))
 
       const anyRef = ref as any
       const posx = Math.round(anyRef?.x ?? 0)
@@ -1362,6 +1357,7 @@ export class Game extends Phaser.Scene {
   }
 
   private devLogOverlap(tag: string, bullet: any, target: any, accepted: boolean, reason: string) {
+    if (!AUTOMATION.enabled) return
     const bId = bullet?.data?.get?.('eid')
     const tId = target?.data?.get?.('eid')
     const status = accepted ? 'ACCEPT' : 'BLOCK '
@@ -1415,6 +1411,12 @@ export class Game extends Phaser.Scene {
     controller.update(this.time.now, this.game.loop.delta)
   }
   // ======================= [AI-UPDATE-END]
+
+  /** Loads only this stage's background layers; see stageBackgroundLoading.ts. */
+  preload(): void {
+    const data = this.sys.settings.data as GameData
+    queueStageBackgrounds(this, resolveGameStageId(data, (data as any)?.loadFromSave ? Save.loadActiveRun() : null))
+  }
 
   create(data: GameData): void {
     this.combatDebugBus.clear()
@@ -1486,7 +1488,7 @@ export class Game extends Phaser.Scene {
     const activeRun = loadFromSave ? Save.loadActiveRun() : null
     this.sessionStats = new CampaignSessionStatistics(activeRun?.stageElapsedMs)
     installProgressionDebugHooks(this, (previous, next, item) => { this.progressionSave = next; this.applyProgressionStateToRuntime(previous, next, item) })
-    const stageId = activeRun?.stageId ?? (data as any)?.stageId ?? ((data as any)?.bossId as string) ?? 'pyro_maw'
+    const stageId = resolveGameStageId(data as any, activeRun)
     const stage = getCampaignStage(stageId)
     const bossIdFromQuery = AUTOMATION.enabled ? (params?.get('bossId') as BossId | null) : null
     const selectedBossId =
@@ -2183,83 +2185,16 @@ export class Game extends Phaser.Scene {
   }
 
   // [REGION: BOSS-ART-PLACEHOLDER - BEGIN]
-  private prepareBossArtVisuals(bossId: string): BossArtVisuals {
+  /** BossController draws the boss; this only fails fast when the stage's boss atlas is missing or empty. */
+  private prepareBossArtVisuals(bossId: string): void {
     const atlasKey = `atlas_${bossId}`
     if (!this.textures.exists(atlasKey)) {
       throw new Error(`[Game] Missing required boss atlas '${atlasKey}'`)
     }
-    const texture = this.textures.get(atlasKey)
-    const frameNames = texture
-      .getFrameNames()
-      .filter((name) => name !== '__BASE')
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    if (frameNames.length === 0) {
+    if (this.textures.get(atlasKey).frameTotal <= 1) {
       throw new Error(`[Game] Boss atlas '${atlasKey}' has no animation frames`)
     }
     this.bossUsingPlaceholder = false
-    this.makeBossAnimationsFromAtlas(atlasKey, bossId, frameNames)
-    return { atlasKey, defaultFrame: frameNames[0] }
-  }
-
-  private makeBossAnimationsFromAtlas(
-    atlasKey: string,
-    bossId: string,
-    precomputedFrameNames?: string[]
-  ): void {
-    const frameNames = precomputedFrameNames
-      ? [...precomputedFrameNames]
-      : this.textures
-          .get(atlasKey)
-          .getFrameNames()
-          .filter((name) => name !== '__BASE')
-          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    if (frameNames.length === 0) {
-      throw new Error(`[Game] Boss atlas '${atlasKey}' has no animation frames`)
-    }
-
-    const grouped = (group: string): Phaser.Types.Animations.AnimationFrame[] => {
-      const prefix = `${bossId}/${group}/`
-      const groupFrames = frameNames
-        .filter((frame) => frame.startsWith(prefix))
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-      return groupFrames.map((frame) => ({ key: atlasKey, frame }))
-    }
-
-    const pick = (start: number, count: number): Phaser.Types.Animations.AnimationFrame[] => {
-      const frames: Phaser.Types.Animations.AnimationFrame[] = []
-      for (let i = 0; i < count; i += 1) {
-        const frame = frameNames[(start + i) % frameNames.length]
-        frames.push({ key: atlasKey, frame })
-      }
-      return frames
-    }
-
-    const idleFrames = grouped('idle')
-    const moveFrames = grouped('move')
-    const shootFrames = grouped('shoot')
-
-    if (this.anims.exists('boss_idle')) this.anims.remove('boss_idle')
-    if (this.anims.exists('boss_walk')) this.anims.remove('boss_walk')
-    if (this.anims.exists('boss_shoot')) this.anims.remove('boss_shoot')
-
-    this.anims.create({
-      key: 'boss_idle',
-      frames: idleFrames.length > 0 ? idleFrames : pick(0, 2),
-      frameRate: 4,
-      repeat: -1
-    })
-    this.anims.create({
-      key: 'boss_walk',
-      frames: moveFrames.length > 0 ? moveFrames : pick(2, 4),
-      frameRate: 7,
-      repeat: -1
-    })
-    this.anims.create({
-      key: 'boss_shoot',
-      frames: shootFrames.length > 0 ? shootFrames : pick(7, 3),
-      frameRate: 10,
-      repeat: 0
-    })
   }
   // [REGION: BOSS-ART-PLACEHOLDER - END]
 

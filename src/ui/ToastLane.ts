@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GAMEPLAY_VIEWPORT_TOP } from '../config/gameplayLayout'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 export type ToastLaneItem = {
   kind: 'toast' | 'radio'
@@ -32,7 +33,7 @@ export class ToastLane {
   private readonly laneWidth: number
 
   constructor(private readonly scene: Phaser.Scene) {
-    const { width, height } = scene.scale
+    const { width, height } = GAME_SIZE
     // Leaves the bottom-right 100px to the HUD's RETRY readout.
     this.laneWidth = width - 24 - 100
     const y = height - 15
