@@ -2102,6 +2102,18 @@ async function runMusicCueScenario(name) {
       page,
       (state) => state.scene === 'StageSelect' && state.audio?.musicCue === 'stage_select'
     )
+    // On-demand music: once Stage Select's track plays, the stage and boss tracks (even one whose decode
+    // landed after the victory) are no longer held. Skipped only if the browser kept audio locked.
+    const musicSettled = await waitForState(
+      page,
+      (state) =>
+        state.scene === 'StageSelect' &&
+        (state.audio?.unlocked === false ||
+          (state.audio?.musicPlayingCue === 'stage_select' &&
+            state.audio?.musicLoading === false &&
+            JSON.stringify(state.audio?.residentMusicKeys) === JSON.stringify(['bgm_stage_select'])))
+    )
+    fs.writeFileSync(path.join(scenarioDir, 'music-residency.json'), JSON.stringify(musicSettled.audio, null, 2))
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(finalState, null, 2))

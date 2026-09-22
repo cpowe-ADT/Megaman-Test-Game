@@ -2,14 +2,17 @@ import { IDENTITY } from '../content/identity'
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/renderPolicy'
 import Phaser from 'phaser'
 import { getHudLayout } from './hudLayout'
+import { BakedGraphics, type BakeBounds } from './BakedGraphics'
+import { getRenderScale } from '../config/hdRender'
 
 export class HUD {
   private scene: Phaser.Scene
   private root: Phaser.GameObjects.Container
-  private gChrome: Phaser.GameObjects.Graphics
-  private gPlayer: Phaser.GameObjects.Graphics
-  private gWeapon: Phaser.GameObjects.Graphics
-  private gBoss: Phaser.GameObjects.Graphics
+  // Rounded panels and bars are baked into textures (see BakedGraphics): drawn live they cost about 4ms a frame.
+  private gChrome: BakedGraphics
+  private gPlayer: BakedGraphics
+  private gWeapon: BakedGraphics
+  private gBoss: BakedGraphics
   private tPlayer: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tWeapon: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tBoss: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
@@ -22,16 +25,16 @@ export class HUD {
   private weaponName = 'BUSTER'
   private bossName = 'BOSS • ???'
   private weaponColor = 0x58d8ff
-  /** What each bar Graphics last drew; the boss bar was rebuilt every frame with an unchanged value. */
-  private readonly drawnBars = new WeakMap<Phaser.GameObjects.Graphics, string>()
+  /** What each bar last baked (values and render scale); the boss bar was rebuilt every frame with an unchanged value. */
+  private readonly drawnBars = new WeakMap<BakedGraphics, string>()
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
     this.root = scene.add.container(0, 0).setScrollFactor(0)
 
-    this.gChrome = scene.add.graphics().setScrollFactor(0)
+    this.gChrome = new BakedGraphics(scene, 'hud-baked-chrome')
     this.drawChrome()
-    this.root.add(this.gChrome)
+    this.root.add(this.gChrome.image)
 
     const hasBitmap = this.scene.cache.bitmapFont.exists('font')
     const mkText = (
@@ -76,14 +79,14 @@ export class HUD {
       return text
     }
 
-    this.gPlayer = scene.add.graphics().setScrollFactor(0)
-    this.root.add(this.gPlayer)
+    this.gPlayer = new BakedGraphics(scene, 'hud-baked-player-bar')
+    this.root.add(this.gPlayer.image)
 
-    this.gWeapon = scene.add.graphics().setScrollFactor(0)
-    this.root.add(this.gWeapon)
+    this.gWeapon = new BakedGraphics(scene, 'hud-baked-weapon-bar')
+    this.root.add(this.gWeapon.image)
 
-    this.gBoss = scene.add.graphics().setScrollFactor(0)
-    this.root.add(this.gBoss)
+    this.gBoss = new BakedGraphics(scene, 'hud-baked-boss-bar')
+    this.root.add(this.gBoss.image)
 
     const layout = getHudLayout(GAME_WIDTH)
     this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, 9)
@@ -130,7 +133,7 @@ export class HUD {
   }
 
   drawBar(
-    g: Phaser.GameObjects.Graphics,
+    layer: BakedGraphics,
     x: number,
     y: number,
     w: number,
@@ -139,11 +142,12 @@ export class HUD {
     fillColor: number
   ): void {
     const clamped = Phaser.Math.Clamp(pct, 0, 1)
-    const signature = `${x},${y},${w},${h},${clamped},${fillColor}`
-    if (this.drawnBars.get(g) === signature) {
+    const signature = `${x},${y},${w},${h},${clamped},${fillColor},${getRenderScale().scale}`
+    if (this.drawnBars.get(layer) === signature) {
       return
     }
-    this.drawnBars.set(g, signature)
+    this.drawnBars.set(layer, signature)
+    const g = layer.graphics
     g.clear()
     const inset = 3
     const innerX = x + inset
@@ -173,6 +177,8 @@ export class HUD {
     }
     g.fillStyle(0x315a83, 1).fillRect(x - 2, y + 2, 2, h - 4)
     g.fillRect(x + w, y + 2, 2, h - 4)
+    // The side accents reach 2px past the bar and strokes half a pixel past its edge.
+    layer.bake({ x: x - 3, y: y - 1, width: w + 6, height: h + 2 })
   }
 
   updatePlayerHp(cur: number, max: number): void {
@@ -191,13 +197,13 @@ export class HUD {
     this.bossSnapshot = { current: cur, max }
     const bar = getHudLayout(GAME_WIDTH).bossBar
     this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0xff6677)
-    this.gBoss.setVisible(this.bossBarVisible)
+    this.gBoss.image.setVisible(this.bossBarVisible)
     this.tBoss.setVisible(true)
   }
 
   setBossBarVisible(visible: boolean): void {
     this.bossBarVisible = visible
-    this.gBoss.setVisible(visible)
+    this.gBoss.image.setVisible(visible)
     // Keep the mission target named before the arena seals; an empty HUD panel
     // reads like missing UI and makes the stage goal less clear.
     this.tBoss.setVisible(true)
@@ -228,22 +234,25 @@ export class HUD {
   private drawChrome(): void {
     const width = GAME_WIDTH
     const layout = getHudLayout(width)
-    this.gChrome.clear()
-    this.gChrome.fillStyle(0x030913, 0.96)
-    this.gChrome.fillRect(0, 0, width, layout.height)
-    this.gChrome.fillStyle(0x050d18, 0.88)
-    this.gChrome.fillRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
-    this.gChrome.fillRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
-    this.gChrome.fillRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
-    this.gChrome.lineStyle(1, 0x2b5c88, 0.72)
-    this.gChrome.strokeRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
-    this.gChrome.strokeRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
-    this.gChrome.strokeRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
-    this.gChrome.fillStyle(0x63ff88, 0.9)
-    this.gChrome.fillRect(layout.playerPanel.x, 10, 3, 19)
-    this.gChrome.fillStyle(this.weaponColor, 0.9)
-    this.gChrome.fillRect(layout.playerPanel.x, 34, 3, 17)
-    this.gChrome.fillStyle(0xff6677, 0.9)
-    this.gChrome.fillRect(layout.bossPanel.x + layout.bossPanel.width - 3, 10, 3, 19)
+    const chrome = this.gChrome.graphics
+    chrome.clear()
+    chrome.fillStyle(0x030913, 0.96)
+    chrome.fillRect(0, 0, width, layout.height)
+    chrome.fillStyle(0x050d18, 0.88)
+    chrome.fillRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
+    chrome.fillRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
+    chrome.fillRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.lineStyle(1, 0x2b5c88, 0.72)
+    chrome.strokeRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
+    chrome.strokeRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
+    chrome.strokeRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.fillStyle(0x63ff88, 0.9)
+    chrome.fillRect(layout.playerPanel.x, 10, 3, 19)
+    chrome.fillStyle(this.weaponColor, 0.9)
+    chrome.fillRect(layout.playerPanel.x, 34, 3, 17)
+    chrome.fillStyle(0xff6677, 0.9)
+    chrome.fillRect(layout.bossPanel.x + layout.bossPanel.width - 3, 10, 3, 19)
+    const bounds: BakeBounds = { x: 0, y: 0, width, height: layout.height }
+    this.gChrome.bake(bounds)
   }
 }

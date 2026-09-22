@@ -284,6 +284,27 @@ async function stageScenario(browser) {
   const stage = await snapshot(page, cdp)
   const steps = await stepTimes(page, 180)
 
+  // Combat: shots, dashes and slashes for about four seconds. Effects used to allocate an emitter,
+  // sprite or Graphics set each time; with pools the display-object count stays flat.
+  const combatStart = await snapshot(page, cdp)
+  const combatStepsPending = stepTimes(page, 240)
+  for (let index = 0; index < 36; index += 1) {
+    await page.keyboard.press('x')
+    if (index % 4 === 0) await page.keyboard.press('z')
+    if (index % 6 === 0) await page.keyboard.press('c')
+    await sleep(70)
+  }
+  const combatSteps = await combatStepsPending
+  await sleep(800)
+  const combatEnd = await snapshot(page, cdp)
+  const combat = {
+    steps: combatSteps,
+    displayObjectsBefore: combatStart.displayObjects,
+    displayObjectsAfter: combatEnd.displayObjects,
+    objectGrowth: combatEnd.displayObjects - combatStart.displayObjects,
+    saveBytes: await page.evaluate(() => (localStorage.getItem('save.v1') ?? '').length)
+  }
+
   await page.evaluate(() => {
     window.stageDebug?.crossBossGate?.()
     window.stageDebug?.activateBossRoom?.()
@@ -294,13 +315,19 @@ async function stageScenario(browser) {
   })
   await waitForState(page, (state) => state.scene === 'Game' && state.stageRuntime?.bossRoom?.cameraLocked === true, 30000, 'boss room lock')
   // Give a lazily loaded boss track time to fetch and decode before measuring.
-  await waitForState(page, (state) => ['boss', 'final'].includes(state.audio?.musicCue), 15000, 'boss music cue').catch(() => null)
-  await sleep(1500)
+  // musicCue is what the game asked for; musicPlayingCue flips only once the track has decoded and started.
+  await waitForState(
+    page,
+    (state) => ['boss', 'final'].includes(state.audio?.musicPlayingCue) || (state.audio && !state.audio.unlocked),
+    20000,
+    'boss track decoded and playing'
+  )
+  await sleep(500)
   await frames(page, 60)
   const boss = await snapshot(page, cdp)
   const bossSteps = await stepTimes(page, 180)
   await context.close()
-  return { stage: { ...stage, steps }, boss: { ...boss, steps: bossSteps }, errors }
+  return { stage: { ...stage, steps }, combat, boss: { ...boss, steps: bossSteps }, errors }
 }
 
 async function revisitScenario(browser) {
@@ -377,6 +404,9 @@ function check(report) {
   Object.entries(budget.static).forEach(([key, limit]) => add('static', key, report.static[key] ?? report.boot[key], limit))
   Object.entries(budget.boot).forEach(([key, limit]) => add('boot', key, report.boot[key], limit))
   Object.entries(budget.stage).forEach(([key, limit]) => add('stage', key, key === 'stepP95Ms' ? round(report.stage.steps.p95) : report.stage[key], limit))
+  Object.entries(budget.combat ?? {}).forEach(([key, limit]) =>
+    add('combat', key, key === 'stepP95Ms' ? round(report.combat.steps.p95) : report.combat[key], limit)
+  )
   Object.entries(budget.boss).forEach(([key, limit]) => add('boss', key, report.boss[key], limit))
   Object.entries(budget.revisit).forEach(([key, limit]) => add('revisit', key, report.revisit[key], limit))
   add('hiDpi', 'maxCanvasPixels', report.hiDpi.maxCanvasPixels, budget.hiDpi.maxCanvasPixels)
@@ -394,7 +424,8 @@ function markdown(report, rows) {
     ...rows.map((row) => `| ${row.metric} | ${row.actual} | ${row.limit} | ${row.pass ? 'PASS' : 'FAIL'} |`),
     '',
     `Boot download by type (MB): ${JSON.stringify(report.boot.downloadByType)}`,
-    `Stage step ms p50/p95/p99: ${round(report.stage.steps.p50)}/${round(report.stage.steps.p95)}/${round(report.stage.steps.p99)}; boss ${round(report.boss.steps.p50)}/${round(report.boss.steps.p95)}/${round(report.boss.steps.p99)}`,
+    `Stage step ms p50/p95/p99: ${round(report.stage.steps.p50)}/${round(report.stage.steps.p95)}/${round(report.stage.steps.p99)}; combat ${round(report.combat.steps.p50)}/${round(report.combat.steps.p95)}/${round(report.combat.steps.p99)}; boss ${round(report.boss.steps.p50)}/${round(report.boss.steps.p95)}/${round(report.boss.steps.p99)}`,
+    `Combat display objects ${report.combat.displayObjectsBefore} -> ${report.combat.displayObjectsAfter}; save.v1 ${report.combat.saveBytes} bytes`,
     `Hi-DPI canvases: ${report.hiDpi.windows.map((entry) => `${entry.window} -> ${entry.width}x${entry.height} (${entry.canvasMB}MB)`).join('; ')}`,
     `Revisit cycles: ${report.revisit.cycles.map((entry) => `heap ${entry.jsHeapMB} tex ${entry.textureCount} lst ${entry.phaserListeners} snd ${entry.soundInstances}`).join(' | ')}`
   ]

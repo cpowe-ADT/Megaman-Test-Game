@@ -76,9 +76,9 @@ test('the loader decodes a track once, shares concurrent requests, and evicts on
 
 test('a failed fetch leaves music off without throwing', async () => {
   const originalFetch = globalThis.fetch
-  const originalWarn = console.warn
+  const originalError = console.error
   globalThis.fetch = (async () => new Response('missing', { status: 404 })) as typeof fetch
-  console.warn = () => {}
+  console.error = () => {}
   try {
     const { game, cache } = fakeGame()
     const loaded = await new MusicTrackLoader().load(game, { key: 'bgm_boss_loop', path: 'missing.ogg', volume: 0.3 })
@@ -86,6 +86,6 @@ test('a failed fetch leaves music off without throwing', async () => {
     assert.equal(cache.has('bgm_boss_loop'), false)
   } finally {
     globalThis.fetch = originalFetch
-    console.warn = originalWarn
+    console.error = originalError
   }
 })

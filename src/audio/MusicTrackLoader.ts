@@ -44,7 +44,8 @@ export class MusicTrackLoader {
         return true
       })
       .catch((error: unknown) => {
-        console.warn(`[audio] music '${asset.key}' could not load from ${asset.path}`, error)
+        // console.error so smoke's browser-error collector fails on a missing or undecodable track.
+        console.error(`[audio] music '${asset.key}' could not load from ${asset.path}`, error)
         return false
       })
       .finally(() => {

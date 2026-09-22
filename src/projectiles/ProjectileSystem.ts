@@ -196,7 +196,10 @@ export class ProjectileSystem {
           actualVelocityX: body.velocity.x,
           actualVelocityY: body.velocity.y
         })
-        bullet.data?.set('stalledSince', stall.stalledSince)
+        // DataManager.set fires two change events per call; write only when the value moves.
+        if (stall.stalledSince !== rawStalledSince) {
+          bullet.data?.set('stalledSince', stall.stalledSince)
+        }
         if (stall.shouldRecycle) {
           this.recycle(bullet)
           return false
@@ -224,7 +227,7 @@ export class ProjectileSystem {
           )
           const homeOffsetY = Number(bullet.data?.get?.('homeOffsetY') ?? definition.behavior.homeOffsetY)
           const elapsed = now - spawnedAt
-          if (elapsed >= returnAfterMs) {
+          if (elapsed >= returnAfterMs && !bullet.data?.get?.('returning')) {
             bullet.data?.set('returning', true)
           }
 

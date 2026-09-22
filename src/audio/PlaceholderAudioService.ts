@@ -23,6 +23,7 @@ class PlaceholderAudioService {
   private requestedMusicCue?: MusicCueId
   private musicScene?: Phaser.Scene
   private musicGame?: Phaser.Game
+  private game?: Phaser.Game
   private readonly musicLoader = new MusicTrackLoader()
   private musicVolumeScale = 1
   private sfxVolumeScale = 1
@@ -43,6 +44,14 @@ class PlaceholderAudioService {
     this.sfxVolumeScale = settings.sfxVolume / VOLUME_STEPS
     const music = this.currentMusic as (Phaser.Sound.BaseSound & { setVolume?: (value: number) => unknown }) | undefined
     music?.setVolume?.(this.currentMusicBaseVolume * this.musicVolumeScale)
+  }
+
+  /**
+   * Shares Phaser's AudioContext for the synthesized fallback blips and the unlock state. Before this the
+   * service built its own context, so two audio render threads ran for the whole session.
+   */
+  attachGame(game: Phaser.Game): void {
+    this.game = game
   }
 
   unlock(): void {
@@ -340,6 +349,9 @@ class PlaceholderAudioService {
     void this.musicLoader.load(game, asset).then((loaded) => {
       if (loaded && this.unlocked && this.requestedMusicCue === cue) {
         this.startRequestedMusic()
+      } else {
+        // The cue moved on while this track decoded (a boss dies mid-load): do not keep it resident.
+        this.evictIdleMusic()
       }
     })
   }
@@ -406,6 +418,16 @@ class PlaceholderAudioService {
   private ensureContext(): AudioContext | undefined {
     if (typeof window === 'undefined') {
       return undefined
+    }
+
+    const shared = ((this.game ?? this.musicGame)?.sound as Partial<Phaser.Sound.WebAudioSoundManager> | undefined)?.context
+    if (shared) {
+      if (this.context !== shared) {
+        this.context = shared
+        this.noiseBuffer = undefined
+        this.unlocked = shared.state === 'running'
+      }
+      return shared
     }
 
     const AudioContextCtor = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext

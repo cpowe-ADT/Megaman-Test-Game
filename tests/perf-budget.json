@@ -1,28 +1,32 @@
 {
-  "$comment": "Footprint budget checked by scripts/perf/footprint.mjs (npm run perf:footprint). Plan and reasoning: docs/prompts/09-footprint-and-performance.md. Bytes are decimal MB. Lower a ceiling when a slice beats it; never raise one without a ledger row that says why.",
+  "$comment": "Footprint budget checked by scripts/perf/footprint.mjs (npm run perf:footprint). Plan: docs/prompts/09-footprint-and-performance.md. Bytes are decimal MB. Ceilings were lowered at the 09 exit (2026-09-22) to the achieved numbers plus headroom (about 15% for sizes, more for noisy timings). Lower a ceiling when a slice beats it; never raise one without a ledger row that says why (charter rule 14).",
   "static": {
-    "distTotalMB": 12,
+    "distTotalMB": 9.5,
     "distMapsMB": 0.5,
-    "jsGzipKB": 520,
-    "phaserChunkGzipKB": 300,
-    "bootDownloadMB": 3.0
+    "jsGzipKB": 510,
+    "phaserChunkGzipKB": 305,
+    "bootDownloadMB": 2.5
   },
   "boot": {
-    "titleReadyMs": 2500,
+    "titleReadyMs": 2000,
     "decodedAudioMB": 16,
-    "textureMB": 12,
-    "jsHeapMB": 40
+    "textureMB": 6,
+    "jsHeapMB": 12
   },
   "stage": {
     "decodedAudioMB": 16,
-    "textureMB": 12,
-    "jsHeapMB": 60,
-    "stepP95Ms": 12
+    "textureMB": 10.5,
+    "jsHeapMB": 14,
+    "stepP95Ms": 3
+  },
+  "combat": {
+    "stepP95Ms": 5,
+    "objectGrowth": 8
   },
   "boss": {
     "decodedAudioMB": 64,
-    "textureMB": 12,
-    "jsHeapMB": 60
+    "textureMB": 10.5,
+    "jsHeapMB": 14
   },
   "revisit": {
     "heapGrowthMB": 4,

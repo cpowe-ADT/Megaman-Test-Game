@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import AudioService from '../audio'
 import InputActions from '../input/InputActions'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
+import { GAME_SIZE } from '../config/renderPolicy'
 
 export type VictoryModalOptions = {
   bossName: string
@@ -25,7 +26,7 @@ export class VictoryModal {
 
   show(options: VictoryModalOptions): void {
     this.destroy()
-    const { width, height } = this.scene.scale
+    const { width, height } = GAME_SIZE
     const panelWidth = Math.min(520, Math.floor(width * 0.86))
     const panelHeight = 196
     const panelX = width / 2
