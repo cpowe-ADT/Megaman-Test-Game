@@ -52,3 +52,32 @@ Prompt 02, 03 and 04 files stay on disk as specification appendices; each new pr
 ## 4. How Craig runs it
 
 Paste `START.md` section A with `N = 5` and file `05-feel-hero-and-camera.md`. Reply at STOPs as before. Between prompts, the section D checklist. Expected total: 15 to 18 sessions.
+
+## 5. Review of the plan (same day): what v2 missed and where it went
+
+A second pass over the four prompts against the audits, the older working docs and Craig's asks. Each item is now inside the prompt named; the prompts mark them "added on review".
+
+| Gap | Why it matters | Now in |
+| --- | --- | --- |
+| Feel tuning had no safe harness: movement smoke scenarios drive Playwright keys, which is why `13d` flaked | A frame-exact input replay source lets every constant change re-run the same inputs; it also records Craig's play as a script | 05 §5.1 item 9 |
+| The style sheet was scheduled after the hero was generated | The hero is the first art that must match it | moved to 05 §5.4 item 0 |
+| No wall-jumping boss level, which Craig asked for by name | A `shaft` boss-room variant (two screens tall, wall faces both sides) and Gale Vixen's fight built for it | 06 §6.1, 07 §7.4 |
+| Mini-boss art was left as tinted boss atlases | Four archetype sheets through Higgsfield, grounded by the same contract | 06 §6.4 |
+| Balance was by taste | Per-segment telemetry from automated runs and Craig's play, death heatmaps over the stage contact sheets, a retune rule | 06 §6.8 |
+| The smoke suite will pass eighty scenarios and `verify` would take fifteen minutes | `SMOKE_TIER=fast` for `verify`, `full` at STOPs and deploy | 06 §6.9 |
+| Weapons would feel different but look the same; `weapon_refill` pickups are queued and never applied | A projectile and impact sheet per weapon (also the HUD and pause icons); the refill bug | 07 §7.3 |
+| Stakes told, never shown | One in-level freed-warden moment per district paying off the briefing's number | 07 §7.6 |
+| Boss music was static across phases | A phase-two stem and a desperation pulse | 08 §8.1 |
+| No loading screen, no key art, the HUD had no weapon icon or boss portrait | Preload progress, Higgsfield stills for prologue, epilogue and district previews, HUD items | 08 §8.2 |
+| Nothing said how the game reaches players | A store kit with screenshots, a replay-recorded capture, page copy and a generated-content disclosure | 08 §8.7 |
+| Per-stage records had no home | Bests and rank per profile slot; Stage Select shows them | 05 §5.6, 08 §8.3 |
+| v1.1 had no list | Character select, boss rush and time attack, New Game+, rumble, string table, attract demo | 08 §8.7 handoff |
+
+Considered and left out of v1.0: localisation (needs a string table first; listed for v1.1), online leaderboards, a level editor (the v2 format plus the audit and lint is the editor for this team), mobile as a first-class platform (touch stays behind the 08 decision).
+
+## 6. Dependencies to respect
+
+- 05 before 06: levels are built against the tuned constants and the vertical camera; the style sheet and the replay format come from 05.
+- 06 before 07: boss rooms, mini-bosses and the shaft variant exist before the fights that use them; hazards need the typed hazard system.
+- 07 before 08: the beats stage what 07 built (WARNING card, death sequence, portraits); the HUD icons come from the weapon sheets.
+- Inside 06, the pilot stage gates the batches; inside 07, two pilot fights gate the rest.

@@ -59,11 +59,15 @@ Designer leads.
 
 - Identities in `src/content/weapons.ts` (one hold or charge behaviour and one on-hit tag each): FlameSerpent hold-stream that leaves burn puddles; HydroLance aim up and down, pierces; ThunderSpike charge to chain between enemies; QuakeKnuckle lob that quakes on landing; MagcutDisc boomerang that pulls pickups; AcidGlob sticks and ticks; AeroDarts fan that bounces once; FrostShatter freezes an enemy solid for 1.5s (a platform). `ProjectileCollisionRouter` applies on-hit tags. Authored energy costs stop being squashed; holstered regen stays.
 - Weakness table: `applyDamageToBoss` calls the authored ring (`damageMultiplier` in `bosses/types.ts`): weakness 1.75, neutral 1, resist 0.75 shows `RESISTED`; `BLOCKED` is gone in Classic. Rook takes Buster only (profile added); Omega rotates its weakness by phase (announced by the finale lines in 7.6). The `bossConfig` `defense` and `resistances` path is wired for roster bosses so elements matter.
+- Projectile and impact art per weapon (added on review): each weapon gets its own projectile sheet and impact burst through Higgsfield (8 sheets, 32px cells, `#FF00FF`), replacing the shared bullet textures; the weapon icon for the pause grid and the HUD comes from the same sheet.
+- `weapon_refill_small` and `weapon_refill_large` are queued by the progression state but never applied in `Game.applyPendingConsumable` (only `hp_` is); apply them (added on review).
 - Tests per weapon on `resolvePlayerShot` and the collision router; smoke `12-weapon-switch-energy` extended with one shot per weapon and its on-hit tag in the payload.
 
 Ledger: `EVAL-P7-004`.
 
 ## Phase 7.4: The other seven wardens and the Core
+
+Gale Vixen is the wall-jumping boss (added on review): her `shaft` room from 06 has no floor to stand on for long; Turbine Slice sweeps the shaft, Aero Volley fires from the wall she clings to, Cyclone Lift pushes the player up the walls; the player fights from wall kicks and the entry ledge. Verify with an input-replay script that clears phase one from the walls only.
 
 Apply 7.1 and 7.2 to Rook, Volt, Basalt, Ferro, Mire, Gale, Glacier, and Omega Core (three phases with the deck; Core Ram gets a real dash hitbox; Override Cascade uses four hazard kinds). One batch STOP per three bosses with the same evidence as STOP 7.2.
 
@@ -93,7 +97,8 @@ Narrative leads. All inside the dialogue v2 contract (`validateDialogueContent.t
 3. OMEGA speaks once mid-fight per warden at phase two using the second `radio` slot.
 4. `district_restored` on Stage Select shows the briefing's civilian number turning green: the told stakes paid off in the same words.
 5. Verb signatures: each warden's intro and defeat lines carry one verb (Ferro counts, Glacier files, Tide holds, and so on) and the epilogue card reuses it. Limits and the cross-warden name ban already allow it.
-6. `npm run story:script` regenerates `docs/story/script.md`; the parity test stays green; `tests/dialogue-content.test.ts` gains a check that every sequence id has a consumer in `src/` (a grep-based test with an allowlist that must be empty).
+6. Show, do not tell (added on review): one freed-warden moment per district after the defeat dialogue, staged in the level rather than the overlay: the warden's district sign relights, a locked door opens, the civilian count from the briefing ticks on the HUD toast. Twenty lines of code per stage, not new dialogue; the briefing's number is the payoff.
+7. `npm run story:script` regenerates `docs/story/script.md`; the parity test stays green; `tests/dialogue-content.test.ts` gains a check that every sequence id has a consumer in `src/` (a grep-based test with an allowlist that must be empty).
 
 Ledger: `EVAL-P7-007` (every authored sequence id consumed; story-flag parity after a Core clear includes the finale ids; Craig reads the script).
 

@@ -35,6 +35,7 @@ Engineer leads. Implement prompt 02 section "Phase 2.1" verbatim, with these ame
 - **Carry.** Grounded actors inherit a moving platform's per-frame delta (x and y).
 - **Hazards are typed and timed** (`spikes | vent | acid | rail | icicle | rockfall` with `{ onMs, offMs, phaseMs }`); the id-string texture switch goes.
 - **Camera-relative spawn and respawn** for enemies: a marker spawns when the camera edge is within one screen, respawns when the camera leaves its window by a screen and re-enters (`persistent: false` opts out), mini-boss and `room_lock` waves never respawn once cleared, death resets every marker except cleared locks. `tests/enemy-spawner-respawn.test.ts`; sweep asserts no enemy is inside the camera on its spawn frame.
+- **Boss room variants** (added on review): `flat | pillars | pits | rails | shaft`. `shaft` is a two-screen-tall room with wall faces on both sides and no floor platforms except the entry ledge: the wall-jumping boss level Craig asked for. Gale Vixen's room is a `shaft` (wind zones push the player off the walls; the fight is in 07). The camera lock uses the vertical bounds from 05.
 - **Parity** against today's ten stages exactly as 02 describes (snapshot first). The audit runs `--report-only`; every current stage fails every floor, which is expected and is the baseline the ledger records.
 
 Ledger: `EVAL-P6-001` (parity), `EVAL-P6-002` (audit table for all ten, report-only), `EVAL-P6-003` (lint green on parity stages; walls, pits and vertical smoke scenarios).
@@ -71,6 +72,7 @@ Art leads. Implement prompt 03 "Phase 3.2" (tilesets and backgrounds) with the g
 
 - **Tiles.** One 16px tileset per biome (nine) as a labelled grid sheet: ground top/body/bottom/caps/inner corners, wall face, one-way platform (3), crumble (3 stages), conveyor strip (4 frames), rail on/off, the biome's hazard strip, gate (closed, 3 opening, open), breakable wall (3 crack stages), 3 to 5 decor props. `hf_sheet_to_atlas.py --category tiles --cell 16` with a named-cell map; `TileSkin` autotiles ground runs, walls and platforms (3x3 rule); the procedural skin stays as the fallback and counts as a placeholder.
 - **Backgrounds.** Three-layer parallax per biome at 448x194 (`far`, `mid`, `near`) generated from the style words of `docs/art/style-sheet.md` (write it first, one page: palette per biome, silhouette words, what the HUD band means for sprite height); Pyro stops being a green city. CC packs retire; credits regenerate.
+- **Mini-bosses** (added on review): four archetype sheets (`custodian_walker`, `relay_turret_nest`, `drill_serpent`, `sentry_twins`) at 64px through Higgsfield with the style sheet, plus one palette variant per skin the briefs name; cut like bosses (idle, move, attack) and grounded by the same contract. The tinted-boss stand-in from 6.3 retires here.
 - **Enemies.** Twelve families as 4x3 sheets (idle 4, move 4, attack 4, plus a second sheet for hurt 2 and death 4 where the family dies on screen) on `#FF00FF`, one biome variant per family where the ecology plan calls for it, cut at 32px (48px for armored_bot and fly_trap). The CC0 slices retire. Every enemy family passes the frame audit from 05.
 - **Style sheet** also fixes the boss silhouettes already generated (Rook square, Pyro maw, Tide crescent, Volt bolt, Basalt slab, Ferro blade, Mire drip, Gale wing, Glacier shard, Omega ring) so new art matches them.
 
@@ -116,9 +118,13 @@ Ask Craig to play Act 1 and Act 3. Recommended: fix his notes.
 
 Implement prompt 02 "Phase 2.7" verbatim (Assist, Normal, Veteran; enemy HP and damage tables; checkpoint rules per difficulty; the death-feel items not already done in 05).
 
+Balance from data, not taste (added on review): `stageDebug.telemetry()` accumulates per-segment deaths, damage taken, time, and which enemy or hazard killed, for automated runs and for Craig's play (written to `output/telemetry/<profile>-<stage>-<date>.json` through the export path from 05.6). `scripts/content/heatmap.mjs` paints deaths over each stage contact sheet into `output/level-review/<stageId>-heat.png`. The difficulty STOP shows the heatmaps from an automated Normal run and from Craig's session; any segment over three deaths per run on Normal is retuned or its tell strengthened.
+
 Ledger: `EVAL-P6-012`.
 
 ## Phase 6.9: Automation that keeps this true
+
+Smoke tiers (added on review): the suite is over fifty scenarios and will pass eighty. `SMOKE_TIER=fast` (about twenty scenarios, under three minutes: boot, input, one stage, one boss, profiles, HD render) runs in `npm run verify`; `full` runs before every STOP and in the deploy workflow. `TESTING.md` lists the tiers.
 
 Implement prompt 02 "Phase 2.8" verbatim: per-segment sweep captures with assertions (every segment reachable by warp, every enemy spawns off screen, every hazard exposed at least once, every checkpoint radio fires once), `content:audit` and `content:lint` in `npm run verify`, the level contact sheets under `output/level-review/`.
 

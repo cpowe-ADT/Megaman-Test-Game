@@ -40,6 +40,7 @@ Engineer leads; Director sets the targets; QA writes the failing tests first.
 6. **Ledge forgiveness.** Ceiling corner nudge up to 3px, step-up over 1 to 3px lips, headroom check when the dash body returns to the stand body. Tests in `player-motor`.
 7. **Crouch** slows to 0 when `crouchHeld` on the ground (today only the hitbox changes).
 8. Frame-rate independence: hit-stop and camera lerp become time-based (fixed 60Hz physics already is). Test at 30/60/144.
+9. **Input replay harness (added on review).** Playwright key timing is the flake source in `13d`. Add an automation-only action source: `stageDebug.replayInputs([{ frame, held: ['moveRight','dash'] }, ...])` feeds `ActionState` inside the game loop, frame-exact, and `stageDebug.recordInputs()` captures Craig's play as the same script. Every movement scenario (`13d`, `24` to `30`, `39`, the new dash-jump trace) migrates to scripts under `scripts/smoke/inputs/`; expected positions carry a 2px tolerance. This is what makes feel tuning safe: a constant change re-runs the same inputs.
 
 Ledger: `EVAL-P5-001` (motor tests, including the drag red/green pair), `EVAL-P5-002` (`13d-movement-feel` extended: dash-jump trace, drag 0, second dash inside 100ms).
 
@@ -77,6 +78,7 @@ Ledger: `EVAL-P5-004`.
 
 Art leads. Read `docs/story/story-bible.md` (WREN: Recovery Unit 09, says less than it knows) and `src/content/identity.ts`.
 
+0. Write `docs/art/style-sheet.md` first (moved here from prompt 06 on review, because the hero is the first art that must match it): palette per biome (base, shadow, edge, accent, hazard, sky; eight wardens plus `relay` for the tutorial and Omega), the boss silhouettes already generated (Rook square, Pyro maw, Tide crescent, Volt bolt, Basalt slab, Ferro blade, Mire drip, Gale wing, Glacier shard, Omega ring), outline and shading (three tones plus outline), what the 58px HUD band means for sprite height, and the master Higgsfield prompt template (style words, negative words, the magenta instruction, the grid instruction, cell size, view, upper-left light). One page.
 1. Write `docs/art/hero-brief.md`: silhouette (must read at 48px: a helmet crest or fin, a buster arm, a scarf or cable), palette (three tones plus outline; primary from the relay identity, a warm accent), the one-word idea ("recovery", not "war"), what it must not resemble (no X, Zero or Mega Man silhouette: no round helmet gem, no shoulder pads of that shape).
 2. Generate three turnarounds through Higgsfield (`gpt_image_2`, 1:1, 1k, medium): front, side, back on `#FF00FF`, "16-bit pixel art, SNES action platformer hero, crisp pixels, no anti-aliasing, dark outline". Save under `assets/sprites/source/player/hero_turnaround_v1_<date>_{a,b,c}.png` with prompts and job ids in a `.prompts.md`.
 3. Contact sheet of the three at 4x in `output/art-review/hero-turnarounds.png`.
@@ -116,6 +118,7 @@ Engineer leads.
 - `Save` gains profiles: `profiles.v1` with three slots, each holding today's `save.v1` shape plus `pilotName` (2 to 10 characters, letters, digits, space), `createdAt`, `lastPlayedAt`, `wardensCleared` (derived), `playTimeMs`. The active slot id is stored beside it. Legacy `save.v1` migrates into slot 1 with the name `WREN`.
 - Title: `NEW GAME` opens a slot picker (three cards: name, wardens n/8, play time, difficulty; empty cards say `EMPTY`), then a name entry (on-screen grid navigated with the pad or typed; Enter confirms; default `WREN`), then the existing `NewCampaignScene` flow. `CONTINUE` resumes the active slot. Options gains `Export save` (downloads `omega-relay-<name>.json`) and `Import save` (file picker; validated through the transport code that already exists in `Save`).
 - `{hero}` in dialogue resolves to the pilot name through the identity adapter; the HUD label follows it.
+- Each slot also keeps per-stage bests (added on review): fastest clear, fewest deaths, secrets found, and a rank letter, written at stage results (built in 08; the fields and the save shape land here so 06 and 07 can write them). Stage Select shows the best time under a cleared warden.
 - Automation: `stageDebug.setProfile({ slot, pilotName })`; payload `profiles`. Smoke `41-profiles`: create a profile named `AVA`, play the tutorial to the first checkpoint, quit, continue from Title into the same slot, assert the HUD label and a briefing line contain `AVA`, export, clear, import, assert the slot returns.
 - Tests: `tests/save-profiles.test.ts` (migration, three slots, name validation, export/import round trip).
 
@@ -133,7 +136,7 @@ Question for Craig: approve the flow? Recommended: yes.
 - `npm run verify` and `npm run test:visual-sweep` green on the exit commit; result lines and artifact paths pasted.
 - `assets/private/` does not exist; `git grep -i "mega man\|mmx4\|spriters-resource" -- src scripts assets` prints nothing.
 - `wc -l src/scenes/Game.ts` at or below 3,700 (it is 3,700 now; the death sequence and camera code move to `src/scenes/game/`).
-- `docs/prompts/handoff/05-feel-hero-and-camera.md` per the charter, with `Inputs for prompt 06`: the movement constants as tuned (levels are built against them), the hero cell contract, the camera vertical-follow API.
+- `docs/prompts/handoff/05-feel-hero-and-camera.md` per the charter, with `Inputs for prompt 06`: the movement constants as tuned (levels are built against them), the hero cell contract, the camera vertical-follow API, the style sheet, the input replay script format.
 
 ```
 ### STOP 5.EXIT

@@ -29,6 +29,7 @@ The game sounds like a game and stages every beat a player expects. It plays on 
 Implement prompt 04 "Phase 4.1" verbatim, amended:
 
 - Per-stage cues resolve from `stage.id`; `PrologueScene`, `GameOverScene` and `EndingScene` stop playing the stage-select track. Music may be AI-generated (record tool, prompt and mark `original-generated`) or CC0 packs by one author; either way one `ffmpeg loudnorm` target and a loop-seam check under 3dB for every track, recorded in the ledger row.
+- Adaptive boss music (added on review): the boss track has a phase-two layer (a second stem mixed in at the phase change, or a second track crossfaded); desperation adds a pulse. Recorded as two files per boss cue.
 - Crossfade 600ms on every cue change; duck 6dB under dialogue, pause and the victory card. Boss entry crossfades to `boss`.
 - SFX: per-weapon shot and impact, charge loop that loops, enemy death, boss roar and phase change, boss death explosion, wall kick, player death, checkpoint chime, gate open, dialogue blip, menu open and close, low-HP beep, weapon-get jingle, boss-intro siren, stage-clear jingle, sub-tank drink, district restored, mini-boss activate, one ambient loop per biome. `normalizeKey` throws in dev on an unknown key. The duplicate sword-on-boss sound goes. The seven `.wav` files are credited or replaced.
 - `tests/audio-cue-map.test.ts` and `scripts/audio/check-credits.mjs` as prompt 04 specifies.
@@ -48,6 +49,9 @@ Art leads.
 - One bitmap pixel font (CC0 or generated) loaded in `Preload`; `HUD.ts` already branches on it; `MENU_FONT_*` and every `'monospace'` style go. Text rendered through `Text` stays for dialogue where HD anti-aliased glyphs read better; decide per surface and record it in `docs/architecture/rendering.md`.
 - Title: a drawn logo (Higgsfield, then cleaned), the hero on a parallax of the relay district, `PRESS START` blink, a 20s attract cycle of three stage backgrounds. Stage Select: boss portraits from 07 with a reveal slide, a cursor that moves, a stage preview strip, the district-restored tile flip with its sting. Game over, options, controls and ending screens restyled on the same theme.
 - `reducedFlashing` wired to the charge ring, explosions and the low-HP pulse, exposed in Options.
+- Loading screen (added on review): `Preload` draws a progress bar and the logo while atlases load; a first-visit note names the controls.
+- Key art (added on review): eight prologue and epilogue panels and nine Stage Select district previews generated through Higgsfield as stills (16:9, 1k) in the style sheet's palette, quantized to the game's colour depth; `PrologueScene` and `EndingScene` show the panels behind the text; Stage Select shows the district preview for the selected warden.
+- HUD (added on review): weapon icon from the 07 projectile sheets, sub-tank pips, lives, boss portrait beside the boss bar, low-HP pulse.
 
 Ledger: `EVAL-P8-003` (four screens captured at 2x through `40-hd-render` style scenarios; `33-classic-stage-select` layout assertions green).
 
@@ -89,6 +93,10 @@ Ask Craig to play through on a pad and return the checklist. Recommended: fix ev
 ## Phase 8.7: Release
 
 Implement prompt 04 "Phase 4.6" verbatim (version, CHANGES, README, AGENTS, ARCHITECTURE, TESTING, docs archive, progress entry, tag on Craig's word).
+
+Store kit (added on review): `output/release/store-kit/`: six 2x screenshots chosen from the sweep (title, Stage Select, two stages, a boss WARNING, the ending record), a 30-second gameplay capture recorded through the input-replay harness, page copy (title, one paragraph, controls, credits line), and a `CONTENT.md` that states which assets were generated with Higgsfield and which are CC0, matching the credits file. README carries the same disclosure.
+
+v1.1 backlog to hand off (not v1.0): character select (`docs/working/zero-character-select-backlog.md`), boss rush and time attack from the per-stage bests, New Game+ with the weakness ring rotated, controller rumble, a string table for localisation (UI strings are hard-coded today), an attract-mode demo from a replay script.
 
 Ledger: `EVAL-P8-010`.
 
