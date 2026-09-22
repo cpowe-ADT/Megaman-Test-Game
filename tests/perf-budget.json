@@ -1,0 +1,35 @@
+{
+  "$comment": "Footprint budget checked by scripts/perf/footprint.mjs (npm run perf:footprint). Plan and reasoning: docs/prompts/09-footprint-and-performance.md. Bytes are decimal MB. Lower a ceiling when a slice beats it; never raise one without a ledger row that says why.",
+  "static": {
+    "distTotalMB": 12,
+    "distMapsMB": 0.5,
+    "jsGzipKB": 520,
+    "phaserChunkGzipKB": 300,
+    "bootDownloadMB": 3.0
+  },
+  "boot": {
+    "titleReadyMs": 2500,
+    "decodedAudioMB": 16,
+    "textureMB": 12,
+    "jsHeapMB": 40
+  },
+  "stage": {
+    "decodedAudioMB": 16,
+    "textureMB": 12,
+    "jsHeapMB": 60,
+    "stepP95Ms": 12
+  },
+  "boss": {
+    "decodedAudioMB": 64,
+    "textureMB": 12,
+    "jsHeapMB": 60
+  },
+  "revisit": {
+    "heapGrowthMB": 4,
+    "textureGrowth": 0,
+    "listenerGrowth": 0
+  },
+  "hiDpi": {
+    "maxCanvasPixels": 4064256
+  }
+}
