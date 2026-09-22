@@ -16,6 +16,8 @@ The repo will treat the large-bundle warning as tracked debt rather than a relea
 - prefer incremental cleanup that naturally reduces bundle weight as runtime responsibilities leave `Game.ts`,
 - introduce explicit code-splitting or manual chunking only as a dedicated follow-up with targeted validation.
 
+Update 2026-09-22: a folder-based `manualChunks` split (boss, content, gameplay) was tried and made chunks import each other in a cycle; the production build threw at boot and nothing caught it because smoke runs on the dev server. Phaser (its Arcade-only build) is now the only manual chunk and `npm run perf:footprint` boots `dist/` on every run. Split game code only by scene with dynamic `import()`.
+
 ## Consequences
 - Contributors should not “fix” bundle size opportunistically in unrelated changes.
 - Any future bundle-splitting work must validate scene flow, smoke automation, and asset loading behavior.

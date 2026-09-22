@@ -1,97 +1,84 @@
-# Agent Guide
+# AGENTS.md: rules for every agent in this repository
 
-## Purpose
-This repository contains a retro Mega Man-style action platformer built with Phaser 3, TypeScript, and Vite. The game is playable and heavily instrumented, but the runtime is still in transition: core gameplay remains concentrated in `src/scenes/Game.ts`, while player, enemy, boss, content, and tooling modules are being pulled into more testable subsystems.
+`OMEGA Relay` is a Phaser 3 + TypeScript + Vite action platformer built entirely by AI agents (Claude Code, Codex, ChatGPT) for Craig, who plans, reviews at STOPs and plays; he does not write code. This file is read automatically by Codex and imported by `CLAUDE.md`, so it is the one place for rules. Keep it under 150 lines (`npm run agents:check` enforces it).
 
-## Current State
-- Main runtime entry: `src/main.ts`
-- Scene flow: `Boot` -> `Preload` -> `StageSelect` -> `Game` plus pause/game-over/completion flows
-- Tests and build are currently green via `npm run test` and `npm run build`
-- Known debt:
-  - `src/scenes/Game.ts` is still under `// @ts-nocheck`
-  - production build warns about a large bundle
-  - the repo contains both legacy scene-owned logic and newer modular runtime paths
+## Start of a session: read only this much
 
-## Start Here
-1. Read `README.md` for quickstart and current-state notes.
-2. Read `docs/README.md` for the documentation authority map.
-3. Read `ARCHITECTURE.md` if your change touches runtime behavior or subsystem boundaries.
-4. Read `TESTING.md` before changing gameplay, input, UI, assets, or automation hooks.
-5. Read `progress.md` before editing anything. It is the canonical rolling handoff log.
+1. `progress.md`: the **Now** block and the last three entries. Never the archive unless a question needs history (`grep -n` it).
+2. Running a prompt from `docs/prompts/` (a work order such as `05-feel-hero-and-camera.md`): run `npm run agents:check -- --entry <N>`, then `npm run agents:context -- --part <part>` and read `output/context/<part>.md` instead of the whole charter, prompt, ledger and log. Paste formats are in `docs/prompts/START.md`.
+3. Any other task: the row for your area in "Where things are" below, and nothing else until the task needs it.
+4. Numbers (tests, `Game.ts` lines, budgets, open decisions): `npm run agents:facts`. A count written in prose is stale by definition.
 
-## Authoritative Docs
-- Project overview and setup: `README.md`
-- Agent workflow and handoff rules: `AGENTS.md`
-- Contribution rules and code-change expectations: `CONTRIBUTING.md`
-- Testing policy and command usage: `TESTING.md`
-- Current architecture summary: `ARCHITECTURE.md`
-- Full doc index, status map, and historical references: `docs/README.md`
+## Hard rules
 
-## High-Value Paths
-- `src/main.ts`: Phaser bootstrap, renderer config, automation hooks
-- `src/scenes/`: scene flow, gameplay, menus, pause/game-over/completion
-- `src/player/`: modular player runtime, state machine, combat, animation, VFX/SFX routing
-- `src/enemy/`: enemy framework, AI, combat, spawner, debug overlay
-- `src/boss/` and `src/bosses/`: boss framework, config, runtime controller, diagnostics
-- `src/content/`: content registries, campaign/enemy data, generated catalog assets
-- `src/assets/`: sprite-manifest types, validation, runtime atlas helpers
-- `tests/` and `src/boss/__tests__/`: logic and scene/system regression tests
-- `scripts/`: smoke, visual sweep, sprite pipeline, asset validation tooling
-- `progress.md`: required handoff log for the next agent
+1. One writer: the Principal Game Engineer seat edits code; review seats read and report (`docs/prompts/seats/`).
+2. Never claim a gate passed without pasting its result line and the artifact path. Open the screenshots you cite and say what you saw.
+3. The tree may be dirty: inspect before editing, preserve unrelated changes, never revert work you did not make. Stop and ask if files change under you.
+4. No new `@ts-nocheck`. `src/scenes/Game.ts` only shrinks: the ceiling in `tests/agent-budget.json` goes down with each slice, never up. New systems are typed modules under `src/`; `Game.ts` gains calls, not logic.
+5. Keep Phaser objects at adapter edges; pure logic gets unit tests that run without a scene.
+6. Layout in game pixels (`GAME_SIZE`, `GAME_WIDTH`, `GAME_HEIGHT` from `src/config/renderPolicy.ts`). `scene.scale.width/height` are canvas pixels (448 x render scale) and put UI off screen.
+7. Public names come from `src/content/identity.ts`. Nothing ripped from Capcom ships in the public build; the private skin is developer-only.
+8. Dialogue never grants rewards, writes completion flags, kills bosses or changes scenes; skip and full-read converge on the same state.
+9. The automation contract (`window.render_game_to_text`, `window.advanceTime` as an animation-frame wait, `?automation=1`, `stageDebug`, `bossDebug`) changes only with `scripts/` and `TESTING.md` in the same commit.
+10. Assets load per scene with a stated eviction rule (music per cue, backgrounds per stage), never all in `Preload`. Keep `npm run perf:footprint` green; lower budgets in `tests/perf-budget.json`, never raise them without a ledger row.
+11. Every asset gets source, author, licence and path recorded before runtime use.
+12. At a STOP: one question with your recommended answer, a row in `docs/prompts/DECISIONS.md`, then stop and wait. Never answer Craig's decision yourself.
+13. Record as you go: a ledger row per eval (a PASS cites a commit git knows), one `progress.md` entry per session in its template, a handoff at prompt exit. `npm run agents:check` must pass before every STOP and commit.
+14. Commit small, name the slice and eval id, end with your tool's attribution line. Push or tag only when Craig asks.
 
-## Working in a Dirty Tree
-- Assume the worktree may already contain unrelated user edits.
-- Before editing, inspect the target file and preserve unrelated changes.
-- Do not revert or clean up work you did not make unless explicitly asked.
-- Avoid broad formatting passes or file moves outside the documentation scope unless they are required for the requested task.
-- If you find unexpected new changes appearing while you work, stop and ask how to proceed.
+## Gates (pick the smallest truthful set, then escalate)
 
-## Change Rules
-- Keep diffs narrow and reviewable.
-- Prefer extracting pure logic into typed modules rather than expanding scene-local logic.
-- Do not add new `@ts-nocheck` files. Reduce the existing `src/scenes/Game.ts` hotspot incrementally when touching that area.
-- Keep Phaser-specific objects at adapter edges when practical; keep reusable logic testable without a scene.
-- If you change architecture, workflows, commands, or content contracts, update the relevant docs in the same pass.
-- If you change behavior meaningfully, append a concise note to `progress.md`.
+| Change | Run |
+| --- | --- |
+| Docs, prompts, seats, logs | `npm run agents:check`, `npm run test` |
+| Pure logic, content, save rules | `npm run test` |
+| TypeScript, runtime wiring, loaders | `npm run test`, `npm run build` |
+| Scene flow, input, UI, automation hooks | add `npm run test:smoke` (or `SMOKE_ONLY=<names>` while iterating) |
+| Sprites, atlases, stage visuals, bosses | add `npm run test:visual-sweep` |
+| Loading, audio, render scale, per-frame loop | add `npm run build` then `npm run perf:footprint` |
+| Before a STOP that closes a phase, and at prompt exit | `npm run verify` (agents:check, sprites, test, build, smoke) plus the sweep |
 
-## Validation Requirements
-Run the smallest truthful gate for the change, then escalate when the change is broader.
+Details and scenario names: `TESTING.md`. Merge blockers: `docs/testing/quality-gates.md`.
 
-- `npm run test`
-  - Run for logic, scene, gameplay-rule, UI-flow, content-schema, and save-system changes.
-- `npm run build`
-  - Run for any TypeScript, runtime wiring, loader, asset-manifest, or bundling-impacting change.
-- `npm run test:smoke`
-  - Run for scene flow, gameplay loop, UI/input, automation-hook, or regression-risky runtime changes.
-- `npm run test:visual-sweep`
-  - Run for multi-mission visual changes, sprite-pipeline changes, atlas updates, and boss/enemy presentation updates.
-- `npm run verify`
-  - Run before merge for substantive gameplay, tooling, content, or asset-pipeline work.
+## Token discipline (context is a budget)
 
-For docs-only changes, `npm run test` and `npm run build` are the default minimum unless the edit changes documented behavior for smoke/visual workflows enough that a full `verify` is warranted.
+- Read ranges, not whole files: `grep -n`, `sed -n 'a,bp'`, offset reads. Anything over 20KB is read by section.
+- Prefer the context pack over the charter, prompt, ledger and log in full. Do not re-read a file you just edited.
+- Review seats and helper agents answer in at most 600 words with evidence, never file dumps (`docs/prompts/seats/REVIEW_FORMAT.md`).
+- Budgets for the files every session reads live in `tests/agent-budget.json`; `npm run agents:check` fails when one grows past its budget. When it does, rotate or move text, do not raise the budget.
+- `npm run agents:rotate-progress` moves old log entries to `docs/archive/progress/` when `progress.md` grows.
 
-## Automation Hooks
-This repo already supports automated gameplay inspection. Preserve these contracts unless the change explicitly updates the scripts and docs together.
+## Where things are (read the row for your task)
 
-- `window.render_game_to_text`
-  - Must keep exposing concise, decision-useful runtime state for automation.
-- Animation-frame waiting hooks such as `window.advanceTime` (not deterministic Phaser stepping)
-  - Do not remove or silently change semantics without updating smoke tooling and docs.
-- `scripts/smoke-test.mjs` and `scripts/mission-visual-sweep.mjs`
-  - Treat these as part of the test surface, not disposable scripts.
+| Task | Start with |
+| --- | --- |
+| Movement, combat feel, player | `src/player/`, `tests/player-motor.test.ts`, `tests/player-combat.test.ts` |
+| Enemies | `src/enemy/`, `docs/working/enemy-ecology-and-variant-plan.md` |
+| Bosses | `src/boss/`, `src/bosses/`, `docs/architecture/boss-framework.md` |
+| Stages and campaign content | `src/content/campaign.ts`, `docs/design/stage-briefs.md` |
+| Story and dialogue | `docs/story/story-bible.md`, `docs/story/script.md`, `src/content/dialogue/` |
+| Menus, HUD, rendering, scale | `src/ui/`, `src/scenes/`, `docs/architecture/rendering.md` |
+| Audio | `src/audio/`, `assets/audio/credits/README.md` |
+| Art pipeline | `docs/content/sprite-imagegen.md`, `scripts/sprites/` |
+| Save and progression | `src/systems/Save.ts`, `src/progression/` |
+| Automation, smoke, sweep | `TESTING.md`, `scripts/smoke-test.mjs`, `scripts/smoke/`, `scripts/mission-visual-sweep.mjs` |
+| Performance and disk | `docs/prompts/09-footprint-and-performance.md`, `scripts/perf/`, `tests/perf-budget.json` |
+| Agent system, prompts, seats, logs | `docs/prompts/10-agent-system.md`, `scripts/agents/`, `docs/prompts/seats/README.md` |
+| Architecture overview | `ARCHITECTURE.md`; full index `docs/README.md` |
 
-## Definition of Done
-A change is done when:
-- the requested behavior or documentation update is implemented,
-- the appropriate validation commands pass,
-- relevant docs are updated and cross-linked,
-- `progress.md` records what changed and any remaining risks,
-- no unrelated work was reverted or broken.
+Scene flow: `Boot` -> `Preload` -> `Title`, then `NewCampaign`, `Prologue`, `StageSelect`, `Game`, with `SystemMenu` (pause and route console), `Options`, `Controls`, `GameOver`, `ProgressionSummary` and `Ending` (all registered in `src/main.ts`).
 
-## Handoff Checklist
-Before ending your session:
-1. Summarize what changed in `progress.md`.
-2. Note commands run and whether they passed.
-3. Call out any known regressions, debt, or follow-up work.
-4. Link the next agent to canonical docs if you introduced new ones.
-5. If a change touched automation hooks or test flows, state that explicitly.
+## Logs a new model reads to pick up the work
+
+| Log | Holds | Written |
+| --- | --- | --- |
+| `progress.md` | Now, and one entry per session (who, which model, what changed, gates, open) | every session |
+| `docs/prompts/EVAL_LEDGER.md` | one row per eval with evidence and commit | every slice |
+| `docs/prompts/handoff/` | one file per finished prompt; the next prompt's inputs | prompt exit |
+| `docs/prompts/DECISIONS.md` | every question for Craig, his replies verbatim | every STOP |
+| `docs/prompts/reviews/` | blind seat reviews, `MERGED.md`, `SCORES.md` | every seat review |
+| `git log` | commits naming slices and eval ids | every slice |
+
+## Environment
+
+macOS: no GNU `timeout`; scope long runs with `SMOKE_ONLY`, isolate parallel runs with `SMOKE_PORT` and `SWEEP_PORT`. `npm run test` takes seconds, the sweep a few minutes, full smoke six to ten. Port 5173 can be taken by a Docker container on Craig's Mac: Vite then picks the next port, and the Claude browser pane has `omega-relay-dist` (the production build on 4180) in `.claude/launch.json`. The pane pauses Phaser while hidden. Python sprite scripts run through `.venv/bin/python`.

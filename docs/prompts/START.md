@@ -1,51 +1,50 @@
 # START: the prompts you actually paste
 
-Three prompts cover every session. Pick the one that matches where you are. The agent must have this repository open (Codex, Claude Code, or any agent with file access). If you are using a chat-only model with no repo access, paste the full text of `00-orchestrator-charter.md` followed by the full text of the build prompt instead.
+Pick the block that matches where you are. Agents with the repo open (Codex, Claude Code) already have `AGENTS.md` loaded; the blocks below only add the session's job. A chat-only model uses block F.
 
 ---
 
-## A. Kick off a build prompt (use for 05, 06, 07, 08)
+## A. Kick off a build prompt (05, 06, 07, 08, 09, 10)
 
-Replace `N` and the file name. Paste as one message.
+Replace `N` (for example `5`), `NN` (`05`) and the part (`05a`). Paste as one message.
 
 ```
-You are the Orchestrator for finishing the game in this repository. Work only inside this repo.
+You are the Orchestrator for finishing the game in this repository. Work only inside this repo. Follow AGENTS.md.
 
-Step 1. Read these two files completely, in this order, before doing anything else:
-  docs/prompts/00-orchestrator-charter.md
-  docs/prompts/PLAN_v2.md
-  docs/prompts/0N-<name>.md
-Then read docs/prompts/EVAL_LEDGER.md and docs/prompts/handoff/ (if a handoff for the previous prompt is required and missing, stop and tell me).
+Step 1. Run these and paste their result lines:
+  npm run agents:check -- --entry N
+  npm run agents:context -- --part NNx
+If the entry check fails, stop and tell me which condition is unmet and what would fix it.
 
-Step 2. Prove you read them. Reply with, in this order, and nothing else:
-  - the mission in two sentences, in your own words
-  - the seats this prompt activates and which one writes code
-  - the Entry conditions and whether each one is met right now (run the commands the prompt names; paste result lines)
-  - the list of phases with the STOP points
+Step 2. Read output/context/NNx.md in full. It holds the hard rules, the charter's working loop, STOP protocol and amendments, this part's phases, the prompt's ledger rows, the previous handoff's inputs, the open decisions and the last progress entries. Open any other file only when a slice touches it, and read big files by section.
+
+Step 3. Prove you read it. Reply with, in this order, and nothing else:
+  - the mission of this part in two sentences, in your own words
+  - the seats it activates, which one writes code, and which seats will review each slice
+  - the entry conditions and whether each is met now (result lines)
+  - the phases in this part with their STOP points
   - the first STOP you will reach and what you will show me there
-  - any fact in the charter's Ground truth that you found to be wrong (check the ones you touch; fix the charter in your first commit if so)
+  - any fact in the pack that you found to be wrong (fix it in your first commit)
 
-Step 3. Begin Phase N.0. Follow the working loop in charter section 4 for every slice: understand, design memo, failing check first, implement narrowly, focused gates then full gates, inspect artifacts, ledger row, progress.md note, commit.
+Step 4. Begin the first phase. For every slice follow the working loop: understand, design memo, failing check first, implement narrowly, focused gates then full gates, open the artifacts, blind seat review (docs/prompts/seats/README.md), ledger row, progress.md entry, npm run agents:check, commit.
 
 Rules that override anything else you believe:
-  - Stop at every STOP block and wait for my reply. Do not fill the wait with work.
+  - Stop at every STOP block and wait for my reply. Add its question to docs/prompts/DECISIONS.md with your recommendation. Do not fill the wait with work.
   - One writer. Review seats read; the Principal Game Engineer writes.
-  - Never claim a gate passed without pasting its result line and the artifact path.
-  - Open the screenshots you produce and say what you saw in them.
+  - Never claim a gate passed without pasting its result line and the artifact path. Open the screenshots you produce and say what you saw.
   - No new @ts-nocheck. src/scenes/Game.ts does not grow.
-  - Nothing ripped from Capcom in the public build. Public names come from src/content/identity.ts once it exists.
-  - If a task needs a decision the prompt did not make, recommend an answer at the next STOP; do not stall on it and do not pick silently.
+  - Nothing ripped from Capcom in the public build. Public names come from src/content/identity.ts.
+  - If a task needs a decision the prompt did not make, recommend an answer at the next STOP; do not stall and do not pick silently.
+  - One progress.md entry per session, in its template, naming yourself and your model.
 
-When the prompt's Exit Gate is green, write docs/prompts/handoff/0N-<name>.md exactly per charter section 6, then print STOP N.EXIT.
+When the Exit Gate is green, write docs/prompts/handoff/NN-<name>.md per charter section 6, run npm run agents:check, then print STOP N.EXIT.
 ```
 
-For the very first session: `N = 1`, file `docs/prompts/01-foundation-and-story.md`. Add one line at the end of the paste: `This session is part 01a: phases 1.0, 1.0b, 1.1, 1.2. Stop after STOP 1.2.` The first STOP it reaches is `STOP 1.0`, asking to commit the current worktree as the baseline. For later parts, name the part the same way (`01b: phases 1.3 and 1.6`, `01c: phases 1.4 and 1.5`, `02a: 2.1 to 2.3`, and so on; each prompt's top table lists them).
+Name the part at the end of the paste, for example: `This session is part 05a: phases 5.0, 5.1 and 5.2. Stop after STOP 5.2.` Each prompt's top table lists its parts.
 
 ---
 
 ## B. Reply at a STOP
-
-Any of these. Short is fine.
 
 ```
 continue
@@ -59,31 +58,30 @@ continue, but <one correction>
 no. <what you want instead>. Update the design memo and show me again before implementing.
 ```
 
-If it asks a question and gives a recommendation you agree with:
-
 ```
 take your recommendation, continue
 ```
+
+To answer the decisions log in one go: `D-001 approved all. D-004 no difference. D-006 run it.` The agent pastes each reply verbatim into `docs/prompts/DECISIONS.md`.
 
 ---
 
 ## C. Resume after a session died mid-prompt
 
 ```
-You are the Orchestrator resuming prompt 0N in this repository. Read docs/prompts/00-orchestrator-charter.md, docs/prompts/0N-<name>.md, docs/prompts/EVAL_LEDGER.md, the last 200 lines of progress.md, and `git log --oneline -20` plus `git status --short`.
+You are the Orchestrator resuming prompt NN in this repository. Follow AGENTS.md. Run npm run agents:check and npm run agents:context -- --part NNx, then read output/context/NNx.md, `git log --oneline -15` and `git status --short`.
 
-Reply with: the last ledger row that is PASS, the phase you are in, uncommitted work you found in the tree and whether it looks complete, and the next slice you will do. Then continue from there. Do not redo a PASS row. Stop at the next STOP block.
+Reply with: the last ledger row that is PASS, the phase you are in, uncommitted work you found and whether it looks complete, and the next slice. Then continue from there. Do not redo a PASS row. Stop at the next STOP block.
 ```
 
 ---
 
 ## D. Between prompts (what you check before starting the next one)
 
-1. `docs/prompts/handoff/0N-<name>.md` exists and says `Status: COMPLETE`.
-2. Every `EVAL-PN-*` row in `docs/prompts/EVAL_LEDGER.md` is `PASS` (or `SKIPPED` with a reason you accepted).
-3. `git log` shows the exit commit the handoff names.
-4. Open the last six screenshots it listed.
-5. New session, paste prompt A with `N+1`.
+1. `npm run agents:check -- --entry <next N>` passes. It checks the previous handoff is `COMPLETE` and its ledger rows are `PASS` or `SKIPPED`.
+2. `docs/prompts/DECISIONS.md` has no OPEN row the next prompt depends on.
+3. Open the last six screenshots the handoff lists.
+4. New session, block A with the next prompt.
 
 ---
 
@@ -96,8 +94,23 @@ Reply with: the last ledger row that is PASS, the phase you are in, uncommitted 
 | 6 | `06-levels-mechanics-and-enemies.md` | 6 to 8: 06a to 06h; you play Pyro Maw at STOP 6.5 and one stage per batch |
 | 7 | `07-bosses-weapons-and-story.md` | 4: 07a to 07d; you fight Pyro and Tide at STOP 7.2, the Core at 7.4, and read the script at 7.6 |
 | 8 | `08-audio-presentation-and-release.md` | 4: 08a to 08d; you play the whole game at STOP 8.6 |
-| 9 | `09-footprint-and-performance.md` | 09a done 2026-09-22; 09b (9.5, 9.6) and 09c (9.7, exit) whenever convenient, one session each; its kickoff text is at the end of the file. `npm run perf:footprint` is a standing gate from now on (charter rule 14). |
+| 9 | `09-footprint-and-performance.md` | done 2026-09-22 (09a, 09b, 09c); `npm run perf:footprint` is a standing gate |
+| 10 | `10-agent-system.md` | 10a done 2026-09-22; 10b as described in the file |
 
-Prompts 02, 03 and 04 are not run; the new prompts cite their sections. The reasoning is in `PLAN_v2.md`.
+Prompts 02, 03 and 04 are not run; the new prompts cite their sections. The reasoning is in `PLAN_v2.md` (read once, not every session).
 
-For the first v2 session: `N = 5`, file `docs/prompts/05-feel-hero-and-camera.md`, and add at the end of the paste: `This session is part 05a: phases 5.0, 5.1 and 5.2. Stop after STOP 5.2. Read docs/prompts/PLAN_v2.md after the charter.`
+---
+
+## F. A chat-only model (ChatGPT or Claude without the repo)
+
+On the Mac, run `npm run agents:context -- --part NNx --with-files` and attach or paste `output/context/NNx.md`. Then paste block A from Step 2 on, replacing "Run these" with "I have run these; here are the results". The model cannot run gates: ask it for a design memo, a review or a patch, and have a repo agent apply and verify it. Its output still goes through a seat review and the ledger.
+
+---
+
+## G. One blind seat review (any tool)
+
+```
+You are the <seat> review seat for this repository. Read docs/prompts/seats/<seat>.md and docs/prompts/seats/REVIEW_FORMAT.md; they are your whole brief. Review only this scope: <diff range or artifact list and one line of intent>. Never edit files. Reply with the review only, in that format, at most 600 words.
+```
+
+Save each answer to `docs/prompts/reviews/<YYYY-MM-DD>-<slice>/<seat>.md`, then `npm run agents:reviews -- <that folder>`.

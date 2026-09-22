@@ -14,6 +14,8 @@ You think first, then act. For every slice you understand the task line by line,
 
 Verified 2026-09-09 by reading the code and running `npm run test`. Do not re-derive these. Do verify a fact if you suspect drift, and correct this table in the same commit if it is wrong.
 
+Counts in this section (tests, scenarios, `Game.ts` lines, sizes) are as of the date beside them and go stale; the live values come from `npm run agents:facts`, and the `Game.ts` ceiling from `tests/agent-budget.json`. Do not copy a new count into this file: link to the command.
+
 | Area | Today | Where to look | Changed by |
 | --- | --- | --- | --- |
 | Stack | Phaser `^3.80` (3.90.0 installed), TypeScript 5.9, Vite 5.4, Node 22.20, Playwright for browser gates, Python through `.venv` for sprite scripts. Native frame 448x252, `Scale.FIT`, Arcade gravity 800. | `package.json`, `src/main.ts` | never |
@@ -71,7 +73,7 @@ Verified 2026-09-09 by reading the code and running `npm run test`. Do not re-de
 | Hero | Still the ripped dev-only skin (repaired: no green, no head fragments, dash faces forward) until prompt 05 lands the generated hero and deletes `assets/private/`. |
 | Art pipeline | Higgsfield `gpt_image_2` (4:3, 1k, medium) sheets on `#FF00FF`, cut by `scripts/sprites/hf_sheet_to_atlas.py`; prompts and job ids recorded beside the source PNG; `docs/content/sprite-imagegen.md` section 2. The OpenAI imagegen skill path is legacy. |
 | Gates | `npm run test` 256; full smoke 51 scenarios (`39`, `40` new); sweep 10/10. `SMOKE_PORT` isolates parallel runs; never run two suites against one `output/web-game-smoke`. `13d-movement-feel` isolates the player from enemy contact during its trace. |
-| Debt | `src/scenes/Game.ts` is 3,700 lines. Every v2 prompt has a line-count ceiling in its exit gate. |
+| Debt | `src/scenes/Game.ts` line count: `npm run agents:facts`; its ceiling is `gameTsMaxLines` in `tests/agent-budget.json`, checked by `npm run agents:check` and lowered by each slice that shrinks it. Every v2 prompt also has a line-count ceiling in its exit gate. |
 | Order | Prompts 05 to 08 replace 02 to 04 (`PLAN_v2.md`). Scenario numbering for new smoke scenarios: `41-profiles`, `42-mechanics-matrix`, `43-miniboss-encounter`, `44-boss-beats`, `45-beats-flow`, `46-gamepad-and-remap`, `47-full-campaign`, `48-restart-leak`; the numbers in prompts 02 and 04 are superseded by these. |
 | Footprint (09a, 2026-09-22) | Production `dist/` boots again (the folder `manualChunks` split was a chunk import cycle). Phaser is the Arcade-only build; no source maps unless `BUILD_SOURCEMAP=1`. Music is fetched and decoded per cue and evicted when idle (`src/audio/MusicTrackLoader.ts`); a new track needs only a `MUSIC_ASSETS` row. Stage backgrounds load in `Game.preload()` per stage (`src/scenes/game/stageBackgroundLoading.ts`). Render scale capped at 6 (`MAX_RENDER_SCALE`, `cssZoom`). Menus and overlays lay out with `GAME_SIZE`. `npm run perf:footprint` checks `tests/perf-budget.json` (20 checks) and fails on any page error. Plan, persona and remaining phases: `docs/prompts/09-footprint-and-performance.md`. |
 
@@ -90,8 +92,10 @@ You convene seats. If your harness supports parallel read-only sub-agents, run t
 | Audio Director | cue map, sourcing, loudness, loop points, credits | leaves a cue on a reused track |
 | QA / Eval Lead | tests, smoke, sweep, screenshot inspection, the ledger rows, regression hunting | accepts a summary line without opening the artifact |
 | Release Engineer | build, CI, public build stripping, deploy, versioning | ships `dist/assets/private` |
+| Performance Engineer (09) | load, memory, per-frame cost and disk against `tests/perf-budget.json`, before and after numbers | ships a change with no number |
+| Docs Steward / Context Engineer (10) | one source of truth, token budgets of always-read files, the logs a new model resumes from, context packs | copies a number into prose that a command can print |
 
-Each prompt says which seats are active and which one leads each phase.
+Each prompt says which seats are active and which one leads each phase. Each seat's full brief (owns, never, reads first, rubric) is `docs/prompts/seats/<seat>.md`; reviews use `docs/prompts/seats/REVIEW_FORMAT.md` and are merged and scored by `npm run agents:reviews` (see `docs/prompts/seats/README.md` for Claude subagents and the Codex runner).
 
 ## 4. The working loop for one slice
 
@@ -123,9 +127,11 @@ If approved, next slice: <one line>
 
 Craig may just say `continue`.
 
+Every STOP question is also a row in `docs/prompts/DECISIONS.md` (id, question, recommendation, OPEN). When Craig replies, paste the reply verbatim into that row, set it DECIDED, and cite the id in the ledger row that depended on it. Run `npm run agents:check` before printing the STOP block.
+
 ## 6. Handoff contract
 
-When a prompt's Exit Gate is green, write `docs/prompts/handoff/0N-<name>.md` with exactly these sections. The next prompt reads it as input and refuses to start if it is missing or incomplete.
+When a prompt's Exit Gate is green, write `docs/prompts/handoff/0N-<name>.md` with exactly these sections (`npm run agents:check` verifies the sections, their order and that the status is not the placeholder; the next prompt's `--entry` check reads the status). The next prompt reads it as input and refuses to start if it is missing or incomplete.
 
 ```
 # Handoff 0N: <name>
@@ -141,7 +147,7 @@ When a prompt's Exit Gate is green, write `docs/prompts/handoff/0N-<name>.md` wi
 
 ## 7. Eval ledger contract
 
-`docs/prompts/EVAL_LEDGER.md` has one row per eval id. Eval ids are fixed by the prompts (`EVAL-P1-003`); you may add ids but never rename or delete one. A row is `PASS`, `FAIL`, `SKIPPED (reason)`, or `PENDING`. A prompt's Exit Gate is green only when every row for that prompt is `PASS` or `SKIPPED` with a reason Craig accepted at a STOP, except rows the prompt explicitly allows to stay `PENDING` (a remote CI run, a live URL after a tag).
+`docs/prompts/EVAL_LEDGER.md` has one row per eval id (rows for prompts 01 to 04 and the planning and art supplements moved verbatim to `docs/prompts/archive/EVAL_LEDGER-01-04.md` and still count). From prompt 05 on `npm run agents:check` fails a row whose status is not one of the four words, or a PASS whose Commit cell does not name a commit git knows. Eval ids are fixed by the prompts (`EVAL-P1-003`); you may add ids but never rename or delete one. A row is `PASS`, `FAIL`, `SKIPPED (reason)`, or `PENDING`. A prompt's Exit Gate is green only when every row for that prompt is `PASS` or `SKIPPED` with a reason Craig accepted at a STOP, except rows the prompt explicitly allows to stay `PENDING` (a remote CI run, a live URL after a tag).
 
 Three kinds of eval exist:
 - **Automated gate**: a command with an exit code and a summary artifact.
@@ -164,6 +170,7 @@ Three kinds of eval exist:
 12. Names: the hero's callsign, the title, and every warden name come from `src/content/identity.ts` after prompt 01. Never hard-code a name in a scene again.
 13. Every smoke scenario or sweep run that needs the story surfaces off passes `storyIntro=off` (defined in prompt 01); scenarios that test the surfaces pass `storyIntro=on`.
 14. Keep `npm run perf:footprint` green (after `npm run build`) before any STOP whose slice touches assets, loading, audio, rendering or the per-frame loop. Lower a ceiling in `tests/perf-budget.json` when a slice beats it; never raise one without a ledger row that says why. A new asset family loads per scene with a stated eviction rule, not in `Preload`.
+15. Keep the agent system checkable: `npm run agents:check` green before every STOP and commit; one `progress.md` entry per session in its template (it names the agent and model); rotate the log with `npm run agents:rotate-progress` instead of letting it grow. Start a prompt with `npm run agents:check -- --entry <N>` and read `npm run agents:context -- --part <part>` rather than whole files. See `docs/prompts/10-agent-system.md`.
 
 ## 9. Anti-patterns to refuse
 
@@ -176,25 +183,4 @@ Three kinds of eval exist:
 
 ## 10. Definition of Final
 
-The package is done when all of the following are true and recorded in `handoff/08-*.md` (v2; formerly `handoff/04-*.md`), each with an evidence path:
-
-1. A new player goes Title -> Prologue -> Tutorial -> eight wardens in any order -> Omega Fortress (three acts) -> Ending with a campaign record -> Credits -> Title, on keyboard or gamepad, with no placeholder art, placeholder text, or reused music cue.
-2. Every warden stage: at least 10 screens of route before the boss room (target 12 to 14), 4 checkpoints, 1 mini-boss, 2 secrets, at least 2 biome mechanics, at least 18 enemy placements across at least 5 types, and at least one segment that scrolls vertically or uses walls for wall jumps. Tutorial: 6 screens teaching move and jump, dash, wall jump, charge, saber in that order. Omega Fortress: three acts including a warden rematch gauntlet with refills and reduced HP.
-3. All ten bosses have original action sheets that satisfy their combat-profile animation families; four mini-boss archetypes have art; the hero has an original public sprite whose frames fit the existing body profiles; every enemy uses biome-appropriate art; twelve speaker portraits exist.
-4. Story surfaces: prologue, per-stage briefing, per-stage radio call, boss intro and defeat, milestones including Iona's turn, finale phase lines including OMEGA's offer and WREN's refusal, an epilogue with one card per warden, a campaign record, credits. All order-independent, all skippable, all seen-flag aware.
-5. Systems a genre player expects: a pause menu with the weapon grid and sub-tank use; capsule and chip rewards that each do one testable thing; a death economy with lives that cost something; a boss door and boss bar fill; low-health warning; weakness-hit feedback; Stage Select with difficulty pips, a briefing hook line, and an animated preview; autosave at checkpoints with no manual save menu.
-6. Audio: at least eight distinct stage themes, title, select, boss, final, ending, and the stings; all licensed and credited in-game.
-7. Options: music and SFX volume, screen shake, reduced flashing, fullscreen and integer scaling, difficulty (Assist / Normal / Veteran), story replay, keyboard and gamepad remap, delete data with confirmation. Touch is either complete (weapon switch and menus) or hidden behind a toggle.
-8. Public build (`npm run build:public`) contains no private assets and no franchise strings, deploys to a URL, and passes `npm run verify`, `npm run verify:public`, the ten-mission sweep, and the full-campaign smoke scenario in both skip and read variants.
-9. `Game.ts` is at or below 3,000 lines (v2 ceiling; the v1 figure was 3,928) and nothing new is under `@ts-nocheck`.
-
-Added 2026-09-22 with plan v2:
-
-10. Movement: no Arcade drag on the player body; dash-jump carries; wall kicks accept buffered and away input inside the grace window; jump cuts on release; hit-stop fires only on contact; hurt locks the motor and blinks; death plays a sequence and beams the player back in. Every movement scenario runs from an input replay script, not Playwright key timing.
-11. Every character family (hero, enemies, mini-bosses, bosses) is original art generated through Higgsfield to the style sheet, cut by the repo's script, with prompts and job ids recorded, and its physics body aligned to the drawn feet. `assets/private/` does not exist and `git grep -i "mega man\|mmx4\|spriters-resource" -- src scripts assets` prints nothing.
-12. Text reads at device resolution at any window size (`40-hd-render` green); the bitmap font is used where the style sheet says and HD text elsewhere.
-13. Profiles: three slots with a pilot name that the dialogue and HUD use, per-stage bests and rank, export and import.
-14. One warden is fought in a `shaft` room from the walls (the wall-jumping boss level); every warden has a phase-two kit change, a desperation move, and a weakness reaction that staggers.
-15. Weapons: eight identities with a hold or charge and an on-hit tag, their own projectile and impact art, the authored weakness ring with no `BLOCKED` in Classic, refills applied.
-16. Balance evidence: death heatmaps from an automated Normal run and from Craig's playthrough are in the release handoff, with no segment over the retune threshold left unexplained.
-17. Release kit: six 2x screenshots, a replay-recorded capture, page copy, a generated-content disclosure that matches the credits file.
+The seventeen conditions that make the game final live in `docs/prompts/PLAN_v2.md`, section "Definition of Final" (moved there 2026-09-22 because only prompt 08's exit gate uses them and this charter is read every session). Prompt 08 checks them item by item.

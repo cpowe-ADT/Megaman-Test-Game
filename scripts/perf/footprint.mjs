@@ -417,7 +417,7 @@ function markdown(report, rows) {
   const lines = [
     `# Footprint report: ${label}`,
     '',
-    `Commit ${report.commit}, ${report.at}. Budget: tests/perf-budget.json.`,
+    `Commit ${report.commit}${report.dirty ? ` plus ${report.dirty} uncommitted runtime paths` : ''}, ${report.at}. Budget: tests/perf-budget.json.`,
     '',
     '| Metric | Actual | Budget | Result |',
     '| --- | ---: | ---: | --- |',
@@ -442,6 +442,13 @@ async function main() {
       let out = ''
       git.stdout.on('data', (chunk) => (out += chunk))
       git.on('close', () => resolve(out.trim()))
+    }),
+    // A run on a dirty tree measures code that is not in `commit`; say so rather than let the hash imply it.
+    dirty: await new Promise((resolve) => {
+      const git = spawn('git', ['status', '--porcelain', '--', 'src', 'vite.config.ts', 'package.json', 'index.html'])
+      let out = ''
+      git.stdout.on('data', (chunk) => (out += chunk))
+      git.on('close', () => resolve(out.split('\n').filter(Boolean).length))
     }),
     static: staticMetrics()
   }

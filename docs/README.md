@@ -21,7 +21,13 @@ This repository uses an authority-based documentation structure. Start here when
 | Understand asset and sprite workflows | `docs/content/assets.md`, `docs/content/sprites.md`, `docs/content/sprite-imagegen.md` |
 | Understand content/schema contracts | `docs/content/content-schemas.md` |
 | Know merge gates and release checks | `docs/testing/quality-gates.md` |
-| Read or update handoff notes | `progress.md`, `docs/runbooks/agent-handoff.md` |
+| Read or update handoff notes | `progress.md` (Now and the last entries; older entries in `docs/archive/progress/`) |
+| Run or resume a build prompt | `docs/prompts/START.md`, then `npm run agents:context -- --part <part>` |
+| Understand how the agents work together (chaining, seats, reviews, checks, context) | `docs/prompts/10-agent-system.md` |
+| Know what each persona owns and how it reviews | `docs/prompts/seats/README.md` |
+| See every question waiting on Craig | `docs/prompts/DECISIONS.md` |
+| Understand rendering, scale and HD text | `docs/architecture/rendering.md` |
+| Load time, memory, disk | `docs/prompts/09-footprint-and-performance.md`, `tests/perf-budget.json` |
 | Understand working refactor plans and audits | `docs/working/` |
 | Read historical planning artifacts | `docs/archive/` |
 
@@ -89,7 +95,7 @@ This repository uses an authority-based documentation structure. Start here when
 | `docs/working/enemy-ecology-and-variant-plan.md` | working | Proposed enemy families, district routines, readable variants and bounded pilot; planning only, existing STOPs remain pending |
 | `docs/working/boss-animation-and-fight-rebuild-plan.md` | working | Code-based plan for grounded/intentional-aerial boss motion, action-specific animation, original sprite production, fight strategy, and arena dynamics |
 | `docs/working/README.md` | canonical | repo | Local index and usage rules for working docs |
-| `docs/prompts/README.md` | working | Completion prompt package: orchestrator charter, four build prompts, eval ledger, handoffs. Start here to finish the game. |
+| `docs/prompts/README.md` | canonical | Completion prompt package: charter, work orders 05 to 10 (02 to 04 superseded), eval ledger, decisions, seats, handoffs. Start here to finish the game. |
 
 ## Historical Docs
 | Path | Status | Replacement / Context |
@@ -100,7 +106,7 @@ This repository uses an authority-based documentation structure. Start here when
 
 ## Known Risks / Debt To Watch
 - `src/scenes/Game.ts` is still the largest runtime hotspot and remains under `@ts-nocheck`.
-- The production build currently emits a large-bundle warning.
+- The production build prints Vite's 500KB chunk warning because Phaser's Arcade build is 1.09MB minified; game code is one chunk (a folder split once crashed the build at boot).
 - Runtime ownership is split across legacy scene code and newer subsystem modules.
 - Long-lived planning docs can drift; check status labels before following a document.
 

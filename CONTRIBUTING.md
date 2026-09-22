@@ -1,5 +1,7 @@
 # Contributing
 
+Agents: the rules, gate table and logging protocol are in `AGENTS.md`; this file adds nothing that overrides it. `npm run verify` now starts with `npm run agents:check`.
+
 ## Working Style
 - Keep changes small, reviewable, and scoped to the request.
 - Prefer typed, testable modules over expanding scene-local logic.
@@ -46,7 +48,7 @@ Do not consider a change merge-ready if any of these are true:
 - Required validation commands failed.
 - Relevant docs were left stale.
 - `progress.md` does not mention the change or its risks.
-- A runtime change broke `render_game_to_text`, deterministic stepping hooks, smoke flows, or sprite validation without coordinated updates.
+- A runtime change broke `render_game_to_text`, animation-frame waiting hooks (`advanceTime`), smoke flows, or sprite validation without coordinated updates.
 - The change adds new technical debt without a recorded follow-up or justification.
 
 ## Debt Tracking Rules

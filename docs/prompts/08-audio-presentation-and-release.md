@@ -118,7 +118,7 @@ Ledger: `EVAL-P8-010`.
 
 - `EVAL-P8-001` to `EVAL-P8-009` and `EVAL-P8-011` `PASS`; `EVAL-P8-010` may be `PENDING` until the tag.
 - `npm run verify`, `npm run verify:public`, `npm run test:visual-sweep`, `npm run content:audit`, `npm run content:lint`, and `SMOKE_LONG=1 SMOKE_ONLY=47-full-campaign npm run test:smoke` result lines with artifact paths, all on the release commit.
-- The charter's section 10 Definition of Final checked item by item with evidence paths.
+- The Definition of Final (`docs/prompts/PLAN_v2.md`, moved from charter section 10) checked item by item with evidence paths.
 - `wc -l src/scenes/Game.ts` at or below 2,400: every beat in this prompt (READY, WARNING, weapon-get, results, beam-in, record) is a presenter under `src/ui/` that `Game.ts` only calls. `grep -rl "@ts-nocheck" src` prints nothing: with the file this small, remove the directive and fix the types.
 - Handoff with `Inputs for v1.1`.
 

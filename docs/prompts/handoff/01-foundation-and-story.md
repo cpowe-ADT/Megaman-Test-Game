@@ -1,6 +1,9 @@
 # Handoff 01: Foundation and story
 
-## Status: PARTIAL (list what is missing and why)
+## Status: COMPLETE
+
+Corrected 2026-09-22: this header still held the template placeholder although commit `a1200f4` ("handoff COMPLETE") and the exit-gate evidence below list `EVAL-P1-001` to `P1-012` PASS. Craig confirms at `D-003` in `docs/prompts/DECISIONS.md`; the review halves of STOPs 1.2 to 1.6 are `D-001`.
+
 
 Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; Craig approved STOP 1.0b; Phase 1.1 implementation and automated gates are complete, with Craig’s STOP 1.1 approval recorded below. Phase 1.2 is implemented with automated evidence green; STOP 1.2 awaits Craig’s title/subtitle review. Session 01a ends at that STOP. The separate enemy ecology request remains a planning supplement; phases 1.3–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
 

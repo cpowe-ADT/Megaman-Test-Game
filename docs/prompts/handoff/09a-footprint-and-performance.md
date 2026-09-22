@@ -6,7 +6,7 @@ Run by Claude in the planning session on 2026-09-22, at Craig's request to make 
 
 ## Branch and final commit
 
-Branch `codex/mega-runtime-and-assets-pass`, on top of `7b9ff8e`. Nothing is committed: the whole of 09a sits in the worktree for Craig to review and commit (suggested split in "Inputs" below).
+Branch `codex/mega-runtime-and-assets-pass`, on top of `7b9ff8e`. Committed as `9390db8` (harness), `773e00d` (build), `14841ac` (runtime), `ee57454` (docs). 09b and 09c follow in `df30ca8`; the prompt's exit handoff is `docs/prompts/handoff/09-footprint-and-performance.md`.
 
 ## What changed (by area, with file paths)
 
@@ -77,7 +77,6 @@ Artifacts: `output/perf/footprint-baseline.{json,md}`, `output/perf/footprint-09
 - Screenshots opened: `output/phase-9a/full-smoke/40-hd-render/menu-title-2x.png` and `menu-options-2x.png` (centred, HD text); `output/perf/hd-check/title-2x.png` and `options-2x.png` (the off-centre red state); sweep `pyro_maw/mid.png`, `glacier_ronin/boss-room.png`, `omega_fortress/start.png` (backgrounds per stage render as before).
 
 ## Open risks and known debt
-- Everything is uncommitted; Craig commits after STOP 9.4.
 - Headless numbers are proxies; real-GPU frame time is 08 §8.5.
 - The boss loop is long (152s, about 58MB decoded while it plays).
 - Vite's 500KB chunk warning remains: Phaser's Arcade build is 1.09MB minified.
