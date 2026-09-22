@@ -34,10 +34,10 @@ Four prompts replace 02, 03 and 04. The charter `00-orchestrator-charter.md` is 
 
 | Prompt | File | Lane | Sessions | Craig plays |
 | --- | --- | --- | --- | --- |
-| 05 | `05-feel-hero-and-camera.md` | Movement and combat feel, camera, death and respawn, charge shot; original hero sheet through Higgsfield replacing the ripped skin; save slots with a pilot name | 3 | the tutorial with the new hero |
+| 05 | `05-feel-hero-and-camera.md` | Harness and health, movement and combat feel, camera, death and respawn, charge shot; original hero sheet through Higgsfield replacing the ripped skin; save slots with a pilot name; the tutorial that teaches | 3 to 4 | the tutorial with the new hero |
 | 06 | `06-levels-mechanics-and-enemies.md` | Level format v2, pits, walls, vertical segments, mechanics library, mini-bosses, enemy behaviour and respawn, biome tilesets and backgrounds through Higgsfield, enemy re-skins, all ten stages to the route budget, Omega in three acts, content audit and lint, sweep v2 | 6 to 8 | Pyro Maw, then each batch |
-| 07 | `07-bosses-weapons-and-story.md` | Per-hazard spawners, drawn telegraphs, phase kits, weakness reactions, intro and death presentation, weapon identities and the weakness table fix, portraits, dialogue presentation, the unplayed story beats | 3 to 4 | two pilot fights, then the Core |
-| 08 | `08-audio-presentation-and-release.md` | Music per screen with clean loops, SFX set, crossfade and ducking, pixel font, title and Stage Select art, READY / WARNING / weapon-get / results / beam-in / boss explosion, gamepad and remap, public build, full-campaign automation, v1.0 | 3 | the whole game |
+| 07 | `07-bosses-weapons-and-story.md` | Per-hazard spawners, drawn telegraphs, phase kits, weakness reactions, intro and death presentation, weapon identities and the weakness table fix, portraits, dialogue presentation, the story a player will feel | 4 | two pilot fights, then the Core, then the script |
+| 08 | `08-audio-presentation-and-release.md` | Music per screen with clean loops, SFX set, crossfade and ducking, pixel font, title and Stage Select art, READY / WARNING / weapon-get / results / beam-in / boss explosion, first-time-player fixes, gamepad and remap, public build and deploy, perf budget, full-campaign automation, v1.0 | 4 | the whole game |
 
 Prompt 02, 03 and 04 files stay on disk as specification appendices; each new prompt names the sections it reuses verbatim so nothing already reviewed is retyped.
 
@@ -51,7 +51,7 @@ Prompt 02, 03 and 04 files stay on disk as specification appendices; each new pr
 
 ## 4. How Craig runs it
 
-Paste `START.md` section A with `N = 5` and file `05-feel-hero-and-camera.md`. Reply at STOPs as before. Between prompts, the section D checklist. Expected total: 15 to 18 sessions.
+Paste `START.md` section A with `N = 5` and file `05-feel-hero-and-camera.md`. Reply at STOPs as before. Between prompts, the section D checklist. Expected total: 17 to 20 sessions (section 9).
 
 ## 5. Review of the plan (same day): what v2 missed and where it went
 
@@ -81,3 +81,29 @@ Considered and left out of v1.0: localisation (needs a string table first; liste
 - 06 before 07: boss rooms, mini-bosses and the shaft variant exist before the fights that use them; hazards need the typed hazard system.
 - 07 before 08: the beats stage what 07 built (WARNING card, death sequence, portraits); the HUD icons come from the weapon sheets.
 - Inside 06, the pilot stage gates the batches; inside 07, two pilot fights gate the rest.
+
+## 7. Final pass: three more investigations
+
+Story depth, code health and delivery risk, and the player's path from boot to the first stage. What they found and where it went.
+
+| Finding | Where it went |
+| --- | --- |
+| Nobody speaks from the capsules; the game-over screen is silent while the villain narrates every stage; the weapon-get says only a control hint; Rook teaches nothing; Iona's turn is announced, never defended first; OMEGA speaks but never acts; two plot holes (why the hangar was left open; consent by force); Pyro, Tide and Basalt share one template; the last stage has three names | 07 §7.6 rewritten: a schema-free line pass, seven new triggers (`tutorial_coach` in 05, `capsule_pickup`, `weapon_get`, `game_over`, `warden_phase`, the milestone-4 beat, `epilogue_secret` for the 8/8 run), and OMEGA acting in the level (the water margin pilot) |
+| The tutorial is a flat room where Rook is reachable without dashing, kicking, charging or drawing the saber, and no screen ever names a key; a first-run trap skips the prologue; Esc at Title erases the autosave without asking; Options cannot be left by touch; game over auto-continues on any click; toasts overrun the canvas | 05 §5.7 (the tutorial as briefed, with Rook's recorded prompts and UI key hints), 05 §5.6 (campaign-started flag, first-run controls page), 08 §8.3 (nine first-time-player fixes with smoke ids) |
+| The smoke suite stops at the first failure and wipes its evidence folder on every run; `advanceTime` is statistical, which is the `13d` flake; the loader cannot import a directory; `--loader` is deprecated on Node 22; nothing browser-based runs in CI; no deploy exists; dependencies float; the Python venv is unreproducible | 05 §5.0 harness and health (continue-on-failure, timestamped evidence, `stepFrames`, loader, pins, `requirements.txt`, hidden sourcemaps); 06 §6.9 (fast tier on pull requests, full nightly); 08 §8.5 (deploy is a session) |
+| The per-prompt `Game.ts` ceilings were unreachable with extraction as the last phase | Every prompt now opens with an extraction phase and a lower ceiling: 05 to 3,400, 06 to 3,000, 07 to 2,600, 08 to 2,400 with `@ts-nocheck` removed |
+| No performance budget | 08 §8.5: `perfDebug()`, smoke `51-perf-budget` on WebGL at scale 4, thresholds for frame time, texture memory, load and bundle; the render scale capped at 6 |
+| No answer to "what if a prompt runs long" | Section 8 below |
+
+## 8. Scope ladder (if a prompt runs long, cut from the bottom)
+
+| Prompt | Minimum shippable | Cut first |
+| --- | --- | --- |
+| 05 | drag removal, dash-jump, jump cut, wall-kick grace, hit-stop on contact, death sequence, camera look-ahead, generated hero, one slot with a name, the tutorial that teaches | export/import, three slots, `recordInputs` (keep `replayInputs`), per-stage bests, style-sheet polish |
+| 06 | format v2 with pits, walls and one vertical segment; Pyro Maw at budget; off-screen spawn and respawn; audit report-only; StageBuilder and PickupSystem extracted | mini-boss art (tinted atlases), secrets to one per stage, mechanics to five of twelve, Omega to one act plus gauntlet, heatmaps to per-segment counts, per-segment sweep captures |
+| 07 | hazard spawners for the two pilots, the weakness fix, the refill bug, basic WARNING, intro and death, the boss block extracted, the schema-free line pass | portraits, per-weapon projectile art (tint the effects atlas), the shaft fight, desperation beyond the pilots, new triggers beyond `capsule_pickup` and `game_over` |
+| 08 | music per screen with clean loops, SFX set, READY, WARNING, results, public build, deploy, full-campaign smoke | store kit, remap UI (default pad map only), phase-two stems, key art, pixel font (HD text already reads), the v1.1 list |
+
+## 9. Session count, final
+
+05: 3 to 4. 06: 6 to 8. 07: 4. 08: 4. Total 17 to 20, plus Craig's play sessions at the STOPs.

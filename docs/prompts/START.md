@@ -92,11 +92,11 @@ Reply with: the last ledger row that is PASS, the phase you are in, uncommitted 
 | Prompt | File | Sessions |
 | --- | --- | --- |
 | 1 | `01-foundation-and-story.md` | done |
-| 5 | `05-feel-hero-and-camera.md` | 3: 05a (5.1, 5.2), 05b (5.3, 5.4), 05c (5.5, 5.6); you play the tutorial at STOP 5.2 |
+| 5 | `05-feel-hero-and-camera.md` | 3 to 4: 05a (5.0, 5.1, 5.2), 05b (5.3, 5.4, 5.7), 05c (5.5, 5.6); you play the tutorial at STOP 5.2 and again after 5.7 |
 | 6 | `06-levels-mechanics-and-enemies.md` | 6 to 8: 06a to 06h; you play Pyro Maw at STOP 6.5 and one stage per batch |
-| 7 | `07-bosses-weapons-and-story.md` | 3 to 4: 07a to 07d; you fight Pyro and Tide at STOP 7.2 and the Core at 7.4 |
-| 8 | `08-audio-presentation-and-release.md` | 3: 08a to 08c; you play the whole game at STOP 8.6 |
+| 7 | `07-bosses-weapons-and-story.md` | 4: 07a to 07d; you fight Pyro and Tide at STOP 7.2, the Core at 7.4, and read the script at 7.6 |
+| 8 | `08-audio-presentation-and-release.md` | 4: 08a to 08d; you play the whole game at STOP 8.6 |
 
 Prompts 02, 03 and 04 are not run; the new prompts cite their sections. The reasoning is in `PLAN_v2.md`.
 
-For the first v2 session: `N = 5`, file `docs/prompts/05-feel-hero-and-camera.md`, and add at the end of the paste: `This session is part 05a: phases 5.1 and 5.2. Stop after STOP 5.2. Read docs/prompts/PLAN_v2.md after the charter.`
+For the first v2 session: `N = 5`, file `docs/prompts/05-feel-hero-and-camera.md`, and add at the end of the paste: `This session is part 05a: phases 5.0, 5.1 and 5.2. Stop after STOP 5.2. Read docs/prompts/PLAN_v2.md after the charter.`

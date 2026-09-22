@@ -101,6 +101,8 @@ Kinds: `gate` (a command with an exit code), `audit` (a script against a budget)
 | EVAL-P5-006 | gate | hero coverage validator red then green; frame audit | PENDING | | |
 | EVAL-P5-007 | gate | full smoke and sweep with the generated hero; ripped material gone | PENDING | | |
 | EVAL-P5-008 | gate + review | profiles: three slots, name, export/import; smoke 41 | PENDING | | |
+| EVAL-P5-009 | gate | the tutorial teaches: five teach locks, Rook's recorded prompts, UI key hints; smoke 49 | PENDING | | |
+| EVAL-P5-010 | gate | harness and health: smoke continues past failures, timestamped evidence, stepFrames, loader directory imports, pins, requirements.txt; Game.ts at or below 3,400 | PENDING | | |
 
 ## Prompt 06: Levels, mechanics, and enemies
 
@@ -119,6 +121,7 @@ Kinds: `gate` (a command with an exit code), `audit` (a script against a budget)
 | EVAL-P6-011 | gate + review | Omega in three acts | PENDING | | |
 | EVAL-P6-012 | gate | difficulty and death economy | PENDING | | |
 | EVAL-P6-013 | gate | sweep v2 assertions; audit and lint in verify | PENDING | | |
+| EVAL-P6-014 | gate | StageBuilder, PickupSystem and EnemyRuntime extracted; Game.ts at or below 3,000 | PENDING | | |
 
 ## Prompt 07: Bosses, weapons, and story
 
@@ -131,6 +134,8 @@ Kinds: `gate` (a command with an exit code), `audit` (a script against a budget)
 | EVAL-P7-005 | gate + review | all ten fights; 44 across the sweep | PENDING | | |
 | EVAL-P7-006 | gate | portraits and dialogue presentation | PENDING | | |
 | EVAL-P7-007 | gate + review | every sequence id consumed; Craig reads the script | PENDING | | |
+| EVAL-P7-008 | gate | boss beats, damage router, weapon runtime and hit wires extracted; Game.ts at or below 2,600 | PENDING | | |
+| EVAL-P7-009 | gate + review | seven new dialogue triggers with fixtures, coverage, consumers and smoke assertions; water margin pilot | PENDING | | |
 
 ## Prompt 08: Audio, presentation, and release
 
@@ -146,3 +151,4 @@ Kinds: `gate` (a command with an exit code), `audit` (a script against a budget)
 | EVAL-P8-008 | gate | full campaign smoke 47, both variants | PENDING | | |
 | EVAL-P8-009 | review | Craig's playtest sheet | PENDING | | |
 | EVAL-P8-010 | gate | live URL after the tag | PENDING | | |
+| EVAL-P8-011 | gate | perf budget scenario 51 on WebGL at scale 4 with a committed baseline | PENDING | | |

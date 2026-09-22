@@ -2,7 +2,7 @@
 
 Active seats: Orchestrator, Combat Designer (fight owner), Principal Game Engineer, Narrative Lead, Art Director (portraits, effects), QA / Eval Lead.
 
-Three to four sessions: `07a` (7.1 and 7.2), `07b` (7.3 and 7.4), `07c` (7.5 and 7.6), `07d` if a batch needs a second pass.
+Four sessions: `07a` (7.0, 7.1 and 7.2), `07b` (7.3 and 7.4), `07c` (7.5), `07d` (7.6).
 
 | Part | Phase | Lead | Player-facing result | Evals | STOP asks Craig for |
 | --- | --- | --- | --- | --- | --- |
@@ -22,6 +22,10 @@ Three to four sessions: `07a` (7.1 and 7.2), `07b` (7.3 and 7.4), `07c` (7.5 and
 ## Outcome of this prompt
 
 Ten fights that each teach a pattern, escalate at phase two with a changed kit, and end with a death worth watching. Eight weapons a player chooses between for a reason. Every authored story beat plays. Speakers have faces.
+
+## Phase 7.0: Extract before building (added on final review)
+
+Half a session. Move the boss hitbox, hazard and projectile-controller block, the boss art placeholder, `applyDamageToBoss` with its hit feedback, `bossUpdate`, and the boss-defeated and victory flow into `src/scenes/game/BossBeats.ts` and `BossDamageRouter.ts`; weapon cycling, energy recharge, fire and labels into `src/scenes/game/WeaponRuntime.ts`; hit wires, contact handlers and bullet recycling into `src/scenes/game/HitWires.ts`. Ledger: `EVAL-P7-008` (`Game.ts` at or below 2,600 after this phase; full smoke green).
 
 ## Phase 7.1: Hazards, telegraphs, and the end of the generic bullet
 
@@ -88,32 +92,48 @@ Art and Narrative.
 
 Ledger: `EVAL-P7-006` (portrait coverage test; smoke `34` to `37` with portraits; a typewriter unit test).
 
-## Phase 7.6: The unplayed beats and a voice pass
+## Phase 7.6: The story a player will feel
 
-Narrative leads. All inside the dialogue v2 contract (`validateDialogueContent.ts` unchanged unless a rule is added with a failing fixture).
+Narrative leads. Everything below came from the 2026-09-22 narrative review; the samples are in `docs/story/review-2026-09-22.md` (write it from the review notes in this prompt's design memo). Rules: the validator in `validateDialogueContent.ts` is the contract; a new trigger needs a failing fixture, a coverage rule and a consumer in the same commit; every line under 180 characters; `npm run story:script` regenerates the script and its parity test stays green.
 
-1. Wire `finale_phase` 1 to 3 to `boss-phase-change` for `omega_core` through the ticker (the staging note in the JSON says so): the offer on phase two, the refusal and WREN's self-line on phase three.
-2. `miniboss_callout` plays at the mini-boss gate (done in 06 if 6.3 landed it; verify).
-3. OMEGA speaks once mid-fight per warden at phase two using the second `radio` slot.
-4. `district_restored` on Stage Select shows the briefing's civilian number turning green: the told stakes paid off in the same words.
-5. Verb signatures: each warden's intro and defeat lines carry one verb (Ferro counts, Glacier files, Tide holds, and so on) and the epilogue card reuses it. Limits and the cross-warden name ban already allow it.
-6. Show, do not tell (added on review): one freed-warden moment per district after the defeat dialogue, staged in the level rather than the overlay: the warden's district sign relights, a locked door opens, the civilian count from the briefing ticks on the HUD toast. Twenty lines of code per stage, not new dialogue; the briefing's number is the payoff.
-7. `npm run story:script` regenerates `docs/story/script.md`; the parity test stays green; `tests/dialogue-content.test.ts` gains a check that every sequence id has a consumer in `src/` (a grep-based test with an allowlist that must be empty).
+**A. Schema-free line pass** (edits in `dialogue.v2.json` only):
 
-Ledger: `EVAL-P7-007` (every authored sequence id consumed; story-flag parity after a Core clear includes the finale ids; Craig reads the script).
+1. Earn Iona's turn: two defences of the design before milestone 4 (tutorial defeat line 3 and milestone 1 line 3, "It asks. It does not take."), so "I wrote the layer" turns "read" into "wrote".
+2. Close the hangar hole and the "fail differently" repeat: the Core radio line becomes OMEGA admitting it left the hangar open on purpose ("A city that watches one unit choose badly asks to be held").
+3. Close the consent hole: the Core intro gains an OMEGA line accusing WREN of taking eight wardens by force and calling it consent, so the phase-three refusal answers a charge that was laid.
+4. Iona's reckoning: an epilogue line before "The network is holding" ("I filed what I wrote with the rest of it. Let the record argue with me too.").
+5. Verb signatures, all eight: Pyro seals, Tide holds, Volt cycles, Basalt bears, Ferro counts, Mire doses, Gale steers, Glacier preserves; intro, defeat and epilogue card carry the verb; a test asserts the stem in all three. Pyro, Tide and Basalt stop sharing the "OMEGA says X is cheaper" template; Volt and Ferro stop sharing the forensic register. Iona takes contractions on the ticker so she stops sounding like OMEGA.
+6. Name drift: one name for the last stage everywhere (`Central Core`), asserted in `tests/identity-strings.test.ts`.
+
+**B. New triggers** (each: `types.ts` trigger and limit, validator coverage with a failing fixture, `StoryDirector` consumer, smoke assertion):
+
+7. `tutorial_coach` landed in 05 §5.7; verify it here and give Rook a sixth line if the locks need it.
+8. `capsule_pickup`: eight warden stages, 1 line, speaker the stage's own warden, a recorded cache log from before tonight shown above the effect label on the capsule card; the fiction is that every district kept a recovery cache for Unit 09's drills, one more piece of before-the-danger evidence.
+9. `weapon_get`: eight lines, speaker Iona reading the district registry, keyed by the weapon's source stage so randomizer placements stay true; shown on the weapon-get card that 08 builds (write the card's data contract here).
+10. `game_over`: global, 4 lines, three from OMEGA and one from Iona, rotated by death count over the Continue row.
+11. `warden_phase`: eight warden stages, 1 line, OMEGA, on the boss's phase two; a distinct line, not the checkpoint intrusion replayed (`story-surfaces` asserts the checkpoint line is unchanged).
+12. Milestone-4 turn beat: OMEGA between Iona's admission and WREN's close ("You wrote it to ask, Director. I taught it to hold."); add `omega_core` to the order-independent milestone speakers with a flipped fixture.
+13. `epilogue_secret`: global, optional, 2 lines, plays only with all eight capsules, after the eighth card over the Drill Hangar panel from 08: the collectible gets a story payoff, not only a rank.
+
+**C. OMEGA acts, not only speaks:**
+
+14. Water District pilot: after the checkpoint intrusion, the master shaft's low-water line sits one notch higher for the rest of the stage (one level parameter tied to the radio flag). If it reads, every intrusion costs something the stage already teaches (vents tighten, rails arm faster).
+15. Show, do not tell (from the first review): one freed-warden moment per district after the defeat, staged in the level: the district sign relights, a door opens, the briefing's civilian count ticks on the toast.
+
+Ledger: `EVAL-P7-007` (every authored sequence id consumed; the verb-stem test; story-flag parity after a Core clear includes the finale ids; Craig reads the script), `EVAL-P7-009` (the seven new triggers each with a failing fixture, coverage, consumer and a smoke assertion; the water margin pilot asserted in `classic-campaign`).
 
 ```
 ### STOP 7.6: Read the script
-Show: the diff of script.md, the consumer test output, a capture of the phase-two offer.
+Show: the diff of script.md, the consumer and verb tests, captures of a capsule log, a weapon-get line, a game-over line, the milestone-4 beat.
 Ask Craig to read the script. Recommended: approve.
 ```
 
 ## Exit Gate
 
-- `EVAL-P7-001` to `EVAL-P7-007` `PASS`.
+- `EVAL-P7-001` to `EVAL-P7-009` `PASS`.
 - `npm run verify`, `npm run test:visual-sweep` green on the exit commit; `44-boss-beats` in the sweep for all ten.
 - `git grep "Watchdog" src` prints nothing; `git grep "dash_strike" src` prints nothing.
-- `wc -l src/scenes/Game.ts` at or below 3,100; boss beats and damage routing live under `src/scenes/game/`.
+- `wc -l src/scenes/Game.ts` at or below 2,600 after 7.0; boss beats, damage routing and the weapon runtime live under `src/scenes/game/`.
 - Handoff with `Inputs for prompt 08`: the beat list with timings (WARNING, bar fill, death), the sfx ids each system emits, the portrait keys.
 
 ```

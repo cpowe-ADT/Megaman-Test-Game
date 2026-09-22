@@ -174,7 +174,7 @@ Three kinds of eval exist:
 
 ## 10. Definition of Final
 
-The package is done when all of the following are true and recorded in `handoff/04-*.md`, each with an evidence path:
+The package is done when all of the following are true and recorded in `handoff/08-*.md` (v2; formerly `handoff/04-*.md`), each with an evidence path:
 
 1. A new player goes Title -> Prologue -> Tutorial -> eight wardens in any order -> Omega Fortress (three acts) -> Ending with a campaign record -> Credits -> Title, on keyboard or gamepad, with no placeholder art, placeholder text, or reused music cue.
 2. Every warden stage: at least 10 screens of route before the boss room (target 12 to 14), 4 checkpoints, 1 mini-boss, 2 secrets, at least 2 biome mechanics, at least 18 enemy placements across at least 5 types, and at least one segment that scrolls vertically or uses walls for wall jumps. Tutorial: 6 screens teaching move and jump, dash, wall jump, charge, saber in that order. Omega Fortress: three acts including a warden rematch gauntlet with refills and reduced HP.
@@ -184,4 +184,15 @@ The package is done when all of the following are true and recorded in `handoff/
 6. Audio: at least eight distinct stage themes, title, select, boss, final, ending, and the stings; all licensed and credited in-game.
 7. Options: music and SFX volume, screen shake, reduced flashing, fullscreen and integer scaling, difficulty (Assist / Normal / Veteran), story replay, keyboard and gamepad remap, delete data with confirmation. Touch is either complete (weapon switch and menus) or hidden behind a toggle.
 8. Public build (`npm run build:public`) contains no private assets and no franchise strings, deploys to a URL, and passes `npm run verify`, `npm run verify:public`, the ten-mission sweep, and the full-campaign smoke scenario in both skip and read variants.
-9. `Game.ts` is smaller than 3,928 lines and nothing new is under `@ts-nocheck`.
+9. `Game.ts` is at or below 3,000 lines (v2 ceiling; the v1 figure was 3,928) and nothing new is under `@ts-nocheck`.
+
+Added 2026-09-22 with plan v2:
+
+10. Movement: no Arcade drag on the player body; dash-jump carries; wall kicks accept buffered and away input inside the grace window; jump cuts on release; hit-stop fires only on contact; hurt locks the motor and blinks; death plays a sequence and beams the player back in. Every movement scenario runs from an input replay script, not Playwright key timing.
+11. Every character family (hero, enemies, mini-bosses, bosses) is original art generated through Higgsfield to the style sheet, cut by the repo's script, with prompts and job ids recorded, and its physics body aligned to the drawn feet. `assets/private/` does not exist and `git grep -i "mega man\|mmx4\|spriters-resource" -- src scripts assets` prints nothing.
+12. Text reads at device resolution at any window size (`40-hd-render` green); the bitmap font is used where the style sheet says and HD text elsewhere.
+13. Profiles: three slots with a pilot name that the dialogue and HUD use, per-stage bests and rank, export and import.
+14. One warden is fought in a `shaft` room from the walls (the wall-jumping boss level); every warden has a phase-two kit change, a desperation move, and a weakness reaction that staggers.
+15. Weapons: eight identities with a hold or charge and an on-hit tag, their own projectile and impact art, the authored weakness ring with no `BLOCKED` in Classic, refills applied.
+16. Balance evidence: death heatmaps from an automated Normal run and from Craig's playthrough are in the release handoff, with no segment over the retune threshold left unexplained.
+17. Release kit: six 2x screenshots, a replay-recorded capture, page copy, a generated-content disclosure that matches the credits file.

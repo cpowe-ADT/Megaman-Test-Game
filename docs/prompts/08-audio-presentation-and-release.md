@@ -2,7 +2,7 @@
 
 Active seats: Orchestrator, Audio Director, Principal Game Engineer, Game Director (beats), Art Director (logo, screens), Release Engineer, QA / Eval Lead.
 
-Three sessions: `08a` (8.1 and 8.2), `08b` (8.3 and 8.4), `08c` (8.5 to 8.7).
+Four sessions: `08a` (8.1 and 8.2), `08b` (8.3 and 8.4), `08c` (8.5 alone: the deploy machinery does not exist yet and is a full session), `08d` (8.6 and 8.7).
 
 | Part | Phase | Lead | Player-facing result | Evals | STOP asks Craig for |
 | --- | --- | --- | --- | --- | --- |
@@ -65,6 +65,18 @@ Question for Craig: approve the look? Recommended: approve.
 
 Implement prompt 04 "Phase 4.2" verbatim (READY, boss door and WARNING as staged in 07, weapon-get card replacing `VictoryModal`, capsule card, stage results, low-HP, game over, district restored, ending with the CAMPAIGN RECORD, attract). Smoke `45-beats-flow`.
 
+First-time player fixes (added on final review, from the flow audit):
+
+- Esc at Title confirms before clearing the run, or clear-run moves into the route console; `38c` asserts one Esc leaves the run intact.
+- Every menu works by pointer and touch: Options rows tappable with a Back row, NewCampaign gets a CANCEL, the touch pad gets a WPN button; `4c-touch-controls` extended.
+- GameOver: rows clickable, a click never auto-continues, the countdown starts after the first input and is drawn as a bar; smoke `50-game-over-choice`.
+- The weapon-get card names the weapon, its energy and `Q / E TO SWITCH`.
+- One toast rule for every scene: wrap at 400px, clamp to the canvas, one locked-stage message (two exist today); `33` asserts toast bounds.
+- Stage intro card is skippable (`advanceIntro`/`skipIntro` have no caller today), READY blinks, and the first control frame of a profile's first stage shows `ESC PAUSE · X SHOOT · SPACE JUMP` once.
+- Save feedback: a two-frame `SAVED` pip on checkpoint autosave; `Resumed at checkpoint n` on a loaded run; `13` asserts the text.
+- Menu key semantics in one table in `docs/architecture/menus.md`: Enter on a cycle row toggles it (today it closes Options), Esc in GameOver does nothing (Quit must be chosen), the pause hint says `LEFT / RIGHT CYCLE` only on the two cycle rows, the Difficulty hint names the Veteran continue rule.
+- Labels: `LIVES` for `RETRY`, the boss label hidden until the seal, Stage Select details anchored below the measured description height; `33` asserts no overlap.
+
 Ledger: `EVAL-P8-004`.
 
 ## Phase 8.4: Gamepad, remap, options, fullscreen, touch
@@ -75,9 +87,11 @@ Ledger: `EVAL-P8-005`.
 
 ## Phase 8.5: Public build, bundle, deploy
 
-Implement prompt 04 "Phase 4.4" verbatim. Since 05 deleted `assets/private/`, the public build check asserts no private path exists rather than stripping it; keep the identity regex check.
+Implement prompt 04 "Phase 4.4" verbatim. Since 05 deleted `assets/private/`, the public build check asserts no private path exists rather than stripping it; keep the identity regex check. Nothing of this exists today (no `base` in `vite.config.ts`, no `build:public`, `verify:public`, `check-public-build.mjs`, `deploy.yml` or `package:itch`), so it is a session, not a phase.
 
-Ledger: `EVAL-P8-006`, `EVAL-P8-007`.
+Performance budget (added on final review; the plan had none): `window.perfDebug()` beside `advanceTime` returns frame-time p50/p95/p99 and long frames over a run, the render scale in effect, decoded texture memory (sum of texture source width x height x 4), JS heap, and Preload time and bytes. Smoke `51-perf-budget` (full tier) plays Pyro Maw through the 05 replay harness on `renderer=webgl` at viewport 896x504 with `deviceScaleFactor: 2` (scale 4) and records the snapshot; the sweep records it at mid, pre-boss and boss room per mission so texture memory is measured with every biome loaded. Thresholds: on Craig's Mac p95 at or under 16.7ms and p99 at or under 25ms with zero long frames outside transitions; in CI regression-only against `tests/perf-baseline.json` at 1.25x; decoded textures at or under 128MB with no texture over 2048 square; Preload at or under 1.5s local; JS gzipped at or under 600KB; `dist/assets` at or under 40MB. Cap the render scale at 6 (a 4x zoom on a 2x display is a 3584x2016 canvas and every `setText` re-rasterises at resolution 8).
+
+Ledger: `EVAL-P8-006`, `EVAL-P8-007`, `EVAL-P8-011` (perf budget scenario and baseline).
 
 ## Phase 8.6: Full-campaign automation and the human playthrough
 
@@ -102,10 +116,10 @@ Ledger: `EVAL-P8-010`.
 
 ## Exit Gate
 
-- `EVAL-P8-001` to `EVAL-P8-009` `PASS`; `EVAL-P8-010` may be `PENDING` until the tag.
+- `EVAL-P8-001` to `EVAL-P8-009` and `EVAL-P8-011` `PASS`; `EVAL-P8-010` may be `PENDING` until the tag.
 - `npm run verify`, `npm run verify:public`, `npm run test:visual-sweep`, `npm run content:audit`, `npm run content:lint`, and `SMOKE_LONG=1 SMOKE_ONLY=47-full-campaign npm run test:smoke` result lines with artifact paths, all on the release commit.
 - The charter's section 10 Definition of Final checked item by item with evidence paths.
-- `wc -l src/scenes/Game.ts` at or below 3,000 and `grep -rl "@ts-nocheck" src` prints only `src/scenes/Game.ts` (or nothing).
+- `wc -l src/scenes/Game.ts` at or below 2,400: every beat in this prompt (READY, WARNING, weapon-get, results, beam-in, record) is a presenter under `src/ui/` that `Game.ts` only calls. `grep -rl "@ts-nocheck" src` prints nothing: with the file this small, remove the directive and fix the types.
 - Handoff with `Inputs for v1.1`.
 
 ```

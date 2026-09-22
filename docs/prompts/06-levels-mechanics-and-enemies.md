@@ -25,6 +25,10 @@ Six to eight sessions: `06a` (6.1), `06b` (6.2 and 6.3), `06c` (6.4 art), `06d` 
 
 Ten stages that are levels: ten to fourteen screens each, pits, walls to kick off, at least one vertical or walled segment, two biome mechanics, a mini-boss behind a locked gate, two gated secrets, eighteen or more enemy placements of five or more families that behave as their catalog says, a boss room that fits the fight. Every biome has original tiles and backgrounds and re-skinned enemies. Omega Fortress is three acts. Difficulty and death economy are tuned. The content audit, the reachability lint and the sweep keep it true.
 
+## Phase 6.0: Extract before building (added on final review)
+
+Half a session. Move stage building, camera bounds, the boss gate barrier, platform colliders and backgrounds (about 340 lines) into `src/scenes/game/StageBuilder.ts`, and progression pickups, checkpoints, consumables, enemy drops and restores (about 480 lines) into `src/scenes/game/PickupSystem.ts`, with the enemy framework init into `src/scenes/game/EnemyRuntime.ts`. `create()` shrinks by their wiring. Without this the 3,400 ceiling is not reachable, because everything 6.1 adds lands in these blocks. Ledger: `EVAL-P6-014` (`Game.ts` at or below 3,000 after this phase; full smoke green).
+
 ## Phase 6.1: Level format v2, pits, walls, vertical, compiler, parity, audit, lint, sweep v2
 
 Engineer leads. Implement prompt 02 section "Phase 2.1" verbatim, with these amendments:
@@ -124,7 +128,7 @@ Ledger: `EVAL-P6-012`.
 
 ## Phase 6.9: Automation that keeps this true
 
-Smoke tiers (added on review): the suite is over fifty scenarios and will pass eighty. `SMOKE_TIER=fast` (about twenty scenarios, under three minutes: boot, input, one stage, one boss, profiles, HD render) runs in `npm run verify`; `full` runs before every STOP and in the deploy workflow. `TESTING.md` lists the tiers.
+Smoke tiers (added on review): the suite is over fifty scenarios and will pass eighty. `SMOKE_TIER=fast` (about twenty scenarios, under three minutes: boot, input, one stage, one boss, profiles, HD render) runs in `npm run verify` and on every pull request in `.github/workflows/ci.yml`; `full` plus the sweep run nightly on a schedule and on `v*` tags, uploading `output/`. Today the browser gates run nowhere automatically. `TESTING.md` lists the tiers.
 
 Implement prompt 02 "Phase 2.8" verbatim: per-segment sweep captures with assertions (every segment reachable by warp, every enemy spawns off screen, every hazard exposed at least once, every checkpoint radio fires once), `content:audit` and `content:lint` in `npm run verify`, the level contact sheets under `output/level-review/`.
 
@@ -132,10 +136,10 @@ Ledger: `EVAL-P6-013`.
 
 ## Exit Gate
 
-- `EVAL-P6-001` to `EVAL-P6-013` `PASS`.
+- `EVAL-P6-001` to `EVAL-P6-014` `PASS`.
 - `npm run verify` (now including `content:audit` and `content:lint`), `npm run test:visual-sweep` green on the exit commit.
 - `git grep -l "opengameart\|kenney" assets/sprites/source/free-source-attribution.v1.json` shows only effects entries (or none).
-- `wc -l src/scenes/Game.ts` at or below 3,400; stage building lives in `src/content/levels/` and `src/scenes/game/StageBuilder.ts`.
+- `wc -l src/scenes/Game.ts` at or below 3,000 (6.0 extracts about 800 lines; content lands in `src/content/levels/`, `src/scenes/game/StageBuilder.ts` and `PickupSystem.ts`, not in `Game.ts`).
 - Handoff with `Inputs for prompt 07`: per-stage boss room kinds and hazards, mini-boss ids, the enemy families per biome, the tile and background keys.
 
 ```

@@ -2,10 +2,11 @@
 
 Active seats: Orchestrator, Game Director (feel owner), Principal Game Engineer, Art Director (hero), QA / Eval Lead.
 
-Three sessions: `05a` (5.1 and 5.2), `05b` (5.3 and 5.4), `05c` (5.5 and 5.6).
+Three to four sessions: `05a` (5.0, 5.1 and 5.2), `05b` (5.3, 5.4 and 5.7), `05c` (5.5 and 5.6), `05d` if the hero sheets need a second pass.
 
 | Part | Phase | Lead | Player-facing result | Evals | STOP asks Craig for |
 | --- | --- | --- | --- | --- | --- |
+| 05a | 5.0 Harness and health | Engineer | none (the next fifteen sessions get cheaper) | P5-010 | none |
 | 05a | 5.1 Motor truth | Engineer | the motor owns velocity; dash-jump exists; wall kicks forgive | P5-001, P5-002 | play the tutorial: does it move like X? |
 | 05a | 5.2 Combat feel | Director | hit-stop on contact, hurt lock, charge shot fires on press, death sequence | P5-003 | approve the death and hurt reads |
 | 05b | 5.3 Camera | Engineer | deadzone, look-ahead, time-based lerp, vertical follow ready for 06 | P5-004 | approve |
@@ -27,6 +28,20 @@ The hero moves like an X-series hero: dash-jumps carry, wall kicks forgive, jump
 
 - Constants: run 220, accel 1700, decel 2100, airAccel 1050, gravity 800, terminal 550, jump -420 with 0.55 gravity while held, coyote 100ms, buffer 100ms, dash 320 for 140ms with a 420ms cooldown, wall slide cap 95, wall jump (240, -355) x1.28 with dash held, lockout 140ms. Hit: hp 8, i-frames 650ms, hitstun 170/280ms, knockback (165,-170) ground and (135,-130) air.
 - Defects: `Game.ts` sets `setDragX(900)` on the player body while the motor only ever writes acceleration 0, so Arcade drag strips 15px/s per step (top speed about 205, air accel about 150, the wall-jump push halves during the lockout). `PlayerMotor` refuses a jump while dashing. Wall jump needs a raw press while already sliding. No jump cut. `hitstopRemainingFrames` in `PlayerCombat` is never assigned. A charge released inside the 120ms fire-rate window is dropped. `chargeCancelOnSlash` is only read inside `fireProjectile`. Slash activation fires hit-stop and a medium shake on every swing, contact or not. Knockback is overwritten the next frame because the motor never sees hitstun. Hit-stop counts render frames. `killPlayer` hides the body and respawns 600ms later; `player_death` exists in the manifest and never plays. Camera: `startFollow(player, false, 0.1, 0.1)`, no deadzone, no look-ahead. The 30/60fps motor tests do not model drag, which is why they cannot see the drag defect.
+
+## Phase 5.0: Harness and health (added on final review)
+
+Engineer leads. Half a session. Every later prompt pays for what this phase skips.
+
+1. **Extract first, then build.** Move the dev UX block and the debug snapshot builders (about 300 lines) into `src/scenes/game/GameDebugHooks.ts` and `src/scenes/game/DebugSnapshots.ts`; move player damage, death and respawn, the kill plane, hit-stop and shake handlers into `src/scenes/game/DeathSequence.ts` and `CameraDirector.ts`; move the freeze/disable-combat and the active-run autosave block into `src/scenes/game/RunState.ts`. `create()` loses their wiring. This is what makes the 3,700 ceiling free and is why extraction is the first phase of every v2 prompt, not the last.
+2. **Smoke keeps going.** `executeSmokeScenario` records a failure and continues; `process.exitCode = 1` at the end; `SMOKE_FAIL_FAST=1` restores the old stop for bisecting. Same in the sweep. Per-scenario timeout (default 120s) so a hung `page.evaluate` cannot eat a session.
+3. **Evidence survives.** `SMOKE_OUTPUT_DIR` and `SWEEP_OUTPUT_DIR` default to a timestamped folder under `output/` with a `latest` symlink; a focused rerun no longer wipes the full run's `summary.json` that a handoff cites.
+4. **Deterministic stepping.** `window.stepFrames(n)` (automation only) sleeps the Phaser loop and calls `game.step` n times at 16.667ms; `advanceTime` stays for scenes that need real time. Hit-stop counts, replay positions and `13d` become exact. The input replay source in 5.1 item 9 drives frames through it.
+5. **Loader and runtime.** `tools/ts-node-loader.mjs` resolves `dir/index.ts`; the four test scripts move from `--loader` to `--import` with `module.register()`; `test:scenes` globs subfolders. `package.json` pins `phaser`, `typescript` and `playwright` to exact versions and gains `engines.node 22.x`; `.nvmrc`; `requirements.txt` (`pillow==12.1.1`) and every sprite script runs through `.venv/bin/python`.
+6. **WebGL is exercised.** `40-hd-render` gains a `renderer=webgl` page (swiftshader is already in the launch args); `41-profiles` and `13d` run on canvas as before.
+7. **Sourcemaps** become `hidden` so `dist/` stops carrying 11MB of maps.
+
+Ledger: `EVAL-P5-010` (a deliberately failing scenario no longer stops the suite; `stepFrames(60)` advances exactly 60 physics steps in a unit-style page test; the loader resolves a directory import; the pins are in place; `Game.ts` at or below 3,400 after this phase alone).
 
 ## Phase 5.1: Motor truth
 
@@ -121,6 +136,16 @@ Engineer leads.
 - Each slot also keeps per-stage bests (added on review): fastest clear, fewest deaths, secrets found, and a rank letter, written at stage results (built in 08; the fields and the save shape land here so 06 and 07 can write them). Stage Select shows the best time under a cleared warden.
 - Automation: `stageDebug.setProfile({ slot, pilotName })`; payload `profiles`. Smoke `41-profiles`: create a profile named `AVA`, play the tutorial to the first checkpoint, quit, continue from Title into the same slot, assert the HUD label and a briefing line contain `AVA`, export, clear, import, assert the slot returns.
 - Tests: `tests/save-profiles.test.ts` (migration, three slots, name validation, export/import round trip).
+- New-versus-continue (added on final review): Title decides from a `campaignStarted` flag on the profile, not `Save.exists()`; today changing Difficulty in Options at the Title creates the save key and the next Enter skips the difficulty pick and the prologue. `38c-title-continue-autosave` asserts the prologue still plays after an Options visit.
+- First-run controls page (added on final review): one overlay page listing the eight keys, shown once per profile before the tutorial briefing (`controlsSeen` on the profile), replayable from Controls. `41-profiles` asserts it shows for a new profile and not on the second entry.
+
+## Phase 5.7: The tutorial teaches (added on final review)
+
+Designer leads; the level format is still v1 here, so this is a hand-authored exception that 06 re-expresses in v2 without changing its content.
+
+`docs/design/stage-briefs.md` promises five teach segments behind locks, a two-screen wall-kick shaft, an armored bot only a charge breaks, a saber wall hiding a capsule and a crumble group; the code has a flat 640px room where Rook is reachable without dashing, kicking, charging or drawing the saber, and no screen in the game ever names a key. Build the brief now with the minimum machinery: `room_lock` with `requiredInput` (the one mechanic pulled forward from 06), interior walls for the shaft (the wall primitive from 06 §6.1 pulled forward), and Rook's recorded intake prompts: a new `tutorial_coach` trigger bound to `tutorial_sentinel` only, 4 to 6 lines, speaker `sentinel_rook`, one on the ticker as each teach lock opens ("Step three. Two wall faces, one shaft. Kick off each face until you reach the top."). The key itself is a UI hint on the lane, not dialogue (`DASH: Z`, `HOLD X TO CHARGE`), so the fiction stays clean and the style guide holds. Rook's live intro line stays; the player hears the clean recorded Rook before fighting the held one. Smoke `49-tutorial-verbs`: each lock opens only after its verb was performed, the lane text names the key, the stage cannot be cleared without all five.
+
+Ledger: `EVAL-P5-009`.
 
 Ledger: `EVAL-P5-008`.
 
@@ -132,10 +157,10 @@ Question for Craig: approve the flow? Recommended: yes.
 
 ## Exit Gate
 
-- `EVAL-P5-001` to `EVAL-P5-008` `PASS` (P5-005 is Craig's pick).
+- `EVAL-P5-001` to `EVAL-P5-010` `PASS` (P5-005 is Craig's pick).
 - `npm run verify` and `npm run test:visual-sweep` green on the exit commit; result lines and artifact paths pasted.
 - `assets/private/` does not exist; `git grep -i "mega man\|mmx4\|spriters-resource" -- src scripts assets` prints nothing.
-- `wc -l src/scenes/Game.ts` at or below 3,700 (it is 3,700 now; the death sequence and camera code move to `src/scenes/game/`).
+- `wc -l src/scenes/Game.ts` at or below 3,400 after 5.0's extractions (it is 3,704 now); no phase after 5.0 adds a net line to it.
 - `docs/prompts/handoff/05-feel-hero-and-camera.md` per the charter, with `Inputs for prompt 06`: the movement constants as tuned (levels are built against them), the hero cell contract, the camera vertical-follow API, the style sheet, the input replay script format.
 
 ```
