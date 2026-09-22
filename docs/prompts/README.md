@@ -6,16 +6,19 @@
 
 ## What this is
 
-Five prompts that take the current playable prototype to a finished, shippable game with a real storyline. They are written to be pasted into a strong coding agent (Codex / ChatGPT) that has this repository open. Each prompt is a complete work order: entry conditions, personas, step-by-step tasks with the exact files involved, evals with pass thresholds, STOP points for Craig's review, and a handoff file that the next prompt reads as its input.
+The prompt package that takes the current playable prototype to a finished, shippable game with a real storyline. They are written to be pasted into a strong coding agent (Codex / ChatGPT) that has this repository open. Each prompt is a complete work order: entry conditions, personas, step-by-step tasks with the exact files involved, evals with pass thresholds, STOP points for Craig's review, and a handoff file that the next prompt reads as its input.
 
 | Order | File | Lane | Sessions |
 | --- | --- | --- | --- |
 | start | `START.md` | The three prompts you paste: kickoff, STOP reply, resume. | n/a |
-| 0 | `00-orchestrator-charter.md` | Rules, ground truth, seats, working loop, handoff and ledger contracts. Paste first in every session. | n/a |
-| 1 | `01-foundation-and-story.md` | Green baseline, CI, one input source, classic campaign mode with working upgrades, identity, story bible v2 and full script, narrative runtime surfaces, pause menu with weapon grid and sub tanks, autosave, options, death economy | 3 (01a, 01b, 01c) |
-| 2 | `02-levels-and-gameplay.md` | Level format v2 with walls and vertical segments, eight full-length stages, tutorial rewrite, three-act Omega Fortress, stage mechanics, mini-bosses, difficulty | 5 to 7 (02a to 02d) |
-| 3 | `03-art-animation-bosses.md` | Style sheet, biome tilesets and backgrounds, original boss sheets, hero sprite, twelve portraits, VFX, UI art, boss readability | 2 to 3 (03a to 03c) |
-| 4 | `04-presentation-audio-release.md` | Music and SFX, stage intro / boss door and warning / weapon-get / campaign record beats, gamepad, fullscreen, options, public build and deploy, full-campaign automation, v1.0 | 2 (04a, 04b) |
+| plan | `PLAN_v2.md` | The 2026-09-22 consultant assessment and the roadmap that replaced prompts 02 to 04 with 05 to 08. Read it once. | n/a |
+| 0 | `00-orchestrator-charter.md` | Rules, ground truth (with the 2026-09-22 amendments), seats, working loop, handoff and ledger contracts. Paste first in every session. | n/a |
+| 1 | `01-foundation-and-story.md` | COMPLETE 2026-09-10. Green baseline, CI, classic campaign, identity, story bible and script, narrative surfaces, pause menu, autosave, options, death economy. | done |
+| 5 | `05-feel-hero-and-camera.md` | Motor truth (drag, dash-jump, wall kick, jump cut), combat feel, death, camera, original hero through Higgsfield, ripped skin deleted, save slots with a pilot name | 3 |
+| 6 | `06-levels-mechanics-and-enemies.md` | Level format v2 with pits, walls and vertical, mechanics, mini-bosses, enemy behaviour and respawn, biome tiles and backgrounds and enemy re-skins through Higgsfield, all ten stages to the route budget, Omega in three acts, audit, lint, sweep v2 | 6 to 8 |
+| 7 | `07-bosses-weapons-and-story.md` | Real hazards and drawn telegraphs, phase kits, desperation, weakness reactions, intro and death, weapon identities and the weakness table, portraits and dialogue presentation, the unplayed story beats | 3 to 4 |
+| 8 | `08-audio-presentation-and-release.md` | Music per screen, SFX set, pixel font, title and Stage Select art, the beats, gamepad, public build, full-campaign automation, v1.0 | 3 |
+| ref | `02-levels-and-gameplay.md`, `03-art-animation-bosses.md`, `04-presentation-audio-release.md` | Superseded as work orders; kept as specification appendices that 06, 07 and 08 cite by section. Do not run them. | n/a |
 
 `EVAL_LEDGER.md` is the scoreboard. `handoff/` holds one file per completed prompt.
 

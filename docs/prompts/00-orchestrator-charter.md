@@ -62,6 +62,18 @@ Verified 2026-09-09 by reading the code and running `npm run test`. Do not re-de
 
 **Environment quirks.** macOS; there is no GNU `timeout` binary, so scope long runs with `SMOKE_ONLY`. Full smoke takes six to ten minutes, the sweep about two, `npm run test` ten seconds, `npm run build` half a minute.
 
+**Amendments, 2026-09-22 (read these as overriding the rows above).**
+
+| Area | Now |
+| --- | --- |
+| Rendering | Canvas at device resolution, `HdCamera` per scene (top-left origin, zoom = window zoom x dpr), Text at that resolution. Never read `scene.scale.width/height` for layout; use `GAME_WIDTH`/`GAME_HEIGHT`. `docs/architecture/rendering.md`. Smoke `40-hd-render`. |
+| Bosses | All ten atlases are original Higgsfield art in 64x64 cells (feet on row 60); the body is aligned to the drawn feet by `src/bosses/bossBodyAlignment.ts`; hover bosses keep gravity between attacks; `bossDebug.groundReport()`; smoke `39-boss-grounded`; the sweep fails any floating boss. Ripped boss skins retired. |
+| Hero | Still the ripped dev-only skin (repaired: no green, no head fragments, dash faces forward) until prompt 05 lands the generated hero and deletes `assets/private/`. |
+| Art pipeline | Higgsfield `gpt_image_2` (4:3, 1k, medium) sheets on `#FF00FF`, cut by `scripts/sprites/hf_sheet_to_atlas.py`; prompts and job ids recorded beside the source PNG; `docs/content/sprite-imagegen.md` section 2. The OpenAI imagegen skill path is legacy. |
+| Gates | `npm run test` 256; full smoke 51 scenarios (`39`, `40` new); sweep 10/10. `SMOKE_PORT` isolates parallel runs; never run two suites against one `output/web-game-smoke`. `13d-movement-feel` isolates the player from enemy contact during its trace. |
+| Debt | `src/scenes/Game.ts` is 3,700 lines. Every v2 prompt has a line-count ceiling in its exit gate. |
+| Order | Prompts 05 to 08 replace 02 to 04 (`PLAN_v2.md`). Scenario numbering for new smoke scenarios: `41-profiles`, `42-mechanics-matrix`, `43-miniboss-encounter`, `44-boss-beats`, `45-beats-flow`, `46-gamepad-and-remap`, `47-full-campaign`, `48-restart-leak`; the numbers in prompts 02 and 04 are superseded by these. |
+
 ## 3. Seats
 
 You convene seats. If your harness supports parallel read-only sub-agents, run the review seats in parallel and blind to each other. If it does not, run them as sequential passes and write each seat's output into the slice memo under its own heading. Either way, one seat writes code.

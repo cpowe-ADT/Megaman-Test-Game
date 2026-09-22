@@ -4,7 +4,7 @@ Three prompts cover every session. Pick the one that matches where you are. The 
 
 ---
 
-## A. Kick off a build prompt (use for 01, then later 02, 03, 04)
+## A. Kick off a build prompt (use for 05, 06, 07, 08)
 
 Replace `N` and the file name. Paste as one message.
 
@@ -13,6 +13,7 @@ You are the Orchestrator for finishing the game in this repository. Work only in
 
 Step 1. Read these two files completely, in this order, before doing anything else:
   docs/prompts/00-orchestrator-charter.md
+  docs/prompts/PLAN_v2.md
   docs/prompts/0N-<name>.md
 Then read docs/prompts/EVAL_LEDGER.md and docs/prompts/handoff/ (if a handoff for the previous prompt is required and missing, stop and tell me).
 
@@ -86,11 +87,16 @@ Reply with: the last ledger row that is PASS, the phase you are in, uncommitted 
 
 ---
 
-## E. Order and expected sessions
+## E. Order and expected sessions (v2, 2026-09-22)
 
 | Prompt | File | Sessions |
 | --- | --- | --- |
-| 1 | `01-foundation-and-story.md` | 3: 01a (1.0 to 1.2), 01b (1.3 and 1.6), 01c (1.4 and 1.5) |
-| 2 | `02-levels-and-gameplay.md` | 5 to 7: 02a to 02d (you play Pyro Maw at STOP 2.4) |
-| 3 | `03-art-animation-bosses.md` | 2 to 3: 03a to 03c (image generation is iterative) |
-| 4 | `04-presentation-audio-release.md` | 2: 04a, 04b (you play the whole game at STOP 4.5) |
+| 1 | `01-foundation-and-story.md` | done |
+| 5 | `05-feel-hero-and-camera.md` | 3: 05a (5.1, 5.2), 05b (5.3, 5.4), 05c (5.5, 5.6); you play the tutorial at STOP 5.2 |
+| 6 | `06-levels-mechanics-and-enemies.md` | 6 to 8: 06a to 06h; you play Pyro Maw at STOP 6.5 and one stage per batch |
+| 7 | `07-bosses-weapons-and-story.md` | 3 to 4: 07a to 07d; you fight Pyro and Tide at STOP 7.2 and the Core at 7.4 |
+| 8 | `08-audio-presentation-and-release.md` | 3: 08a to 08c; you play the whole game at STOP 8.6 |
+
+Prompts 02, 03 and 04 are not run; the new prompts cite their sections. The reasoning is in `PLAN_v2.md`.
+
+For the first v2 session: `N = 5`, file `docs/prompts/05-feel-hero-and-camera.md`, and add at the end of the paste: `This session is part 05a: phases 5.1 and 5.2. Stop after STOP 5.2. Read docs/prompts/PLAN_v2.md after the charter.`

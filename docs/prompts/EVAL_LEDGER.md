@@ -86,3 +86,63 @@ Kinds: `gate` (a command with an exit code), `audit` (a script against a budget)
 | EVAL-ART-002 | gate | Hero dev skin: no frame carries the ripped sheet's flat green box, no aerial pose is clipped or squeezed, no group points at a head fragment (every component 18px wide and 26px tall or more), dash rows face forward | PASS | `keyed_transparent` keys `(84,165,75)`; jump/fall/land/wall/dash groups re-picked from the sheet's jump, wall and dash rows at native scale with `flipX` on the dash set; components 29 and 43 (severed heads used by idle blink, respawn, turn and ground slash) replaced with 25-28 and 34. Audit script in the session log: `undersized components in spec: {}`, `atlas frames under 22px tall: []`; `output/mission-visual-sweep/hero-frames-after.png`; movement/sword smoke `13d`, `24`-`30` pass. | commit containing this row |
 | EVAL-ART-003 | gate | Boss feet sit on the physics body bottom and the body rests on the floor: `feetToBodyGap` 0 whenever grounded for every boss, every boss grounded at least once per sweep window, no permanent hover | PASS | `src/bosses/bossBodyAlignment.ts` + `tests/boss-body-alignment.test.ts` (4 tests; the legacy offset is shown to leave an 18px+ gap); `BossController.getGroundReport()` / `bossDebug.groundReport()`; smoke `39-boss-grounded` → grounded 24/24 samples, gaps `[0]`; sweep 10/10 with gap `[0]` and feetY 236 on every grounded sample (`output/mission-visual-sweep/*/boss-movement-samples.json`, `boss-rooms-grounded.png`, `boss-feet-closeups.png`). Sword hits now test the aligned body, not the 32px container. | commit containing this row |
 | EVAL-ART-004 | gate + review | Text reads HD at any window size: canvas at device resolution, every scene camera an `HdCamera` at the render scale with a top-left origin, Text resolution equal to the scale (texture source kept in sync for the canvas renderer), world and HUD pixels identical to 1x, resize follows the window; Craig confirms readability | PASS (gate); Craig reviews | `src/config/hdRenderMath.ts` + `hdRender.ts`, `tests/hd-render.test.ts` (3 tests); smoke `40-hd-render` (896x504 window: canvas 896x504, camera zoom 2 origin (0,0), text resolution 2 with a 2x text canvas, 280/280 static ground and HUD-border pixels identical to the 448x252 window, shrinks back on resize; `output/web-game-smoke/40-hd-render/shot-2x.png`); `docs/architecture/rendering.md`. Movement-feel `13d` isolated from enemy contact hit-stop (it was failing whenever the first dash ran into an enemy). | commit containing this row |
+
+## Plan v2 (2026-09-22). Prompts 02 to 04 are superseded; their pending rows stay as written and are not run.
+
+## Prompt 05: Feel, hero, and camera
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P5-001 | gate | motor tests incl. the drag red/green pair | PENDING | | |
+| EVAL-P5-002 | gate | 13d extended: dash-jump trace, drag 0, second dash inside 100ms | PENDING | | |
+| EVAL-P5-003 | gate | combat feel tests plus 13c, 24, 9, 23, 3 | PENDING | | |
+| EVAL-P5-004 | gate | camera deadzone, look-ahead, vertical-follow math; 18 extended | PENDING | | |
+| EVAL-P5-005 | review | hero brief and three turnarounds; Craig picks | PENDING | | |
+| EVAL-P5-006 | gate | hero coverage validator red then green; frame audit | PENDING | | |
+| EVAL-P5-007 | gate | full smoke and sweep with the generated hero; ripped material gone | PENDING | | |
+| EVAL-P5-008 | gate + review | profiles: three slots, name, export/import; smoke 41 | PENDING | | |
+
+## Prompt 06: Levels, mechanics, and enemies
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P6-001 | gate | level v2 parity | PENDING | | |
+| EVAL-P6-002 | audit | content audit table, report-only | PENDING | | |
+| EVAL-P6-003 | gate | lint on parity stages; pit, wall-kick, vertical smoke | PENDING | | |
+| EVAL-P6-004 | gate | mechanics library and lab, smoke 42 | PENDING | | |
+| EVAL-P6-005 | gate | mini-bosses, smoke 43, miniboss_callout wired | PENDING | | |
+| EVAL-P6-006 | gate | enemy behaviour and respawn tests and captures | PENDING | | |
+| EVAL-P6-007 | gate + review | nine tilesets and backgrounds, zero placeholder skins | PENDING | | |
+| EVAL-P6-008 | gate | twelve enemy families original; frame audit | PENDING | | |
+| EVAL-P6-009 | gate + review | Pyro Maw pilot to budget; Craig plays | PENDING | | |
+| EVAL-P6-010 | gate + review | nine non-Omega stages pass audit and lint | PENDING | | |
+| EVAL-P6-011 | gate + review | Omega in three acts | PENDING | | |
+| EVAL-P6-012 | gate | difficulty and death economy | PENDING | | |
+| EVAL-P6-013 | gate | sweep v2 assertions; audit and lint in verify | PENDING | | |
+
+## Prompt 07: Bosses, weapons, and story
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P7-001 | gate | twelve hazard spawners; telegraphs drawn; watchdog gone | PENDING | | |
+| EVAL-P7-002 | gate | phase kits, desperation, weakness stagger on Pyro and Tide | PENDING | | |
+| EVAL-P7-003 | gate + review | intro and death presentation; smoke 44 | PENDING | | |
+| EVAL-P7-004 | gate | weapon identities; weakness ring; no BLOCKED in Classic | PENDING | | |
+| EVAL-P7-005 | gate + review | all ten fights; 44 across the sweep | PENDING | | |
+| EVAL-P7-006 | gate | portraits and dialogue presentation | PENDING | | |
+| EVAL-P7-007 | gate + review | every sequence id consumed; Craig reads the script | PENDING | | |
+
+## Prompt 08: Audio, presentation, and release
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P8-001 | gate | cue map test; per-screen music | PENDING | | |
+| EVAL-P8-002 | gate | credits check; loudness and loop table | PENDING | | |
+| EVAL-P8-003 | gate + review | pixel font; four screens | PENDING | | |
+| EVAL-P8-004 | gate | beats; smoke 45 | PENDING | | |
+| EVAL-P8-005 | gate | gamepad, remap, options; smoke 46 | PENDING | | |
+| EVAL-P8-006 | gate | public build check | PENDING | | |
+| EVAL-P8-007 | gate | deploy workflow, verify:public, itch zip | PENDING | | |
+| EVAL-P8-008 | gate | full campaign smoke 47, both variants | PENDING | | |
+| EVAL-P8-009 | review | Craig's playtest sheet | PENDING | | |
+| EVAL-P8-010 | gate | live URL after the tag | PENDING | | |
