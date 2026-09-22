@@ -19,6 +19,7 @@ The goal is fast feedback from deterministic tests, with browser automation rese
 | `npm run test:smoke:preview` | Builds, checks `dist/assets`, then runs the smoke suite against `vite preview` | Production packaging, deploy, runtime asset loading, or release-readiness changes |
 | `npm run test:visual-sweep` | Cross-mission visual sweep and artifact capture | Sprite pipeline, atlas changes, boss/enemy presentation, mission-wide visual changes |
 | `npm run verify` | Combined validation gate | Required before merge for substantive gameplay, tooling, content, or asset-pipeline work |
+| `npm run perf:footprint` | Builds nothing: serves `dist/` with `vite preview` and measures download before Title, time to Title, decoded audio, textures, JS heap, per-step CPU, growth across stage revisits and the hi-DPI canvas against `tests/perf-budget.json`; fails on a breach or any page error | After `npm run build`, for loading, asset, audio, render-scale or render-loop changes; `PERF_REPORT_ONLY=1` records a baseline without failing. Plan: `docs/prompts/09-footprint-and-performance.md` |
 
 ## Continuous Integration
 
@@ -69,6 +70,7 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
 - Runtime or integration changes: `npm run test` and `npm run build`
 - Gameplay flow, scene flow, input, or UI changes: add `npm run test:smoke`
 - Production packaging, deploy, or runtime asset-copy changes: add `npm run test:smoke:preview`
+- Loading, audio, asset, render-scale or per-frame changes: `npm run build` then `npm run perf:footprint` (it is also the only gate that boots the production bundle on every run)
 - Visual, sprite, atlas, or mission-presentation changes: add `npm run test:visual-sweep`
 - Broad gameplay/tools/content work: finish with `npm run verify`
 
@@ -143,7 +145,7 @@ When changing these contracts:
 - `render_game_to_text()` adds `stageIntro` (`phase`, `active`), `ticker` (the toast and radio lane), `story` (intro state, policy, seen flags), `settings`, `save` (story flags, sub tanks, difficulty, completion), `prologue` and `ending` on their scenes, and `dialogue` on Stage Select while a milestone plays.
 - `stageDebug.advanceStageIntro()` / `skipStageIntro()` / `storyState()` / `setLives(n)` / `setSubTanks(count, fills)` are automation-only. `window.narrativeDebug.advance()` / `skip()` / `state()` exist while the Prologue or Ending scene is active.
 - Story flags mark at the moment a sequence starts, so reading every line and skipping produce identical `save.storyFlags`.
-- `render_game_to_text()` also reports `systemMenu` (source, cursor index, option ids) while the pause menu or route console is open, `options` while the Options scene is open, and `gameOver` (cursor, auto-continue countdown). The in-game `SystemMenu` still handles `save_game` / `load_game` programmatically for automation even though the visible menu autosaves.
+- `render_game_to_text()` also reports `systemMenu` (source, cursor index, option ids, `rowBackplates`) while the pause menu or route console is open, `options` (rows, cursor, `rowObjects`, `shownValues`: the text of the value rows actually on screen) while the Options scene is open, and `gameOver` (cursor, auto-continue countdown). `audio.musicCue` is the cue the game asked for; since 2026-09-22 music decodes on demand, so `audio.musicPlayingCue`, `audio.musicLoading` and `audio.residentMusicKeys` show what is audible and what is held in memory. The in-game `SystemMenu` still handles `save_game` / `load_game` programmatically for automation even though the visible menu autosaves.
 
 ## Handling Flaky Browser Validation
 - Fix the smallest reproducible issue first.

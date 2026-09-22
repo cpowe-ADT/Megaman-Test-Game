@@ -3,6 +3,8 @@
 ## Current Runtime Shape
 The game boots from `src/main.ts`, loads shared assets and runtime placeholders in `src/scenes/Preload.ts`, enters mission selection through `src/scenes/StageSelect.ts`, and runs most active gameplay inside `src/scenes/Game.ts`.
 
+Loading is per scene where it pays: `Preload` loads atlases, sound effects and the one background layer the prologue draws; `Game.preload()` loads the stage's own background layers and drops the previous stage's (`src/scenes/game/stageBackgroundLoading.ts`); music is fetched and decoded when its cue is first asked for and evicted when nothing plays it (`src/audio/MusicTrackLoader.ts`, `musicResidency.ts`). The footprint budget and its harness are described in `docs/prompts/09-footprint-and-performance.md`.
+
 The repo is mid-transition from a scene-owned prototype into a more modular runtime:
 - `src/player/` contains the new player runtime modules.
 - `src/enemy/` contains the enemy framework and spawn/combat/AI helpers.
@@ -51,7 +53,7 @@ Private skin is enabled only when the compiled private manifest is non-null and 
 ## Known Architectural Debt
 - `src/scenes/Game.ts` is still the main complexity hotspot and remains under `@ts-nocheck`.
 - The runtime currently mixes older scene-owned logic with newer subsystem modules.
-- Production builds succeed but still warn about a large bundle.
+- Production builds still print Vite's 500KB chunk warning: Phaser's Arcade-only build is 1.09MB minified (only a custom Phaser build goes lower) and the game chunk is 533KB. Do not split game code by folder with `manualChunks`: that created a chunk import cycle that crashed the production build at boot (fixed 2026-09-22). Split by scene with dynamic `import()` if a split is ever needed.
 - Several planning docs describe future direction; use the docs index to distinguish current truth from historical intent.
 
 ## Canonical Deeper Reads

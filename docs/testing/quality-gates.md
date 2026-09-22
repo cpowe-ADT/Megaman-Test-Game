@@ -13,6 +13,7 @@
 | Production packaging, deploy, runtime asset-copy workflow | `npm run test`, `npm run build`, `npm run test:smoke:preview` |
 | Sprite, atlas, mission-wide visuals, presentation | `npm run test`, `npm run build`, `npm run test:visual-sweep` |
 | Substantive gameplay, tools, content, or asset-pipeline work | `npm run verify` |
+| Loading, audio, asset families, render scale, per-frame loop | `npm run test`, `npm run build`, `npm run perf:footprint` (budget `tests/perf-budget.json`; also the only gate that boots `dist/` every run) |
 
 ## What Blocks Merge
 - Failed required commands
@@ -49,6 +50,8 @@ Before considering a broader release or handoff complete:
 - Viewport/energy smoke must prove actor bodies cannot enter the fixed HUD, health and weapon drops use distinct capsule textures, saber use can reboot an empty selected special, and holstered specials regain energy passively.
 - Every visual-sweep boss room must report no legacy boss actor, one controller visual child, and exactly one visible boss sprite.
 - Production preview smoke passes with `npm run test:smoke:preview` when a change touches packaging, deploy readiness, or runtime asset loading.
+- `npm run perf:footprint` is 20/20 within `tests/perf-budget.json` with 0 page errors; a ceiling is only raised with a ledger row that says why (charter rule 14).
+- Menus and overlays lay out in game pixels (`GAME_SIZE`); smoke `40-hd-render` keeps Title, Options and Stage Select text inside the frame at 2x, and `38`/`38b` keep one set of Options and pause-menu rows per visit.
 - Visual sweep writes `output/mission-visual-sweep/summary.json` with truthful per-mission status, including `hung_after_artifacts` when cleanup times out after artifacts already exist.
 - Known risks are called out in the final summary and `progress.md`.
 

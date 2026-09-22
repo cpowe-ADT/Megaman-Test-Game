@@ -6,7 +6,7 @@ A Phaser 3 + TypeScript + Vite action-platformer prototype with a playable stage
 - The campaign is playable end to end: tutorial, eight authored warden stages, the selectable Omega Fortress finale, boss dialogue, completion, and replay.
 - The game currently builds and tests cleanly; smoke covers the full interaction surface and the visual sweep covers all ten missions.
 - The architecture is mid-refactor: reusable player, enemy, boss, combat, content, and asset modules exist, but `src/scenes/Game.ts` still owns too much of the runtime and remains under `@ts-nocheck`.
-- The production build currently emits a large-bundle warning. This is known debt, not an active build failure.
+- The production build ships Phaser's Arcade-only build as one cached chunk plus one game chunk (about 440KB gzipped in total) and no source maps (`BUILD_SOURCEMAP=1 npm run build` emits them). Vite's 500KB chunk warning remains because Phaser alone is 1.09MB minified. Music and stage backgrounds load on demand; `npm run perf:footprint` checks the footprint budget in `tests/perf-budget.json`.
 - `progress.md` is the canonical running handoff log for ongoing work.
 
 ## Quickstart
@@ -31,6 +31,7 @@ npm run build
 npm run test:smoke
 npm run test:visual-sweep
 npm run verify
+npm run perf:footprint   # after npm run build
 ```
 
 Command meanings and usage rules live in `TESTING.md`.

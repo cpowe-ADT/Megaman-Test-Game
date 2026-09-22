@@ -73,6 +73,7 @@ Verified 2026-09-09 by reading the code and running `npm run test`. Do not re-de
 | Gates | `npm run test` 256; full smoke 51 scenarios (`39`, `40` new); sweep 10/10. `SMOKE_PORT` isolates parallel runs; never run two suites against one `output/web-game-smoke`. `13d-movement-feel` isolates the player from enemy contact during its trace. |
 | Debt | `src/scenes/Game.ts` is 3,700 lines. Every v2 prompt has a line-count ceiling in its exit gate. |
 | Order | Prompts 05 to 08 replace 02 to 04 (`PLAN_v2.md`). Scenario numbering for new smoke scenarios: `41-profiles`, `42-mechanics-matrix`, `43-miniboss-encounter`, `44-boss-beats`, `45-beats-flow`, `46-gamepad-and-remap`, `47-full-campaign`, `48-restart-leak`; the numbers in prompts 02 and 04 are superseded by these. |
+| Footprint (09a, 2026-09-22) | Production `dist/` boots again (the folder `manualChunks` split was a chunk import cycle). Phaser is the Arcade-only build; no source maps unless `BUILD_SOURCEMAP=1`. Music is fetched and decoded per cue and evicted when idle (`src/audio/MusicTrackLoader.ts`); a new track needs only a `MUSIC_ASSETS` row. Stage backgrounds load in `Game.preload()` per stage (`src/scenes/game/stageBackgroundLoading.ts`). Render scale capped at 6 (`MAX_RENDER_SCALE`, `cssZoom`). Menus and overlays lay out with `GAME_SIZE`. `npm run perf:footprint` checks `tests/perf-budget.json` (20 checks) and fails on any page error. Plan, persona and remaining phases: `docs/prompts/09-footprint-and-performance.md`. |
 
 ## 3. Seats
 
@@ -162,6 +163,7 @@ Three kinds of eval exist:
 11. Player-facing text is written for an 8px pixel font in a 448px frame: short lines, at most 180 characters, no walls of text.
 12. Names: the hero's callsign, the title, and every warden name come from `src/content/identity.ts` after prompt 01. Never hard-code a name in a scene again.
 13. Every smoke scenario or sweep run that needs the story surfaces off passes `storyIntro=off` (defined in prompt 01); scenarios that test the surfaces pass `storyIntro=on`.
+14. Keep `npm run perf:footprint` green (after `npm run build`) before any STOP whose slice touches assets, loading, audio, rendering or the per-frame loop. Lower a ceiling in `tests/perf-budget.json` when a slice beats it; never raise one without a ledger row that says why. A new asset family loads per scene with a stated eviction rule, not in `Preload`.
 
 ## 9. Anti-patterns to refuse
 

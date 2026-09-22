@@ -96,6 +96,7 @@ Reply with: the last ledger row that is PASS, the phase you are in, uncommitted 
 | 6 | `06-levels-mechanics-and-enemies.md` | 6 to 8: 06a to 06h; you play Pyro Maw at STOP 6.5 and one stage per batch |
 | 7 | `07-bosses-weapons-and-story.md` | 4: 07a to 07d; you fight Pyro and Tide at STOP 7.2, the Core at 7.4, and read the script at 7.6 |
 | 8 | `08-audio-presentation-and-release.md` | 4: 08a to 08d; you play the whole game at STOP 8.6 |
+| 9 | `09-footprint-and-performance.md` | 09a done 2026-09-22; 09b (9.5, 9.6) and 09c (9.7, exit) whenever convenient, one session each; its kickoff text is at the end of the file. `npm run perf:footprint` is a standing gate from now on (charter rule 14). |
 
 Prompts 02, 03 and 04 are not run; the new prompts cite their sections. The reasoning is in `PLAN_v2.md`.
 
