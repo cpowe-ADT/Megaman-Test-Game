@@ -13,7 +13,7 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 
 | Id | Kind | What passes | Status | Evidence | Commit |
 | --- | --- | --- | --- | --- | --- |
-| EVAL-P5-001 | gate | motor tests incl. the drag red/green pair | PENDING | | |
+| EVAL-P5-001 | gate | motor tests incl. the drag red/green pair | PASS | tests/player-motor.test.ts: 17 motor tests red before, green after (`output/notes/05a-5.1-red.log`, `05a-5.1-green.log`; constants in `output/notes/05a-5.1-constants.md`); drag 0, dash-jump carry, 280ms dash with 60ms cooldown from the dash end, wall-kick grace and buffered wall jumps, jump cut with -400/+250 hero gravity, ledge forgiveness, crouch stop, time-based hit-stop at 30/60/144fps; `npm run -s gate -- test build` -> PASS (310 at c47fc38, 318 at a15d18e). Reviews `docs/prompts/reviews/2026-09-23-5.1-motor/` (director FIX: short-hop nonlinearity; QA FIX: ledge-probe guard), both fixes carried into 5.2. | c47fc38 |
 | EVAL-P5-002 | gate | 13d extended: dash-jump trace, drag 0, second dash inside 100ms | PENDING | | |
 | EVAL-P5-003 | gate | combat feel tests plus 13c, 24, 9, 23, 3 | PENDING | | |
 | EVAL-P5-004 | gate | camera deadzone, look-ahead, vertical-follow math; 18 extended | PENDING | | |
@@ -22,7 +22,7 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 | EVAL-P5-007 | gate | full smoke and sweep with the generated hero; ripped material gone | PENDING | | |
 | EVAL-P5-008 | gate + review | profiles: three slots, name, export/import; smoke 41 | PENDING | | |
 | EVAL-P5-009 | gate | the tutorial teaches: five teach locks, Rook's recorded prompts, UI key hints; smoke 49 | PENDING | | |
-| EVAL-P5-010 | gate | harness and health: smoke continues past failures, timestamped evidence, stepFrames, loader directory imports, pins, requirements.txt; Game.ts at or below 3,400 | PENDING | | |
+| EVAL-P5-010 | gate | harness and health: smoke continues past failures, timestamped evidence, stepFrames, loader directory imports, pins, requirements.txt; Game.ts at or below 3,400 | PASS | Commits fc2aa99 (harness, stepFrames, loader, pins), aa4f34f (lockfile after the release seat's BLOCK), 55c22d6 (extraction: Game.ts 3,639 to 2,930), 99d6b16 (type-only Phaser, 8 seam tests, stageId fix), 8791f37 (synchronous hook install after the QA MAJOR). `SMOKE_FORCE_FAIL=4-title-controls` run: exit 1 with both scenarios recorded (`output/smoke-runs/2026-09-23T08-56-25-071Z/summary.json`); `npm run -s gate -- agents:check test build` -> PASS (318 tests), Game.ts 2,923; quiet-tree full smoke 51/51 (`output/smoke-runs/2026-09-23T14-57-30-045Z/summary.json`) and sweep 10/10 (`output/sweep-runs/2026-09-23T15-00-32-110Z/summary.json`) at a15d18e. Open: the process-group dev-server stop has local evidence only until Craig pushes and dispatches CI browser-gates (QA MAJOR, `docs/prompts/reviews/2026-09-23-5.0-harness/MERGED.md`). Reviews: 5.0-harness, 5.0c-extraction, 5.0d-seams. | 8791f37 |
 
 ## Prompt 06: Levels, mechanics, and enemies
 
