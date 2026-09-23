@@ -4,11 +4,11 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
 
 ## Now
 
-- Branch `codex/mega-runtime-and-assets-pass` (PR #58). Prompts 09 and 10 are complete (`docs/prompts/handoff/10-agent-system.md`); 11a (token efficiency) is complete. No prompt is mid-run.
+- `main` at the PR #58 merge (2026-09-23; start new work on a fresh branch from `main`). Prompts 09 and 10 are complete (`docs/prompts/handoff/10-agent-system.md`); 11a (token efficiency) is complete. No prompt is mid-run.
 - First thing next session: confirm the `game-*` agents appear in the agent list (they did not in the 2026-09-22 session; the fallback is a general-purpose agent with the seat's model and brief on the card).
 - Next: prompt 05 part 05a (`docs/prompts/START.md` block A); `npm run agents:check -- --entry 5` passes. All twelve decisions were DECIDED by seat panels under Craig's delegation; their conditions are in the "Panel conditions" sections of prompts 05 to 08.
 - Work lean (`docs/prompts/11-token-efficiency.md`): gates through `npm run -s gate -- ...`, reviews by risk tier with packets (`npm run agents:packet`), `Tokens:` in every review file and entry. 11b rides inside 05 (P11-005, P11-007, P11-008).
-- Craig's to run: `git gc` (the tag `archive/09b-effect-pooling` keeps the pooling code), `npm run clean:artifacts -- --yes` after a fresh dry run, `npm i -g @openai/codex`, the external archive of superseded source sheets, and the push.
+- Git housekeeping done 2026-09-23: a non-destructive `gc --cruft --prune=never` (loose objects packed; `.git` 181MB to 177MB), the three unreachable commits kept as `refs/lost-found/*`, tag `archive/09b-effect-pooling` pushed, Codex CLI reinstalled (`codex-cli 0.156.1`, logged in; `run-seats.sh` still unproven until P11-007 in 05a). Craig's to run: `git gc --prune=now` (frees about 70MB of unreachable sprite blobs, permanently), `npm run clean:artifacts -- --yes` after a fresh dry run; the source-sheet archive waits for 06 (`D-005`).
 - Standing gates: `npm run verify` (starts with `agents:check`), `npm run test:visual-sweep`, and after `npm run build`, `npm run perf:footprint`.
 
 ## Entry template (1.5KB at most)
