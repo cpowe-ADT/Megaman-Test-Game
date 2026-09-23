@@ -24,6 +24,7 @@ This repository uses an authority-based documentation structure. Start here when
 | Read or update handoff notes | `progress.md` (Now and the last entries; older entries in `docs/archive/progress/`) |
 | Run or resume a build prompt | `docs/prompts/START.md`, then `npm run agents:context -- --part <part>` |
 | Understand how the agents work together (chaining, seats, reviews, checks, context) | `docs/prompts/10-agent-system.md` |
+| Hand work to another agent or model cheaply (cards, packets, model and risk tiers, token budgets) | `docs/prompts/11-token-efficiency.md` |
 | Know what each persona owns and how it reviews | `docs/prompts/seats/README.md` |
 | See every question waiting on Craig | `docs/prompts/DECISIONS.md` |
 | Understand rendering, scale and HD text | `docs/architecture/rendering.md` |

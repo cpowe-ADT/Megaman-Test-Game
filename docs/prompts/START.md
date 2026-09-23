@@ -95,7 +95,8 @@ Reply with: the last ledger row that is PASS, the phase you are in, uncommitted 
 | 7 | `07-bosses-weapons-and-story.md` | 4: 07a to 07d; you fight Pyro and Tide at STOP 7.2, the Core at 7.4, and read the script at 7.6 |
 | 8 | `08-audio-presentation-and-release.md` | 4: 08a to 08d; you play the whole game at STOP 8.6 |
 | 9 | `09-footprint-and-performance.md` | done 2026-09-22 (09a, 09b, 09c, exit); `npm run perf:footprint` is a standing gate; Craig's look is `D-004` |
-| 10 | `10-agent-system.md` | 10a done and seat-reviewed 2026-09-22; 10b (one session) as described in the file, after `D-011` |
+| 10 | `10-agent-system.md` | done 2026-09-22 (10a seat-reviewed; 10b: CI check, evidence snapshots, pack test, retro script) |
+| 11 | `11-token-efficiency.md` | 11a done 2026-09-22; 11b rides inside prompt 05 (measure the first packet review, quiet gates, Codex tier, retro) |
 
 Prompts 02, 03 and 04 are not run; the new prompts cite their sections. The reasoning is in `PLAN_v2.md` (read once, not every session).
 
@@ -110,7 +111,7 @@ On the Mac, run `npm run agents:context -- --part NNx --with-files` and attach o
 ## G. One blind seat review (any tool)
 
 ```
-You are the <seat> review seat for this repository. Read docs/prompts/seats/<seat>.md and docs/prompts/seats/REVIEW_FORMAT.md; they are your whole brief. Review only this scope: <diff range or artifact list and one line of intent>. Never edit files. Reply with the review only, in that format, at most 600 words.
+You are the <seat> review seat for this repository. Read output/packets/<name>-<seat>.md first and only: it holds your seat brief, the format, the scope, the diff and the excerpts. Open another file only when a finding needs it. Never edit files. At most 5 tool calls in all. Reply with the review only, in that format, at most 600 words.
 ```
 
-Save each answer to `docs/prompts/reviews/<YYYY-MM-DD>-<slice>/<seat>.md`, then `npm run agents:reviews -- <that folder>`.
+Build the packet first (`npm run agents:packet -- --seat <seat> --scope "<one line>" --diff <a..b> [--paths ...] [--images ...]`; it fails over 20K tokens). The risk tier picks the seats (`docs/prompts/seats/README.md`). Save each answer, with its `Tokens:` line, to `docs/prompts/reviews/<YYYY-MM-DD>-<slice>/<seat>.md`, then `npm run agents:reviews -- <that folder>`. A tool without the repo gets the packet file pasted instead.

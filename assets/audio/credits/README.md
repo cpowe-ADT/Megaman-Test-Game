@@ -66,5 +66,5 @@ Used in runtime SFX:
 
 Notes:
 
-- Music and SFX are loaded in `src/scenes/Preload.ts`.
+- SFX are loaded in `src/scenes/Preload.ts`. Music is fetched and decoded when its cue is first asked for and evicted when nothing plays it (`src/audio/MusicTrackLoader.ts`, `src/audio/musicResidency.ts`); a trimmed CC0 track is credited as an edit of its source.
 - `AudioService` now prefers authored audio files and only falls back to synthesized Web Audio tones if an SFX asset is unavailable at runtime.

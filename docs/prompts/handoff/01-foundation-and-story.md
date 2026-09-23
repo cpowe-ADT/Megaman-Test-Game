@@ -5,7 +5,7 @@
 Corrected 2026-09-22: this header still held the template placeholder although commit `a1200f4` ("handoff COMPLETE") and the exit-gate evidence below list `EVAL-P1-001` to `P1-012` PASS. Craig confirms at `D-003` in `docs/prompts/DECISIONS.md`; the review halves of STOPs 1.2 to 1.6 are `D-001`.
 
 
-Phase 1.0 is complete: Craig approved STOP 1.0, and the baseline checkpoint and CI are committed. Phase 1.0b is committed with gates and review green at `fb0e553`; Craig approved STOP 1.0b; Phase 1.1 implementation and automated gates are complete, with Craig’s STOP 1.1 approval recorded below. Phase 1.2 is implemented with automated evidence green; STOP 1.2 awaits Craig’s title/subtitle review. Session 01a ends at that STOP. The separate enemy ecology request remains a planning supplement; phases 1.3–1.6 have not begun. This is a running slice memo, not an exit-gate handoff.
+Prompt 01 (phases 1.0 to 1.6) is complete; the exit-gate evidence is in the Evidence section. STOPs 1.0, 1.0b and 1.1 were approved by Craig (replies quoted below); the review halves of STOPs 1.2 to 1.6 were decided by seat panels on 2026-09-22 under Craig's delegation (`D-001` in `docs/prompts/DECISIONS.md`). The slice memos that follow are kept as the record of how each phase was built.
 
 ## Branch and final commit
 
@@ -505,7 +505,7 @@ All paths below are under `output/phase-1-2/`; the Phase1.2 commit containing th
 - `npm run verify` stages: `[sprites] Manifest valid (25 entries, 25 ready, 0 planned)`, `[sprites] Coverage valid (23 required manifest entries, 12 enemy source sheets, 10 boss source sheets)`, `Test summary: 12 passed, 0 failed`, `# tests 248`, `# pass 248`, `# fail 0`, `✓ built in 4.03s`, `Checked 153 runtime asset files and 5 emitted build refs in dist/.`; the smoke stage of that run stopped at `33-classic-stage-select` because the scenario reached New Campaign by a hard-coded row index that the new console order moved; after selecting the row by id, `SMOKE_PORT=4442 npm run test:smoke` -> `Smoke test complete.`, `output/web-game-smoke/summary.json` status `pass`, 49/49 scenarios.
 - `SWEEP_PORT=4441 npm run test:visual-sweep` -> `Mission visual sweep complete.`, `output/mission-visual-sweep/summary.json` 10/10 missions pass.
 - `wc -l src/scenes/Game.ts` -> 3700 (3,805 at prompt entry; 3,928 at the baseline).
-- Ledger: `EVAL-P1-001` to `EVAL-P1-012` PASS (`P1-002` remote run URL still pending Craig's push; `P1-012` briefs approved by proceeding).
+- Ledger: `EVAL-P1-001` to `EVAL-P1-011` PASS on their automated halves (`P1-002` remote run URL pending Craig's push); the review halves of P1-005, 006, 007, 009 and all of P1-012 were decided by seat panels as `D-001` (corrected 2026-09-22, qa-eval condition on `D-003`).
 - Screenshots for the STOP review: `output/web-game-smoke/34-prologue-flow/shot-{prologue-page-1,stage-card,briefing}.png`, `35-radio-ticker/shot-radio-iona.png`, `36-ending-flow/shot-{card-1,record}.png`, `38b-pause-weapon-select/shot-paused.png`, `38-options-persist/shot-options-changed.png`.
 
 ## Open risks and known debt
@@ -531,7 +531,6 @@ All paths below are under `output/phase-1-2/`; the Phase1.2 commit containing th
 
 - Keep Phase 1.1 mode/placement/upgrade tables and the explicit compatibility/statistics recommendations above; STOP 1.1 is approved; STOP 1.2 remains pending. Difficulty values are provisional until Phase 1.6, with gameplay difficulty tuning in Prompt 02.
 - Keep IDENTITY as the runtime public-name authority, including frozen warden names and the dialogue speaker adapter. Internal snake-case IDs remain stable; public packaging/private-file stripping still requires Prompt04, and the preview base art still requires Prompt03 original-art review.
-- Not ready: prompt 01 exit conditions are incomplete. Read the completed version of this file before starting prompt 02.
 - Carry `docs/working/enemy-ecology-and-variant-plan.md` into Phase 1.6 stage briefs and the completed Prompt 02/03 handoffs. Preserve Craig’s request for deeper monsters, stage-specific features and a living world; its family/variant/pilot recommendations remain pending the existing STOP reviews.
 
 ### Session 01b additions (story and briefs)

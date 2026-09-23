@@ -2,7 +2,7 @@
 
 Active seats: Orchestrator, Game Director (feel owner), Principal Game Engineer, Art Director (hero), QA / Eval Lead.
 
-Three to four sessions: `05a` (5.0, 5.1 and 5.2), `05b` (5.3, 5.4 and 5.7), `05c` (5.5 and 5.6), `05d` if the hero sheets need a second pass.
+Three to four sessions: `05a` (5.0, 5.1 and 5.2), `05b` (5.3, 5.4 and 5.7), `05c` (5.5 and 5.6), `05d` (5.5 again) if the hero sheets need a second pass.
 
 | Part | Phase | Lead | Player-facing result | Evals | STOP asks Craig for |
 | --- | --- | --- | --- | --- | --- |
@@ -154,6 +154,11 @@ Ledger: `EVAL-P5-008`.
 Show: the slot picker, the name entry, a briefing line with the name, the export file.
 Question for Craig: approve the flow? Recommended: yes.
 ```
+
+## Panel conditions (2026-09-22, delegated decisions)
+
+- Done before 05 starts: the radio ticker wraps inside a full-width lane and smoke 35 asserts its bounds; the RETRY readout sits in the HUD band (D-001, `docs/prompts/reviews/2026-09-22-decisions/`). `tutorial_coach` lines (5.7) use that lane; keep smoke 35's bounds check green.
+- 5.5 removes the developer skin, after which STOP captures show WREN on the HUD (narrative and game-director panels noted "MEGA MAN X" above "WREN" in the evidence).
 
 ## Exit Gate
 

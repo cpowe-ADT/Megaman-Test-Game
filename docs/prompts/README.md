@@ -13,6 +13,7 @@ The work orders that take the game from playable prototype to v1.0, and the agen
 | `docs/prompts/05-feel-hero-and-camera.md` to `docs/prompts/08-audio-presentation-and-release.md` | The v2 build prompts, in order |
 | `docs/prompts/09-footprint-and-performance.md` | Load, memory, per-frame cost and disk; its budget is a standing gate |
 | `docs/prompts/10-agent-system.md` | The agent system and its next work order |
+| `docs/prompts/11-token-efficiency.md` | Token efficiency: cards, packets, model and risk tiers, budgets |
 | `docs/prompts/EVAL_LEDGER.md` | One row per eval for live prompts; finished prompts in `docs/prompts/archive/` |
 | `docs/prompts/DECISIONS.md` | Every question waiting on Craig, with a recommendation; rows marked `entry <N>` block that prompt |
 | `docs/prompts/seats/` | The personas: what each owns, never does, reads and scores |

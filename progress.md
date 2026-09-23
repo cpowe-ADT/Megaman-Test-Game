@@ -4,9 +4,10 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
 
 ## Now
 
-- Branch `codex/mega-runtime-and-assets-pass`. Prompt 09 is complete; prompt 10 part 10a is complete and seat-reviewed. No prompt is mid-run.
-- Next: prompt 05 part 05a (`docs/prompts/START.md` block A). It is blocked until Craig answers `D-001`, `D-002` and `D-003` in `docs/prompts/DECISIONS.md`; `npm run agents:check -- --entry 5` shows it. Also waiting on Craig: `D-004` (play Pyro Maw) and the disk and Docker decisions `D-005` to `D-008`.
-- After that, 10b (one session: CI, evidence snapshots, pack test, retro) once `D-011` is answered.
+- Branch `codex/mega-runtime-and-assets-pass`. Prompts 09 and 10 are complete; 11a (token efficiency) is complete. No prompt is mid-run.
+- Next: prompt 05 part 05a (`docs/prompts/START.md` block A); `npm run agents:check -- --entry 5` passes. All twelve decisions were DECIDED by seat panels under Craig's delegation; their conditions are in the "Panel conditions" sections of prompts 05 to 08.
+- Work lean (`docs/prompts/11-token-efficiency.md`): gates through `npm run -s gate -- ...`, reviews by risk tier with packets (`npm run agents:packet`), `Tokens:` in every review file and entry. 11b rides inside 05 (P11-005, P11-007, P11-008).
+- Craig's to run: `git gc` (the tag `archive/09b-effect-pooling` keeps the pooling code), `npm run clean:artifacts -- --yes` after a fresh dry run, `npm i -g @openai/codex`, the external archive of superseded source sheets, and the push.
 - Standing gates: `npm run verify` (starts with `agents:check`), `npm run test:visual-sweep`, and after `npm run build`, `npm run perf:footprint`.
 
 ## Entry template (1.5KB at most)
@@ -17,6 +18,7 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
   - Gates: <command> -> <result line> (<artifact path>)
   - Decisions: <D-ids raised or answered at STOPs; ledger ids moved>
   - Open: <what the next session must know>
+  - Tokens: <main session and agent totals from the tool's usage; over a budget in tests/agent-budget.json, say why>
 ```
 
 ## Log (oldest first, newest at the bottom)
@@ -48,3 +50,9 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
   - Gates: same exit run as 09; `tests/agents-checks.test.ts` 16 fixtures; seat review `npm run agents:reviews -- docs/prompts/reviews/2026-09-22-10a --expect docs-steward,qa-eval,principal-engineer` -> `3 reviews, 31 evidenced findings (2 BLOCK), 0 format problems`, all acted on in `275a3c0`.
   - Decisions: `D-001` to `D-003` block entry 5; `D-011`, `D-012` for 10b. Ledger P10-001 to P10-005 PASS. Handoff `docs/prompts/handoff/10a-agent-system.md`.
   - Open: the Codex CLI on this Mac is broken (missing binary), so `scripts/agents/run-seats.sh` has not run; CI does not run `agents:check` yet.
+- 2026-09-22, decision panels, 10b and 11a (token efficiency), Claude Code (Opus 5.5)
+  - Changed: D-001 to D-012 DECIDED by blind seat panels (`docs/prompts/reviews/2026-09-22-decisions/MERGED.md`, `npm run agents:decisions`); D-001 fixes: radio lane wraps full width, RETRY label below the boss panel, credits footer band (`src/ui/ToastLane.ts`, `src/ui/HUD.ts`, `src/scenes/EndingScene.ts`). 10b: CI runs `agents:check`, provenance in smoke and sweep summaries, `agents:evidence`, `agents:retro`, pack test. 11a: `agents:packet`, `gate`, task and result cards, model and risk tiers, token budgets, `Tokens:` headers and SCORES column (`docs/prompts/11-token-efficiency.md`). Smoke `SMOKE_ONLY` now takes ids and fails when it matches nothing.
+  - Gates: `npm run -s gate -- test agents:check` -> `# pass 291`, `0 errors`; `build` PASS; `SMOKE_ONLY=4,14,34,35,36,40` -> `6 ran, 45 skipped` PASS (first try timed out on a cold Vite start, passed on rerun); sweep 10/10; `footprint: 22/22 within budget, 0 page errors` (`output/gates/`). Commits `a4f5386` (UI), `67d2d34` (agents).
+  - Decisions: all twelve DECIDED; ledger P10-006 to P10-008 and P11-001 to P11-004, P11-006 PASS; P10-009, P11-005, P11-007, P11-008 PENDING.
+  - Open: the first packet-based review (05a) measures the new budgets; `workerStandard` is a guess until then.
+  - Tokens: main session about 1.1M before 11a (the audit in prompt 11); 11a's one worker run 57K (haiku, 7 calls). Over budget for a reason: 11a is the change that makes later sessions cheap.

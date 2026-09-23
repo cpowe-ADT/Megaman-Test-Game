@@ -128,6 +128,11 @@ Show: the diff of script.md, the consumer and verb tests, captures of a capsule 
 Ask Craig to read the script. Recommended: approve.
 ```
 
+## Panel conditions (2026-09-22, delegated decisions)
+
+From the art-director panel (`D-002`): the ten boss sheets are an approved baseline, not accepted art. 7.4 captures each boss's idle, move and shoot in the game at 1x and the art-director seat reviews them before a sheet counts as accepted; glacier_ronin and ferro_blade are re-cut with more space per cell (scarf fragments, a split disc) and every beam stays inside its cell.
+From the narrative-designer panel (`D-001`), 7.6 also: defeat lines must be true for any placed reward ("{rewardLabel} will carry you above its walls" is wrong for a Heart Tank or an Access item); rewrite Glacier's OMEGA radio line ("Memory is the last district"), which reads differently by play order; extend A.6 to the tutorial ("drill hangar" vs the "SENTINEL DRILL" card); limit style-guide rule 15 to in-fiction lines so the "AI studio" credit stays. `miniboss_callout` and `finale_phase` are wired only through the wrapped ticker or the dialogue overlay (the Core's offer is 112 characters). STOP captures use the public build, and credits captures show a mid-scroll frame.
+
 ## Exit Gate
 
 - `EVAL-P7-001` to `EVAL-P7-009` `PASS`.

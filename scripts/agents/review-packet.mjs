@@ -73,7 +73,7 @@ if (images.length) {
 
 const packet = `# Packet: ${seat}\n\n` + parts.map((part) => `## ${part.title}\n\n${part.body}`).join('\n\n') + '\n'
 const tokens = Math.round(Buffer.byteLength(packet) / 4)
-const name = arg('--name', `${seat}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '')}`)
+const name = arg('--name', new Date().toISOString().slice(0, 16).replace(/[:T]/g, ''))
 const outDir = path.join(root, 'output/packets')
 fs.mkdirSync(outDir, { recursive: true })
 const outFile = path.join(outDir, `${name}-${seat}.md`)

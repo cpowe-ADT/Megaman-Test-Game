@@ -11,13 +11,13 @@ Four sessions: `08a` (8.1 and 8.2), `08b` (8.3 and 8.4), `08c` (8.5 alone: the d
 | 08b | 8.3 The beats | Director | READY, WARNING, weapon-get, results, low-HP, beam-in, record | P8-004 | approve timing |
 | 08b | 8.4 Gamepad, remap, options, fullscreen, touch | Engineer | plays on a pad | P8-005 | touch: finish or hide |
 | 08c | 8.5 Public build and deploy | Release | a URL | P8-006, P8-007 | proceed |
-| 08c | 8.6 Full-campaign automation and the human playthrough | QA | none | P8-008, P8-009 | play the whole game |
-| 08c | 8.7 Release | Release | v1.0.0 | P8-010 | tag |
+| 08d | 8.6 Full-campaign automation and the human playthrough | QA | none | P8-008, P8-009 | play the whole game |
+| 08d | 8.7 Release | Release | v1.0.0 | P8-010 | tag |
 
 ## Entry conditions
 
 - Charter and amendments. `docs/prompts/handoff/07-bosses-weapons-and-story.md` is `COMPLETE`; every `EVAL-P7-*` row `PASS`.
-- Read: the 05, 06 and 07 handoffs, `docs/prompts/04-presentation-audio-release.md` in full (its cue map, sourcing rules, beats list, gamepad and options spec, public build, full-campaign automation and release checklist are reused verbatim below unless amended), `src/audio/` in full, `assets/audio/credits/README.md`, `src/scenes/Title.ts`, `src/scenes/StageSelect.ts`, `src/ui/menu/menuTheme.ts`, `src/ui/HUD.ts`, `src/ui/VictoryModal.ts`, `src/scenes/game/StageIntroSequence.ts`, `src/ui/StageIntroPresenter.ts`, `src/config/hdRender.ts` (text is HD; a bitmap font is a sprite and scales like one).
+- Read: the 05, 06 and 07 handoffs, the sections of `docs/prompts/04-presentation-audio-release.md` each phase cites (reused verbatim unless amended; `npm run agents:context -- --part <part>` includes them, so do not read 04 in full), `src/audio/` in full, `assets/audio/credits/README.md`, `src/scenes/Title.ts`, `src/scenes/StageSelect.ts`, `src/ui/menu/menuTheme.ts`, `src/ui/HUD.ts`, `src/ui/VictoryModal.ts`, `src/scenes/game/StageIntroSequence.ts`, `src/ui/StageIntroPresenter.ts`, `src/config/hdRender.ts` (text is HD; a bitmap font is a sprite and scales like one).
 - Ground truth (2026-09-22 audit): three CC0 tracks serve six cues (`title`, `stage_select`, `completion` share one file; `boss` and `final` share one; every stage shares `stage_loop`); `title_menu.ogg` is unreferenced and uncredited; loop seams measure 4.4 to 18.8dB RMS delta; loudness spread 5.8 LUFS; cue changes are hard cuts; seven `.wav` player sounds are uncredited; `charge_loop` is a 60ms blip; every weapon uses the same shot sound; sword hits on bosses play two sounds; enemy death reuses `enemy_hit`; dialogue, checkpoint, death, gate, wall kick have no sound; `PlaceholderAudioService.normalizeKey` maps unknown keys to silence without error. Presentation: system fonts everywhere, `HUD.ts` checks for a bitmap font `'font'` that `Preload` never loads; Title is a settings dialog; Stage Select is nine rectangles; `StageIntroSequence` READY "completes immediately"; `VictoryModal` is a web dialog; `reducedFlashing` has no consumer; `SaveData.stats` exist for the record card.
 
 ## Outcome of this prompt
@@ -113,6 +113,12 @@ Store kit (added on review): `output/release/store-kit/`: six 2x screenshots cho
 v1.1 backlog to hand off (not v1.0): character select (`docs/working/zero-character-select-backlog.md`), boss rush and time attack from the per-stage bests, New Game+ with the weakness ring rotated, controller rumble, a string table for localisation (UI strings are hard-coded today), an attract-mode demo from a replay script.
 
 Ledger: `EVAL-P8-010`.
+
+## Panel conditions (2026-09-22, delegated decisions)
+
+From the audio-director panel (`D-009`), 8.1 follows this rule: every looping cue and every boss stem is 30 to 60s, cut on a bar line, loop seam under 3dB, a boss's two stems share length and tempo; decoded cost is seconds x 0.384MB (the 48kHz context resamples; a lower sample rate saves disk, not memory). The phase-two stem decodes after the stage track is evicted and starts at the playing stem's offset (worst case near 49MB). Streaming only for a non-looping track over 60s (ending, credits) through Phaser's one AudioContext; never stream loops or stems. Budgets stay (`boss.decodedAudioMB` 64, `stage.decodedAudioMB` 16); the STOP 8.1 table gains a decoded-MB column and a switch-peak row (outgoing plus incoming plus SFX, at most 64MB); trimmed CC0 tracks are credited as edits.
+From the art-director panel (`D-002`): 8.2 bundles one font for HUD, Stage Select and menus (today `monospace`, Trebuchet and Arial mix).
+From the qa-eval panel (`D-004`): headroom is thin (Phaser gzip 294 of 300KB, Title audio 15.6 of 16MB, hi-DPI at its limit); re-measure before tightening any ceiling, and a new cue must fit, not raise, the budget.
 
 ## Exit Gate
 

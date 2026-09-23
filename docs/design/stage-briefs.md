@@ -1,6 +1,6 @@
 # Stage Design Briefs
 
-- Status: working; the blueprint prompt 02 builds from. Approved at STOP 1.6, revised per stage at the prompt-02 batch STOPs.
+- Status: working; the blueprint prompt 06 builds from (prompt 02 is superseded). Approved by the level-designer panel with conditions on 2026-09-22 (`D-001`, `docs/prompts/reviews/2026-09-22-decisions/level-designer.md`), revised per stage at the prompt-06 batch STOPs.
 - Owner: Game Director and Narrative Designer; Level Designer executes; Engineer builds mechanics.
 - Sources: `docs/story/story-bible.md` (fiction), `docs/story/script.md` (the exact lines each beat plays), `docs/working/enemy-ecology-and-variant-plan.md` (resident enemy pairs), `docs/prompts/02-levels-and-gameplay.md` (route budget, mechanics library, mini-boss archetypes, level format v2).
 - Every warden stage meets the route budget: floor 10 screens of route before the boss room, target 12 to 14; 4 checkpoints; 1 mini-boss; 2 secrets (`heart_tank` and `sub_tank` locations behind a gate); 2 or more biome mechanics; at least one vertical or walled segment; 18 or more enemy placements across 5 or more types; 8 or more hazards; 3 or more pits where falling is allowed; obstacle density 60% or more.
@@ -21,7 +21,7 @@
 - Route: 6 screens, five teach segments (move and jump share the first), checkpoints at start and mid (the radio checkpoint), one secret, Rook unchanged.
 - Verbs in order, one per segment, each with a radio signpost line, a safe target, and a `room_lock` with `requiredInput` that opens when the verb was used: move and jump (a gap and a step); dash (a low gap that only a dash clears); wall jump (two wall faces, `walls`, a 2-screen-tall shaft: the tutorial's vertical segment); charge shot (an `enemy_armored_bot` that only a charged shot breaks, behind a lock); saber (a `breakable_wall` opened with three slashes; the secret `capsule` room with `hp_refill_large` behind it).
 - Mechanics: none beyond the teach locks and one `crumble_group` on the last screen so the player has met it before Pyro.
-- Enemies (8 placements, 3 to 4 types): `enemy_gunner_bot` (2, first threat, one at a time), `enemy_shock_hopper` (2), `enemy_drone` (2, only after the wall-jump segment), `enemy_shield_drone` (1) and `enemy_rocket_bot` (1) on the approach.
+- Enemies (8 placements, 5 types): `enemy_gunner_bot` (2, first threat, one at a time), `enemy_shock_hopper` (2), `enemy_drone` (2, only after the wall-jump segment), `enemy_shield_drone` (1) and `enemy_rocket_bot` (1) on the approach.
 - Mini-boss: none.
 - Secrets: 1 (`capsule`, saber wall). `pickup_bonus` on the route.
 - Radio beat: after the dash segment (checkpoint 2).
@@ -122,7 +122,7 @@
 - Secrets: `heart_tank` on a platform only reachable by riding a gust (`dash_jump` timed with the wind); `sub_tank` location (`hp_refill_large` in Classic) behind a `breakable_wall` in the dock office.
 - `capsule` (`chip_speedster`) on the route after the mid-boss.
 - Radio beat: checkpoint 2.
-- Boss room: `flat` with two moving platforms from the combat profile; Gale's dive needs open air.
+- Boss room: `shaft`, the wall-jumping boss room Craig asked for (06 §6.1, 07 §7.4): Gale's dive and gusts use the height, and the two moving platforms from the combat profile become wall-side ledges.
 - Difficulty rating: 3.
 
 ## Public Archives (`glacier_ronin`)
@@ -131,7 +131,7 @@
 - Route: 12 screens. `intro` 1, `teach` 2, `escalate` 2, `secret` 1, `midboss` 1, `master` 3, `preboss` 2.
 - Mechanics: `ice_floor` (friction x0.35, dash +40%) and `icicle` hazards from cracked ceilings with a shadow telegraph; `crumble_group` ice shelves; precise jumps over frozen pits.
 - Master segment: a walled ice gallery (`walls` are the record stacks) where the floor is ice, the ceiling drops icicles on a rhythm, and the frost turrets cover fixed lanes; the player slides between safe patches.
-- Enemies (18, 6 types): signature `enemy_armored_bot` (ice scraper: one controlled skid, braking recovery), familiar `enemy_frost_turret` (pressure nozzle: fixed two-shot pattern), `enemy_gunner_bot`, `enemy_drone`, `enemy_laser_eye`, `enemy_bouncer`, `enemy_mine_bot`.
+- Enemies (18, 7 types): signature `enemy_armored_bot` (ice scraper: one controlled skid, braking recovery), familiar `enemy_frost_turret` (pressure nozzle: fixed two-shot pattern), `enemy_gunner_bot`, `enemy_drone`, `enemy_laser_eye`, `enemy_bouncer`, `enemy_mine_bot`.
 - Mini-boss: `custodian_walker`, Glacier skin, on the ice; it slides further than it means to.
 - Secrets: `heart_tank` behind a `breakable_wall` of ice in the secret room; `sub_tank` (real Sub Tank) across a frozen pit that only a `dash_jump` on ice clears.
 - `capsule` (`armor_helmet`) on the route before the mid-boss.
@@ -152,8 +152,10 @@
 - Boss room: Omega's authored room from the combat profile.
 - Difficulty rating: 3. Whole fortress 15 minutes on Normal.
 
-## Open questions for STOP 1.6
+## Open questions for STOP 1.6 (answered by the level-designer panel, 2026-09-22, `D-001`)
 
-1. Tide's `sub_tank` room is reachable only while the water is high. Confirm a timed-water secret is acceptable, or move it behind a `breakable_wall`.
-2. Volt's `armor_legs` capsule sits before the master segment so the air dash helps there. Confirm the capsule stays on the main route (not a secret).
-3. Ferro uses `enemy_frost_turret` as a coolant nozzle; confirm reusing a cold-themed family in a forge is fine with a palette variant.
+1. Tide's `sub_tank` room is reachable only while the water is high. **Answer:** not as written (there is no swim move and the lint checks fixed geometry). A `carry` float rides the cycling water line up to the gate, and the lint checks reach from the float's highest position; if the lint cannot model that, the room goes behind a `breakable_wall`.
+2. Volt's `armor_legs` capsule sits before the master segment so the air dash helps there. **Answer:** keep it on the main route (capsules are progression; only `heart_tank` and `sub_tank` count as secrets). Stages play in any order, so the lint checks every master segment, Volt's included, with base movement and no capsule.
+3. Ferro uses `enemy_frost_turret` as a coolant nozzle. **Answer:** yes, as a palette variant (a quench nozzle with steam instead of frost, the same fixed two-shot pattern); a Ferro row goes into the ecology plan so 6.4 generates it. Optional: Ferro has five families without it.
+
+Conditions carried into prompt 06: Tide's cycling water and Ferro's vertical magnet lift need `rising_liquid` to cycle and `wind_zone` to push vertically; 6.2 adds both (lab-tested) before 06e, or these briefs drop those mechanics. In 06 §6.5, `lane_vents` means the library's timed `vent`.

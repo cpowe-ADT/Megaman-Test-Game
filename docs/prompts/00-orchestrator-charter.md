@@ -127,7 +127,7 @@ If approved, next slice: <one line>
 
 Craig may just say `continue`.
 
-Every STOP question is also a row in `docs/prompts/DECISIONS.md` (id, question, recommendation, OPEN). When Craig replies, paste the reply verbatim into that row, set it DECIDED, and cite the id in the ledger row that depended on it. Run `npm run agents:check` before printing the STOP block.
+Every STOP question is also a row in `docs/prompts/DECISIONS.md` (id, question, recommendation, panel, OPEN). Craig may delegate a decision to its panel (he did on 2026-09-22): the panel's seats decide blind in `docs/prompts/seats/DECISION_FORMAT.md`, `npm run agents:decisions -- <folder>` merges their verdicts, the row is DECIDED only when every seat approves, a REJECT goes back to the orchestrator as work (fix, reshoot, same seat re-decides) or to Craig, and permanent deletions and outward actions stay Craig's to run. When Craig replies, paste the reply verbatim into that row, set it DECIDED, and cite the id in the ledger row that depended on it. Run `npm run agents:check` before printing the STOP block.
 
 ## 6. Handoff contract
 

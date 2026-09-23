@@ -144,7 +144,7 @@ Evals: `EVAL-P9-010` (HUD and backdrop draw calls and step p95 down against 9.5;
 Release proposes, Craig decides. Nothing here deletes without his word.
 
 - `npm run disk:report` prints the table above from the live tree.
-- `npm run clean:artifacts` removes `output/` runs older than the newest per scenario and all of `tmp/`, after listing what it will remove and asking for `--yes`.
+- `npm run clean:artifacts` lists `tmp/` and every `output/` entry that no tracked or untracked Markdown cites and that is over three days old; with `--yes` it moves them to the Trash (never deletes).
 - `git gc --prune=never` packs the 3,739 loose objects without deleting anything unreachable. Measured without writing (`git rev-list --objects --all | git pack-objects --stdout | wc -c`, 2026-09-22): 111MB packed against 185MB loose, about 74MB back. Record the before and after `.git` size.
 - Question for Craig: the February ChatGPT source sheets in `assets/sprites/source/` (about 110MB, still referenced by `source-images.manifest.json`) become obsolete once 05 and 06 regenerate every family through Higgsfield. Recommended: after 06 closes, move them to a release asset or an external archive, keep the manifests pointing at the archive, and drop them from the tree (history keeps them unless Craig asks for a rewrite, which is out of scope).
 

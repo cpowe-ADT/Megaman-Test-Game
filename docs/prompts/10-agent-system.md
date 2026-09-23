@@ -9,6 +9,10 @@ Craig builds this game only through models: Claude (Claude Code and claude.ai) a
 | 10a | checks, facts, context packs, decisions log, seats and review merge, AGENTS/CLAUDE, progress rotation, ledger archive | P10-001 to P10-005 | answer `docs/prompts/DECISIONS.md` |
 | 10b | CI enforcement, evidence tied to commits, prompt trims, pack test for every part, retro loop | P10-006 to P10-009 | approve CI enforcement (D-011) |
 
+## 10a: what was built (done 2026-09-22)
+
+Everything in the pattern table below, reviewed blind by three seats and fixed; the list of files and the review resolution are in `docs/prompts/handoff/10a-agent-system.md`. A session that needs to change the system reads that handoff, then the section of this file for the pattern it touches.
+
 ## Why (measured 2026-09-22, two read-only audits)
 
 - A kickoff read about 115K tokens of Markdown before touching code: `progress.md` 50K, handoff 01 21K, the ledger 8K, the charter 7K, a prompt 5K, `PLAN_v2.md` 4K, plus `AGENTS.md`'s "read in full" list. A slice needs about 15K.

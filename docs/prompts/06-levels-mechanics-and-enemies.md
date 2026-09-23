@@ -18,7 +18,7 @@ Six to eight sessions: `06a` (6.1), `06b` (6.2 and 6.3), `06c` (6.4 art), `06d` 
 ## Entry conditions
 
 - Charter and amendments. `docs/prompts/handoff/05-feel-hero-and-camera.md` is `COMPLETE`; every `EVAL-P5-*` row `PASS`. `PLAN_v2.md` read.
-- Read: the 05 handoff (movement constants and the camera vertical-follow API are the physical truth every level is built against), `docs/prompts/02-levels-and-gameplay.md` in full (its route budget, `LevelV2` schema, mechanics table, mini-boss archetypes, difficulty and automation sections are reused verbatim below unless amended), `docs/design/stage-briefs.md`, `docs/story/story-bible.md`, `docs/working/enemy-ecology-and-variant-plan.md`, `src/content/campaign.ts`, `src/content/stageArenaLayout.ts`, `src/physics/PlatformCollisionSystem.ts`, `src/enemy/` in full, `src/progression/catalog.ts`, `src/content/stageBackgroundCatalog.ts`, `src/ui/gameplay/GameplayTextures.ts`, `scripts/mission-visual-sweep.mjs`, `docs/content/sprite-imagegen.md`.
+- Read: the 05 handoff (movement constants and the camera vertical-follow API are the physical truth every level is built against), the sections of `docs/prompts/02-levels-and-gameplay.md` each phase cites (they are reused verbatim unless amended; `npm run agents:context -- --part <part>` includes them with 02's route budget, so do not read 02 in full), `docs/design/stage-briefs.md`, `docs/story/story-bible.md`, `docs/working/enemy-ecology-and-variant-plan.md`, `src/content/campaign.ts`, `src/content/stageArenaLayout.ts`, `src/physics/PlatformCollisionSystem.ts`, `src/enemy/` in full, `src/progression/catalog.ts`, `src/content/stageBackgroundCatalog.ts`, `src/ui/gameplay/GameplayTextures.ts`, `scripts/mission-visual-sweep.mjs`, `docs/content/sprite-imagegen.md`.
 - Ground truth (2026-09-22 audit): stages are TypeScript literals in `campaign.ts` (`CAMPAIGN_STAGES` then `STAGE_EXTENSION_PATCHES`, then a loop that bolts on the boss room); the route is 640px tutorial, 928px wardens, 1088px Omega (1.4 to 2.4 screens); one ground rectangle spans the world so no pit is possible and `allowFallOff` is dead; hazards are `{id,x,y}` at y=230 with the texture chosen by whether the id contains `lava`; platforms are 8px rectangles with an x-only tween the player does not ride; the only walls are the world edges; checkpoints are 150 to 250px apart; `radioSequenceId` is never set; no mini-boss, no secret, no mechanic, no `src/content/levels/`, no `src/mechanics/`; pickups float at y 128 to 144 from checkpoint offsets. Enemies: twelve CC0-sliced families with one 18-frame animation template, `charge` and `beam` fall through to melee, spawn triggers 56 to 180px ahead so enemies pop in on screen, retired markers never respawn, `EnemyMotor.atLedge` tests screen width. The sweep captures start, mid, pre-boss and boss room only.
 
 ## Outcome of this prompt
@@ -133,6 +133,14 @@ Smoke tiers (added on review): the suite is over fifty scenarios and will pass e
 Implement prompt 02 "Phase 2.8" verbatim: per-segment sweep captures with assertions (every segment reachable by warp, every enemy spawns off screen, every hazard exposed at least once, every checkpoint radio fires once), `content:audit` and `content:lint` in `npm run verify`, the level contact sheets under `output/level-review/`.
 
 Ledger: `EVAL-P6-013`.
+
+## Panel conditions (2026-09-22, delegated decisions)
+
+From the level-designer panel on the briefs (`D-001`, `docs/design/stage-briefs.md` answers the three open questions):
+- Before 06e, 6.2 gives `rising_liquid` a cycle and direction and `wind_zone` a vertical axis, each lab-tested, or the Tide and Ferro briefs drop those mechanics.
+- Gale's boss room is `shaft` (briefs corrected). In 6.5, `lane_vents` means the library's timed `vent`. Add a Ferro row (quench nozzle variant of `enemy_frost_turret`) to `docs/working/enemy-ecology-and-variant-plan.md` before 6.4 generates re-skins.
+- Lint every master segment with base movement and no capsule (stages play in any order).
+From the art-director panel (`D-002`): 6.4's backgrounds give Gale Vixen and Glacier Ronin enough contrast against sky and snow; check it in the boss-room sweep captures.
 
 ## Exit Gate
 
