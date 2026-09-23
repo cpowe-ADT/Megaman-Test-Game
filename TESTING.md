@@ -55,14 +55,16 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
   - Includes a frozen-projectile regression that deliberately zeros a live standard shot and verifies the lifecycle watchdog recycles it
   - Includes viewport/energy-economy coverage for the actor ceiling, distinct health/weapon capsule textures, saber reboot from empty, and passive holstered-weapon recharge
   - Includes valid active-run restore plus corrupt active-run rejection coverage
-  - Writes `output/web-game-smoke/summary.json` with per-scenario `pass`/`fail`/`skipped` status and timeout classification
+  - Writes `output/smoke-runs/<ISO timestamp>/summary.json` with per-scenario `pass`/`fail`/`skipped` status and timeout classification; `output/web-game-smoke` is a symlink kept pointed at the latest run
+  - Continues past a scenario failure by default and sets `process.exitCode = 1` if any failed; `SMOKE_FAIL_FAST=1` stops at the first failure like before
 - `scripts/mission-visual-sweep.mjs`
   - Ten-mission visual verification pass: tutorial, eight wardens, and Omega Fortress
   - Launches Omega through the ninth Stage Select tile and verifies authored attacks plus phase-two transitions for every boss
   - Enforces one authoritative boss actor with exactly one visible sprite for every mission; runtime facing is exposed from the same player-target source used by attacks
   - Asserts typed boss attack starts, active lifecycle frames, action-specific animation families, motion intent, locked-facing agreement, room bounds, and authored active-hazard caps
   - Persists `boss-movement-samples.json` before movement assertions, including raw container X, body X and horizontal velocity; the strict room bounds and sample count remain unchanged
-  - Writes `output/mission-visual-sweep/summary.json` with per-mission `pass`/`fail`/`hung_after_artifacts` status and cleanup-timeout classification
+  - Writes `output/sweep-runs/<ISO timestamp>/summary.json` with per-mission `pass`/`fail`/`hung_after_artifacts` status and cleanup-timeout classification; `output/mission-visual-sweep` is a symlink kept pointed at the latest run
+  - Continues past a mission failure by default and sets `process.exitCode = 1` if any failed; `SWEEP_FAIL_FAST=1` stops at the first failure like before
 
 ## Required Gate Selection
 - Docs-only changes: `npm run test` and `npm run build` by default
@@ -85,6 +87,7 @@ The browser job uploads `output/` even on failure; record the remote run URL aft
 Do not break these without updating scripts and docs together:
 - `window.render_game_to_text`
 - `window.advanceTime(ms)`, which waits for approximately `round(ms / (1000 / 60))` animation frames (at least one); it does not deterministically step Phaser or guarantee elapsed simulation time
+- `window.stepFrames(n)` (automation-only, `?automation=1`), which sleeps Phaser's `TimeStep` and calls `Phaser.Game#step` exactly `n` times with a monotonic 60Hz clock (each step's delta is exactly `1000/60`), then wakes the loop and returns the number of steps taken; unlike `advanceTime`, this is a deterministic simulation-frame guarantee, not a wall-clock wait. `window.stepFramesActive` is `true` for the duration of the call.
 - smoke harness expectations in `scripts/smoke-test.mjs`
 - visual-sweep expectations in `scripts/mission-visual-sweep.mjs`
 - production preview smoke mode via `SMOKE_SERVER=preview`
@@ -95,9 +98,15 @@ Do not break these without updating scripts and docs together:
 | --- | --- |
 | `SMOKE_ONLY=29-pellet-hits-short-enemy` | Runs the exact named smoke scenario; accepts comma-separated exact names. Other scenarios are recorded as `skipped`, so a filtered green summary is not proof of a full pass. |
 | `SMOKE_FROM=<name>` | Starts with that exact scenario and runs the remaining scenarios; earlier entries are recorded as `skipped`. |
+| `SMOKE_FAIL_FAST=1` | Stops the smoke run at the first scenario failure instead of continuing to the rest; default continues past a failure and exits `1` if any scenario failed. |
+| `SMOKE_SCENARIO_TIMEOUT_MS=180000` | Per-scenario timeout; a scenario that runs longer fails with a clear timeout message and has any browser it opened force-closed. Default `120000`. |
+| `SMOKE_FORCE_FAIL=<name>` | Test-only: forces the named scenario to throw instead of running, to prove continue-on-failure and `SMOKE_FAIL_FAST` without editing a real scenario. |
+| `SMOKE_OUTPUT_DIR=<path>` | Overrides the smoke run folder instead of the default `output/smoke-runs/<ISO timestamp>`. |
 | `SMOKE_PORT=4400` | Smoke server port; default `4173`, bound to `127.0.0.1` with strict port selection. |
 | `SWEEP_PORT=4401` | Visual-sweep server port; default `4173`. Use different ports for concurrent browser runs. |
 | `SWEEP_CLEANUP_TIMEOUT_MS=30000` | How long the sweep waits for the browser to close before failing as `hung_after_artifacts`; default `5000`. CI `browser-gates` sets 30000. |
+| `SWEEP_FAIL_FAST=1` | Stops the visual sweep at the first mission failure instead of continuing to the rest; default continues past a failure and exits `1` if any mission failed. |
+| `SWEEP_OUTPUT_DIR=<path>` | Overrides the sweep run folder instead of the default `output/sweep-runs/<ISO timestamp>`. |
 | `SMOKE_SERVER=preview` | Uses the already-built `dist/` through Vite preview. `npm run test:smoke:preview` builds first. Default smoke server mode is `dev`. |
 | `WEB_GAME_CLIENT=<path>` | Legacy generic-helper client path (repository copy, then installed skill client by default). The harness checks that this path exists, but the currently registered scenarios use their own Playwright routines; run the skill client separately when required. |
 | `?automation=1` | Enables automation scene selection, debug hooks, and `window.__phaserGame`. The dev smoke harness also sets `VITE_AUTOMATION=1` and `VITE_SMOKE=1`. |
@@ -105,7 +114,7 @@ Do not break these without updating scripts and docs together:
 | `?startScene=StageSelect` | Selects the startup scene only in automation mode; ordinary launches keep the normal title flow. |
 | `?bossId=<id>` | Automation-only boss selection override; ordinary launches ignore it. |
 
-The standard smoke and sweep URLs are `/?renderer=canvas&automation=1&startScene=StageSelect`; title scenarios omit `startScene`. Both harnesses replace their output directory on startup. Preserve a prior `summary.json` and useful failure captures before a focused run overwrites them.
+The standard smoke and sweep URLs are `/?renderer=canvas&automation=1&startScene=StageSelect`; title scenarios omit `startScene`. Each run writes to a fresh timestamped run folder (`output/smoke-runs/<ts>`, `output/sweep-runs/<ts>`) rather than overwriting a prior run, and points the stable `output/web-game-smoke` / `output/mission-visual-sweep` symlink at it; `summary.json` also carries `runDir` with that path. Older run folders are not deleted automatically, so a focused run's evidence does not erase a prior full run's.
 
 The gameplay trace payload should keep decision-useful feel fields available for automation: body profile, blocked/touching flags, drop-through state, coyote/buffer timers, dash edges, wall side, landing speed, jump source, damage source/tier, knockback, projectile spawn frame, touch-button state, weapon recharge state, and the single-boss visual/facing invariant.
 

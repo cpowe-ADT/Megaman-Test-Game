@@ -9,7 +9,9 @@ const privateSpriteManifestData = existsSync(privateSpriteManifestPath)
 const smokeWatchIgnored = process.env.VITE_SMOKE === '1' ? ['**/*'] : undefined
 const smokeServerActive = process.env.VITE_SMOKE === '1'
 // Source maps are for debugging a build; the dev server has its own. Phaser's map alone is 10MB.
-const buildSourcemap = process.env.BUILD_SOURCEMAP === '1'
+// 'hidden' still writes .map files next to the bundle but omits the //# sourceMappingURL comment,
+// so a browser (or an end user) never auto-loads them; upload them to a crash reporter by hand.
+const buildSourcemap = process.env.BUILD_SOURCEMAP === '1' ? 'hidden' : false
 
 function copyRuntimeAssetsPlugin(): Plugin {
   const sourceRoot = resolve(__dirname, 'assets')

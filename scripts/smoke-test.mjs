@@ -24,7 +24,10 @@ const touchUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro
 const titleUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off`
 /** Story surfaces on: for the narrative scenarios only. */
 const storyUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=on`
-const outputDir = path.resolve('output/web-game-smoke')
+const smokeStableDir = path.resolve('output/web-game-smoke')
+const outputDir = process.env.SMOKE_OUTPUT_DIR
+  ? path.resolve(process.env.SMOKE_OUTPUT_DIR)
+  : path.resolve('output/smoke-runs', new Date().toISOString().replace(/[:.]/g, '-'))
 const smokeSummaryPath = path.join(outputDir, 'summary.json')
 const smokeOnlyScenarios = new Set(
   String(process.env.SMOKE_ONLY ?? '')
@@ -34,6 +37,22 @@ const smokeOnlyScenarios = new Set(
 )
 const smokeFromScenario = String(process.env.SMOKE_FROM ?? '').trim() || null
 let smokeFromMatched = smokeFromScenario == null
+// Continue-on-failure harness controls: SMOKE_FAIL_FAST=1 restores stop-at-first-failure; every
+// scenario gets SMOKE_SCENARIO_TIMEOUT_MS (default 120s); SMOKE_FORCE_FAIL=<name> is test-only.
+const smokeFailFast = String(process.env.SMOKE_FAIL_FAST ?? '') === '1'
+const smokeScenarioTimeoutMs = Number(process.env.SMOKE_SCENARIO_TIMEOUT_MS ?? 120000) || 120000
+const smokeForceFailScenario = String(process.env.SMOKE_FORCE_FAIL ?? '').trim() || null
+
+// scripts/smoke/*.mjs import the same 'playwright' module instance, so patching chromium.launch here
+// also tracks the browsers they open. A scenario timeout force-closes whatever it opened.
+const smokeActiveBrowsers = new Set()
+const smokeOriginalChromiumLaunch = chromium.launch.bind(chromium)
+chromium.launch = async (...launchArgs) => {
+  const browser = await smokeOriginalChromiumLaunch(...launchArgs)
+  smokeActiveBrowsers.add(browser)
+  browser.on('disconnected', () => smokeActiveBrowsers.delete(browser))
+  return browser
+}
 const localClient = path.resolve('scripts/web_game_playwright_client.js')
 const defaultClient = path.join(
   os.homedir(),
@@ -88,6 +107,17 @@ function getSmokeServerConfig() {
   }
 }
 
+// `npm run dev` starts Vite as a grandchild; on Linux, signalling npm alone leaves Vite holding the pipes, so
+// the dev server runs in its own process group and the whole group is signalled (2026-09-23 CI browser-gates).
+function signalChildGroup(child, signal) {
+  try {
+    if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal)
+    else child.kill(signal)
+  } catch {
+    child.kill(signal)
+  }
+}
+
 const clickOnlyActions = {
   steps: [
     { buttons: [], frames: 60 },
@@ -133,6 +163,22 @@ function run(command, args, options = {}) {
       reject(new Error(`${command} ${args.join(' ')} exited with code ${code ?? 'unknown'}`))
     })
   })
+}
+
+function linkStableRunDir(target, linkPath) {
+  try {
+    const stat = fs.lstatSync(linkPath)
+    if (stat.isDirectory() && !stat.isSymbolicLink()) {
+      fs.rmSync(linkPath, { recursive: true, force: true })
+    } else {
+      fs.rmSync(linkPath, { force: true })
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error
+    }
+  }
+  fs.symlinkSync(target, linkPath, 'dir')
 }
 
 async function waitForServerReady(targetUrl, timeoutMs = 30_000) {
@@ -293,7 +339,38 @@ function createSmokeSummary() {
     ...provenance(),
     serverMode: smokeServerMode,
     outputDir,
+    runDir: outputDir,
     scenarios: []
+  }
+}
+
+async function runScenarioWithTimeout(name, runScenario, timeoutMs) {
+  const browsersBefore = new Set(smokeActiveBrowsers)
+  let timedOut = false
+  let timer
+  const scenarioPromise = Promise.resolve().then(() => runScenario())
+  const timeoutPromise = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => {
+      timedOut = true
+      const error = new Error(`Scenario "${name}" exceeded SMOKE_SCENARIO_TIMEOUT_MS (${timeoutMs}ms)`)
+      error.name = 'ScenarioTimeoutError'
+      error.timeoutMs = timeoutMs
+      reject(error)
+    }, timeoutMs)
+  })
+
+  try {
+    return await Promise.race([scenarioPromise, timeoutPromise])
+  } catch (error) {
+    if (timedOut) {
+      const scenarioBrowsers = [...smokeActiveBrowsers].filter((browser) => !browsersBefore.has(browser))
+      await Promise.all(scenarioBrowsers.map((browser) => browser.close().catch(() => {})))
+      // The abandoned scenario call may still settle later; never let that surface as an unhandled rejection.
+      scenarioPromise.catch(() => {})
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -327,7 +404,15 @@ async function executeSmokeScenario(summary, name, runScenario) {
 
   const startedAt = Date.now()
   try {
-    const result = await runScenario()
+    // SMOKE_FORCE_FAIL is test-only: it throws instead of running the scenario so continue-on-failure
+    // (and SMOKE_FAIL_FAST) can be proven without editing a real scenario.
+    const effectiveRunScenario =
+      smokeForceFailScenario === name
+        ? async () => {
+            throw new Error(`SMOKE_FORCE_FAIL forced scenario "${name}" to fail`)
+          }
+        : runScenario
+    const result = await runScenarioWithTimeout(name, effectiveRunScenario, smokeScenarioTimeoutMs)
     summary.scenarios.push({
       name,
       status: 'pass',
@@ -345,7 +430,10 @@ async function executeSmokeScenario(summary, name, runScenario) {
       error: serializeScenarioError(error)
     })
     writeSmokeSummary(summary)
-    throw error
+    if (smokeFailFast) {
+      throw error
+    }
+    return null
   }
 }
 
@@ -3399,6 +3487,7 @@ async function main() {
 
   fs.rmSync(outputDir, { recursive: true, force: true })
   fs.mkdirSync(outputDir, { recursive: true })
+  linkStableRunDir(outputDir, smokeStableDir)
   const summary = createSmokeSummary()
   writeSmokeSummary(summary)
 
@@ -3407,7 +3496,13 @@ async function main() {
     stdio: 'pipe',
     cwd: process.cwd(),
     env: smokeServer.env,
-    shell: false
+    shell: false,
+    detached: process.platform !== 'win32'
+  })
+  // A detached group no longer gets the terminal's Ctrl-C, so pass it on instead of orphaning the server.
+  process.once('SIGINT', () => {
+    signalChildGroup(vite, 'SIGTERM')
+    process.exit(130)
   })
 
   let markReady = () => {}
@@ -3617,10 +3712,10 @@ async function main() {
     if (smokeOnlyScenarios.size > 0 && summary.scenarios.every((scenario) => scenario.status === 'skipped')) {
       throw new Error(`SMOKE_ONLY=${[...smokeOnlyScenarios].join(',')} matched no scenario`)
     }
-    summary.status = 'pass'
+    summary.status = summary.scenarios.some((scenario) => scenario.status === 'fail') ? 'fail' : 'pass'
   } finally {
     if (!vite.killed) {
-      vite.kill('SIGTERM')
+      signalChildGroup(vite, 'SIGTERM')
     }
     if (summary.status === 'running') {
       summary.status = 'fail'
@@ -3631,6 +3726,9 @@ async function main() {
 
   const ran = summary.scenarios.filter((scenario) => scenario.status !== 'skipped').length
   console.log(`Smoke test complete: ${ran} ran, ${summary.scenarios.length - ran} skipped. Artifacts: ${outputDir}`)
+  if (summary.scenarios.some((scenario) => scenario.status === 'fail')) {
+    process.exitCode = 1
+  }
 }
 
 main().catch((error) => {

@@ -10,8 +10,8 @@
     "build": "npm run typecheck && vite build && npm run test:dist-assets",
     "preview": "vite preview",
     "test:dist-assets": "node scripts/check-dist-runtime-assets.mjs",
-    "test:logic": "node --loader ./tools/ts-node-loader.mjs tools/vitest-runner.ts",
-    "test:scenes": "node --loader ./tools/ts-node-loader.mjs --test tests/*.test.ts",
+    "test:logic": "node --import ./tools/register-ts-loader.mjs tools/vitest-runner.ts",
+    "test:scenes": "node --import ./tools/register-ts-loader.mjs --test tests/*.test.ts",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:smoke:preview": "npm run build && SMOKE_SERVER=preview node scripts/smoke-test.mjs",
     "test:visual-sweep": "node scripts/mission-visual-sweep.mjs",
@@ -30,31 +30,34 @@
     "agents:retro": "node scripts/agents/retro.mjs",
     "test": "npm run test:logic && npm run test:scenes",
     "ci": "npm run test && npm run build",
-    "sprites:validate": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/validate-manifest.mjs && npm run sprites:coverage",
-    "sprites:coverage": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/check-coverage.mjs",
-    "sprites:import": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/import-sprites.mjs",
-    "sprites:slice": "python3 tools/sprites/slice_sheet_to_atlas.py",
+    "sprites:validate": "node --import ./tools/register-ts-loader.mjs scripts/sprites/validate-manifest.mjs && npm run sprites:coverage",
+    "sprites:coverage": "node --import ./tools/register-ts-loader.mjs scripts/sprites/check-coverage.mjs",
+    "sprites:import": "node --import ./tools/register-ts-loader.mjs scripts/sprites/import-sprites.mjs",
+    "sprites:slice": ".venv/bin/python tools/sprites/slice_sheet_to_atlas.py",
     "sprites:intake": "node tools/sprites/intake-chatgpt-images.mjs",
-    "sprites:placeholders": "python3 scripts/sprites/generate-placeholder-atlases.py",
-    "sprites:prompts": "node --loader ./tools/ts-node-loader.mjs scripts/sprites/build-image-prompts.mjs",
+    "sprites:placeholders": ".venv/bin/python scripts/sprites/generate-placeholder-atlases.py",
+    "sprites:prompts": "node --import ./tools/register-ts-loader.mjs scripts/sprites/build-image-prompts.mjs",
     "story:script": "node scripts/story/build-script.mjs",
     "credits:build": "node scripts/credits/build-credits.mjs",
-    "enemies:export": "node --loader ./tools/ts-node-loader.mjs scripts/enemies/export-catalog.mjs",
+    "enemies:export": "node --import ./tools/register-ts-loader.mjs scripts/enemies/export-catalog.mjs",
     "verify": "npm run agents:check && npm run sprites:validate && npm run test && npm run build && npm run test:smoke",
     "probe:boss": "vite --open /debug/boss-probe.html",
     "probe:boss:volt": "vite --open '/?bossConfig=volt_golem&bossId=sentinel_rook'",
     "probe:boss:diag": "VITE_DIAG=1 vite --open /debug/boss-probe.html",
     "probe:bullet": "vite --open /debug/bullet-probe.html",
     "probe:bullet:diag": "VITE_DIAG=1 vite --open /debug/bullet-probe.html",
-    "assets:check": "node --loader ./tools/ts-node-loader.mjs scripts/ensure-bullet-asset.ts"
+    "assets:check": "node --import ./tools/register-ts-loader.mjs scripts/ensure-bullet-asset.ts"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "dependencies": {
-    "phaser": "^3.80.0"
+    "phaser": "3.90.0"
   },
   "devDependencies": {
-    "@types/node": "^22.20.2",
-    "playwright": "^1.58.2",
-    "typescript": "^5.4.0",
+    "@types/node": "22.20.2",
+    "playwright": "1.58.2",
+    "typescript": "5.9.3",
     "vite": "^5.0.0"
   }
 }

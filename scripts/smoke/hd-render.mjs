@@ -5,6 +5,16 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { chromium } from 'playwright'
 
+// Swaps (or adds) `renderer=webgl` on a smoke URL that otherwise carries `renderer=canvas`, so the 2x
+// page in this scenario exercises the WebGL path while the 1x page stays on Canvas.
+function withRenderer(url, renderer) {
+  if (/[?&]renderer=/.test(url)) {
+    return url.replace(/([?&]renderer=)[^&]*/, `$1${renderer}`)
+  }
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}renderer=${renderer}`
+}
+
 function scenarioDir(outputDir, name) {
   const dir = path.join(outputDir, name)
   fs.rmSync(dir, { recursive: true, force: true })
@@ -30,12 +40,35 @@ async function openGame(browser, { url, waitForState, tapKey, advanceFrames }, v
   return page
 }
 
-// Read canvas pixels in game units: (x, y) at scale s samples canvas pixel (x*s, y*s).
+// Read canvas pixels in game units: (x, y) at scale s samples canvas pixel (x*s, y*s). A WebGL-backed
+// canvas cannot also expose a 2D context (getContext('2d') returns null once 'webgl' was requested
+// first), so fall back to Phaser's own renderer.snapshot, which reads the framebuffer into an <img>;
+// draw that into an offscreen 2D canvas and sample it the same way.
 async function samplePixels(page, points, scale) {
   return page.evaluate(({ points, scale }) => {
+    const sample = (context) =>
+      points.map(([x, y]) => Array.from(context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data).slice(0, 3))
+
     const canvas = document.querySelector('canvas')
     const context = canvas.getContext('2d')
-    return points.map(([x, y]) => Array.from(context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data).slice(0, 3))
+    if (context) {
+      return sample(context)
+    }
+
+    return new Promise((resolve, reject) => {
+      window.__phaserGame.renderer.snapshot((image) => {
+        if (!image) {
+          reject(new Error('renderer.snapshot produced no image'))
+          return
+        }
+        const offscreen = document.createElement('canvas')
+        offscreen.width = image.width
+        offscreen.height = image.height
+        const offscreenContext = offscreen.getContext('2d')
+        offscreenContext.drawImage(image, 0, 0)
+        resolve(sample(offscreenContext))
+      })
+    })
   }, { points, scale })
 }
 
@@ -97,8 +130,10 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
   const errors = []
   try {
     const deps = { url, waitForState, tapKey, advanceFrames }
+    // The 2x page (and the 2x menu pages below) render through WebGL; the 1x page stays on Canvas.
+    const hdDeps = { ...deps, url: withRenderer(url, 'webgl') }
     const base = await openGame(browser, deps, { width: 448, height: 252 }, errors)
-    const hd = await openGame(browser, deps, { width: 896, height: 504 }, errors)
+    const hd = await openGame(browser, hdDeps, { width: 896, height: 504 }, errors)
 
     const baseState = await readState(base)
     const hdState = await readState(hd)
@@ -159,7 +194,7 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     assert.equal(shrunk.view.cameraZoom, 1)
     assert.equal(shrunk.view.textResolution, 1)
 
-    await assertMenusInsideFrame(browser, deps, dir, errors)
+    await assertMenusInsideFrame(browser, hdDeps, dir, errors)
 
     assert.equal(errors.length, 0, JSON.stringify(errors))
   } finally {

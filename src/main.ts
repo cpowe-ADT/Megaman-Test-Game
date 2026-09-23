@@ -78,6 +78,44 @@ type DebugWindow = Window & {
   __phaserGame?: Phaser.Game
   render_game_to_text?: () => string
   advanceTime?: (ms: number) => Promise<void>
+  stepFrames?: (frames: number) => number
+  stepFramesActive?: boolean
+}
+
+// Deterministic frame stepping for automation: sleeps Phaser's TimeStep (per node_modules/phaser's
+// Phaser 3.90 core/TimeStep.js sleep/wake pair) so no requestAnimationFrame callback races the steps
+// below, then drives `Phaser.Game#step` directly with a monotonic 60Hz clock so every step's delta is
+// exactly 1000/60 regardless of wall-clock time, and wakes the loop again before returning.
+function stepGameFrames(targetGame: Phaser.Game, frames: number): number {
+  const requested = Math.max(0, Math.trunc(frames))
+  if (requested === 0) {
+    return 0
+  }
+
+  const debugWindow = window as DebugWindow
+  const loop = targetGame.loop
+  const wasRunning = loop.running
+
+  debugWindow.stepFramesActive = true
+  if (wasRunning) {
+    loop.sleep()
+  }
+
+  const frameMs = 1000 / 60
+  let now = loop.lastTime > 0 ? loop.lastTime : window.performance.now()
+  let stepped = 0
+  for (let i = 0; i < requested; i += 1) {
+    now += frameMs
+    targetGame.step(now, frameMs)
+    stepped += 1
+  }
+
+  if (wasRunning) {
+    loop.wake()
+  }
+  debugWindow.stepFramesActive = false
+
+  return stepped
 }
 
 function installDevCrashOverlay(enable: boolean): void {
@@ -417,8 +455,12 @@ function installDebugHooks(targetGame: Phaser.Game): void {
   }
   if (AUTOMATION.enabled) {
     debugWindow.__phaserGame = targetGame
+    debugWindow.stepFrames = (frames: number) => stepGameFrames(targetGame, frames)
+    debugWindow.stepFramesActive = false
   } else {
     delete debugWindow.__phaserGame
+    delete debugWindow.stepFrames
+    delete debugWindow.stepFramesActive
   }
 }
 
