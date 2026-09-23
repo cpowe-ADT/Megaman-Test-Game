@@ -30,5 +30,7 @@ Reviews use `REVIEW_FORMAT.md` and decisions `DECISION_FORMAT.md` as their resul
 
 - Cost is calls times context: every tool call re-sends everything the worker has read so far. A fast worker running gates needed 7 calls and 57K tokens; the same job through `npm run -s gate` is one call. Cap calls, not just words.
 - The sender does the reading once: it builds the packet (`npm run agents:packet`) so the worker opens one file instead of making twenty tool calls.
+- The session is never the hand-off, for three reasons: another model (Codex, ChatGPT) cannot read it, a reviewer who sees the author's reasoning is no longer blind, and it costs the whole session on every call. What the session knows that the repo does not (a rejected approach, Craig's words, a half-finished hunt) goes into a note first, and the card cites it under `Constraints` or `Read`.
+- A follow-up goes to the same worker, which keeps its own context. A fork that inherits the session is allowed only when writing the note would cost more than the fork, and the progress entry says so.
 - One card per worker. If a worker needs another worker, it returns BLOCKED with the card it would send.
 - Word and tool-call caps are part of the task. A worker that needs more says so in `Open:` rather than spending it.
