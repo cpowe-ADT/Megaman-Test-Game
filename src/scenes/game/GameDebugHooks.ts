@@ -16,8 +16,26 @@ export type GameDebugHost = Phaser.Scene & Record<string, any>
  * Installs `window.bossDebug` and `window.stageDebug` for browser automation. Moved out of
  * `Game.devInit` unchanged in behavior; hooks added since prompt 01 are grouped at the end.
  */
+/** A held-action set from a given frame until the next row (`docs/prompts/05a-*` input replay). */
+export type InputScriptRow = Readonly<{ frame: number; held?: readonly string[] }>
+export type InputReplayResult = Readonly<{ frames: number; finalPlayer: { x: number; y: number; vx: number; vy: number } }>
+
+function readFinalPlayer(host: GameDebugHost): InputReplayResult['finalPlayer'] {
+  const body = host.player?.body as Phaser.Physics.Arcade.Body | undefined
+  return {
+    x: Number(host.player?.x ?? 0),
+    y: Number(host.player?.y ?? 0),
+    vx: Number(body?.velocity?.x ?? 0),
+    vy: Number(body?.velocity?.y ?? 0)
+  }
+}
+
 export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown): void {
   if (!AUTOMATION.enabled) return
+  let recordingRows: Array<{ frame: number; held: string[] }> | null = null
+  let recordingLastKey = ''
+  let recordingStartFrame = 0
+  let recordingHandler: (() => void) | null = null
   ;(window as any).dump = dump
       ;(window as any).dump = dump
       ;(window as any).bossDebug = {
@@ -225,6 +243,54 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
       Save.setSubTankFill(Array.isArray(fills) ? fills : Array.from({ length: state.subTanks }, () => 1))
       host.progressionSave = Save.load()
       return { subTanks: host.progressionSave.subTanks, subTankFill: host.progressionSave.subTankFill }
+    },
+    /**
+     * Frame-exact input replay (prompt 05 §5.1 item 9): `script` is a sparse list of
+     * `{ frame, held }` rows, each held-action set applying from its frame until the next row's.
+     * Feeds the automation-only action source (`SceneInputActions.setAutomationHeld`), which the
+     * keyboard hub latches presses/releases against exactly like a physical key change, and steps
+     * `window.stepFrames` between rows.
+     */
+    replayInputs: (script: readonly InputScriptRow[]): InputReplayResult => {
+      const rows = Array.isArray(script) ? [...script].sort((a, b) => a.frame - b.frame) : []
+      let framesStepped = 0
+      const stepFrames = (window as any).stepFrames as ((n: number) => number) | undefined
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index]
+        const held: Record<string, boolean> = {}
+        for (const action of row.held ?? []) held[action] = true
+        host.actions?.setAutomationHeld(held)
+        const next = rows[index + 1]
+        if (next) {
+          const delta = Math.max(0, Math.round(next.frame - row.frame))
+          if (delta > 0) framesStepped += stepFrames?.(delta) ?? 0
+        }
+      }
+      return { frames: framesStepped, finalPlayer: readFinalPlayer(host) }
+    },
+    /** Starts capturing the held-action set per frame from real input into the same `{ frame, held }` shape. */
+    recordInputs: (): boolean => {
+      recordingRows = []
+      recordingLastKey = ''
+      recordingStartFrame = host.game.loop.frame
+      recordingHandler = () => {
+        const snapshot = host.actions?.heldSnapshot() ?? {}
+        const held = Object.keys(snapshot).filter(action => snapshot[action]).sort()
+        const key = held.join(',')
+        if (key === recordingLastKey) return
+        recordingLastKey = key
+        recordingRows?.push({ frame: host.game.loop.frame - recordingStartFrame, held })
+      }
+      host.events.on('preupdate', recordingHandler)
+      return true
+    },
+    /** Stops `recordInputs()` and returns the recorded script (a valid `replayInputs` input). */
+    stopRecording: (): Array<{ frame: number; held: string[] }> => {
+      if (recordingHandler) host.events.off('preupdate', recordingHandler)
+      recordingHandler = null
+      const rows = recordingRows ?? []
+      recordingRows = null
+      return rows
     }
   })
 }

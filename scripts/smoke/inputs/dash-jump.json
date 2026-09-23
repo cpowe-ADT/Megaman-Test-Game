@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "stage": "any (13d-movement-feel spawn platform, grounded)",
+    "spawn": "player reset to x=180 via scene.newPlayerRuntime.resetForRespawn(60000) before replay",
+    "purpose": "dash-jump trace: 30 idle frames so the respawn jump-suppression window (120ms) lapses (EVAL-P5-002), folded into this one replay call for the same reason as dash-basic.json, then dash right for 4 frames (a fresh input edge takes a frame to reach the body, matching dash-basic.json), hold jump for 4 frames (a short hop clears stage geometry), release jump, then run to the apex (47 steps total, the deterministic frame vy first reaches exactly 0 in this motor). The dash carries vx=320 unchanged through the whole flight, so the single end read stands in for both the former takeoff and apex velocity samples; the end x/y is asserted within 2px of a recorded reference."
+  },
+  "rows": [
+    { "frame": 0, "held": [] },
+    { "frame": 30, "held": ["moveRight", "dash"] },
+    { "frame": 34, "held": ["moveRight", "dash", "jump"] },
+    { "frame": 38, "held": ["moveRight", "dash"] },
+    { "frame": 47, "held": ["moveRight", "dash"] }
+  ]
+}

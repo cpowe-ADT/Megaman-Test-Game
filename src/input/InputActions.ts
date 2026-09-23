@@ -61,6 +61,10 @@ export class SceneInputActions {
   private readonly state = new ActionState()
   private readonly listeners = new Map<InputAction, Set<() => void>>()
   private readonly pulses: HeldActions = {}
+  /** Automation-only source (`stageDebug.replayInputs`/`recordInputs`): a held-action set the hub
+   * treats like a physical device, latched through `captureSourceChange` so presses/releases fire
+   * exactly like key events. */
+  private automationHeld: HeldActions = {}
   private readonly cancellationListeners = new Set<() => void>()
   private buttons?: DigitalButtonPad
   private removeTouchListener?: () => void
@@ -96,9 +100,15 @@ export class SceneInputActions {
   private rawHeld(touch = this.buttons?.getHeldSnapshot()): HeldActions {
     const held = resolveKeyboardActions(this.hub.held, Settings.get().bindings)
     for (const [button, action] of Object.entries(touchActions)) held[action] ||= Boolean(touch?.[button as keyof typeof touchActions])
-    for (const action of INPUT_ACTIONS) held[action] ||= this.pulses[action]
+    for (const action of INPUT_ACTIONS) held[action] ||= this.pulses[action] || this.automationHeld[action]
     return held
   }
+  /** Replaces the automation-held set, latching presses/releases the same way a keyboard change does. */
+  setAutomationHeld(held: HeldActions): void {
+    this.captureSourceChange(() => { this.automationHeld = { ...held } })
+  }
+  /** The held-action set as the hub currently sees it, for automation recording. */
+  heldSnapshot(): HeldActions { return this.rawHeld() }
   snapshot(): ActionSnapshot {
     return this.state.sample(this.scene.game.loop.frame, [this.rawHeld()], this.hub.owns(this.scene), this.deferGameplay() ? gameplayActions : [])
   }

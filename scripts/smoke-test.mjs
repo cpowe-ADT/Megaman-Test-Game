@@ -258,6 +258,26 @@ async function advanceFrames(page, frames = 1) {
   }
 }
 
+/**
+ * Loads a `{ meta, rows }` input script from `scripts/smoke/inputs/` (or a bare `[{ frame, held }]`
+ * array) and replays it through `stageDebug.replayInputs`, which feeds the automation-only action
+ * source and steps `window.stepFrames` between rows (prompt 05 §5.1 item 9). Resolves with
+ * `{ frames, finalPlayer: { x, y, vx, vy } }`.
+ */
+async function replayInputs(page, scriptPath) {
+  const raw = fs.readFileSync(path.resolve(scriptPath), 'utf8')
+  const parsed = JSON.parse(raw)
+  const rows = Array.isArray(parsed) ? parsed : parsed.rows
+  return page.evaluate((script) => window.stageDebug.replayInputs(script), rows)
+}
+
+/** Releases every automation-held action, so the next `replayInputs` call presses fresh (a held
+ * dash never registers a new dash edge; a real keyboard release does). */
+async function releaseReplayedInputs(page) {
+  await page.evaluate(() => window.stageDebug.replayInputs([{ frame: 0, held: [] }]))
+}
+
+
 async function readState(page) {
   let text = null
   try {
@@ -1825,72 +1845,11 @@ async function runUnifiedPlayerDamageScenario(name) {
 
 async function runMovementFeelScenario(name) {
   const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
-  const sampleDash = async () => {
-    const trace = []
-    await page.keyboard.down('ArrowRight')
-    await page.keyboard.down('z')
-    for (let frame = 0; frame < 7; frame += 1) {
-      await advanceFrames(page, 1)
-      const state = await readState(page)
-      trace.push({
-        frame,
-        vx: Number(state?.player?.vx ?? 0),
-        x: Number(state?.player?.x ?? 0),
-        dashing: Boolean(state?.newPlayer?.locomotion?.dashing),
-        dashMs: Number(state?.newPlayer?.locomotion?.dashMs ?? 0),
-        locomotion: state?.newPlayer?.locomotion ?? null,
-        input: state?.newPlayer?.input ?? state?.input ?? null,
-        ticker: state?.ticker ?? null,
-        story: state?.story ?? null,
-        dialogue: state?.dialogue ?? null
-      })
-    }
-    await page.keyboard.up('z')
-    await page.keyboard.up('ArrowRight')
-    return trace
-  }
-  const readBody = () =>
-    page.evaluate(() => {
-      const scene = window.__phaserGame?.scene?.getScene?.('Game')
-      const body = scene?.player?.body
-      return {
-        vx: Number(body?.velocity?.x ?? 0),
-        vy: Number(body?.velocity?.y ?? 0),
-        grounded: Boolean(body?.blocked?.down || body?.onFloor?.()),
-        x: Number(scene?.player?.x ?? 0),
-        y: Number(scene?.player?.y ?? 0)
-      }
-    })
-  // Dash-jump (EVAL-P5-002): dash right, press jump on dash frame 3, release after four frames
-  // (a short hop keeps the arc clear of stage geometry), sample until the apex.
-  const sampleDashJump = async () => {
-    const trace = []
-    await page.keyboard.down('ArrowRight')
-    await page.keyboard.down('z')
-    try {
-      for (let frame = 0; frame < 3; frame += 1) {
-        await advanceFrames(page, 1)
-        trace.push({ frame, phase: 'dash', ...(await readBody()) })
-      }
-      await page.keyboard.down('Space')
-      for (let frame = 3; frame < 60; frame += 1) {
-        if (frame === 7) {
-          await page.keyboard.up('Space')
-        }
-        await advanceFrames(page, 1)
-        const sample = { frame, phase: 'jump', ...(await readBody()) }
-        trace.push(sample)
-        if (!sample.grounded && sample.vy >= 0) {
-          break
-        }
-      }
-    } finally {
-      await page.keyboard.up('Space')
-      await page.keyboard.up('z')
-      await page.keyboard.up('ArrowRight')
-    }
-    return trace
-  }
+  // Base/Speedster dash and the dash-jump trace (EVAL-P5-001, EVAL-P5-002) run from frame-exact
+  // input scripts (`stageDebug.replayInputs`, prompt 05 §5.1 item 9) instead of Playwright key
+  // timing; see scripts/smoke/inputs/*.json for the held-action rows and reference thresholds.
+  const dashScript = path.resolve('scripts/smoke/inputs/dash-basic.json')
+  const dashJumpScript = path.resolve('scripts/smoke/inputs/dash-jump.json')
 
   try {
     await waitForState(
@@ -1899,6 +1858,13 @@ async function runMovementFeelScenario(name) {
       8000,
       'grounded player before movement feel trace'
     )
+    // From here on every step is deterministic (`window.stepFrames`, via `stageDebug.replayInputs`).
+    // Sleeping Phaser's TimeStep now, once, keeps it asleep for the rest of this scenario: each
+    // `stepFrames` call below sees the loop already asleep and skips its own wake(), so no stray
+    // real animation frame (with an uncontrolled delta) can perturb the Arcade physics fixed-step
+    // accumulator between our page.evaluate calls. `advanceTime`/`waitForState` cannot run after
+    // this point (they need the real rAF loop), which is why the traces below no longer use them.
+    await page.evaluate(() => window.__phaserGame?.loop.sleep())
     const resetMovement = (speedster) =>
       page.evaluate((enableSpeedster) => {
         const scene = window.__phaserGame?.scene?.getScene?.('Game')
@@ -1928,12 +1894,14 @@ async function runMovementFeelScenario(name) {
         }
       }, speedster)
 
+    const near = (value, expected, tolerance = 2) => Math.abs(value - expected) <= tolerance
+
     const baseLimits = await resetMovement(false)
-    await advanceFrames(page, 2)
-    const baseTrace = await sampleDash()
+    const baseReplay = await replayInputs(page, dashScript)
+    await releaseReplayedInputs(page)
     const speedsterLimits = await resetMovement(true)
-    await advanceFrames(page, 2)
-    const speedsterTrace = await sampleDash()
+    const speedsterReplay = await replayInputs(page, dashScript)
+    await releaseReplayedInputs(page)
 
     const wallJump = await page.evaluate(() => {
       const scene = window.__phaserGame?.scene?.getScene?.('Game')
@@ -1985,33 +1953,32 @@ async function runMovementFeelScenario(name) {
       return { dragX: Number(body?.drag?.x ?? Number.NaN), allowDrag: Boolean(body?.allowDrag) }
     })
     await resetMovement(false)
-    await waitForState(
-      page,
-      (state) => state.newPlayer?.locomotion?.grounded === true,
-      4000,
-      'grounded player before dash-jump trace'
-    )
-    // resetForRespawn suppresses jump for 120ms of scene time; let it lapse before the trace.
-    await advanceFrames(page, 30)
-    const dashJumpTrace = await sampleDashJump()
-    const airborne = dashJumpTrace.filter((sample) => sample.phase === 'jump' && !sample.grounded)
-    const takeoff = airborne[0] ?? null
-    const apex = airborne.find((sample) => sample.vy >= 0) ?? null
+    // The wall-jump probe above left synthetic blocked/touching flags; dashJumpScript's leading 30
+    // idle deterministic frames both recompute real ground contact and let the respawn jump-
+    // suppression window (120ms) lapse before the dash+jump rows run.
+    const dashJumpReplay = await replayInputs(page, dashJumpScript)
+    // The dash carries vx=320 unchanged through takeoff and the whole flight in this motor (see
+    // scripts/smoke/inputs/dash-jump.json), so the single 18-step read below stands in for both the
+    // former takeoff and apex velocity samples; apex is where vy first reaches 0.
+    const apex = dashJumpReplay.finalPlayer
 
-    const peak = (trace) => Math.max(...trace.map((sample) => Math.abs(sample.vx)))
-    const basePeak = peak(baseTrace)
-    const speedsterPeak = peak(speedsterTrace)
     fs.writeFileSync(
       path.join(scenarioDir, 'dash-traces.json'),
-      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, dragState, dashJumpTrace, playerAfter: (await readState(page))?.newPlayer ?? null }, null, 2)
+      JSON.stringify({ baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, playerAfter: (await readState(page))?.newPlayer ?? null }, null, 2)
     )
-    if (baseLimits.maxVelocityX !== 320 || basePeak < 315 || basePeak > 321) {
-      throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} peak=${basePeak}.`)
+    if (baseLimits.maxVelocityX !== 320 || baseReplay.finalPlayer.vx < 315 || baseReplay.finalPlayer.vx > 321) {
+      throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} vx=${baseReplay.finalPlayer.vx}.`)
     }
-    if (speedsterLimits.maxVelocityX !== 368 || speedsterPeak < 363 || speedsterPeak > 369) {
+    if (!near(baseReplay.finalPlayer.x, 212, 2)) {
+      throw new Error(`Expected the base dash to land near x=212 after 7 frames, got ${JSON.stringify(baseReplay.finalPlayer)}.`)
+    }
+    if (speedsterLimits.maxVelocityX !== 368 || speedsterReplay.finalPlayer.vx < 363 || speedsterReplay.finalPlayer.vx > 369) {
       throw new Error(
-        `Expected Speedster dash near 368, got cap=${speedsterLimits.maxVelocityX} peak=${speedsterPeak}.`
+        `Expected Speedster dash near 368, got cap=${speedsterLimits.maxVelocityX} vx=${speedsterReplay.finalPlayer.vx}.`
       )
+    }
+    if (!near(speedsterReplay.finalPlayer.x, 216.8, 2)) {
+      throw new Error(`Expected the Speedster dash to land near x=216.8 after 7 frames, got ${JSON.stringify(speedsterReplay.finalPlayer)}.`)
     }
     if (!wallJump.wallJumping || wallJump.jumpSource !== 'wall' || Math.abs(wallJump.vx + 353.28) > 0.01) {
       throw new Error(`Expected boosted Speedster wall-jump launch vx=-353.28, got ${JSON.stringify(wallJump)}.`)
@@ -2019,18 +1986,21 @@ async function runMovementFeelScenario(name) {
     if (dragState.dragX !== 0) {
       throw new Error(`Expected the player body drag.x to be 0 (the motor owns X), got ${JSON.stringify(dragState)}.`)
     }
-    if (!takeoff || Math.abs(takeoff.vx) < 315 || Math.abs(takeoff.vx) > 321) {
-      throw new Error(`Expected the dash-jump to leave the ground near 320, got ${JSON.stringify(takeoff)}.`)
+    if (apex.vx < 315 || apex.vx > 321) {
+      throw new Error(`Expected the dash-jump to leave the ground near 320, got ${JSON.stringify(apex)}.`)
     }
-    if (!apex || Math.abs(apex.vx) < 300) {
+    if (apex.vy < 0 || apex.vx < 300) {
       throw new Error(`Expected the dash-jump to hold at least 300 at apex, got ${JSON.stringify(apex)}.`)
+    }
+    if (!near(apex.x, 265.33, 2) || !near(apex.y, 180.77, 2)) {
+      throw new Error(`Expected the dash-jump apex near x=265.33 y=180.77, got ${JSON.stringify(apex)}.`)
     }
 
     const finalState = await readState(page)
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
       path.join(scenarioDir, 'state-0.json'),
-      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, dragState, dashJumpTrace, finalState }, null, 2)
+      JSON.stringify({ baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, finalState }, null, 2)
     )
   } finally {
     await page.keyboard.up('Space').catch(() => {})

@@ -86,6 +86,13 @@ type DebugWindow = Window & {
 // Phaser 3.90 core/TimeStep.js sleep/wake pair) so no requestAnimationFrame callback races the steps
 // below, then drives `Phaser.Game#step` directly with a monotonic 60Hz clock so every step's delta is
 // exactly 1000/60 regardless of wall-clock time, and wakes the loop again before returning.
+// `Phaser.Game#step` never touches `loop.lastTime`/`loop.frame` (only TimeStep's own rAF-bound
+// `step`/`stepLimitFPS` do), so this function advances them itself: without it, `loop.lastTime` stays
+// stale across separate calls (every call would restart `now` from the same frozen value instead of
+// continuing where the previous one left off, un-anchoring scene timers such as i-frames, jump
+// suppression and dash duration from step count), and `loop.frame` stays frozen for the whole session
+// (breaking anything, in or out of this codebase, that keys a per-step cache off it, e.g.
+// `SceneInputActions`'s action-sampling de-dup).
 function stepGameFrames(targetGame: Phaser.Game, frames: number): number {
   const requested = Math.max(0, Math.trunc(frames))
   if (requested === 0) {
@@ -107,6 +114,10 @@ function stepGameFrames(targetGame: Phaser.Game, frames: number): number {
   for (let i = 0; i < requested; i += 1) {
     now += frameMs
     targetGame.step(now, frameMs)
+    loop.lastTime = now
+    // `frame` is typed read-only (Phaser.Core.TimeStep#frame), but TimeStep's own step/stepLimitFPS
+    // mutate it directly; this mirrors that for the direct-step path above.
+    ;(loop as unknown as { frame: number }).frame += 1
     stepped += 1
   }
 
