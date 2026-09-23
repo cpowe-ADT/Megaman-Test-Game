@@ -40,13 +40,16 @@ async function samplePixels(page, points, scale) {
 }
 
 // Every visible Text in the running scenes, in game pixels, that falls outside the 448x252 frame.
+// Returns the list plus how many Text objects were inspected, so an empty list cannot mean "saw nothing".
 async function textOutsideFrame(page) {
   return page.evaluate(() => {
     const outside = []
+    let inspected = 0
     window.__phaserGame.scene.getScenes(true).forEach((scene) => {
       const visit = (list) =>
         list.forEach((object) => {
           if (object.type === 'Text' && object.visible && object.alpha > 0 && object.text) {
+            inspected += 1
             const bounds = object.getBounds()
             if (bounds.left < -1 || bounds.top < -1 || bounds.right > 449 || bounds.bottom > 253) {
               outside.push({ scene: scene.scene.key, text: object.text.slice(0, 24), x: Math.round(bounds.x), y: Math.round(bounds.y), right: Math.round(bounds.right), bottom: Math.round(bounds.bottom) })
@@ -56,7 +59,7 @@ async function textOutsideFrame(page) {
         })
       visit(scene.children.list)
     })
-    return outside
+    return { outside, inspected }
   })
 }
 
@@ -82,8 +85,9 @@ async function assertMenusInsideFrame(browser, { url, waitForState, tapKey }, di
     fs.writeFileSync(path.join(dir, 'menus-2x.json'), JSON.stringify(report, null, 2))
     await page.close()
   }
-  Object.entries(report).forEach(([screen, outside]) => {
-    assert.deepEqual(outside, [], `${screen} at 2x has text outside the 448x252 frame`)
+  Object.entries(report).forEach(([screen, result]) => {
+    assert.ok(result.inspected > 0, `${screen} at 2x: no visible Text was inspected`)
+    assert.deepEqual(result.outside, [], `${screen} at 2x has text outside the 448x252 frame`)
   })
 }
 

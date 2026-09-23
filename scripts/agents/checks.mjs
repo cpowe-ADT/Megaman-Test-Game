@@ -23,7 +23,7 @@ function splitRow(line) {
     .map((cell) => cell.trim())
 }
 
-export const STATUS_PATTERN = /^(PASS|FAIL|PENDING|SKIPPED \(.+\))/
+export const STATUS_PATTERN = /^(?:(?:PASS|FAIL|PENDING)(?![A-Za-z])|SKIPPED \(.+\))/
 
 /** Prompt number of an eval id (EVAL-P9-003 -> 9), or null for ART/REVIEW rows. */
 export function promptOf(id) {
@@ -58,10 +58,46 @@ export function checkLedger(rows, { commitExists, enforceFrom = 5 }) {
       } else if (!shas.some((sha) => commitExists(sha))) {
         issues.push({ level, id: row.id, message: `PASS cites ${shas.join(', ')}, which git does not know` })
       }
-      if (row.evidence.trim().length < 20) issues.push({ level, id: row.id, message: 'PASS with no evidence (command, result line, artifact)' })
+      if (!hasArtifact(row.evidence) || !hasResult(row.evidence)) {
+        issues.push({ level, id: row.id, message: 'PASS evidence needs an artifact path (output/..., a test file) and a result (a backticked command or line, or "->")' })
+      }
     }
   }
   return issues
+}
+
+/**
+ * Phase ids a prompt part covers, from the prompt's sessions sentence (`05b` (5.3, 5.4 and 5.7)) and its
+ * top table (rows whose first cell lists the part, e.g. "06e, 06f"; every id in the phase cell counts).
+ * "9.0 to 9.4" expands to each phase between. Returns [] when the prompt names none.
+ */
+export function partPhases(promptMarkdown, part) {
+  const ids = new Set()
+  const add = (text) => {
+    for (const range of text.matchAll(/(\d+)\.(\d+) to (\d+)\.(\d+)/g)) {
+      if (range[1] === range[3]) for (let minor = Number(range[2]); minor <= Number(range[4]); minor += 1) ids.add(`${range[1]}.${minor}`)
+    }
+    for (const id of text.matchAll(/\b(\d+\.\d+)\b/g)) ids.add(id[1])
+  }
+  const sentence = promptMarkdown.match(new RegExp('`' + part + '`[^(]*\\(([^)]*)\\)'))
+  if (sentence) add(sentence[1])
+  for (const line of promptMarkdown.split('\n')) {
+    const cells = splitRow(line)
+    if (!cells || cells.length < 2) continue
+    const parts = cells[0].split(/[,\s]+/).filter(Boolean)
+    if (parts.includes(part)) add(cells[1])
+  }
+  return [...ids].sort((a, b) => Number(a.split('.')[1]) - Number(b.split('.')[1]))
+}
+
+/** An artifact path: something under output/, or a repo file with an extension. */
+export function hasArtifact(text) {
+  return /output\/[\w./{},*-]+|(?:src|tests|scripts|docs)\/[\w./-]+\.\w+/.test(text)
+}
+
+/** A result: a backticked command or result line, or an arrow from a command to its result. */
+export function hasResult(text) {
+  return /`[^`]{3,}`|->|→/.test(text)
 }
 
 export const HANDOFF_SECTIONS = ['Status:', 'Branch and final commit', 'What changed', 'Decisions made', 'Content inventory', 'Evidence', 'Open risks', 'Inputs for']
@@ -98,10 +134,14 @@ export function handoffStatus(markdown) {
  * Prompt chaining: may prompt `target` start? `chain[target]` names the handoffs that must be COMPLETE and
  * the eval ids (or `P<n>` for every row of a prompt) that must be PASS or SKIPPED.
  */
-export function checkEntry(target, { chain, handoffs, rows }) {
+export function checkEntry(target, { chain, handoffs, rows, decisions = '' }) {
   const rule = chain[String(target)]
   if (!rule) return [{ level: 'error', id: `entry ${target}`, message: 'no chain rule for this prompt in tests/agent-budget.json' }]
-  const issues = []
+  const issues = openBlockers(decisions, target).map((row) => ({
+    level: 'error',
+    id: `entry ${target}`,
+    message: `${row.id} is OPEN and blocks entry ${target}: ${row.question.slice(0, 80)}`
+  }))
   for (const handoff of rule.handoffs ?? []) {
     const status = handoffs[handoff]
     if (status !== 'COMPLETE') issues.push({ level: 'error', id: `entry ${target}`, message: `handoff ${handoff} is ${status ?? 'missing'}, not COMPLETE` })
@@ -165,14 +205,26 @@ export function missingDocPaths(markdown, exists) {
   return [...new Set(missing)]
 }
 
-/** Decisions log rows: `| D-001 | raised | question | recommendation | OPEN or DECIDED | Craig's reply | date |`. */
+/** Decisions log rows: `| D-001 | raised | question | recommendation | blocks | OPEN or DECIDED | Craig's reply | date |`. */
+export function parseDecisions(markdown) {
+  return markdown
+    .split('\n')
+    .map(splitRow)
+    .filter((cells) => cells && /^D-\d{3}$/.test(cells[0]))
+    .map(([id, raised, question, recommendation, blocks, status, reply, date]) => ({ id, raised, question, recommendation, blocks: blocks ?? '', status, reply, date }))
+}
+
+/** OPEN decisions whose Blocks cell names `entry <N>`: prompt N cannot start until Craig answers them. */
+export function openBlockers(markdown, target) {
+  return parseDecisions(markdown).filter(
+    (row) => row.status === 'OPEN' && new RegExp(`\\bentry ${target}\\b`).test(row.blocks)
+  )
+}
+
 export function checkDecisions(markdown) {
   const issues = []
   const ids = new Set()
-  for (const line of markdown.split('\n')) {
-    const cells = splitRow(line)
-    if (!cells || !/^D-\d{3}$/.test(cells[0])) continue
-    const [id, , question, recommendation, status, reply] = cells
+  for (const { id, question, recommendation, status, reply } of parseDecisions(markdown)) {
     if (ids.has(id)) issues.push({ level: 'error', id, message: 'duplicate decision id' })
     ids.add(id)
     if (!question || !recommendation) issues.push({ level: 'error', id, message: 'every decision needs a question and a recommendation' })
@@ -194,12 +246,28 @@ export function parseReview(markdown, name = 'review') {
   const findings = []
   const scores = []
   const issues = []
+  let inFindings = false
   for (const line of markdown.split('\n')) {
     const cells = splitRow(line)
-    if (!cells) continue
-    if (/^(BLOCK|MAJOR|MINOR)$/.test(cells[0])) {
-      const [severity, claim, evidence, fix] = cells
-      const cited = /[\w./-]+\.\w+:\d+|output\/\S+\.(png|json|log|md)|`[^`]+`/.test(evidence ?? '')
+    if (!cells) {
+      if (!/^\|\s*-{3}/.test(line)) inFindings = false
+      continue
+    }
+    if (/^Severity$/i.test(cells[0])) {
+      inFindings = true
+      continue
+    }
+    // Emphasis must not hide a severity: **BLOCK** is a BLOCK.
+    const severityCell = cells[0].replace(/[*_`]/g, '').trim().toUpperCase()
+    if (inFindings && !/^(BLOCK|MAJOR|MINOR)$/.test(severityCell)) {
+      issues.push({ level: 'error', id: name, message: `findings row with unknown severity "${cells[0].slice(0, 20)}"` })
+      continue
+    }
+    if (/^(BLOCK|MAJOR|MINOR)$/.test(severityCell)) {
+      const [, claim, evidence, fix] = cells
+      const severity = severityCell
+      // path:line, an artifact under output/, or a backticked command followed by its result ("->").
+      const cited = /[\w./-]+\.\w+:\d+|output\/\S+\.(png|json|log|md|txt)|`[^`]+`\s*(->|→)\s*\S/.test(evidence ?? '')
       findings.push({ severity, claim, evidence, fix, cited })
       if (!cited) issues.push({ level: 'error', id: name, message: `${severity} finding has no file:line or artifact evidence: "${(claim ?? '').slice(0, 60)}"` })
     } else if (cells.length >= 2 && /^[1-5]$/.test(cells[1]) && cells[0] && !/^Rubric/i.test(cells[0])) {

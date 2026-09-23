@@ -1,6 +1,6 @@
 # Progress
 
-The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** and the last three entries; nothing older is needed by default. Older entries are verbatim in `docs/archive/progress/`. Write one entry per session with the template below; `npm run agents:check` keeps this file under 20KB and `npm run agents:rotate-progress` moves the oldest entries to the archive when it grows. Live numbers (test counts, `Game.ts` lines, budgets) come from `npm run agents:facts`; do not copy them into prose where they go stale.
+The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** and the last three entries; nothing older is needed by default. Older entries are verbatim in `docs/archive/progress/`. Write one entry per session with the template below; `npm run agents:check` enforces this file's budget (`tests/agent-budget.json`) and `npm run agents:rotate-progress` moves the oldest entries to the archive when it grows. Live numbers (test counts, `Game.ts` lines, budgets) come from `npm run agents:facts`; do not copy them into prose where they go stale.
 
 ## Now
 

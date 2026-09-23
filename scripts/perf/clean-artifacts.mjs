@@ -13,6 +13,8 @@ import path from 'node:path'
 
 const root = path.resolve('.')
 const apply = process.argv.includes('--yes')
+// Runs younger than this are kept: they are usually evidence a ledger row or handoff has not cited yet.
+const KEEP_DAYS = 3
 const MB = 1e6
 
 function du(target) {
@@ -21,7 +23,8 @@ function du(target) {
   return fs.readdirSync(target).reduce((sum, name) => sum + du(path.join(target, name)), 0)
 }
 
-const markdown = execFileSync('git', ['ls-files', '-z', '*.md'], { cwd: root, encoding: 'utf8' })
+// Tracked and untracked (not ignored) Markdown: a handoff being written today cites evidence too.
+const markdown = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '*.md'], { cwd: root, encoding: 'utf8' })
   .split('\0')
   .filter(Boolean)
   .map((file) => fs.readFileSync(path.join(root, file), 'utf8'))
@@ -38,7 +41,8 @@ if (fs.existsSync(output)) {
   fs.readdirSync(output).forEach((name) => {
     const rel = `output/${name}`
     // The latest smoke, sweep and perf runs are what the next session compares against.
-    if (['web-game-smoke', 'mission-visual-sweep', 'perf'].includes(name) || markdown.includes(rel)) {
+    const ageDays = (Date.now() - fs.statSync(path.join(output, name)).mtimeMs) / 86400000
+    if (['web-game-smoke', 'mission-visual-sweep', 'perf', 'context'].includes(name) || markdown.includes(rel) || ageDays < KEEP_DAYS) {
       kept.push(rel)
     } else {
       candidates.push({ rel, reason: 'not cited in any tracked .md' })

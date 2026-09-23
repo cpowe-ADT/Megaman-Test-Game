@@ -28,10 +28,11 @@ const entryIndex = process.argv.indexOf('--entry')
 const entry = entryIndex > -1 ? Number(process.argv[entryIndex + 1]) : null
 
 const commitCache = new Map()
+/** The commit exists and is on this branch (an ancestor of HEAD), not just somewhere in the object store. */
 function commitExists(sha) {
   if (!commitCache.has(sha)) {
     try {
-      execFileSync('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd: root, stdio: 'ignore' })
+      execFileSync('git', ['merge-base', '--is-ancestor', sha, 'HEAD'], { cwd: root, stdio: 'ignore' })
       commitCache.set(sha, true)
     } catch {
       commitCache.set(sha, false)
@@ -47,9 +48,17 @@ const handoffDir = 'docs/prompts/handoff'
 const handoffFiles = fs.readdirSync(path.join(root, handoffDir)).filter((file) => /^\d/.test(file) && file.endsWith('.md'))
 const handoffs = Object.fromEntries(handoffFiles.map((file) => [file.replace(/\.md$/, ''), handoffStatus(read(`${handoffDir}/${file}`))]))
 
-const tsNocheckFiles = execFileSync('git', ['grep', '-l', '@ts-nocheck', '--', 'src'], { cwd: root, encoding: 'utf8' })
-  .split('\n')
-  .filter(Boolean)
+// The pragma itself (a line comment at the start of a line), not the word in prose; untracked files count.
+const tsNocheckFiles = (() => {
+  try {
+    return execFileSync('git', ['grep', '--untracked', '-lE', '^[[:space:]]*//[[:space:]]*@ts-nocheck', '--', 'src'], { cwd: root, encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean)
+  } catch (error) {
+    if (error.status === 1) return [] // git grep exits 1 when nothing matches
+    throw error
+  }
+})()
 const gameTsLines = read('src/scenes/Game.ts').split('\n').length - 1
 
 const docStats = Object.fromEntries(
@@ -72,7 +81,7 @@ const groups = [
   ],
   ['decisions', checkDecisions(read('docs/prompts/DECISIONS.md'))]
 ]
-if (entry !== null) groups.push([`entry ${entry}`, checkEntry(entry, { chain: budget.chain, handoffs, rows })])
+if (entry !== null) groups.push([`entry ${entry}`, checkEntry(entry, { chain: budget.chain, handoffs, rows, decisions: read('docs/prompts/DECISIONS.md') })])
 
 let errors = 0
 let warnings = 0

@@ -26,7 +26,7 @@ export class HUD {
   private bossName = 'BOSS • ???'
   private weaponColor = 0x58d8ff
   /** What each bar last baked (values and render scale); the boss bar was rebuilt every frame with an unchanged value. */
-  private readonly drawnBars = new WeakMap<BakedGraphics, string>()
+  private drawnBars = new WeakMap<BakedGraphics, string>()
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -35,6 +35,13 @@ export class HUD {
     this.gChrome = new BakedGraphics(scene, 'hud-baked-chrome')
     this.drawChrome()
     this.root.add(this.gChrome.image)
+    // A lost and restored WebGL context empties every DynamicTexture; bake the panels and bars again.
+    const rebake = () => {
+      this.drawnBars = new WeakMap()
+      this.resize()
+    }
+    scene.game.renderer?.on?.('restorewebgl', rebake)
+    scene.events.once('shutdown', () => scene.game.renderer?.off?.('restorewebgl', rebake))
 
     const hasBitmap = this.scene.cache.bitmapFont.exists('font')
     const mkText = (

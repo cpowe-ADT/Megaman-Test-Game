@@ -16,7 +16,14 @@ const bossSpecs = fs.readdirSync(path.join(root, 'src/boss/__tests__')).filter((
 const smokeScenarios = count(read('scripts/smoke-test.mjs'), /executeSmokeScenario\(summary,\s*'/g)
 const sweepMissions = count(read('scripts/mission-visual-sweep.mjs'), /\{ stageId: '/g)
 const gameTs = read('src/scenes/Game.ts').split('\n').length - 1
-const noCheck = git('grep', '-l', '@ts-nocheck', '--', 'src').split('\n').filter(Boolean)
+const noCheck = (() => {
+  try {
+    return git('grep', '--untracked', '-lE', '^[[:space:]]*//[[:space:]]*@ts-nocheck', '--', 'src').split('\n').filter(Boolean)
+  } catch (error) {
+    if (error.status === 1) return []
+    throw error
+  }
+})()
 const ledgerFiles = ['docs/prompts/EVAL_LEDGER.md', ...fs.readdirSync(path.join(root, 'docs/prompts/archive')).filter((file) => file.startsWith('EVAL_LEDGER')).map((file) => `docs/prompts/archive/${file}`)]
 const rows = ledgerFiles.flatMap((file) => parseLedger(read(file)))
 const byPrompt = {}

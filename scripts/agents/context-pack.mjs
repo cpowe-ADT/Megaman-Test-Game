@@ -9,6 +9,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { partPhases } from './checks.mjs'
 
 const root = path.resolve('.')
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
@@ -46,14 +47,15 @@ function sections(markdown, prefixes) {
   return out.join('\n\n')
 }
 
-// Phases of this part: rows of the prompt's top table that start with the part id.
-const phaseIds = prompt
-  .split('\n')
-  .filter((line) => line.startsWith(`| ${part} |`))
-  .map((line) => line.split('|')[2]?.trim().match(/^(\d+\.\d+)/)?.[1])
-  .filter(Boolean)
+// Phases of this part (sessions sentence and top table), plus any section named after the part ("10b work order").
+const phaseIds = partPhases(prompt, part)
+const partSections = sections(prompt, [part]).length ? [part] : prompt.split('\n').filter((line) => line.startsWith('## ') && line.includes(part)).map((line) => line.slice(3))
+if (phaseIds.length === 0 && partSections.length === 0) {
+  console.error(`no phases or sections found for part ${part} in docs/prompts/${promptFile}: name them in the sessions sentence or the top table`)
+  process.exit(1)
+}
 const intro = prompt.split('\n## ')[0].trim()
-const promptBody = sections(prompt, ['Entry conditions', 'Ground truth', 'Outcome', ...phaseIds.map((id) => `Phase ${id}`), 'Exit Gate'])
+const promptBody = sections(prompt, ['Entry conditions', 'Ground truth', 'Outcome', ...phaseIds.map((id) => `Phase ${id}`), ...partSections, 'Exit Gate'])
 
 const charter = read('docs/prompts/00-orchestrator-charter.md')
 const amendments = charter.slice(charter.indexOf('**Amendments'), charter.indexOf('## 3.')).trim()
@@ -88,7 +90,7 @@ const readRows = readList.map((file) => {
 
 let pack = `# Context pack: part ${part} (${promptFile})
 
-Generated ${new Date().toISOString().slice(0, 16)}Z at ${git('rev-parse', '--short', 'HEAD')} on ${git('branch', '--show-current')} by \`npm run agents:context -- --part ${part}\`. Read this instead of the whole charter, prompt, ledger and progress log. Open a file from the read-list only when the slice touches it.
+Generated ${new Date().toISOString().slice(0, 16)}Z at ${git('rev-parse', '--short', 'HEAD')} on ${git('branch', '--show-current')} by \`npm run agents:context -- --part ${part}\`. Read this instead of the whole charter, prompt, ledger and progress log. The prompt's \"Read in full\" list is summarised at the end: read the parts of those files your slice touches, by section.
 
 ## Hard rules (from AGENTS.md)
 
@@ -125,6 +127,10 @@ ${decisions}
 ${demote(progressNow)}
 
 ${lastEntries}
+
+## Live facts
+
+${demote(execFileSync(process.execPath, [path.join(root, 'scripts/agents/facts.mjs')], { cwd: root, encoding: 'utf8' }).trim())}
 
 ## Recent history
 

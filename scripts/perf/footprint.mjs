@@ -372,12 +372,13 @@ async function revisitScenario(browser) {
 
 async function hiDpiScenario(browser) {
   const results = []
+  const errors = []
   for (const [width, height, dpr] of [
     [1512, 860, 2],
     [1920, 1080, 2],
     [2560, 1440, 2]
   ]) {
-    const { context, page } = await newPage(browser, { width, height }, dpr)
+    const { context, page, errors: pageErrors } = await newPage(browser, { width, height }, dpr)
     await page.goto(`${base}?renderer=webgl&storyIntro=off`, { waitUntil: 'domcontentloaded' })
     await page.waitForFunction(() => {
       const canvas = document.querySelector('canvas')
@@ -390,16 +391,19 @@ async function hiDpiScenario(browser) {
       return { width: element.width, height: element.height, cssWidth: Math.round(rect.width), cssHeight: Math.round(rect.height) }
     })
     results.push({ window: `${width}x${height}@${dpr}x`, ...canvas, pixels: canvas.width * canvas.height, canvasMB: round((canvas.width * canvas.height * 4) / MB) })
+    errors.push(...pageErrors)
     await context.close()
   }
-  return { windows: results, maxCanvasPixels: Math.max(...results.map((entry) => entry.pixels)) }
+  return { windows: results, maxCanvasPixels: Math.max(...results.map((entry) => entry.pixels)), errors }
 }
 
 function check(report) {
   const rows = []
+  // A budget row whose metric is missing fails: a renamed field must not quietly shrink the check.
   const add = (group, key, actual, limit) => {
-    if (limit == null || actual == null) return
-    rows.push({ metric: `${group}.${key}`, actual, limit, pass: actual <= limit })
+    if (limit == null) return
+    const missing = actual == null || Number.isNaN(actual)
+    rows.push({ metric: `${group}.${key}`, actual: missing ? 'missing' : actual, limit, pass: !missing && actual <= limit })
   }
   Object.entries(budget.static).forEach(([key, limit]) => add('static', key, report.static[key] ?? report.boot[key], limit))
   Object.entries(budget.boot).forEach(([key, limit]) => add('boot', key, report.boot[key], limit))
@@ -445,7 +449,7 @@ async function main() {
     }),
     // A run on a dirty tree measures code that is not in `commit`; say so rather than let the hash imply it.
     dirty: await new Promise((resolve) => {
-      const git = spawn('git', ['status', '--porcelain', '--', 'src', 'vite.config.ts', 'package.json', 'index.html'])
+      const git = spawn('git', ['status', '--porcelain', '--', 'src', 'vite.config.ts', 'package.json', 'index.html', 'scripts/perf', 'tests/perf-budget.json'])
       let out = ''
       git.stdout.on('data', (chunk) => (out += chunk))
       git.on('close', () => resolve(out.split('\n').filter(Boolean).length))
@@ -468,7 +472,10 @@ async function main() {
   }
   const rows = check(report)
   report.checks = rows
-  const errors = [...(report.boot.errors ?? []), ...(report.errors ?? []), ...(report.revisit.errors ?? [])]
+  const errors = [...(report.boot.errors ?? []), ...(report.errors ?? []), ...(report.revisit.errors ?? []), ...(report.hiDpi.errors ?? [])]
+  // Every ceiling in the budget file must have produced a row.
+  const expectedRows = Object.values(budget).filter((group) => group && typeof group === 'object').reduce((sum, group) => sum + Object.keys(group).length, 0)
+  if (rows.length !== expectedRows) errors.push(`budget has ${expectedRows} ceilings but ${rows.length} were checked`)
   const jsonPath = path.join(outDir, `footprint-${label}.json`)
   const mdPath = path.join(outDir, `footprint-${label}.md`)
   fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2))

@@ -4,7 +4,7 @@
     "distTotalMB": 9.5,
     "distMapsMB": 0.5,
     "jsGzipKB": 510,
-    "phaserChunkGzipKB": 305,
+    "phaserChunkGzipKB": 300,
     "bootDownloadMB": 2.5
   },
   "boot": {

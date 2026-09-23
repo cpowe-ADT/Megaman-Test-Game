@@ -17,6 +17,7 @@ shift 2
 dir="docs/prompts/reviews/$(date +%F)-${slice}"
 mkdir -p "$dir"
 commit=$(git rev-parse --short HEAD)
+pids=()
 for seat in "$@"; do
   if [ ! -f "docs/prompts/seats/${seat}.md" ]; then
     echo "unknown seat: ${seat} (see docs/prompts/seats/README.md)" >&2
@@ -24,6 +25,15 @@ for seat in "$@"; do
   fi
   prompt="You are the ${seat} review seat for this repository. Read docs/prompts/seats/${seat}.md and docs/prompts/seats/REVIEW_FORMAT.md first; they are your whole brief. Review only this scope: ${scope}. Commit: ${commit}. Do not read other reviews in ${dir}. Never edit files. Reply with the review only, in that exact format, at most 600 words."
   codex exec --sandbox read-only --output-last-message "${dir}/${seat}.md" "${prompt}" > "${dir}/.${seat}.log" 2>&1 &
+  pids+=("$!")
 done
-wait
-npm run -s agents:reviews -- "${dir}"
+failed=0
+for index in "${!pids[@]}"; do
+  if ! wait "${pids[$index]}"; then
+    echo "seat $(( index + 1 )) failed; see ${dir}/.*.log" >&2
+    failed=1
+  fi
+done
+expect=$(IFS=,; echo "$*")
+npm run -s agents:reviews -- "${dir}" --expect "${expect}"
+exit "${failed}"

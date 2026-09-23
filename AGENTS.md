@@ -7,7 +7,7 @@
 1. `progress.md`: the **Now** block and the last three entries. Never the archive unless a question needs history (`grep -n` it).
 2. Running a prompt from `docs/prompts/` (a work order such as `05-feel-hero-and-camera.md`): run `npm run agents:check -- --entry <N>`, then `npm run agents:context -- --part <part>` and read `output/context/<part>.md` instead of the whole charter, prompt, ledger and log. Paste formats are in `docs/prompts/START.md`.
 3. Any other task: the row for your area in "Where things are" below, and nothing else until the task needs it.
-4. Numbers (tests, `Game.ts` lines, budgets, open decisions): `npm run agents:facts`. A count written in prose is stale by definition.
+4. Numbers (tests, scenarios, `Game.ts` lines, open decisions, the latest footprint run): `npm run agents:facts`; budgets live in `tests/perf-budget.json` and `tests/agent-budget.json`. A count written in prose is stale by definition.
 
 ## Hard rules
 

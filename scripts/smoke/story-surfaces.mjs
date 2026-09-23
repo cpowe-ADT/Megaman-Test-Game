@@ -69,6 +69,10 @@ export async function runPrologueFlowScenario(name, { outputDir, storyUrl, readS
     assert.equal(briefing.dialogue.sequenceId, 'tutorial_sentinel_briefing')
     assert.equal(briefing.dialogue.lineCount, 3)
     await capture('briefing')
+    // The overlay ignores advance for 160ms after a line opens (one key press must not skip two lines).
+    // The capture used to take longer than that; with the HUD baked (09b) frames are fast enough that a
+    // call right after it landed inside the window and was dropped. Let at least 200ms of game time pass.
+    await advanceFrames(page, 12)
     await page.evaluate(() => window.stageDebug?.advanceDialogue?.())
     await waitForState(page, (state) => state.dialogue?.lineIndex === 1)
     await page.evaluate(() => window.stageDebug?.skipDialogue?.())

@@ -1,4 +1,4 @@
-import Phaser from 'phaser'
+import type Phaser from 'phaser'
 import { Settings, VOLUME_STEPS, type SettingsData } from '../systems/Settings'
 import { MUSIC_ASSETS, getMusicAssetEntries, type MusicCueId } from './musicLibrary'
 import { MusicTrackLoader } from './MusicTrackLoader'
@@ -12,7 +12,8 @@ type SfxSequenceStep = {
   gain?: number
 }
 
-class PlaceholderAudioService {
+/** Exported for tests (tests/music-service.test.ts); the game uses the `AudioService` singleton. */
+export class PlaceholderAudioService {
   private context?: AudioContext
   private noiseBuffer?: AudioBuffer
   private activeNodes = new Set<AudioNode>()

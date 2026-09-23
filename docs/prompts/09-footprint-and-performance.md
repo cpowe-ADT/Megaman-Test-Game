@@ -2,7 +2,7 @@
 
 Active seats: Orchestrator, **Performance Engineer (lead, new seat, persona below)**, Principal Game Engineer (writes), QA / Eval Lead, Release Engineer, Audio Director (signs off music residency), Art Director (signs off render-scale and text sharpness).
 
-Three sessions: `09a` (9.0 to 9.4, done 2026-09-22 in the planning session, see the ledger), `09b` (9.5 and 9.6), `09c` (9.7 and the exit gate). 09 runs beside the v2 order, not in it: 09a lands before 05; 09b and 09c can run after any v2 prompt. From the moment 09a lands, `npm run perf:footprint` is a standing gate: every later prompt keeps it green or records why at a STOP.
+Three sessions: `09a` (9.0 to 9.4), `09b` (9.5 and 9.6), `09c` (9.7 and the exit gate). All three ran on 2026-09-22 in the planning session; results are under "Outcome" at the end and in the ledger. 09 runs beside the v2 order, not in it: 09a lands before 05; 09b and 09c can run after any v2 prompt. From the moment 09a lands, `npm run perf:footprint` is a standing gate: every later prompt keeps it green or records why at a STOP.
 
 | Part | Phase | Lead | Player-facing result | Evals | STOP asks Craig for |
 | --- | --- | --- | --- | --- | --- |
@@ -172,3 +172,16 @@ You are also the Performance Engineer seat described in 09: measure, change one 
 Run `npm run build` and `PERF_REPORT_ONLY=1 PERF_LABEL=entry npm run perf:footprint` and paste the table.
 This session is part 09b: phases 9.5 and 9.6. Stop at every STOP block. Record a ledger row per eval with the command, the result line and the artifact path.
 ```
+
+## Outcome (2026-09-22)
+
+Measured with `npm run perf:footprint` before and after each change; the numbers are in the ledger rows and `output/perf/`.
+
+| Phase | Shipped | Measured and not shipped (the rule: no number, no ship) |
+| --- | --- | --- |
+| 9.5 | Retired enemies destroyed; the per-frame frame-marker loop removed; projectile DataManager writes only on change; one AudioContext instead of two; a late music decode is evicted | Effect pooling (combat step p95 7.0 vs 7.1ms, and 18 more objects held); a save-parse cache (`save.v1` is 3.8KB) |
+| 9.6 | The HUD's rounded panels and bars baked into textures (`src/ui/BakedGraphics.ts`): a stage frame 4.6ms to 0.4ms p50, 6.2 to 0.8ms p95, pixel-identical HUD; rebaked on resize and on a WebGL context restore | Viewport-wide parallax and a baked backdrop (hiding them changed nothing); a text-resolution cap (text canvases 0.6MB at 2x, about 5MB at 6x) |
+| 9.7 | `npm run disk:report`; `npm run clean:artifacts` (dry run by default, Trash not delete, keeps anything cited or under three days old); `git gc --prune=never` packed the reachable history (106MB pack) | Pruning 73MB of unreachable objects, archiving the source sheets, `clean:artifacts -- --yes`, Docker cleanup: Craig's decisions `D-005` to `D-008` |
+
+A seat review of 09b and 10a (`docs/prompts/reviews/2026-09-22-10a/MERGED.md`) caught a ceiling raised without a row (Phaser gzip 300 to 305, put back) and a smoke race the faster frames exposed (`34-prologue-flow` advanced dialogue inside its 160ms debounce; it now waits 12 frames).
+

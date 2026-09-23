@@ -11,8 +11,10 @@ import {
   checkLedger,
   handoffStatus,
   missingDocPaths,
+  openBlockers,
   parseLedger,
-  parseReview
+  parseReview,
+  partPhases
 } from '../scripts/agents/checks.mjs'
 
 const ledger = (rows: string[]) => `## Prompt 05\n\n| Id | Kind | What passes | Status | Evidence | Commit |\n| --- | --- | --- | --- | --- | --- |\n${rows.join('\n')}\n`
@@ -41,7 +43,19 @@ test('ledger: PASS without a commit, with an unknown commit, or without evidence
   const messages = errors(checkLedger(rows, { commitExists: known })).map((issue: { message: string }) => issue.message)
   assert.ok(messages.some((message: string) => /without a commit hash/.test(message)))
   assert.ok(messages.some((message: string) => /git does not know/.test(message)))
-  assert.ok(messages.some((message: string) => /no evidence/.test(message)))
+  assert.ok(messages.some((message: string) => /evidence needs an artifact path/.test(message)))
+})
+
+test('ledger: status words are anchored (PASSABLE is not PASS) and evidence without an artifact fails', () => {
+  const rows = parseLedger(
+    ledger([
+      '| EVAL-P5-001 | gate | x | PASSABLE maybe | `npm run test` -> ok (output/x.log) | `abc1234` |',
+      '| EVAL-P5-002 | gate | x | PASS | trust me, it passed nicely | `abc1234` |'
+    ])
+  )
+  const messages = errors(checkLedger(rows, { commitExists: known })).map((issue: { message: string }) => issue.message)
+  assert.ok(messages.some((message: string) => /not PASS, FAIL, PENDING or SKIPPED/.test(message)))
+  assert.ok(messages.some((message: string) => /evidence needs an artifact path/.test(message)))
 })
 
 test('ledger: duplicate ids fail; rows before prompt 05 only warn', () => {
@@ -50,7 +64,7 @@ test('ledger: duplicate ids fail; rows before prompt 05 only warn', () => {
   const legacy = parseLedger(ledger(['| EVAL-P1-001 | gate | x | PASS | evidence long enough to count | 1.4 commit |']))
   const issues = checkLedger(legacy, { commitExists: known })
   assert.equal(errors(issues).length, 0)
-  assert.equal(issues.length, 1)
+  assert.ok(issues.length >= 1 && issues.every((issue: { level: string }) => issue.level === 'warn'), 'legacy rows warn, never fail')
 })
 
 const handoff = (status: string, omit?: string) =>
@@ -108,13 +122,39 @@ test('doc paths: a named repo path that does not exist is reported; placeholders
 })
 
 test('decisions: a row needs a question, a recommendation, OPEN or DECIDED, and a reply when DECIDED', () => {
-  const head = '| Id | Raised | Question | Recommendation | Status | Reply | Date |\n| --- | --- | --- | --- | --- | --- | --- |\n'
-  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | OPEN | | |'), [])
-  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | DECIDED | "yes ship it" | 2026-09-23 |'), [])
-  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | | OPEN | | |')[0].message, /recommendation/)
-  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | MAYBE | | |')[0].message, /OPEN or DECIDED/)
-  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | DECIDED | | |')[0].message, /reply/)
+  const head = '| Id | Raised | Question | Recommendation | Blocks | Status | Reply | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n'
+  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | | OPEN | | |'), [])
+  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | entry 6 | DECIDED | "yes ship it" | 2026-09-23 |'), [])
+  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | | | OPEN | | |')[0].message, /recommendation/)
+  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | | MAYBE | | |')[0].message, /OPEN or DECIDED/)
+  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | | DECIDED | | |')[0].message, /reply/)
   assert.match(checkDecisions(head)[0].message, /no decision rows/)
+})
+
+test('human checkpoints: an OPEN decision that blocks entry N stops prompt N; answering it clears the block', () => {
+  const head = '| Id | Raised | Question | Recommendation | Blocks | Status | Reply | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n'
+  const open = head + '| D-001 | STOP 1.2 | Approve the title? | Approve | entry 5 | OPEN | | |'
+  assert.deepEqual(openBlockers(open, 5).map((row: { id: string }) => row.id), ['D-001'])
+  assert.deepEqual(openBlockers(open, 15), [], 'entry 5 does not block entry 15')
+  const chain = { '5': { handoffs: [], evals: [] } }
+  assert.match(checkEntry(5, { chain, handoffs: {}, rows: [], decisions: open })[0].message, /D-001 is OPEN and blocks entry 5/)
+  const decided = head + '| D-001 | STOP 1.2 | Approve the title? | Approve | entry 5 | DECIDED | "approved" | 2026-09-23 |'
+  assert.deepEqual(checkEntry(5, { chain, handoffs: {}, rows: [], decisions: decided }), [])
+})
+
+test('context packs: every part finds its phases from the sessions sentence and the table', () => {
+  const prompt = [
+    'Sessions: `06a` (6.1), `06e` and `06f` (6.6 batches), `06h` (6.8 and 6.9), `09a` (9.0 to 9.2).',
+    '| Part | Phase |',
+    '| --- | --- |',
+    '| 06e, 06f | 6.6 Seven wardens |',
+    '| 06h | 6.8 Difficulty; 6.9 Automation |',
+    '| 06a | 6.1 Level format |'
+  ].join('\n')
+  assert.deepEqual(partPhases(prompt, '06f'), ['6.6'])
+  assert.deepEqual(partPhases(prompt, '06h'), ['6.8', '6.9'])
+  assert.deepEqual(partPhases(prompt, '09a'), ['9.0', '9.1', '9.2'])
+  assert.deepEqual(partPhases(prompt, '06z'), [])
 })
 
 const review = (verdict: string, findingEvidence: string, severity = 'MAJOR') => `Seat: qa-eval
@@ -143,6 +183,12 @@ test('reviews: an evidenced review parses with its scores and verdict', () => {
 
 test('reviews: a finding without evidence, a SHIP with a BLOCK, or a missing verdict is rejected', () => {
   assert.match(parseReview(review('FIX', 'it feels slow')).issues[0].message, /no file:line or artifact evidence/)
+  assert.match(parseReview(review('FIX', '`trust me`')).issues[0].message, /no file:line or artifact evidence/, 'backticks alone are not evidence')
+  assert.ok(parseReview(review('FIX', '`npm run test` -> # fail 2')).issues.length === 0, 'a command with its result is evidence')
+  const bold = parseReview(review('SHIP', '`src/a.ts:1`', '**BLOCK**'))
+  assert.equal(bold.findings[0].severity, 'BLOCK', 'emphasis does not hide a severity')
+  assert.ok(bold.issues.some((issue: { message: string }) => /SHIP verdict with a BLOCK/.test(issue.message)))
+  assert.ok(parseReview(review('FIX', '`src/a.ts:1`', 'CRITICAL')).issues.some((issue: { message: string }) => /unknown severity/.test(issue.message)))
   assert.ok(parseReview(review('SHIP', '`src/a.ts:1`', 'BLOCK')).issues.some((issue: { message: string }) => /SHIP verdict with a BLOCK/.test(issue.message)))
   assert.ok(parseReview(review('maybe', '`src/a.ts:1`')).issues.some((issue: { message: string }) => /Verdict must be/.test(issue.message)))
 })
