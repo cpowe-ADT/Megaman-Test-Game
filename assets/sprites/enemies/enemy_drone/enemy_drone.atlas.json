@@ -1,0 +1,375 @@
+{
+  "frames": {
+    "enemy_drone/idle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/idle/001": {
+      "frame": {
+        "x": 36,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/idle/002": {
+      "frame": {
+        "x": 72,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/hover/000": {
+      "frame": {
+        "x": 108,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/hover/001": {
+      "frame": {
+        "x": 144,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/hover/002": {
+      "frame": {
+        "x": 180,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/hover/003": {
+      "frame": {
+        "x": 0,
+        "y": 28,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/attack_windup/000": {
+      "frame": {
+        "x": 36,
+        "y": 28,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/attack_windup/001": {
+      "frame": {
+        "x": 72,
+        "y": 28,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/attack_windup/002": {
+      "frame": {
+        "x": 108,
+        "y": 28,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/attack_active/000": {
+      "frame": {
+        "x": 144,
+        "y": 28,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/attack_active/001": {
+      "frame": {
+        "x": 180,
+        "y": 28,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/attack_active/002": {
+      "frame": {
+        "x": 0,
+        "y": 56,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/hurt/000": {
+      "frame": {
+        "x": 36,
+        "y": 56,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/death/000": {
+      "frame": {
+        "x": 72,
+        "y": 56,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/death/001": {
+      "frame": {
+        "x": 108,
+        "y": 56,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/death/002": {
+      "frame": {
+        "x": 144,
+        "y": 56,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    },
+    "enemy_drone/death/003": {
+      "frame": {
+        "x": 180,
+        "y": 56,
+        "w": 36,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 28
+      }
+    }
+  },
+  "meta": {
+    "app": "codex.slice_sheet_to_atlas",
+    "version": "1.0",
+    "image": "enemy_drone.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 216,
+      "h": 84
+    },
+    "scale": "1"
+  }
+}

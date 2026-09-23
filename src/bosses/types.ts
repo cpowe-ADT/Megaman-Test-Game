@@ -87,6 +87,8 @@ export interface TelegraphSpec {
 
 export interface AttackPattern {
   name: string
+  /** HUD label, at most 12 characters; defaults to `name`. */
+  shortName?: string
   state: BossStateKey
   description: string
   telegraph: TelegraphSpec
@@ -102,6 +104,8 @@ export interface AttackPattern {
 
 export interface PhaseDefinition {
   name: string
+  /** HUD label, at most 12 characters; defaults to `name`. */
+  shortName?: string
   threshold: number
   enraged: boolean
   description: string
@@ -146,7 +150,7 @@ export interface BossBlueprint {
     preferredRange: 'close' | 'mid' | 'long'
     mobilityNotes: string
   }
-  weaponReward: WeaponRewardPlan
+  weaponReward?: WeaponRewardPlan
   attacks: AttackPattern[]
   phases: PhaseDefinition[]
   spritePlan: SpriteSheetPlan
@@ -164,3 +168,28 @@ export type BossId =
   | 'mire_wraith'
   | 'gale_vixen'
   | 'glacier_ronin'
+  | 'omega_core'
+
+/** The HUD phase panel is 64px wide at a 7px font: twelve characters. */
+export const BOSS_HUD_LABEL_MAX = 12
+export function bossHudLabel(entry: { name: string; shortName?: string }): string {
+  return (entry.shortName ?? entry.name).toUpperCase()
+}
+
+/** Snapshot of where a boss's drawn feet sit relative to its physics body and the floor. */
+export interface BossGroundReport {
+  x: number
+  y: number
+  feetY: number
+  bodyTop: number
+  bodyBottom: number
+  /** body bottom minus feet row; 0 means the art stands where the body stands. */
+  feetToBodyGap: number
+  contactOffsetY: number
+  grounded: boolean
+  allowGravity: boolean
+  velocityY: number
+  lastGroundY: number
+  motionIntent: string
+  lifecyclePhase: string
+}

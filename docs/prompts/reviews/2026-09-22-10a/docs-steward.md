@@ -1,0 +1,26 @@
+Seat: docs-steward
+Commit: 0da4f40
+Scope: 10a agent system docs: AGENTS/CLAUDE, progress and archive, START, 10-agent-system, DECISIONS, seats, charter diff, ledger and archive, docs/README
+Artifacts opened: AGENTS.md, CLAUDE.md, progress.md, docs/archive/progress/progress-2025-10-to-2026-09-22.md (after its 4-line header it is byte-identical to 0da4f40^:progress.md), docs/prompts/{START,10-agent-system,DECISIONS,EVAL_LEDGER,README,00-orchestrator-charter,05-feel-hero-and-camera,PLAN_v2}.md, docs/prompts/archive/EVAL_LEDGER-01-04.md (every old line kept; only the P9 Commit cells changed), docs/prompts/handoff/{01,09a}*.md, docs/prompts/seats/*.md, docs/README.md, docs/runbooks/agent-handoff.md, tests/agent-budget.json, scripts/agents/rotate-progress.mjs, output/context/05a.md
+
+| Severity | Finding | Evidence | Fix |
+| --- | --- | --- | --- |
+| BLOCK | Logs a new model resumes from contradict each other: progress.md has no entry for 09b (df30ca8) or 10a (0da4f40), so the last entry it reads says "nothing committed" and 09b/09c open; Now says no prompt is mid-run; START says 09 done; handoff 09a says 09b/09c "not started"; ledger P9-009..012 PENDING | `progress.md:33`, `progress.md:41`, `docs/prompts/START.md:97`, `docs/prompts/handoff/09a-footprint-and-performance.md:3`, `docs/prompts/EVAL_LEDGER.md:90` | Add 09b and 10a entries in the template; make Now state 09's open items (P9-009..012, D-004..D-008); make START row 9 and the handoff status agree with the ledger |
+| MAJOR | EVAL-P10-001..009 have no ledger rows, yet START marks 10a done; P10-004 (this review) is not yet met | `docs/prompts/10-agent-system.md:75`; `git grep -n "P10-0" docs/prompts/EVAL_LEDGER.md` -> no match; `docs/prompts/START.md:98` | Add a Prompt 10 section with rows PENDING; START row 10 "10a in review" |
+| MAJOR | `--entry 5` passes while D-001..D-003 are OPEN; Now tells agents to wait for "the entry decisions" without naming them; handoff 01 was flipped to COMPLETE before Craig answered D-003 (rule 12: never answer Craig's decision) | `npm run agents:check -- --entry 5` -> `PASS entry 5`; `progress.md:8`; `docs/prompts/DECISIONS.md:11`; `docs/prompts/handoff/01-foundation-and-story.md:3` | Add a "Blocks" column to DECISIONS and make `--entry` fail on an OPEN blocking row; name D-001..D-003 in Now |
+| MAJOR | docs/README.md now marks docs/prompts/README.md canonical and "Start here", but that file still says paste the whole charter every session, calls START "three prompts", omits 10, DECISIONS and seats, says 09b/09c pending, and its own header says "working" | `docs/README.md:98`, `docs/prompts/README.md:3`, `docs/prompts/README.md:13`, `docs/prompts/README.md:21`, `docs/prompts/README.md:31` | Cut it to a pointer to START.md and AGENTS.md, or mark it historical |
+| MAJOR | Progress entry per slice vs per session disagree; loop step 8 (injected into every pack) also says "keep its style", i.e. the old style | `docs/prompts/00-orchestrator-charter.md:109`, `output/context/05a.md:46`, `docs/prompts/10-agent-system.md:25`, `docs/prompts/START.md:29` vs `AGENTS.md:26`, `docs/prompts/START.md:38` | Step 8: "ledger row per slice; one progress entry per session, in the template" |
+| MAJOR | Stale counts remain in pack-injected text: 256 tests (facts: 276), "20 checks" (facts: 22/22), a second Debt row at 3,805 lines (facts: 3639); the commit message says stale facts were fixed | `docs/prompts/00-orchestrator-charter.md:75`, `:78`, `:36`; `output/context/05a.md:107` | Replace with a pointer to `agents:facts`, and embed the facts output in the pack |
+| MINOR | Pack header says open only what the slice touches, but it carries prompt 05's "Read in full" list incl. Game.ts code (~104K tokens if followed) | `output/context/05a.md:3` vs `output/context/05a.md:106`; `docs/prompts/05-feel-hero-and-camera.md:20` | "read the parts your slice touches" |
+| MINOR | Progress cap has two values (16000 in the script, 20000 in the JSON) and is restated in prose; AGENTS says facts prints budgets, it does not | `scripts/agents/rotate-progress.mjs:10`, `tests/agent-budget.json:9`, `progress.md:3`, `AGENTS.md:3`, `AGENTS.md:10`, `docs/prompts/10-agent-system.md:61` | Script reads the JSON; prose points at the JSON; drop "budgets" from AGENTS:10 |
+| MINOR | Ledger budget 24KB will likely be exceeded during 07-08 (44 PENDING rows, PASS rows average 452B, no rotation tool) and raising it is forbidden | `tests/agent-budget.json:12`, `AGENTS.md:48`, `docs/prompts/EVAL_LEDGER.md:82` | Archive each prompt's rows at its exit, as for 01-04; state it in the ledger header |
+| MINOR | Handoff 09a cites an exit handoff that does not exist; handoffs are not path-checked | `docs/prompts/handoff/09a-footprint-and-performance.md:9`; `ls docs/prompts/handoff/09-footprint-and-performance.md` -> No such file | "written at 09 exit", or add handoffs to `pathCheckedDocs` |
+
+| Rubric | Score |
+| --- | --- |
+| Each fact stated once, others link to it | 2 |
+| Always-read files within their token budgets | 4 |
+| A new model can resume from Now, the last entries and the pack | 2 |
+| No orphan or stale doc on the default path | 2 |
+
+Verdict: FIX (the logs a new model resumes from contradict each other and the 09b and 10a sessions have no entries; nothing was lost in the archives, and the fixes are small doc edits)

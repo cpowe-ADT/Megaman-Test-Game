@@ -1,3 +1,4 @@
+import { IDENTITY } from '../content/identity'
 import { BossBlueprint, BossId, WeaknessTable } from './types'
 
 const PX = (w: number, h: number) => ({ x: w, y: h })
@@ -65,6 +66,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Systems Nominal',
+        shortName: 'NOMINAL',
         threshold: 1,
         enraged: false,
         description: 'Demonstrates hop, shot, and stomp slowly for onboarding.',
@@ -73,6 +75,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Override Mode',
+        shortName: 'OVERRIDE',
         threshold: 0.55,
         enraged: true,
         description: 'Combines stomp shock with hop follow-ups; shorter warning windows.',
@@ -117,7 +120,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   pyro_maw: {
     id: 'pyro_maw',
-    codename: 'PYRO MAW',
+    codename: IDENTITY.WARDEN_NAMES.pyro_maw.toUpperCase(),
     element: 'Fire',
     arena: 'Smelter Crucible',
     introCallout: 'INFERNAL ENGINE',
@@ -146,6 +149,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Serpent Stream',
+        shortName: 'SERPENT',
         state: 'shoot',
         description: 'Continuous flamethrower that sweeps horizontally.',
         telegraph: { telegraphMs: 320, warningFx: 'glow', anchor: 'self' },
@@ -156,6 +160,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Ignition Dash',
+        shortName: 'IGNITION',
         state: 'dash',
         description: 'Ground dash leaving burning puddles that linger.',
         telegraph: { telegraphMs: 280, warningFx: 'fan-lines', anchor: 'self' },
@@ -177,6 +182,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Combustion Stable',
+        shortName: 'STABLE',
         threshold: 1,
         enraged: false,
         description: 'Alternates between lobs and flame streams with long pauses.',
@@ -185,6 +191,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Thermal Runaway',
+        shortName: 'THERMAL',
         threshold: 0.55,
         enraged: true,
         description: 'Ignition Dash leaves larger puddles; Serpent Stream sweeps faster.',
@@ -229,7 +236,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   tide_reaver: {
     id: 'tide_reaver',
-    codename: 'TIDE REAVER',
+    codename: IDENTITY.WARDEN_NAMES.tide_reaver.toUpperCase(),
     element: 'Water',
     arena: 'Pressure Lock Reservoir',
     introCallout: 'ABYSSAL HUNTER',
@@ -276,6 +283,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Riptide Crash',
+        shortName: 'RIPTIDE',
         state: 'special',
         description: 'Ceiling cling then diagonal dive leaving puddles upon impact.',
         telegraph: { telegraphMs: 360, warningFx: 'reticle', anchor: 'target' },
@@ -288,6 +296,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Surface Patrol',
+        shortName: 'PATROL',
         threshold: 1,
         enraged: false,
         description: 'Alternates hover shots and grounded lances.',
@@ -296,6 +305,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Abyssal Surge',
+        shortName: 'ABYSSAL',
         threshold: 0.55,
         enraged: true,
         description: 'Introduces Riptide Crash and faster levitation strafes.',
@@ -340,7 +350,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   volt_hopper: {
     id: 'volt_hopper',
-    codename: 'VOLT HOPPER',
+    codename: IDENTITY.WARDEN_NAMES.volt_hopper.toUpperCase(),
     element: 'Lightning',
     arena: 'Capacitor Rooftops',
     introCallout: 'KINETIC CAPACITOR',
@@ -369,6 +379,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Capacitor Charge',
+        shortName: 'CAPACITOR',
         state: 'jump',
         description: 'High parabolic leap that drops charged mines on apex.',
         telegraph: { telegraphMs: 280, warningFx: 'glow', anchor: 'self' },
@@ -401,6 +412,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Charge Cycling',
+        shortName: 'CYCLING',
         threshold: 1,
         enraged: false,
         description: 'Performs hop into rail shot loops.',
@@ -453,10 +465,10 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   basalt_titan: {
     id: 'basalt_titan',
-    codename: 'BASALT TITAN',
+    codename: IDENTITY.WARDEN_NAMES.basalt_titan.toUpperCase(),
     element: 'Earth',
     arena: 'Faultline Forge',
-    introCallout: 'SEISMIC WARDEN',
+    introCallout: `SEISMIC ${IDENTITY.WARDEN_TERM}`,
     theme: { primary: 0x9b6b4a, accent: 0xffd7a0, glow: 0xc48c5a, trail: 0x6a4127 },
     baseStats: {
       maxHp: 36,
@@ -492,6 +504,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Basalt Barrage',
+        shortName: 'BARRAGE',
         state: 'summon',
         description: 'Raises stone pillars that erupt sequentially.',
         telegraph: { telegraphMs: 420, warningFx: 'reticle', anchor: 'target' },
@@ -521,6 +534,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Core Fracture',
+        shortName: 'FRACTURE',
         threshold: 0.55,
         enraged: true,
         description: 'Shockwaves travel faster; Barrage adds falling debris.',
@@ -565,7 +579,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   ferro_blade: {
     id: 'ferro_blade',
-    codename: 'FERRO BLADE',
+    codename: IDENTITY.WARDEN_NAMES.ferro_blade.toUpperCase(),
     element: 'Metal',
     arena: 'Magnetized Foundry',
     introCallout: 'VECTOR DUELIST',
@@ -623,6 +637,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     phases: [
       {
         name: 'Discipline Mode',
+        shortName: 'DISCIPLINE',
         threshold: 1,
         enraged: false,
         description: 'Alternates between disc throws and short teleports.',
@@ -631,6 +646,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Relentless Mode',
+        shortName: 'RELENTLESS',
         threshold: 0.55,
         enraged: true,
         description: 'Adds Polar Snare and chains teleports twice in a row.',
@@ -690,7 +706,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   mire_wraith: {
     id: 'mire_wraith',
-    codename: 'MIRE WRAITH',
+    codename: IDENTITY.WARDEN_NAMES.mire_wraith.toUpperCase(),
     element: 'Toxic',
     arena: 'Biohazard Labyrinth',
     introCallout: 'NEBULOUS CORRUPTOR',
@@ -801,7 +817,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   gale_vixen: {
     id: 'gale_vixen',
-    codename: 'GALE VIXEN',
+    codename: IDENTITY.WARDEN_NAMES.gale_vixen.toUpperCase(),
     element: 'Wind',
     arena: 'Aerial Skybridge',
     introCallout: 'SONIC SABOTEUR',
@@ -830,6 +846,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Turbine Slice',
+        shortName: 'TURBINE',
         state: 'dash',
         description: 'Spins into a horizontal cyclone that travels across the arena.',
         telegraph: { telegraphMs: 240, warningFx: 'wave', anchor: 'self' },
@@ -913,7 +930,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
   },
   glacier_ronin: {
     id: 'glacier_ronin',
-    codename: 'GLACIER RONIN',
+    codename: IDENTITY.WARDEN_NAMES.glacier_ronin.toUpperCase(),
     element: 'Ice',
     arena: 'Frozen Bastion',
     introCallout: 'CRYO SWORDMASTER',
@@ -942,6 +959,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Glacier Slide',
+        shortName: 'ICE SLIDE',
         state: 'dash',
         description: 'Slides across the floor leaving icy residue.',
         telegraph: { telegraphMs: 280, warningFx: 'wave', anchor: 'self' },
@@ -980,6 +998,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Breaking Point',
+        shortName: 'BREAKPOINT',
         threshold: 0.55,
         enraged: true,
         description: 'Slides extend longer, icicle rain overlaps zones.',
@@ -1018,6 +1037,123 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
           frames: 6,
           fps: 10,
           description: 'Sword plant, sky glimmer cue for icicles.'
+        }
+      ]
+    }
+  },
+  omega_core: {
+    id: 'omega_core',
+    codename: IDENTITY.ANTAGONIST_NAME,
+    element: 'Normal',
+    arena: 'Omega Citadel Command Vault',
+    introCallout: 'CENTRAL DIRECTIVE',
+    theme: { primary: 0x142d52, accent: 0x42e7ff, glow: 0x70f4ff, trail: 0xff8a32 },
+    baseStats: {
+      maxHp: 72,
+      contactDamage: 10,
+      moveSpeed: 82,
+      dashSpeed: 176,
+      jumpHeight: 0
+    },
+    movementProfile: {
+      weight: 'heavy',
+      preferredRange: 'mid',
+      mobilityNotes: 'Hovers with deliberate range corrections, then commits to high-speed armored rams.'
+    },
+    attacks: [
+      {
+        name: 'Directive Volley',
+        shortName: 'DIRECTIVE',
+        state: 'shoot',
+        description: 'Fires a disciplined reactor-bolt spread that closes the safest lane.',
+        telegraph: { telegraphMs: 360, warningFx: 'fan-lines', anchor: 'self' },
+        executeMs: 220,
+        cooldownMs: 760,
+        spawns: ['arc_shards']
+      },
+      {
+        name: 'Lockdown Pulse',
+        shortName: 'LOCKDOWN',
+        state: 'special',
+        description: 'Pulses three floor sectors in sequence to force a reposition.',
+        telegraph: { telegraphMs: 460, warningFx: 'reticle', anchor: 'target' },
+        executeMs: 360,
+        cooldownMs: 1160,
+        spawns: ['ground_slam_hazard']
+      },
+      {
+        name: 'Core Ram',
+        state: 'dash',
+        description: 'Seals its armor and rams through the player lane while shedding static orbs.',
+        telegraph: { telegraphMs: 280, warningFx: 'glow', anchor: 'self' },
+        executeMs: 260,
+        cooldownMs: 940,
+        spawns: ['static_orb']
+      },
+      {
+        name: 'Override Cascade',
+        shortName: 'CASCADE',
+        state: 'summon',
+        description: 'Combines falling command shards with persistent denial zones.',
+        telegraph: { telegraphMs: 520, warningFx: 'wave', anchor: 'target' },
+        executeMs: 420,
+        cooldownMs: 1320,
+        spawns: ['icicle_fall', 'vapor_pod']
+      }
+    ],
+    phases: [
+      {
+        name: 'Compliance Protocol',
+        shortName: 'COMPLIANCE',
+        threshold: 1,
+        enraged: false,
+        description: 'Tests movement discipline with volleys and floor lockdowns.',
+        newAttacks: [],
+        cadenceMultiplier: 1
+      },
+      {
+        name: 'Enforcement Protocol',
+        shortName: 'ENFORCEMENT',
+        threshold: 0.62,
+        enraged: true,
+        description: 'Adds armored rams between shortened projectile cycles.',
+        newAttacks: ['Core Ram'],
+        cadenceMultiplier: 1.22
+      },
+      {
+        name: 'Absolute Override',
+        shortName: 'ABSOLUTE',
+        threshold: 0.3,
+        enraged: true,
+        description: 'Overlaps the learned hazard families in a final command cascade.',
+        newAttacks: ['Override Cascade'],
+        cadenceMultiplier: 1.42
+      }
+    ],
+    spritePlan: {
+      frame: PX(64, 64),
+      origin: { x: 0.5, y: 0.78 },
+      animations: [
+        {
+          atlas: 'omega_core',
+          key: 'omega_idle',
+          frames: 4,
+          fps: 6,
+          description: 'Heavy hover cycle with reactor pulse.'
+        },
+        {
+          atlas: 'omega_core',
+          key: 'omega_move',
+          frames: 4,
+          fps: 10,
+          description: 'Armored hover translation with energy-fin compensation.'
+        },
+        {
+          atlas: 'omega_core',
+          key: 'omega_shoot',
+          frames: 4,
+          fps: 12,
+          description: 'Reactor and gauntlet charge followed by a cyan muzzle flare.'
         }
       ]
     }

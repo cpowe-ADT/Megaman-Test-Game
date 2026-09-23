@@ -1,271 +1,689 @@
 import Phaser from 'phaser'
-import { AttackPattern, BossBlueprint, BossStateKey } from './types'
+import { GAME_WIDTH } from '../config/renderPolicy'
+import { computeBossBodyOffset, measureContactOffset } from './bossBodyAlignment'
+import { BossBlueprint, AttackPattern, type BossGroundReport, type BossId } from './types'
+import { ArenaController } from '../boss/framework/ArenaController'
+import { BossBase } from '../boss/framework/BossBase'
+import { BossDefinition, DamageEvent, HitResult } from '../boss/framework/types'
+import { clampBossXToBounds, type MovementBounds } from '../content/stageArenaLayout'
+import { toAttackPatternFromDefinition, toBossDefinition } from '../boss/framework/bossDefinitionMapper'
+import { getBossJumpInterval, getBossMotionProfile } from './bossMotionProfile'
+import {
+  BOSS_COMBAT_PROFILES,
+  type BossAttackLifecyclePhase,
+  type BossCombatProfile,
+  type BossMotionIntentKind,
+  getBossAttackCombatProfile
+} from './bossCombatProfiles'
+import { BossMotionController } from './BossMotionController'
 
 export interface BossControllerConfig {
   spawn: Phaser.Math.Vector2
   lockIntro?: boolean
+  runtimeDefinition?: BossDefinition
+  movementBounds?: MovementBounds
+  getActiveHazardCount?: () => number
 }
 
-interface BossStateContext {
-  key: BossStateKey
-  timerMs: number
-  attackFired: boolean
+interface BossPhaseView {
+  name: string
+  threshold: number
 }
 
-/**
- * BossController wires a BossBlueprint into runtime behaviour.
- * It does not implement every pattern but provides the scaffolding:
- *  - sprite/animation management
- *  - intro lock until cinematic concludes
- *  - phase tracking and HP thresholds
- *  - attack queue selection with cooldowns
- */
+interface BossRuntimeTrace {
+  sequence: number
+  atMs: number
+  event: 'attack_started' | 'phase_changed' | 'motion_started' | 'landed' | 'attack_resolved'
+  attackId: string | null
+  lifecycle: BossAttackLifecyclePhase
+  motion: BossMotionIntentKind
+  facing: 'west' | 'east'
+  x: number
+  y: number
+  vx: number
+  vy: number
+}
+
+function makePhaseName(index: number): string {
+  return index <= 0 ? 'Phase 1' : `Phase ${index + 1}`
+}
+
+function seedBossPattern(id: string): number {
+  let seed = 0x811c9dc5
+  for (let index = 0; index < id.length; index += 1) {
+    seed ^= id.charCodeAt(index)
+    seed = Math.imul(seed, 0x01000193)
+  }
+  return seed >>> 0
+}
+
 export class BossController extends Phaser.GameObjects.Container {
   readonly blueprint: BossBlueprint
-  private sprite: Phaser.GameObjects.Sprite
-  private fsm: BossStateContext
-  private hp: number
+
+  private readonly sprite: Phaser.GameObjects.Sprite
+  private readonly atlasKey: string
+  private readonly atlasFrames: string[]
+  private readonly groupedAtlasFrames: Record<string, string[]>
+  private readonly runtimeDefinition: BossDefinition
+  private readonly bossBrain: BossBase
+  private readonly arenaController: ArenaController
+  private readonly movementBounds: MovementBounds
+  private readonly getActiveHazardCount: () => number
+  private readonly combatProfile?: BossCombatProfile
+  private readonly motionController?: BossMotionController
+
   private introLocked: boolean
-  private currentPhaseIndex = 0
-  private attackCooldowns = new Map<string, number>()
-  private activeAttack?: AttackPattern
-  private usingPlaceholder = false
-  private nextAttackAvailableMs = 0
+  private moveDirection: -1 | 0 | 1 = 0
+  private phaseView: BossPhaseView = { name: 'Phase 1', threshold: 1 }
+  private lastFiredAttackId: string | null = null
+  private lastFiredAttackAtMs = 0
+  private nextJumpAtMs = 0
+  private airborneVelocityX = 0
+  private patternRngState = 1
+  private attackFacing: -1 | 1 = 1
+  private lastLifecyclePhase: BossAttackLifecyclePhase = 'done'
+  private lastMotionIntent: BossMotionIntentKind = 'hold'
+  private lastGroundY = 0
+  /** Feet row relative to the container origin, measured from the idle frame. */
+  private readonly contactOffsetY: number
+  private traceSequence = 0
+  private readonly runtimeTraces: BossRuntimeTrace[] = []
+  private awaitingActionLanding = false
+  private landingPresentationUntilMs = 0
+
+  private readonly enforceRoomBoundsAfterPhysics = (): void => {
+    const clampedX = clampBossXToBounds(this.x, this.getSafeMovementBounds())
+    if (clampedX === this.x) {
+      return
+    }
+    this.x = clampedX
+    this.body.updateFromGameObject()
+    this.body.setVelocityX(0)
+    this.airborneVelocityX = 0
+  }
+
   declare body: Phaser.Physics.Arcade.Body
 
   constructor(scene: Phaser.Scene, blueprint: BossBlueprint, config: BossControllerConfig) {
     super(scene, config.spawn.x, config.spawn.y)
     this.blueprint = blueprint
-    this.hp = blueprint.baseStats.maxHp
+    this.runtimeDefinition = config.runtimeDefinition ?? toBossDefinition(blueprint)
+    this.combatProfile = BOSS_COMBAT_PROFILES[blueprint.id as BossId]
+    this.motionController = this.combatProfile ? new BossMotionController(this.combatProfile.room) : undefined
+    this.patternRngState = seedBossPattern(this.runtimeDefinition.boss_id) || 1
     this.introLocked = !!config.lockIntro
-
-    const primaryAnim = blueprint.spritePlan.animations[0]
-    const hasAtlas = scene.textures.exists(primaryAnim.atlas)
-    const textureKey = hasAtlas ? primaryAnim.atlas : 'pixel'
-    this.usingPlaceholder = !hasAtlas
-
-    this.sprite = scene.add.sprite(0, 0, textureKey)
-    this.sprite.setOrigin(blueprint.spritePlan.origin.x, blueprint.spritePlan.origin.y)
-    if (this.usingPlaceholder) {
-      this.sprite.setDisplaySize(blueprint.spritePlan.frame.x, blueprint.spritePlan.frame.y)
-      this.sprite.setTint(blueprint.theme.primary)
+    this.movementBounds = config.movementBounds ?? {
+      minX: 16,
+      maxX: GAME_WIDTH - 16
     }
+    this.getActiveHazardCount = config.getActiveHazardCount ?? (() => 0)
+
+    this.atlasKey = `atlas_${blueprint.id}`
+    if (!scene.textures.exists(this.atlasKey)) {
+      throw new Error(`[BossController] Missing required boss atlas '${this.atlasKey}'`)
+    }
+    this.atlasFrames = scene.textures
+      .get(this.atlasKey)
+      .getFrameNames()
+      .filter((name) => name !== '__BASE')
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    if (this.atlasFrames.length === 0) {
+      throw new Error(`[BossController] Boss atlas '${this.atlasKey}' has no frames`)
+    }
+    this.groupedAtlasFrames = this.buildGroupedAtlasFrames()
+
+    this.sprite = scene.add.sprite(0, 0, this.atlasKey, this.atlasFrames[0])
+    this.sprite.setOrigin(blueprint.spritePlan.origin.x, blueprint.spritePlan.origin.y)
     this.add(this.sprite)
     scene.add.existing(this)
 
     scene.physics.add.existing(this)
     this.setSize(this.width || 32, this.height || 32)
-    this.body.setAllowGravity(false)
+    // Boss feet belong on the arena floor. Gravity and platform collision make
+    // jumps readable and prevent the old permanent mid-air hover.
+    this.body.setAllowGravity(true)
+    this.body.setCollideWorldBounds(true)
+    this.body.setMaxVelocity(460, 560)
+    scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.enforceRoomBoundsAfterPhysics)
+    this.once(Phaser.GameObjects.Events.DESTROY, () => {
+      scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.enforceRoomBoundsAfterPhysics)
+    })
 
     const body = this.body
+    // The body bottom must sit on the drawn feet, otherwise the art floats above the floor the
+    // body is standing on. See bossBodyAlignment.ts for the container/offset math.
+    this.contactOffsetY = measureContactOffset(scene.textures, this.atlasKey, this.atlasFrames[0], this.sprite.originY)
+    const bodyOffset = computeBossBodyOffset({
+      bodyWidth: blueprint.spritePlan.frame.x,
+      bodyHeight: blueprint.spritePlan.frame.y,
+      containerWidth: this.width,
+      containerHeight: this.height,
+      contactOffsetY: this.contactOffsetY
+    })
     body.setSize(blueprint.spritePlan.frame.x, blueprint.spritePlan.frame.y)
-    body.setOffset(
-      -blueprint.spritePlan.frame.x * this.sprite.originX,
-      -blueprint.spritePlan.frame.y * (1 - this.sprite.originY)
+    body.setOffset(bodyOffset.x, bodyOffset.y)
+    body.updateFromGameObject()
+
+    this.arenaController = new ArenaController({
+      lockDoors: () => this.scene.events.emit('arena-lock', { id: this.runtimeDefinition.boss_id }),
+      unlockDoors: () => this.scene.events.emit('arena-unlock', { id: this.runtimeDefinition.boss_id }),
+      startBossMusic: () => this.scene.events.emit('boss-music-start', { id: this.runtimeDefinition.boss_id }),
+      stopBossMusic: () => this.scene.events.emit('boss-music-stop', { id: this.runtimeDefinition.boss_id }),
+      dropReward: () =>
+        this.scene.events.emit('boss-reward-drop', {
+          id: this.runtimeDefinition.boss_id,
+          reward: this.blueprint.weaponReward
+        })
+    })
+
+    this.bossBrain = new BossBase(this.runtimeDefinition, {
+      onAttackStarted: (attack) => {
+        this.lastFiredAttackId = attack.id
+        this.lastFiredAttackAtMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
+        const playerX = (this.scene.registry.get('player_x') as number | undefined) ?? this.x
+        const grounded = this.body?.onFloor?.() || this.body?.blocked?.down || false
+        if (grounded) this.lastGroundY = this.y
+        const attackProfile = getBossAttackCombatProfile(this.blueprint.id as BossId, attack.id)
+        if (attackProfile && this.motionController) {
+          this.motionController.beginAttack(
+            this.scene.time.now,
+            attack,
+            attackProfile,
+            this.x,
+            playerX,
+            this.lastGroundY || this.y
+          )
+          this.attackFacing = playerX < this.x ? -1 : 1
+          this.lastLifecyclePhase = 'windup'
+          this.lastMotionIntent = attackProfile.motion.kind
+          this.pushRuntimeTrace('attack_started')
+        }
+        const attackPattern = this.toSceneAttackPattern(attack)
+        this.scene.events.emit('boss-attack', {
+          id: this.runtimeDefinition.boss_id,
+          attack: attackPattern,
+          attackData: attack
+        })
+      },
+      onAttackResolved: () => {
+        this.pushRuntimeTrace('attack_resolved')
+        const grounded = this.body?.onFloor?.() || this.body?.blocked?.down || false
+        const waitsForLanding =
+          !grounded &&
+          (this.lastMotionIntent === 'jump_to' ||
+            this.lastMotionIntent === 'dive_to' ||
+            this.lastMotionIntent === 'slam_to_floor')
+        if (waitsForLanding) {
+          this.awaitingActionLanding = true
+          this.lastLifecyclePhase = 'landing'
+        } else {
+          this.motionController?.finishAttack()
+          this.lastLifecyclePhase = 'done'
+          this.lastMotionIntent = 'hold'
+        }
+      },
+      onPhaseChanged: (phaseIndex, phase) => {
+        this.phaseView = {
+          name: this.blueprint.phases[phaseIndex]?.name ?? makePhaseName(phaseIndex),
+          threshold: phase.threshold
+        }
+        this.scene.events.emit('boss-phase-change', {
+          id: this.runtimeDefinition.boss_id,
+          phase: this.phaseView,
+          phaseIndex,
+          phaseData: phase
+        })
+      },
+      onDamageApplied: (event, result) => {
+        this.scene.events.emit('boss-damage', {
+          id: this.runtimeDefinition.boss_id,
+          event,
+          result,
+          hp: this.bossBrain.hpSnapshot
+        })
+      },
+      onDied: () => {
+        this.arenaController.onBossDeath()
+        this.scene.events.emit('boss-defeated', {
+          id: this.runtimeDefinition.boss_id,
+          reward: this.blueprint.weaponReward
+        })
+        this.destroy()
+      }
+    })
+
+    this.bossBrain.OnFightStart()
+    this.phaseView = { name: this.blueprint.phases[0]?.name ?? makePhaseName(0), threshold: 1 }
+    this.nextJumpAtMs = this.scene.time.now + 850
+    if (!this.introLocked) {
+      this.arenaController.onIntroStart()
+      this.bossBrain.unlockIntro()
+    }
+  }
+
+  get currentPhase(): BossPhaseView {
+    return this.phaseView
+  }
+
+  get hp(): { current: number; max: number } {
+    return this.bossBrain.hpSnapshot
+  }
+
+  get isInvulnerable(): boolean {
+    return this.bossBrain.state === 'HURT_INVULN' || this.bossBrain.state === 'PHASE_TRANSITION'
+  }
+
+  getDebugState(): Record<string, unknown> {
+    const visibleBossSprites = this.list.filter(
+      (child) => child instanceof Phaser.GameObjects.Sprite && child.visible && child.active
     )
-    body.setCollideWorldBounds(true)
-
-    this.fsm = { key: 'intro', timerMs: 0, attackFired: false }
+    return {
+      blueprintId: this.blueprint.id,
+      runtimeConfigId: this.runtimeDefinition.boss_id,
+      state: this.bossBrain.state,
+      phaseIndex: this.bossBrain.currentPhaseIndex,
+      phaseName: this.phaseView.name,
+      activeAttackId: this.bossBrain.activeAttackId ?? null,
+      lastFiredAttackId: this.lastFiredAttackId,
+      lastFiredAttackAtMs: this.lastFiredAttackAtMs,
+      attackLifecyclePhase: this.lastLifecyclePhase,
+      motionIntent: this.lastMotionIntent,
+      lockedFacing: this.attackFacing === -1 ? 'west' : 'east',
+      animationKey: this.sprite.anims.currentAnim?.key ?? null,
+      animationFrame: String(this.sprite.frame?.name ?? ''),
+      combatIdentity: this.combatProfile?.identity ?? null,
+      roomDynamics: this.combatProfile?.room ?? null,
+      activeHazardCount: this.getActiveHazardCount(),
+      traceCount: this.runtimeTraces.length,
+      traceTail: this.runtimeTraces.slice(-8),
+      grounded: this.body?.onFloor?.() || this.body?.blocked?.down || false,
+      ground: this.getGroundReport(),
+      velocity: { x: Math.round(this.body?.velocity?.x ?? 0), y: Math.round(this.body?.velocity?.y ?? 0) },
+      invulnerable: this.isInvulnerable,
+      facing: this.sprite.flipX ? 'west' : 'east',
+      visualChildCount: this.list.length,
+      visibleBossSpriteCount: visibleBossSprites.length,
+      movementBounds: { ...this.movementBounds }
+    }
   }
 
-  get currentPhase() {
-    return this.blueprint.phases[this.currentPhaseIndex]
-  }
-
-  update(time: number, delta: number): void {
-    const body = this.body
-    body.setDrag(600, 0)
-
-    this.tickCooldowns(delta)
-
-    if (this.fsm.key === 'intro') {
-      this.handleIntro(delta)
-      return
+  update(_time: number, delta: number): void {
+    const playerX = (this.scene.registry.get('player_x') as number | undefined) ?? this.x
+    const playerY = (this.scene.registry.get('player_y') as number | undefined) ?? this.y
+    const distance = Math.abs(playerX - this.x)
+    const groundedBeforeTick = this.body.onFloor() || this.body.blocked.down
+    if (this.awaitingActionLanding && groundedBeforeTick) {
+      this.awaitingActionLanding = false
+      this.landingPresentationUntilMs =
+        this.scene.time.now +
+        (getBossAttackCombatProfile(this.blueprint.id as BossId, this.lastFiredAttackId ?? '')?.landingMs ?? 160)
+      this.lastLifecyclePhase = 'landing'
+      this.pushRuntimeTrace('landed')
+      this.motionController?.finishAttack()
+    } else if (
+      this.landingPresentationUntilMs > 0 &&
+      this.scene.time.now >= this.landingPresentationUntilMs
+    ) {
+      this.landingPresentationUntilMs = 0
+      this.lastLifecyclePhase = 'done'
+      this.lastMotionIntent = 'hold'
     }
 
-    this.evaluatePhase()
-    this.selectNextState()
-    this.applyState(delta)
+    const tick = this.bossBrain.TickAI({
+      nowMs: this.scene.time.now,
+      dtMs: delta,
+      bossPosition: { x: this.x, y: this.y },
+      playerPosition: { x: playerX, y: playerY },
+      distanceToPlayer: distance,
+      lineOfSight: true,
+      rng: () => this.nextPatternRandom(),
+      phaseIndex: this.bossBrain.currentPhaseIndex,
+      speedMultiplier: 1,
+      thinkTimeMultiplier: 1,
+      bossGrounded: groundedBeforeTick,
+      activeHazardCount: this.getActiveHazardCount()
+    })
+
+    this.moveDirection = tick.movementDirection
+    const speed = (this.runtimeDefinition.moveSpeed ?? this.blueprint.baseStats.moveSpeed) * 0.9
+    const grounded = this.body.onFloor() || this.body.blocked.down
+    if (grounded) this.lastGroundY = this.y
+
+    const motionFrame = this.motionController?.update({
+      nowMs: this.scene.time.now,
+      x: this.x,
+      y: this.y,
+      velocityX: this.body.velocity.x,
+      velocityY: this.body.velocity.y,
+      grounded,
+      playerX,
+      playerY,
+      groundY: this.lastGroundY || this.y,
+      bounds: this.getSafeMovementBounds()
+    })
+
+    if (motionFrame) {
+      this.body.setAllowGravity(motionFrame.allowGravity)
+      if (motionFrame.setX != null) this.x = clampBossXToBounds(motionFrame.setX, this.getSafeMovementBounds())
+      if (motionFrame.setY != null) this.y = motionFrame.setY
+      if (motionFrame.velocityX != null) this.body.setVelocityX(motionFrame.velocityX)
+      if (motionFrame.velocityY != null) this.body.setVelocityY(motionFrame.velocityY)
+      this.attackFacing = motionFrame.facing
+      this.lastMotionIntent = motionFrame.intent
+      if (motionFrame.phaseChanged) {
+        this.lastLifecyclePhase = motionFrame.phase
+        this.pushRuntimeTrace('phase_changed')
+      }
+      if (motionFrame.motionStarted) this.pushRuntimeTrace('motion_started')
+      if (motionFrame.landed && !this.awaitingActionLanding) this.pushRuntimeTrace('landed')
+    } else {
+      // Between attacks every boss stands on the floor, hover bosses included; their hover_to and
+      // dive_to attacks lift them and gravity brings them back down.
+      this.body.setAllowGravity(true)
+    }
+
+    if (!motionFrame && grounded) {
+      this.airborneVelocityX = 0
+      this.body.setVelocityX(this.moveDirection * speed)
+
+      const motion = getBossMotionProfile(this.blueprint)
+      const canJump =
+        this.combatProfile?.passiveMotion === 'jump_to' &&
+        !this.introLocked &&
+        this.lastFiredAttackId !== null &&
+        (tick.state === 'THINK' || tick.state === 'MOVE_TO_RANGE') &&
+        this.scene.time.now >= this.nextJumpAtMs
+      if (canJump) {
+        const direction = playerX < this.x ? -1 : 1
+        this.airborneVelocityX = direction * speed * motion.airSpeedMultiplier
+        this.body.setVelocity(this.airborneVelocityX, motion.jumpVelocityY)
+        this.nextJumpAtMs =
+          this.scene.time.now + getBossJumpInterval(motion, this.bossBrain.currentPhaseIndex)
+      }
+    } else if (!motionFrame && this.airborneVelocityX !== 0) {
+      this.body.setVelocityX(this.airborneVelocityX)
+    }
+
+    // Keep movement collision-safe in the arena.
+    const safeMovementBounds = this.getSafeMovementBounds()
+    this.x = clampBossXToBounds(this.x, safeMovementBounds)
+    const projectedX = this.x + this.body.velocity.x * (Math.max(0, delta) / 1000)
+    if (
+      (projectedX <= safeMovementBounds.minX && this.body.velocity.x < 0) ||
+      (projectedX >= safeMovementBounds.maxX && this.body.velocity.x > 0)
+    ) {
+      this.x = Phaser.Math.Clamp(projectedX, safeMovementBounds.minX, safeMovementBounds.maxX)
+      this.body.setVelocityX(0)
+      this.airborneVelocityX = 0
+    }
+
+    // Boss artwork must communicate the same target used by the attack system.
+    // Movement can stop or reverse during an attack, so velocity is not a
+    // reliable facing source.
+    this.sprite.setFlipX(motionFrame ? this.attackFacing === -1 : playerX < this.x)
+
+    this.playAnimationForState()
   }
 
-  hurt(amount: number): void {
-    this.hp = Math.max(0, this.hp - amount)
-    if (this.hp <= 0) {
-      this.onDefeated()
+  pauseAnimations(): void {
+    this.sprite.anims.pause()
+  }
+
+  resumeAnimations(): void {
+    this.sprite.anims.resume()
+  }
+
+  hurt(amount: number): HitResult {
+    const event: DamageEvent = {
+      amount,
+      type: 'normal',
+      source: 'player',
+      hitstopFrames: 2
     }
+    return this.applyDamage(event)
+  }
+
+  applyDamage(event: DamageEvent): HitResult {
+    return this.bossBrain.ApplyDamage(event)
   }
 
   unlockIntro(): void {
+    if (!this.introLocked) {
+      return
+    }
     this.introLocked = false
+    this.arenaController.onIntroStart()
+    this.bossBrain.unlockIntro()
   }
 
-  private tickCooldowns(delta: number): void {
-    this.attackCooldowns.forEach((remaining, key) => {
-      const next = Math.max(0, remaining - delta)
-      if (next <= 0) {
-        this.attackCooldowns.delete(key)
-      } else {
-        this.attackCooldowns.set(key, next)
-      }
-    })
-    if (this.nextAttackAvailableMs > 0) {
-      this.nextAttackAvailableMs = Math.max(0, this.nextAttackAvailableMs - delta)
-    }
-    this.fsm.timerMs += delta
-  }
-
-  private handleIntro(delta: number): void {
-    if (this.introLocked) {
-      return
-    }
-    const introDuration = 1200
-    if (this.fsm.timerMs >= introDuration) {
-      this.enterState('idle')
-    }
-  }
-
-  private evaluatePhase(): void {
-    const hpRatio = this.hp / this.blueprint.baseStats.maxHp
-    let nextIndex = this.currentPhaseIndex
-    this.blueprint.phases.forEach((phase, index) => {
-      if (hpRatio <= phase.threshold) {
-        nextIndex = index
-      }
-    })
-
-    if (nextIndex !== this.currentPhaseIndex) {
-      this.currentPhaseIndex = nextIndex
-      this.scene.events.emit('boss-phase-change', {
-        id: this.blueprint.id,
-        phase: this.blueprint.phases[this.currentPhaseIndex]
-      })
-    }
-  }
-
-  private selectNextState(): void {
-    if (this.nextAttackAvailableMs > 0) {
-      return
-    }
-    if (this.fsm.key !== 'idle' && this.fsm.key !== 'move' && this.fsm.key !== 'recover') {
-      return
-    }
-    if (this.activeAttack) {
-      return
-    }
-
-    const availableAttacks = this.blueprint.attacks.filter((attack) => {
-      if (!this.isAttackUnlocked(attack.name)) {
-        return false
-      }
-      if (this.attackCooldowns.get(attack.name) ?? 0 > 0) {
-        return false
-      }
-      return true
-    })
-
-    if (availableAttacks.length === 0) {
-      this.enterState('idle')
-      return
-    }
-
-    const chosen = Phaser.Utils.Array.GetRandom(availableAttacks)
-    this.enterState(chosen.state, chosen)
-  }
-
-  private applyState(delta: number): void {
+  /**
+   * Where the drawn feet are versus the physics body. `feetToBodyGap` is 0 when the art stands
+   * exactly where the body does; `grounded` with a non-zero gap means the boss looks like it floats.
+   */
+  getGroundReport(): BossGroundReport {
     const body = this.body
-    const attack = this.activeAttack
-    switch (this.fsm.key) {
-      case 'idle':
-        body.setAcceleration(0, 0)
-        this.playAnimation('idle')
-        break
-      case 'move':
-        body.setAccelerationX(this.blueprint.baseStats.moveSpeed * 0.6)
-        this.playAnimation('move')
-        break
-      case 'jump':
-        if (this.fsm.timerMs < delta) {
-          body.setVelocityY(-this.blueprint.baseStats.jumpHeight)
-        }
-        this.playAnimation('jump')
-        break
-      case 'dash':
-        if (attack && this.fsm.timerMs < attack.executeMs) {
-          const playerX = this.scene.registry.get('player_x') as number | undefined
-          const direction = (playerX ?? this.x) < this.x ? -1 : 1
-          body.setVelocityX(direction * this.blueprint.baseStats.dashSpeed)
-        }
-        this.playAnimation('dash')
-        break
-      case 'shoot':
-      case 'summon':
-      case 'special':
-        if (
-          attack &&
-          !this.fsm.attackFired &&
-          this.fsm.timerMs >= attack.telegraph.telegraphMs
-        ) {
-          this.scene.events.emit('boss-attack', { id: this.blueprint.id, attack })
-          this.attackCooldowns.set(attack.name, attack.cooldownMs)
-          this.fsm.attackFired = true
-        }
-        this.playAnimation(this.fsm.key)
-        break
+    const feetY = this.y + this.contactOffsetY
+    return {
+      x: Math.round(this.x * 100) / 100,
+      y: Math.round(this.y * 100) / 100,
+      feetY: Math.round(feetY * 100) / 100,
+      bodyTop: Math.round((body?.top ?? this.y) * 100) / 100,
+      bodyBottom: Math.round((body?.bottom ?? this.y) * 100) / 100,
+      feetToBodyGap: Math.round(((body?.bottom ?? feetY) - feetY) * 100) / 100,
+      contactOffsetY: Math.round(this.contactOffsetY * 100) / 100,
+      grounded: body?.onFloor?.() || body?.blocked?.down || false,
+      allowGravity: body?.allowGravity ?? true,
+      velocityY: Math.round(body?.velocity?.y ?? 0),
+      lastGroundY: Math.round(this.lastGroundY),
+      motionIntent: this.lastMotionIntent,
+      lifecyclePhase: this.lastLifecyclePhase
+    }
+  }
+
+  getAttackFacing(): -1 | 1 {
+    return this.attackFacing
+  }
+
+  getRoomHazardCap(): number {
+    return this.combatProfile?.room.maxActiveHazards ?? 3
+  }
+
+  private toSceneAttackPattern(attack: BossDefinition['attacks'][number]): AttackPattern {
+    const pattern = toAttackPatternFromDefinition(attack)
+
+    if (pattern.spawns && pattern.spawns.length > 0) {
+      return pattern
     }
 
-    if (attack) {
-      const duration = Math.max(attack.executeMs, attack.telegraph.telegraphMs)
-      if (this.fsm.timerMs >= duration) {
-        this.nextAttackAvailableMs = Math.max(this.nextAttackAvailableMs, attack.cooldownMs)
-        this.enterState('recover')
+    if (attack.type === 'projectile') {
+      if (attack.id.includes('spark') || attack.id.includes('shot')) {
+        pattern.spawns = ['arc_shards']
+      } else {
+        pattern.spawns = ['slow_bullet']
       }
     }
 
-    if (this.fsm.key === 'recover' && this.fsm.timerMs > 220) {
-      this.enterState('idle')
+    if (attack.type === 'hazard' || attack.type === 'slam') {
+      pattern.spawns = ['ground_slam_hazard']
+    }
+
+    if (attack.type === 'dash') {
+      pattern.spawns = ['dash_strike']
+    }
+
+    return pattern
+  }
+
+  private nextPatternRandom(): number {
+    let value = this.patternRngState
+    value ^= value << 13
+    value ^= value >>> 17
+    value ^= value << 5
+    this.patternRngState = value >>> 0
+    return this.patternRngState / 0x100000000
+  }
+
+  private getSafeMovementBounds(): MovementBounds {
+    const inset = 4
+    return {
+      minX: this.movementBounds.minX + inset,
+      maxX: this.movementBounds.maxX - inset
     }
   }
 
-  private enterState(state: BossStateKey, attack?: AttackPattern): void {
-    this.fsm = { key: state, timerMs: 0, attackFired: false }
-    this.activeAttack = attack
-  }
+  private playAnimationForState(): void {
+    const runtimeState = this.bossBrain.state
+    const attackProfile = this.lastFiredAttackId
+      ? getBossAttackCombatProfile(this.blueprint.id as BossId, this.lastFiredAttackId)
+      : undefined
+    const animationPhase =
+      this.lastLifecyclePhase === 'windup' ||
+      this.lastLifecyclePhase === 'active' ||
+      this.lastLifecyclePhase === 'recovery' ||
+      this.lastLifecyclePhase === 'landing'
+        ? this.lastLifecyclePhase
+        : 'recovery'
+    const actionKey = attackProfile
+      ? attackProfile.animation[animationPhase] ?? attackProfile.animation.recovery
+      : null
+    const landingPresentation = this.scene.time.now < this.landingPresentationUntilMs
+    const stateKey =
+      (runtimeState === 'ATTACKING' || landingPresentation) && actionKey
+        ? actionKey
+        : runtimeState === 'MOVE_TO_RANGE'
+          ? 'move'
+          : runtimeState === 'HURT_INVULN'
+            ? 'idle'
+            : runtimeState === 'PHASE_TRANSITION'
+              ? 'special'
+              : 'idle'
 
-  private isAttackUnlocked(name: string): boolean {
-    const unlockIndex = this.blueprint.phases.findIndex((phase) => phase.newAttacks.includes(name))
-    if (unlockIndex === -1) {
-      return true
-    }
-    return this.currentPhaseIndex >= unlockIndex
-  }
-
-  private onDefeated(): void {
-    this.scene.events.emit('boss-defeated', { id: this.blueprint.id, reward: this.blueprint.weaponReward })
-    this.destroy()
-  }
-
-  private playAnimation(state: string): void {
-    if (this.usingPlaceholder) {
-      return
-    }
-    const anim = this.blueprint.spritePlan.animations.find((a) => a.key.includes(state))
-    if (!anim) {
-      return
-    }
-    const animKey = `${this.blueprint.id}_${anim.key}`
+    const animKey = `${this.blueprint.id}_${stateKey}`
+    const frameRate = this.resolveFrameRate(stateKey)
+    const repeat = runtimeState === 'ATTACKING' || landingPresentation ? 0 : -1
     if (!this.scene.anims.exists(animKey)) {
+      const frames = this.resolveGroupedFrames(stateKey)
       this.scene.anims.create({
         key: animKey,
-        frames: this.scene.anims.generateFrameNames(anim.atlas, {
-          prefix: `${anim.key}_`,
-          start: 0,
-          end: anim.frames - 1
-        }),
-        frameRate: anim.fps,
-        repeat: -1
+        frames,
+        frameRate,
+        repeat
       })
     }
+
     this.sprite.play(animKey, true)
+    this.applyActionPresentation(
+      landingPresentation ? 'ATTACKING' : runtimeState,
+      this.lastLifecyclePhase,
+      attackProfile?.motion.kind
+    )
+  }
+
+  private buildGroupedAtlasFrames(): Record<string, string[]> {
+    const grouped: Record<string, string[]> = {}
+    const prefix = `${this.blueprint.id}/`
+    for (const frame of this.atlasFrames) {
+      if (!frame.startsWith(prefix)) {
+        continue
+      }
+      const rest = frame.slice(prefix.length)
+      const group = rest.split('/')[0]
+      if (!group) {
+        continue
+      }
+      if (!grouped[group]) {
+        grouped[group] = []
+      }
+      grouped[group].push(frame)
+    }
+    Object.values(grouped).forEach((frames) => {
+      frames.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    })
+    return grouped
+  }
+
+  private resolveFrameRate(stateKey: string): number {
+    const animations = this.blueprint.spritePlan.animations
+    const preferred = animations.find((entry) => entry.key.includes(stateKey))
+    return Math.max(4, preferred?.fps ?? 8)
+  }
+
+  private resolveGroupedFrames(stateKey: string): Phaser.Types.Animations.AnimationFrame[] {
+    const actionGroup = stateKey.includes('dash') || stateKey.includes('slide') || stateKey.includes('hop') ||
+      stateKey.includes('jump') || stateKey.includes('land') || stateKey.includes('dive') || stateKey.includes('ram')
+      ? 'move'
+      : stateKey.includes('idle')
+        ? 'idle'
+        : 'shoot'
+    const groupMap: Record<string, string[]> = {
+      idle: this.groupedAtlasFrames.idle ?? [],
+      move: this.groupedAtlasFrames.move ?? this.groupedAtlasFrames.run ?? [],
+      shoot: this.groupedAtlasFrames.shoot ?? this.groupedAtlasFrames.attack ?? [],
+      special: this.groupedAtlasFrames.special ?? this.groupedAtlasFrames.shoot ?? [],
+    }
+    const grouped = groupMap[stateKey] ?? groupMap[actionGroup] ?? []
+    if (grouped.length > 0) {
+      return grouped.map((frame) => ({ key: this.atlasKey, frame }))
+    }
+    return this.resolveAnimationFrames(stateKey, Math.min(4, this.atlasFrames.length))
+  }
+
+  private applyActionPresentation(
+    runtimeState: string,
+    lifecycle: BossAttackLifecyclePhase,
+    motion: BossMotionIntentKind | undefined
+  ): void {
+    this.sprite.clearTint()
+    this.sprite.setAlpha(1)
+    this.sprite.setScale(1)
+    this.sprite.setAngle(0)
+    if (runtimeState !== 'ATTACKING') return
+
+    if (lifecycle === 'windup') {
+      this.sprite.setTint(this.blueprint.theme.glow)
+      this.sprite.setScale(0.96, 1.05)
+    } else if (lifecycle === 'active') {
+      this.sprite.setTint(this.blueprint.theme.accent)
+      this.sprite.setScale(1.06, 0.96)
+      if (motion === 'dash_through' || motion === 'dive_to') {
+        this.sprite.setAngle(this.attackFacing * 5)
+      }
+    } else if (lifecycle === 'recovery') {
+      this.sprite.setAlpha(0.88)
+      this.sprite.setScale(1.03, 0.97)
+    } else if (lifecycle === 'landing') {
+      this.sprite.setScale(1.1, 0.88)
+      this.sprite.setTint(this.blueprint.theme.primary)
+    }
+  }
+
+  private pushRuntimeTrace(event: BossRuntimeTrace['event']): void {
+    this.traceSequence += 1
+    this.runtimeTraces.push({
+      sequence: this.traceSequence,
+      atMs: Math.max(0, Math.round(this.scene.time.now ?? 0)),
+      event,
+      attackId: this.lastFiredAttackId,
+      lifecycle: this.lastLifecyclePhase,
+      motion: this.lastMotionIntent,
+      facing: this.attackFacing === -1 ? 'west' : 'east',
+      x: Math.round(this.x),
+      y: Math.round(this.y),
+      vx: Math.round(this.body?.velocity?.x ?? 0),
+      vy: Math.round(this.body?.velocity?.y ?? 0)
+    })
+    if (this.runtimeTraces.length > 32) this.runtimeTraces.splice(0, this.runtimeTraces.length - 32)
+  }
+
+  private resolveAnimationFrames(animationKey: string, desiredCount: number): Phaser.Types.Animations.AnimationFrame[] {
+    const count = Math.max(1, Math.min(desiredCount, this.atlasFrames.length))
+    const slice = this.atlasFrames.slice(0, count)
+    if (slice.length === 0) {
+      throw new Error(
+        `[BossController] Unable to resolve frames for '${animationKey}' in atlas '${this.atlasKey}'`
+      )
+    }
+
+    return slice.map((frame) => ({ key: this.atlasKey, frame }))
   }
 }

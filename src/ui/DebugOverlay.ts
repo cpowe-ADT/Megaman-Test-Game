@@ -8,6 +8,15 @@ export type DebugOverlaySnapshot = {
   jumpHint: string
   pauseHint?: string
   transitionRequestedAt?: number
+  playerHp?: number | null
+  playerMaxHp?: number | null
+  bossHpCurrent?: number | null
+  bossHpMax?: number | null
+  phaseName?: string | null
+  dashCooldownMs?: number | null
+  chargeMs?: number | null
+  iFramesMs?: number | null
+  recentHit?: string | null
 }
 
 export class DebugOverlay {
@@ -67,6 +76,30 @@ export class DebugOverlay {
 
     if (snapshot.pauseHint) {
       lines.push(`Pause: ${snapshot.pauseHint}`)
+    }
+    if (typeof snapshot.playerHp === 'number' && typeof snapshot.playerMaxHp === 'number') {
+      lines.push(`Player HP: ${snapshot.playerHp}/${snapshot.playerMaxHp}`)
+    }
+    if (typeof snapshot.bossHpCurrent === 'number' && typeof snapshot.bossHpMax === 'number') {
+      lines.push(`Boss HP: ${snapshot.bossHpCurrent}/${snapshot.bossHpMax}`)
+    }
+    if (snapshot.phaseName) {
+      lines.push(`Phase: ${snapshot.phaseName}`)
+    }
+    if (
+      typeof snapshot.dashCooldownMs === 'number' ||
+      typeof snapshot.chargeMs === 'number' ||
+      typeof snapshot.iFramesMs === 'number'
+    ) {
+      lines.push(
+        `Timers: dash=${Math.max(0, Math.round(snapshot.dashCooldownMs ?? 0))}ms charge=${Math.max(
+          0,
+          Math.round(snapshot.chargeMs ?? 0)
+        )}ms iframes=${Math.max(0, Math.round(snapshot.iFramesMs ?? 0))}ms`
+      )
+    }
+    if (snapshot.recentHit) {
+      lines.push(`Last Hit: ${snapshot.recentHit}`)
     }
 
     this.text.setText(lines.join('\n'))

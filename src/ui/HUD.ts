@@ -1,21 +1,47 @@
+import { IDENTITY } from '../content/identity'
+import { GAME_WIDTH } from '../config/renderPolicy'
 import Phaser from 'phaser'
+import { getHudLayout } from './hudLayout'
+import { BakedGraphics, type BakeBounds } from './BakedGraphics'
+import { getRenderScale } from '../config/hdRender'
 
 export class HUD {
   private scene: Phaser.Scene
   private root: Phaser.GameObjects.Container
-  private gPlayer: Phaser.GameObjects.Graphics
-  private gWeapon: Phaser.GameObjects.Graphics
-  private gBoss: Phaser.GameObjects.Graphics
+  // Rounded panels and bars are baked into textures (see BakedGraphics): drawn live they cost about 4ms a frame.
+  private gChrome: BakedGraphics
+  private gPlayer: BakedGraphics
+  private gWeapon: BakedGraphics
+  private gBoss: BakedGraphics
   private tPlayer: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
+  private tWeapon: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tBoss: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tLives: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private playerSnapshot = { current: 0, max: 1 }
   private weaponSnapshot = { current: 0, max: 1 }
   private bossSnapshot = { current: 0, max: 1 }
+  private bossBarVisible = true
+  private playerName = 'PLAYER'
+  private weaponName = 'BUSTER'
+  private bossName = 'BOSS • ???'
+  private weaponColor = 0x58d8ff
+  /** What each bar last baked (values and render scale); the boss bar was rebuilt every frame with an unchanged value. */
+  private drawnBars = new WeakMap<BakedGraphics, string>()
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
     this.root = scene.add.container(0, 0).setScrollFactor(0)
+
+    this.gChrome = new BakedGraphics(scene, 'hud-baked-chrome')
+    this.drawChrome()
+    this.root.add(this.gChrome.image)
+    // A lost and restored WebGL context empties every DynamicTexture; bake the panels and bars again.
+    const rebake = () => {
+      this.drawnBars = new WeakMap()
+      this.resize()
+    }
+    scene.game.renderer?.on?.('restorewebgl', rebake)
+    scene.events.once('shutdown', () => scene.game.renderer?.off?.('restorewebgl', rebake))
 
     const hasBitmap = this.scene.cache.bitmapFont.exists('font')
     const mkText = (
@@ -60,79 +86,174 @@ export class HUD {
       return text
     }
 
-    this.gPlayer = scene.add.graphics().setScrollFactor(0)
-    this.root.add(this.gPlayer)
+    this.gPlayer = new BakedGraphics(scene, 'hud-baked-player-bar')
+    this.root.add(this.gPlayer.image)
 
-    this.gWeapon = scene.add.graphics().setScrollFactor(0)
-    this.root.add(this.gWeapon)
+    this.gWeapon = new BakedGraphics(scene, 'hud-baked-weapon-bar')
+    this.root.add(this.gWeapon.image)
 
-    this.gBoss = scene.add.graphics().setScrollFactor(0)
-    this.root.add(this.gBoss)
+    this.gBoss = new BakedGraphics(scene, 'hud-baked-boss-bar')
+    this.root.add(this.gBoss.image)
 
-    this.tPlayer = mkText(20, 12, 'SENTINEL ROOK', 12)
+    const layout = getHudLayout(GAME_WIDTH)
+    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, 9)
     this.root.add(this.tPlayer)
 
-    this.tBoss = mkText(scene.scale.width - 20, 12, 'BOSS • ???', 12, 1, 0)
+    this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', 9)
+    this.root.add(this.tWeapon)
+
+    this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', 9, 1, 0)
     this.root.add(this.tBoss)
 
-    this.tLives = mkText(
-      scene.scale.width - 20,
-      scene.scale.height - 12,
-      'LIVES ×03',
-      12,
-      1,
-      1
-    )
+    // In the HUD band under the boss panel: on the floor it covered the boss spawn point in most rooms.
+    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'RETRY ×03', 10, 1, 0)
     this.root.add(this.tLives)
   }
 
   setNames(playerName: string, bossName: string): void {
-    this.tPlayer.setText(playerName.toUpperCase())
-    this.tBoss.setText(`BOSS • ${bossName.toUpperCase()}`)
+    this.playerName = this.truncateLabel(playerName.toUpperCase(), 16)
+    this.bossName = `BOSS • ${this.truncateLabel(bossName.toUpperCase(), 16)}`
+    this.tPlayer.setText(this.playerName)
+    this.tBoss.setText(this.bossName)
+  }
+
+  setWeaponName(weaponName: string): void {
+    this.weaponName = `WEAPON • ${this.truncateLabel(weaponName.toUpperCase(), 16)}`
+    this.tWeapon.setText(this.weaponName)
+  }
+
+  setWeaponColor(color?: number): void {
+    this.weaponColor = typeof color === 'number' ? color : 0x58d8ff
+    this.drawChrome()
+    this.updateWeapon(this.weaponSnapshot.current, this.weaponSnapshot.max)
   }
 
   setLives(n: number): void {
     const count = Math.max(0, n)
-    this.tLives.setText(`LIVES ×${count.toString().padStart(2, '0')}`)
+    this.tLives.setText(`RETRY ×${count.toString().padStart(2, '0')}`)
   }
 
   drawBar(
-    g: Phaser.GameObjects.Graphics,
+    layer: BakedGraphics,
     x: number,
     y: number,
     w: number,
     h: number,
-    pct: number
+    pct: number,
+    fillColor: number
   ): void {
-    g.clear()
     const clamped = Phaser.Math.Clamp(pct, 0, 1)
-    g.fillStyle(0x041326).fillRect(x, y, w, h)
-    g.fillStyle(0x1d3f68).fillRect(x + 1, y + 1, w - 2, h - 2)
-    g.fillStyle(0x4dd3ff).fillRect(x + 1, y + 1, Math.max(0, (w - 2) * clamped), h - 2)
+    const signature = `${x},${y},${w},${h},${clamped},${fillColor},${getRenderScale().scale}`
+    if (this.drawnBars.get(layer) === signature) {
+      return
+    }
+    this.drawnBars.set(layer, signature)
+    const g = layer.graphics
+    g.clear()
+    const inset = 3
+    const innerX = x + inset
+    const innerY = y + 2
+    const innerWidth = w - inset * 2
+    const innerHeight = Math.max(2, h - 4)
+    const cellCount = 14
+    const cellGap = 1
+    const cellWidth = (innerWidth - cellGap * (cellCount - 1)) / cellCount
+    g.fillStyle(0x020915, 0.98).fillRoundedRect(x, y, w, h, Math.floor(h / 2))
+    g.lineStyle(1, 0x4c7da8, 0.96).strokeRoundedRect(x, y, w, h, Math.floor(h / 2))
+    g.fillStyle(0x102846, 1).fillRoundedRect(innerX, innerY, innerWidth, innerHeight, Math.floor(innerHeight / 2))
+    g.fillStyle(0x173554, 0.9)
+    for (let index = 0; index < cellCount; index += 1) {
+      const cellX = innerX + index * (cellWidth + cellGap)
+      g.fillRoundedRect(cellX, innerY, cellWidth, innerHeight, Math.min(2, innerHeight / 2))
+      const filledFraction = Phaser.Math.Clamp(clamped * cellCount - index, 0, 1)
+      if (filledFraction > 0) {
+        const filledWidth = cellWidth * filledFraction
+        g.fillStyle(fillColor, 1)
+        g.fillRoundedRect(cellX, innerY, filledWidth, innerHeight, Math.min(2, filledWidth / 2, innerHeight / 2))
+        if (filledWidth > 2) {
+          g.fillStyle(0xffffff, 0.42).fillRect(cellX + 1, innerY, filledWidth - 2, 1)
+        }
+        g.fillStyle(0x173554, 0.9)
+      }
+    }
+    g.fillStyle(0x315a83, 1).fillRect(x - 2, y + 2, 2, h - 4)
+    g.fillRect(x + w, y + 2, 2, h - 4)
+    // The side accents reach 2px past the bar and strokes half a pixel past its edge.
+    layer.bake({ x: x - 3, y: y - 1, width: w + 6, height: h + 2 })
   }
 
   updatePlayerHp(cur: number, max: number): void {
     this.playerSnapshot = { current: cur, max }
-    this.drawBar(this.gPlayer, 20, 26, 168, 10, max > 0 ? cur / max : 0)
+    const bar = getHudLayout(GAME_WIDTH).playerBar
+    this.drawBar(this.gPlayer, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0x63ff88)
   }
 
   updateWeapon(cur: number, max: number): void {
     this.weaponSnapshot = { current: cur, max }
-    this.drawBar(this.gWeapon, 20, 40, 168, 8, max > 0 ? cur / max : 0)
+    const bar = getHudLayout(GAME_WIDTH).weaponBar
+    this.drawBar(this.gWeapon, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, this.weaponColor)
   }
 
   updateBossHp(cur: number, max: number): void {
     this.bossSnapshot = { current: cur, max }
-    const w = 190
-    const x = this.scene.scale.width - (w + 20)
-    this.drawBar(this.gBoss, x, 26, w, 10, max > 0 ? cur / max : 0)
+    const bar = getHudLayout(GAME_WIDTH).bossBar
+    this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0xff6677)
+    this.gBoss.image.setVisible(this.bossBarVisible)
+    this.tBoss.setVisible(true)
+  }
+
+  setBossBarVisible(visible: boolean): void {
+    this.bossBarVisible = visible
+    this.gBoss.image.setVisible(visible)
+    // Keep the mission target named before the arena seals; an empty HUD panel
+    // reads like missing UI and makes the stage goal less clear.
+    this.tBoss.setVisible(true)
   }
 
   resize(): void {
-    this.tBoss.setPosition(this.scene.scale.width - 20, 12)
-    this.tLives.setPosition(this.scene.scale.width - 20, this.scene.scale.height - 12)
+    this.drawChrome()
+    const layout = getHudLayout(GAME_WIDTH)
+    this.tBoss.setPosition(layout.bossLabel.x, layout.bossLabel.y)
+    this.tLives.setPosition(layout.livesLabel.x, layout.livesLabel.y)
+    this.tPlayer.setPosition(layout.playerLabel.x, layout.playerLabel.y)
+    this.tWeapon.setPosition(layout.weaponLabel.x, layout.weaponLabel.y)
+    this.tPlayer.setText(this.playerName)
+    this.tWeapon.setText(this.weaponName)
+    this.tBoss.setText(this.bossName)
     this.updatePlayerHp(this.playerSnapshot.current, this.playerSnapshot.max)
     this.updateWeapon(this.weaponSnapshot.current, this.weaponSnapshot.max)
     this.updateBossHp(this.bossSnapshot.current, this.bossSnapshot.max)
+  }
+
+  private truncateLabel(text: string, maxChars: number): string {
+    if (text.length <= maxChars) {
+      return text
+    }
+    return `${text.slice(0, Math.max(1, maxChars - 1))}…`
+  }
+
+  private drawChrome(): void {
+    const width = GAME_WIDTH
+    const layout = getHudLayout(width)
+    const chrome = this.gChrome.graphics
+    chrome.clear()
+    chrome.fillStyle(0x030913, 0.96)
+    chrome.fillRect(0, 0, width, layout.height)
+    chrome.fillStyle(0x050d18, 0.88)
+    chrome.fillRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
+    chrome.fillRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
+    chrome.fillRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.lineStyle(1, 0x2b5c88, 0.72)
+    chrome.strokeRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
+    chrome.strokeRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
+    chrome.strokeRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.fillStyle(0x63ff88, 0.9)
+    chrome.fillRect(layout.playerPanel.x, 10, 3, 19)
+    chrome.fillStyle(this.weaponColor, 0.9)
+    chrome.fillRect(layout.playerPanel.x, 34, 3, 17)
+    chrome.fillStyle(0xff6677, 0.9)
+    chrome.fillRect(layout.bossPanel.x + layout.bossPanel.width - 3, 10, 3, 19)
+    const bounds: BakeBounds = { x: 0, y: 0, width, height: layout.height }
+    this.gChrome.bake(bounds)
   }
 }

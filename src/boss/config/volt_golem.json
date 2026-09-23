@@ -1,0 +1,178 @@
+{
+  "boss_id": "volt_golem",
+  "displayName": "Volt Golem",
+  "maxHP": 120,
+  "contactDamage": 6,
+  "defense": 1,
+  "resistances": {
+    "electric": 0.5,
+    "ice": 1.25
+  },
+  "introLockMs": 1300,
+  "recoverMs": 180,
+  "hurtInvulnMs": 260,
+  "hurtStunMs": 80,
+  "moveSpeed": 90,
+  "preferredRange": {
+    "min": 44,
+    "max": 150
+  },
+  "panicDistance": 34,
+  "phases": [
+    {
+      "threshold": 1,
+      "speedMultiplier": 1,
+      "thinkTimeMultiplier": 1,
+      "attackWeightOverrides": {
+        "shock_punch": 3,
+        "spark_shot": 3,
+        "ground_slam": 2
+      },
+      "unlockAttacks": [
+        "shock_punch",
+        "spark_shot",
+        "ground_slam"
+      ],
+      "transitionLockMs": 0
+    },
+    {
+      "threshold": 0.4,
+      "speedMultiplier": 1.2,
+      "thinkTimeMultiplier": 1.35,
+      "attackWeightOverrides": {
+        "shock_punch": 3,
+        "spark_shot": 4,
+        "ground_slam": 2,
+        "dash_strike": 3
+      },
+      "unlockAttacks": [
+        "dash_strike"
+      ],
+      "transitionLockMs": 520
+    }
+  ],
+  "attacks": [
+    {
+      "id": "shock_punch",
+      "displayName": "ShockPunch",
+      "type": "melee",
+      "windupTime": 280,
+      "activeTime": 120,
+      "recoveryTime": 220,
+      "cooldown": 900,
+      "rangeMin": 0,
+      "rangeMax": 58,
+      "weight": 3,
+      "panicWeight": 5,
+      "params": {
+        "width": 44,
+        "height": 24
+      },
+      "hit": {
+        "damageAmount": 8,
+        "damageType": "impact",
+        "knockbackVector": {
+          "x": 160,
+          "y": -40
+        },
+        "hitstopFrames": 3
+      },
+      "telegraph": {
+        "animationName": "volt_punch_windup",
+        "sfxName": "sfx_volt_charge",
+        "vfxName": "fx_warning_arc"
+      }
+    },
+    {
+      "id": "spark_shot",
+      "displayName": "SparkShot",
+      "type": "projectile",
+      "windupTime": 250,
+      "activeTime": 140,
+      "recoveryTime": 260,
+      "cooldown": 850,
+      "rangeMin": 24,
+      "rangeMax": 190,
+      "weight": 3,
+      "params": {
+        "projectileSpeed": 260,
+        "count": 3,
+        "spread": 0.3
+      },
+      "hit": {
+        "damageAmount": 5,
+        "damageType": "electric",
+        "knockbackVector": {
+          "x": 120,
+          "y": -20
+        },
+        "hitstopFrames": 2
+      },
+      "telegraph": {
+        "animationName": "volt_shot_windup",
+        "sfxName": "sfx_volt_shot",
+        "vfxName": "fx_muzzle_arc"
+      }
+    },
+    {
+      "id": "ground_slam",
+      "displayName": "GroundSlam",
+      "type": "hazard",
+      "windupTime": 360,
+      "activeTime": 160,
+      "recoveryTime": 320,
+      "cooldown": 1300,
+      "rangeMin": 0,
+      "rangeMax": 140,
+      "weight": 2,
+      "params": {
+        "radius": 78,
+        "hazardDuration": 900
+      },
+      "hit": {
+        "damageAmount": 7,
+        "damageType": "hazard",
+        "knockbackVector": {
+          "x": 0,
+          "y": -90
+        },
+        "hitstopFrames": 4
+      },
+      "telegraph": {
+        "animationName": "volt_slam_windup",
+        "sfxName": "sfx_volt_slam",
+        "vfxName": "fx_ground_warning"
+      }
+    },
+    {
+      "id": "dash_strike",
+      "displayName": "DashStrike",
+      "type": "dash",
+      "windupTime": 180,
+      "activeTime": 190,
+      "recoveryTime": 250,
+      "cooldown": 1100,
+      "rangeMin": 30,
+      "rangeMax": 220,
+      "weight": 2,
+      "panicWeight": 4,
+      "params": {
+        "dashSpeed": 260
+      },
+      "hit": {
+        "damageAmount": 9,
+        "damageType": "impact",
+        "knockbackVector": {
+          "x": 190,
+          "y": -55
+        },
+        "hitstopFrames": 4
+      },
+      "telegraph": {
+        "animationName": "volt_dash_windup",
+        "sfxName": "sfx_volt_dash",
+        "vfxName": "fx_dash_line"
+      }
+    }
+  ]
+}

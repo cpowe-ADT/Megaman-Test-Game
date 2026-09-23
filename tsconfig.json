@@ -15,6 +15,6 @@
       "@boss/BossController": ["src/bosses/BossController.ts"]
     }
   },
-  "include": ["src", "debug", "scripts", "types", "tools"],
+  "include": ["src", "debug", "scripts", "types", "tools", "assets/**/*.json"],
   "references": [{ "path": "tsconfig.node.json" }]
 }

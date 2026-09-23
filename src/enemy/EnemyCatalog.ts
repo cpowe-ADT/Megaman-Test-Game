@@ -1,0 +1,457 @@
+import { EnemyDefinition } from './types'
+
+const defaultHitbox = {
+  width: 18,
+  height: 14,
+  offsetX: 8,
+  offsetY: 4
+}
+
+function makeDefinition(def: EnemyDefinition): EnemyDefinition {
+  return def
+}
+
+export const EnemyCatalog: Record<string, EnemyDefinition> = {
+  enemy_gunner_bot: makeDefinition({
+    typeKey: 'enemy_gunner_bot',
+    movementType: 'walker',
+    collider: { width: 14, height: 18, offsetX: 1, offsetY: 0 },
+    hurtbox: { width: 14, height: 18, offsetX: 1, offsetY: 0 },
+    hitboxes: { melee: defaultHitbox },
+    stats: {
+      hp: 4,
+      damage: 1,
+      speed: 62,
+      gravityScale: 1,
+      knockbackResist: 0.2,
+      hitstunLightMs: 120,
+      hitstunHeavyMs: 220,
+      invulnerabilityMs: 70
+    },
+    ai: { sightRange: 140, aggroRange: 200, leashRange: 280, reactionTime: 180 },
+    attack: {
+      type: 'projectile',
+      cooldownMs: 900,
+      windupMs: 180,
+      activeMs: 120,
+      recoveryMs: 220,
+      range: 170,
+      projectileKey: 'enemy_shot_basic'
+    },
+    drops: { healthChance: 0.1, ammoChance: 0.12, scoreChance: 0.4, scoreValue: 100 },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_gunner_bot_idle',
+      move: 'enemy_gunner_bot_move',
+      attackWindup: 'enemy_gunner_bot_attack_windup',
+      attackActive: 'enemy_gunner_bot_attack_active',
+      hurt: 'enemy_gunner_bot_hurt',
+      death: 'enemy_gunner_bot_death',
+      stunned: 'enemy_gunner_bot_stunned'
+    }
+  }),
+  enemy_rocket_bot: makeDefinition({
+    typeKey: 'enemy_rocket_bot',
+    movementType: 'walker',
+    collider: { width: 16, height: 20, offsetX: 1, offsetY: 0 },
+    hurtbox: { width: 16, height: 20, offsetX: 1, offsetY: 0 },
+    hitboxes: { melee: defaultHitbox },
+    stats: {
+      hp: 6,
+      damage: 2,
+      speed: 42,
+      gravityScale: 1,
+      knockbackResist: 0.5,
+      hitstunLightMs: 90,
+      hitstunHeavyMs: 160,
+      invulnerabilityMs: 60
+    },
+    ai: { sightRange: 180, aggroRange: 220, leashRange: 290, reactionTime: 250 },
+    attack: {
+      type: 'lobbed',
+      cooldownMs: 1400,
+      windupMs: 260,
+      activeMs: 150,
+      recoveryMs: 280,
+      range: 220,
+      projectileKey: 'enemy_rocket_lob'
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_rocket_bot_idle',
+      move: 'enemy_rocket_bot_move',
+      attackWindup: 'enemy_rocket_bot_attack_windup',
+      attackActive: 'enemy_rocket_bot_attack_active',
+      hurt: 'enemy_rocket_bot_hurt',
+      death: 'enemy_rocket_bot_death'
+    }
+  }),
+  enemy_slicer_bot: makeDefinition({
+    typeKey: 'enemy_slicer_bot',
+    movementType: 'walker',
+    collider: { width: 12, height: 18, offsetX: 2, offsetY: 0 },
+    hurtbox: { width: 12, height: 18, offsetX: 2, offsetY: 0 },
+    hitboxes: { melee: { width: 22, height: 14, offsetX: 10, offsetY: 4 } },
+    stats: {
+      hp: 5,
+      damage: 2,
+      speed: 84,
+      gravityScale: 1,
+      knockbackResist: 0.25,
+      hitstunLightMs: 140,
+      hitstunHeavyMs: 260,
+      invulnerabilityMs: 80
+    },
+    ai: { sightRange: 120, aggroRange: 170, leashRange: 240, reactionTime: 110 },
+    attack: {
+      type: 'melee',
+      cooldownMs: 700,
+      windupMs: 120,
+      activeMs: 130,
+      recoveryMs: 180,
+      range: 40
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_slicer_bot_idle',
+      move: 'enemy_slicer_bot_move',
+      attackWindup: 'enemy_slicer_bot_attack_windup',
+      attackActive: 'enemy_slicer_bot_attack_active',
+      hurt: 'enemy_slicer_bot_hurt',
+      death: 'enemy_slicer_bot_death'
+    }
+  }),
+  enemy_armored_bot: makeDefinition({
+    typeKey: 'enemy_armored_bot',
+    movementType: 'walker',
+    collider: { width: 18, height: 20, offsetX: 0, offsetY: 0 },
+    hurtbox: { width: 18, height: 20, offsetX: 0, offsetY: 0 },
+    hitboxes: { melee: { width: 20, height: 14, offsetX: 10, offsetY: 4 } },
+    stats: {
+      hp: 12,
+      damage: 2,
+      speed: 36,
+      gravityScale: 1,
+      knockbackResist: 0.85,
+      hitstunLightMs: 60,
+      hitstunHeavyMs: 120,
+      invulnerabilityMs: 100
+    },
+    ai: { sightRange: 120, aggroRange: 180, leashRange: 220, reactionTime: 280 },
+    attack: {
+      type: 'charge',
+      cooldownMs: 1800,
+      windupMs: 380,
+      activeMs: 260,
+      recoveryMs: 240,
+      range: 120,
+      chargeSpeed: 150
+    },
+    deathBehavior: 'fall',
+    animations: {
+      idle: 'enemy_armored_bot_idle',
+      move: 'enemy_armored_bot_move',
+      attackWindup: 'enemy_armored_bot_attack_windup',
+      attackActive: 'enemy_armored_bot_attack_active',
+      hurt: 'enemy_armored_bot_hurt',
+      death: 'enemy_armored_bot_death',
+      stunned: 'enemy_armored_bot_stunned'
+    }
+  }),
+  enemy_shock_hopper: makeDefinition({
+    typeKey: 'enemy_shock_hopper',
+    movementType: 'hopper',
+    collider: { width: 12, height: 14, offsetX: 2, offsetY: 2 },
+    hurtbox: { width: 12, height: 14, offsetX: 2, offsetY: 2 },
+    hitboxes: { melee: { width: 18, height: 18, offsetX: 8, offsetY: 2 } },
+    stats: {
+      hp: 4,
+      damage: 1,
+      speed: 72,
+      gravityScale: 1,
+      knockbackResist: 0.1,
+      contactDamage: 1,
+      hitstunLightMs: 90,
+      hitstunHeavyMs: 160,
+      invulnerabilityMs: 50
+    },
+    ai: { sightRange: 110, aggroRange: 160, leashRange: 210, reactionTime: 100 },
+    attack: {
+      type: 'melee',
+      cooldownMs: 680,
+      windupMs: 180,
+      activeMs: 120,
+      recoveryMs: 190,
+      range: 36
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_shock_hopper_idle',
+      move: 'enemy_shock_hopper_move',
+      attackWindup: 'enemy_shock_hopper_attack_windup',
+      attackActive: 'enemy_shock_hopper_attack_active',
+      hurt: 'enemy_shock_hopper_hurt',
+      death: 'enemy_shock_hopper_death'
+    }
+  }),
+  enemy_bouncer: makeDefinition({
+    typeKey: 'enemy_bouncer',
+    movementType: 'hopper',
+    collider: { width: 12, height: 12, offsetX: 2, offsetY: 2 },
+    hurtbox: { width: 12, height: 12, offsetX: 2, offsetY: 2 },
+    hitboxes: { melee: { width: 16, height: 16, offsetX: 8, offsetY: 2 } },
+    stats: {
+      hp: 3,
+      damage: 1,
+      speed: 92,
+      gravityScale: 1,
+      knockbackResist: 0,
+      contactDamage: 1,
+      hitstunLightMs: 100,
+      hitstunHeavyMs: 150,
+      invulnerabilityMs: 40
+    },
+    ai: { sightRange: 120, aggroRange: 170, leashRange: 240, reactionTime: 100 },
+    attack: {
+      type: 'charge',
+      cooldownMs: 800,
+      windupMs: 100,
+      activeMs: 180,
+      recoveryMs: 140,
+      range: 100,
+      chargeSpeed: 180
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_bouncer_idle',
+      move: 'enemy_bouncer_move',
+      attackWindup: 'enemy_bouncer_attack_windup',
+      attackActive: 'enemy_bouncer_attack_active',
+      hurt: 'enemy_bouncer_hurt',
+      death: 'enemy_bouncer_death'
+    }
+  }),
+  enemy_mine_bot: makeDefinition({
+    typeKey: 'enemy_mine_bot',
+    movementType: 'crawler',
+    collider: { width: 14, height: 10, offsetX: 1, offsetY: 6 },
+    hurtbox: { width: 14, height: 10, offsetX: 1, offsetY: 6 },
+    hitboxes: { melee: { width: 16, height: 12, offsetX: 8, offsetY: 5 } },
+    stats: {
+      hp: 5,
+      damage: 2,
+      speed: 45,
+      gravityScale: 1,
+      knockbackResist: 0.4,
+      hitstunLightMs: 120,
+      hitstunHeavyMs: 200,
+      invulnerabilityMs: 70
+    },
+    ai: { sightRange: 100, aggroRange: 150, leashRange: 180, reactionTime: 220 },
+    attack: {
+      type: 'lobbed',
+      cooldownMs: 2000,
+      windupMs: 260,
+      activeMs: 120,
+      recoveryMs: 350,
+      range: 80,
+      projectileKey: 'enemy_mine_drop'
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_mine_bot_idle',
+      move: 'enemy_mine_bot_move',
+      attackWindup: 'enemy_mine_bot_attack_windup',
+      attackActive: 'enemy_mine_bot_attack_active',
+      hurt: 'enemy_mine_bot_hurt',
+      death: 'enemy_mine_bot_death'
+    }
+  }),
+  enemy_frost_turret: makeDefinition({
+    typeKey: 'enemy_frost_turret',
+    movementType: 'turret',
+    collider: { width: 16, height: 16, offsetX: 0, offsetY: 2 },
+    hurtbox: { width: 16, height: 16, offsetX: 0, offsetY: 2 },
+    hitboxes: { melee: { width: 18, height: 12, offsetX: 8, offsetY: 4 } },
+    stats: {
+      hp: 8,
+      damage: 1,
+      speed: 0,
+      gravityScale: 0,
+      knockbackResist: 1,
+      hitstunLightMs: 40,
+      hitstunHeavyMs: 70,
+      invulnerabilityMs: 50
+    },
+    ai: { sightRange: 220, aggroRange: 240, leashRange: 240, reactionTime: 220 },
+    attack: {
+      type: 'burst',
+      cooldownMs: 1200,
+      windupMs: 220,
+      activeMs: 220,
+      recoveryMs: 240,
+      range: 220,
+      projectileKey: 'enemy_shot_frost',
+      burstCount: 3,
+      burstSpacingMs: 100
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_frost_turret_idle',
+      move: 'enemy_frost_turret_hover',
+      attackWindup: 'enemy_frost_turret_attack_windup',
+      attackActive: 'enemy_frost_turret_attack_active',
+      hurt: 'enemy_frost_turret_hurt',
+      death: 'enemy_frost_turret_death'
+    }
+  }),
+  enemy_laser_eye: makeDefinition({
+    typeKey: 'enemy_laser_eye',
+    movementType: 'turret',
+    collider: { width: 14, height: 14, offsetX: 1, offsetY: 1 },
+    hurtbox: { width: 14, height: 14, offsetX: 1, offsetY: 1 },
+    hitboxes: { melee: { width: 48, height: 6, offsetX: 10, offsetY: 6 } },
+    stats: {
+      hp: 7,
+      damage: 2,
+      speed: 0,
+      gravityScale: 0,
+      knockbackResist: 1,
+      hitstunLightMs: 40,
+      hitstunHeavyMs: 70,
+      invulnerabilityMs: 60
+    },
+    ai: { sightRange: 250, aggroRange: 260, leashRange: 260, reactionTime: 280 },
+    attack: {
+      type: 'beam',
+      cooldownMs: 1800,
+      windupMs: 320,
+      activeMs: 280,
+      recoveryMs: 300,
+      range: 250,
+      projectileKey: 'enemy_beam_pulse'
+    },
+    deathBehavior: 'fade',
+    animations: {
+      idle: 'enemy_laser_eye_idle',
+      move: 'enemy_laser_eye_hover',
+      attackWindup: 'enemy_laser_eye_attack_windup',
+      attackActive: 'enemy_laser_eye_attack_active',
+      hurt: 'enemy_laser_eye_hurt',
+      death: 'enemy_laser_eye_death'
+    }
+  }),
+  enemy_drone: makeDefinition({
+    typeKey: 'enemy_drone',
+    movementType: 'flyer',
+    collider: { width: 14, height: 12, offsetX: 1, offsetY: 2 },
+    hurtbox: { width: 14, height: 12, offsetX: 1, offsetY: 2 },
+    hitboxes: { melee: { width: 18, height: 12, offsetX: 9, offsetY: 2 } },
+    stats: {
+      hp: 4,
+      damage: 1,
+      speed: 80,
+      gravityScale: 0,
+      knockbackResist: 0.1,
+      hitstunLightMs: 90,
+      hitstunHeavyMs: 180,
+      invulnerabilityMs: 50
+    },
+    ai: { sightRange: 180, aggroRange: 220, leashRange: 280, reactionTime: 140 },
+    attack: {
+      type: 'burst',
+      cooldownMs: 900,
+      windupMs: 120,
+      activeMs: 180,
+      recoveryMs: 170,
+      range: 170,
+      projectileKey: 'enemy_shot_basic',
+      burstCount: 2,
+      burstSpacingMs: 90
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_drone_idle',
+      move: 'enemy_drone_hover',
+      attackWindup: 'enemy_drone_attack_windup',
+      attackActive: 'enemy_drone_attack_active',
+      hurt: 'enemy_drone_hurt',
+      death: 'enemy_drone_death'
+    }
+  }),
+  enemy_shield_drone: makeDefinition({
+    typeKey: 'enemy_shield_drone',
+    movementType: 'drone',
+    collider: { width: 16, height: 14, offsetX: 0, offsetY: 1 },
+    hurtbox: { width: 16, height: 14, offsetX: 0, offsetY: 1 },
+    hitboxes: { melee: { width: 14, height: 14, offsetX: 9, offsetY: 1 } },
+    stats: {
+      hp: 7,
+      damage: 1,
+      speed: 65,
+      gravityScale: 0,
+      knockbackResist: 0.35,
+      hitstunLightMs: 70,
+      hitstunHeavyMs: 130,
+      invulnerabilityMs: 80
+    },
+    ai: { sightRange: 170, aggroRange: 210, leashRange: 260, reactionTime: 160 },
+    attack: {
+      type: 'projectile',
+      cooldownMs: 1100,
+      windupMs: 180,
+      activeMs: 140,
+      recoveryMs: 220,
+      range: 180,
+      projectileKey: 'enemy_shot_shield'
+    },
+    deathBehavior: 'explode',
+    animations: {
+      idle: 'enemy_shield_drone_idle',
+      move: 'enemy_shield_drone_hover',
+      attackWindup: 'enemy_shield_drone_attack_windup',
+      attackActive: 'enemy_shield_drone_attack_active',
+      hurt: 'enemy_shield_drone_hurt',
+      death: 'enemy_shield_drone_death',
+      stunned: 'enemy_shield_drone_stunned'
+    }
+  }),
+  enemy_fly_trap: makeDefinition({
+    typeKey: 'enemy_fly_trap',
+    movementType: 'turret',
+    collider: { width: 18, height: 18, offsetX: 0, offsetY: 0 },
+    hurtbox: { width: 18, height: 18, offsetX: 0, offsetY: 0 },
+    hitboxes: { melee: { width: 22, height: 16, offsetX: 10, offsetY: 2 } },
+    stats: {
+      hp: 6,
+      damage: 2,
+      speed: 0,
+      gravityScale: 0,
+      knockbackResist: 1,
+      contactDamage: 1,
+      hitstunLightMs: 80,
+      hitstunHeavyMs: 130,
+      invulnerabilityMs: 90
+    },
+    ai: { sightRange: 90, aggroRange: 110, leashRange: 120, reactionTime: 90 },
+    attack: {
+      type: 'melee',
+      cooldownMs: 800,
+      windupMs: 160,
+      activeMs: 130,
+      recoveryMs: 190,
+      range: 38
+    },
+    deathBehavior: 'fade',
+    animations: {
+      idle: 'enemy_fly_trap_idle',
+      move: 'enemy_fly_trap_hover',
+      attackWindup: 'enemy_fly_trap_attack_windup',
+      attackActive: 'enemy_fly_trap_attack_active',
+      hurt: 'enemy_fly_trap_hurt',
+      death: 'enemy_fly_trap_death'
+    }
+  })
+}
+
+export const EnemyTypeKeys = Object.keys(EnemyCatalog)

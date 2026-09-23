@@ -13,7 +13,7 @@ export interface BossProjectileDiagnosticsState {
 export interface ProjectileFactoryDetails {
   id: string
   attackName?: string
-  mode: 'controller' | 'legacy'
+  mode: 'controller' | 'timer'
   group?: Phaser.Physics.Arcade.Group
   sprite?: Phaser.GameObjects.GameObject | null
 }
@@ -23,18 +23,12 @@ export type ProjectileDetailsProvider<T extends (...args: any[]) => any> = (
   ...args: Parameters<T>
 ) => ProjectileFactoryDetails
 
-export const BOSS_BULLET_TEXTURE_KEY = 'bossBullet'
+export const BOSS_BULLET_TEXTURE_KEY = 'atlas_projectiles_core'
 
 export function ensurePlaceholderTexture(scene: Phaser.Scene): BossProjectileDiagnosticsState {
   const key = BOSS_BULLET_TEXTURE_KEY
   let usedPlaceholder = false
-  if (!scene.textures.exists(key)) {
-    const gfx = scene.add.graphics()
-    gfx.fillStyle(0xffffff, 1).fillRect(0, 0, 1, 1)
-    gfx.generateTexture(key, 1, 1)
-    gfx.destroy()
-    usedPlaceholder = true
-  }
+  usedPlaceholder = !scene.textures.exists(key)
   return {
     placeholderTextureKey: key,
     usedPlaceholder,
@@ -79,7 +73,7 @@ export function wrapBossProjectileFactory<T extends (...args: any[]) => any>(
 export function noteGroupFull(
   state: BossProjectileDiagnosticsState,
   group: Phaser.Physics.Arcade.Group,
-  mode: 'controller' | 'legacy'
+  mode: 'controller' | 'timer'
 ): void {
   if (!DIAGNOSTICS_ENABLED) {
     return

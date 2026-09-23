@@ -1,0 +1,167 @@
+{
+  "id": "EVAL-P1-007",
+  "snapshotAt": "2026-09-23T01:02:30.134Z",
+  "commit": "da50dcc",
+  "dirty": 17,
+  "sources": [
+    "output/decisions/D-001-reshoot"
+  ],
+  "summaries": [],
+  "files": [
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/shot-briefing.png",
+      "bytes": 26991,
+      "sha256": "39f7d0ffc6ffcaa2f0bfad6b7f1a6d22e8ee3c8d413008fb7dd5e966ac21567a"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/shot-control.png",
+      "bytes": 18915,
+      "sha256": "ad753b07e5d12f645ab8b578a74df8620bb4673cc658f7a0b22a8aeacc751196"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/shot-prologue-page-1.png",
+      "bytes": 17830,
+      "sha256": "8de7d3e4771487171b6a51c7f68570af6d38d6b735e044a675739f9ff4f59343"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/shot-stage-card.png",
+      "bytes": 4670,
+      "sha256": "fe3ef515b5d916a21fa9dd3202cb1e197da894c0e8a262a4dfcb09b3c600aea7"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/state-briefing.json",
+      "bytes": 8667,
+      "sha256": "caa93643ac17831fb575bef8724ca1171f0c918bfaa923b452f77f09071b74b2"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/state-control.json",
+      "bytes": 10459,
+      "sha256": "cfe5f9466b13dc628a33d3eb794ed848ae6d871e356a2925ed79c5f087db6312"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/state-prologue-page-1.json",
+      "bytes": 2152,
+      "sha256": "100428d3aa148a2e916de2ae3ca258d64fee4bdd87ee39815f7da41c63c01b9d"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/34-prologue-flow/state-stage-card.json",
+      "bytes": 8531,
+      "sha256": "da3948da96563376991f67cb03eb154e6c9559e65bc9a8e900b9167ff96d3f69"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/crossed.json",
+      "bytes": 56,
+      "sha256": "12182340af69f675cfb4549c97ca2dc7d8645cff7ee02c316b3805cc68062736"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/shot-after-cross.png",
+      "bytes": 31429,
+      "sha256": "f3765690207f9bfd7caab05108034eb5f277716e8abd3d1354445241d63a4b8a"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/shot-before-cross.png",
+      "bytes": 28981,
+      "sha256": "60c07a7a9f5d497893dad59a5752c3ff1e265596bc26a557d3d02f71b760d73b"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/shot-radio-iona.png",
+      "bytes": 36235,
+      "sha256": "d7f6c913d69789f8cd1e849848cbc2a24e6f9d70e3e1c465920820828f268681"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/shot-radio-omega.png",
+      "bytes": 34614,
+      "sha256": "29a4c9522fc4bc556c88742f37fcfabfb03ae1b67b1421d2d6f616ea2109eea8"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/state-after-cross.json",
+      "bytes": 11189,
+      "sha256": "aa4d083a4afe6b167e01804b70fb3be696adf7cb67783fc29ca036d3f48835f0"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/state-before-cross.json",
+      "bytes": 10414,
+      "sha256": "67ae7e73fc312faff4e37e50d9f0fca894b14cef761c58db7bb31ec8c98f38bc"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/state-radio-iona.json",
+      "bytes": 13196,
+      "sha256": "96d02aaaaa0e1086b49291e10ba42c7a60c3d51a40c61aac892a511bd7706b09"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/35-radio-ticker/state-radio-omega.json",
+      "bytes": 13124,
+      "sha256": "64444f0a5a63de4b1c404749e64d47121cc478ecc060d82002962e6651525494"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/4-title-controls/shot-0.png",
+      "bytes": 31028,
+      "sha256": "38eb9d884a921ce8b27a946208baf3c05ba3acd2891dec8b3573905beb6f6de6"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/4-title-controls/shot-1-controls.png",
+      "bytes": 37526,
+      "sha256": "0b3d5baa5d042585cde8df41b421e1ae3fc91b5bc4cd3b3c58718ef8ec3cf215"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/4-title-controls/shot-2-stage-select.png",
+      "bytes": 42356,
+      "sha256": "486ec5c250382440e11c821a95ac874aad4f91e91e963c60e6b610e6f3a29428"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/4-title-controls/shot-3-hud.png",
+      "bytes": 28981,
+      "sha256": "60c07a7a9f5d497893dad59a5752c3ff1e265596bc26a557d3d02f71b760d73b"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/4-title-controls/state-0.json",
+      "bytes": 19415,
+      "sha256": "45c5cca946f92d2a2b1f97417c7a18e69da36f2500f9a907b629558f910ba226"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/menu-options-2x.png",
+      "bytes": 63036,
+      "sha256": "247e37ec9fdcfa8c4e081bbcb1df908eccf0ac1ae391dace85d726ab40414f60"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/menu-stage-select-2x.png",
+      "bytes": 100651,
+      "sha256": "b9fc90216ef8c7595eb4d971173a90a10b1245ad25f270def54d36c94669a8ef"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/menu-title-2x.png",
+      "bytes": 66259,
+      "sha256": "694521095ca0f13057ac8e7f8ae11d674698b65c4577227b8e6ad2068c9a4353"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/menus-2x.json",
+      "bytes": 180,
+      "sha256": "f241967655eddb1c73fcecc4e355527531e2f6d0a870ba12ed691933a027535c"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/pixel-compare.json",
+      "bytes": 86,
+      "sha256": "9e24700060bf77b92f0df712ad6fcb8117220f71d181283cf15155b84596ee93"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/shot-1x.png",
+      "bytes": 28981,
+      "sha256": "60c07a7a9f5d497893dad59a5752c3ff1e265596bc26a557d3d02f71b760d73b"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/shot-2x.png",
+      "bytes": 51157,
+      "sha256": "bcd1c670ee655dd5652593d3137c479e98b0b0d15d94798ef8ec8ad6773ecff0"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/state-1x.json",
+      "bytes": 294,
+      "sha256": "4a8cfff3ad468b755aec32ee177b4a036253bff515619d01d38ea10172ad0e59"
+    },
+    {
+      "path": "output/evidence/EVAL-P1-007/D-001-reshoot/40-hd-render/state-2x.json",
+      "bytes": 295,
+      "sha256": "c94bc542ea7409cef81089204c4a6ec5c24004338459b464e0cb5316717d86d1"
+    }
+  ]
+}

@@ -1,0 +1,375 @@
+{
+  "frames": {
+    "enemy_mine_bot/idle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/idle/001": {
+      "frame": {
+        "x": 42,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/idle/002": {
+      "frame": {
+        "x": 84,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/run/000": {
+      "frame": {
+        "x": 126,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/run/001": {
+      "frame": {
+        "x": 168,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/run/002": {
+      "frame": {
+        "x": 210,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/run/003": {
+      "frame": {
+        "x": 0,
+        "y": 32,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/attack_windup/000": {
+      "frame": {
+        "x": 42,
+        "y": 32,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/attack_windup/001": {
+      "frame": {
+        "x": 84,
+        "y": 32,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/attack_windup/002": {
+      "frame": {
+        "x": 126,
+        "y": 32,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/attack_active/000": {
+      "frame": {
+        "x": 168,
+        "y": 32,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/attack_active/001": {
+      "frame": {
+        "x": 210,
+        "y": 32,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/attack_active/002": {
+      "frame": {
+        "x": 0,
+        "y": 64,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/hurt/000": {
+      "frame": {
+        "x": 42,
+        "y": 64,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/death/000": {
+      "frame": {
+        "x": 84,
+        "y": 64,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/death/001": {
+      "frame": {
+        "x": 126,
+        "y": 64,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/death/002": {
+      "frame": {
+        "x": 168,
+        "y": 64,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    },
+    "enemy_mine_bot/death/003": {
+      "frame": {
+        "x": 210,
+        "y": 64,
+        "w": 42,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 32
+      }
+    }
+  },
+  "meta": {
+    "app": "codex.slice_sheet_to_atlas",
+    "version": "1.0",
+    "image": "enemy_mine_bot.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 252,
+      "h": 96
+    },
+    "scale": "1"
+  }
+}

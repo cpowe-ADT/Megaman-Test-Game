@@ -1,0 +1,120 @@
+# Eval Ledger
+
+One row per eval id. Status is `PASS`, `FAIL`, `SKIPPED (reason)`, or `PENDING`. Never rename or delete an id; add ids if a prompt needs more. Evidence is a command and its result line, plus an artifact path, plus the commit. Review rows quote Craig's reply verbatim.
+
+Kinds: `gate` (a command with an exit code), `audit` (a script against a budget), `review` (Craig approves at a STOP).
+
+Machine-checked by `npm run agents:check` from prompt 05 on: the status starts with one of the four words; a PASS row cites a commit git knows in its Commit cell (a short hash is fine) and has evidence. A review row's approval lives in `docs/prompts/DECISIONS.md` with Craig's reply verbatim; cite the decision id. Rows for prompts 01 to 04 and the planning and art supplements are in `docs/prompts/archive/EVAL_LEDGER-01-04.md`; they still count for entry checks. At each prompt's exit its rows move verbatim to `docs/prompts/archive/EVAL_LEDGER-<NN>.md` the same way, so this file holds only live prompts.
+
+
+## Plan v2 (2026-09-22). Prompts 02 to 04 are superseded; their pending rows stay as written and are not run.
+
+## Prompt 05: Feel, hero, and camera
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P5-001 | gate | motor tests incl. the drag red/green pair | PENDING | | |
+| EVAL-P5-002 | gate | 13d extended: dash-jump trace, drag 0, second dash inside 100ms | PENDING | | |
+| EVAL-P5-003 | gate | combat feel tests plus 13c, 24, 9, 23, 3 | PENDING | | |
+| EVAL-P5-004 | gate | camera deadzone, look-ahead, vertical-follow math; 18 extended | PENDING | | |
+| EVAL-P5-005 | review | hero brief and three turnarounds; Craig picks | PENDING | | |
+| EVAL-P5-006 | gate | hero coverage validator red then green; frame audit | PENDING | | |
+| EVAL-P5-007 | gate | full smoke and sweep with the generated hero; ripped material gone | PENDING | | |
+| EVAL-P5-008 | gate + review | profiles: three slots, name, export/import; smoke 41 | PENDING | | |
+| EVAL-P5-009 | gate | the tutorial teaches: five teach locks, Rook's recorded prompts, UI key hints; smoke 49 | PENDING | | |
+| EVAL-P5-010 | gate | harness and health: smoke continues past failures, timestamped evidence, stepFrames, loader directory imports, pins, requirements.txt; Game.ts at or below 3,400 | PENDING | | |
+
+## Prompt 06: Levels, mechanics, and enemies
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P6-001 | gate | level v2 parity | PENDING | | |
+| EVAL-P6-002 | audit | content audit table, report-only | PENDING | | |
+| EVAL-P6-003 | gate | lint on parity stages; pit, wall-kick, vertical smoke | PENDING | | |
+| EVAL-P6-004 | gate | mechanics library and lab, smoke 42 | PENDING | | |
+| EVAL-P6-005 | gate | mini-bosses, smoke 43, miniboss_callout wired | PENDING | | |
+| EVAL-P6-006 | gate | enemy behaviour and respawn tests and captures | PENDING | | |
+| EVAL-P6-007 | gate + review | nine tilesets and backgrounds, zero placeholder skins | PENDING | | |
+| EVAL-P6-008 | gate | twelve enemy families original; frame audit | PENDING | | |
+| EVAL-P6-009 | gate + review | Pyro Maw pilot to budget; Craig plays | PENDING | | |
+| EVAL-P6-010 | gate + review | nine non-Omega stages pass audit and lint | PENDING | | |
+| EVAL-P6-011 | gate + review | Omega in three acts | PENDING | | |
+| EVAL-P6-012 | gate | difficulty and death economy | PENDING | | |
+| EVAL-P6-013 | gate | sweep v2 assertions; audit and lint in verify | PENDING | | |
+| EVAL-P6-014 | gate | StageBuilder, PickupSystem and EnemyRuntime extracted; Game.ts at or below 3,000 | PENDING | | |
+
+## Prompt 07: Bosses, weapons, and story
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P7-001 | gate | twelve hazard spawners; telegraphs drawn; watchdog gone | PENDING | | |
+| EVAL-P7-002 | gate | phase kits, desperation, weakness stagger on Pyro and Tide | PENDING | | |
+| EVAL-P7-003 | gate + review | intro and death presentation; smoke 44 | PENDING | | |
+| EVAL-P7-004 | gate | weapon identities; weakness ring; no BLOCKED in Classic | PENDING | | |
+| EVAL-P7-005 | gate + review | all ten fights; 44 across the sweep | PENDING | | |
+| EVAL-P7-006 | gate | portraits and dialogue presentation | PENDING | | |
+| EVAL-P7-007 | gate + review | every sequence id consumed; Craig reads the script | PENDING | | |
+| EVAL-P7-008 | gate | boss beats, damage router, weapon runtime and hit wires extracted; Game.ts at or below 2,600 | PENDING | | |
+| EVAL-P7-009 | gate + review | seven new dialogue triggers with fixtures, coverage, consumers and smoke assertions; water margin pilot | PENDING | | |
+
+## Prompt 08: Audio, presentation, and release
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P8-001 | gate | cue map test; per-screen music | PENDING | | |
+| EVAL-P8-002 | gate | credits check; loudness and loop table | PENDING | | |
+| EVAL-P8-003 | gate + review | pixel font; four screens | PENDING | | |
+| EVAL-P8-004 | gate | beats; smoke 45 | PENDING | | |
+| EVAL-P8-005 | gate | gamepad, remap, options; smoke 46 | PENDING | | |
+| EVAL-P8-006 | gate | public build check | PENDING | | |
+| EVAL-P8-007 | gate | deploy workflow, verify:public, itch zip | PENDING | | |
+| EVAL-P8-008 | gate | full campaign smoke 47, both variants | PENDING | | |
+| EVAL-P8-009 | review | Craig's playtest sheet | PENDING | | |
+| EVAL-P8-010 | gate | live URL after the tag | PENDING | | |
+| EVAL-P8-011 | gate | perf budget scenario 51 on WebGL at scale 4 with a committed baseline | PENDING | | |
+
+## Prompt 09: Footprint and performance
+
+Evidence for 09a was produced on 2026-09-22 (Claude, planning session) and committed as `9390db8` (harness), `773e00d` (build), `14841ac` (runtime), `ee57454` (docs); 09b and 09c as `df30ca8`.
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P9-001 | gate | `npm run perf:footprint` exists, runs report-only for a baseline, writes JSON and Markdown, and checks `tests/perf-budget.json` | PASS | `PERF_REPORT_ONLY=1 PERF_LABEL=baseline node scripts/perf/footprint.mjs` -> `footprint: 8/20 within budget, 0 page errors` (`output/perf/footprint-baseline.{json,md}`; baseline is `7b9ff8e` plus the 9.1 chunk fix, because the unfixed build does not boot) | `9390db8` |
+| EVAL-P9-002 | gate | the production build boots: 0 page errors in every footprint scenario | PASS | Red: `dist/` at `7b9ff8e` -> `ReferenceError: Cannot access 'b' before initialization` at `assets/boss-DljATAW1.js:1:2864`, Title never reached. Green: `PERF_LABEL=09a npm run perf:footprint` -> `footprint: 20/20 within budget, 0 page errors` (`output/perf/footprint-09a.json`) | `773e00d` |
+| EVAL-P9-003 | audit | boot: download at or under 3MB, Title at or under 2.5s headless, decoded audio at Title at or under 16MB | PASS | `output/perf/footprint-09a.md`: `static.bootDownloadMB 2.11` (was 6.11), `boot.titleReadyMs 1065` (was 3583), `boot.decodedAudioMB 15.64` (was 86.31), `boot.textureMB 4.66` (was 13.52). `tests/music-residency.test.ts` 4/4 | `14841ac` |
+| EVAL-P9-004 | audit | static: `dist/` at or under 12MB, maps at or under 0.5MB, JS gzip at or under 520KB, Phaser gzip at or under 300KB | PASS | `static.distTotalMB 7.98` (was 19.98), `static.distMapsMB 0` (was 11.61), `static.jsGzipKB 440.3` (was 482.8), `static.phaserChunkGzipKB 294.2` (was 337.3); `npm run build` -> `✓ built in 2.67s`, `Checked 153 runtime asset files and 2 emitted build refs in dist/.` (`output/phase-9a/verify.log`) | `773e00d` |
+| EVAL-P9-005 | audit | running memory: stage decoded audio at or under 16MB, boss at or under 64MB, textures at or under 12MB | PASS | `stage.decodedAudioMB 15.11`, `boss.decodedAudioMB 61.19` (both were 86.31); `stage.textureMB 8.3` (was 22.14). `tests/stage-background-loading.test.ts` 4/4. Sweep captures opened: `output/mission-visual-sweep/pyro_maw/mid.png` (industrial layers), `glacier_ronin/boss-room.png` (snow layers), `omega_fortress/start.png` (dock and industrial layers, same fade as `output/phase-1-2/visual-sweep-final/omega_fortress/start.png`) | `14841ac` |
+| EVAL-P9-006 | gate | hi-DPI canvas at or under 4,064,256 pixels; cap test; smoke `40-hd-render` | PASS | `hiDpi.maxCanvasPixels 4064256` (2560x1440@2x was 4480x2520, 45.2MB; now 2688x1512, 16.3MB); `tests/hd-render.test.ts` cap test green; smoke `40-hd-render` pass including the new menu-frame check (`output/phase-9a/full-smoke/40-hd-render/menus-2x.json` all empty; `menu-title-2x.png`, `menu-options-2x.png` opened: centred, HD text). Red before the `GAME_SIZE` fix: `output/perf/hd-check/title-2x.png`, `options-2x.png` (off centre) | `14841ac` |
+| EVAL-P9-007 | gate | per-frame waste removed; settings cache tested; step p95 at or under 12ms; menu, boss-room and HD smoke green | PASS | `stage.stepP95Ms 6.8` (was 10.7), boss p95 8.4 (was 10.9), SwiftShader proxy; `tests/settings-cache.test.ts` 3/3; full smoke 51/51 includes `4-title-controls`, `8-boss-room-activation`, `38-options-persist`, `38b-pause-weapon-select`, `40-hd-render`. `Game.ts` 3,704 -> 3,639 lines | `14841ac` |
+| EVAL-P9-008 | gate | revisit growth: heap at or under 4MB, textures 0, listeners 0; one set of Options and pause rows per visit | PASS | `PERF_LABEL=09a npm run perf:footprint` -> `revisit.heapGrowthMB -1.65`, `textureGrowth 0`, `listenerGrowth 0` (`output/perf/footprint-09a.json`); smoke `38-options-persist` (third visit: `rowObjects` equals rows, visible music value updates) and `38b-pause-weapon-select` (second pause: `rowBackplates` equals options) pass (`output/phase-9a/full-smoke/38-options-persist/state-options-revisited.json`, `output/phase-9a/full-smoke/summary.json`) | `14841ac` |
+| EVAL-P9-009 | gate + review | pools and batching (9.5) | PASS | Shipped where work was removed outright: retired enemies destroyed, per-frame frame-marker loop gone, projectile DataManager writes on change, one AudioContext, late music decodes evicted (`tests/music-service.test.ts`, mutation-checked). Pooling measured and dropped: `PERF_LABEL=09b-pools npm run perf:footprint` -> combat step p95 7.1ms vs 7.0ms before, 18 more objects held (`output/perf/footprint-09b-pools.md`, `output/perf/footprint-09b-before.md`). Exit run: smoke `24-ground-sword-enemy`, `9-checkpoint-respawn`, `12-weapon-switch-energy` pass within 51/51 (`output/phase-9-exit/final-smoke/summary.json`). Review half: `D-004`. | `df30ca8` |
+| EVAL-P9-010 | gate + review | text and HUD cost (9.6) | PASS (gate); look at `D-004`, `D-010` | Hiding the HUD's four Graphics dropped a stage step from 4.6ms to 0.3ms p50 (probe, 896x504); baked into textures: `PERF_LABEL=09-exit npm run perf:footprint` -> stage step p50/p95 0.3/0.6ms (was 5.3/10.7), combat p95 1.8ms (was 7.0) (`output/perf/footprint-09-exit.md`). HUD pixels: 0 of 25,984 differ at 1x (max 1/255) against `output/phase-9a/full-smoke/4-title-controls/shot-3-hud.png`; every mid-stage sweep frame identical (`output/perf/hud-compare-pyro_maw.png`). Parallax, backdrop and text-resolution changes measured as no cost and not made. | `df30ca8`, `275a3c0` |
+| EVAL-P9-011 | review | disk footprint (9.7) | PASS (gate); deletions are `D-005` to `D-008` | `npm run disk:report` -> repo 698.6MB, `.git` 3,834 loose objects (`output/perf/disk-before.md`); `git gc --prune=never` -> reachable history packed to 106MB, 2,466 unreachable objects (73MB) left for `D-006`; `npm run clean:artifacts` (dry run) -> `99 paths, 45.6MB` in `tmp/` and uncited `output/`. Nothing deleted by an agent. | `df30ca8` |
+| EVAL-P9-012 | gate | exit: verify, sweep and footprint on the exit commit; budgets lowered to achieved plus headroom | PASS | On `275a3c0`: `npm run verify` exit 0 -> `agents:check: 0 errors`, `Manifest valid (25 entries, 25 ready, 0 planned)`, `Test summary: 12 passed, 0 failed`, `# pass 286`, `# fail 0`, `✓ built in 3.09s`, smoke `pass {"pass":51}` (`output/phase-9-exit/final-verify.log`, `output/phase-9-exit/final-smoke/summary.json`); `npm run test:visual-sweep` exit 0, 10/10 (`output/phase-9-exit/final-sweep/summary.json`); `PERF_LABEL=09-exit npm run perf:footprint` -> `footprint: 22/22 within budget, 0 page errors`, clean tree (`output/perf/footprint-09-exit.json`). Ceilings in `tests/perf-budget.json` lowered at `df30ca8` (Phaser gzip restored to 300 at `275a3c0` after the seat review). | `275a3c0` |
+
+## Prompt 10: The agent system
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P10-001 | gate | `npm run agents:check` exists, is part of `verify`, is green, and each rule has a failing fixture | PASS | `npm run agents:check` -> `agents:check: 0 errors, 9 legacy warnings` inside `npm run verify` exit 0 (`output/phase-9-exit/final-verify.log`); `tests/agents-checks.test.ts` 16 fixtures pass within `# pass 286`; the seat review found four ways the first version passed bad input, each now has a fixture | `0da4f40`, `275a3c0` |
+| EVAL-P10-002 | audit | a context pack for every part, under 30K tokens, with the right phases | PASS | `npm run agents:context -- --part 05a` -> `~11315 tokens (budget 30000)` with phases 5.0, 5.1, 5.2, prompt 05's ledger rows, handoff 01's inputs, open decisions and live facts (`output/context/05a.md`); every part of 05 to 10 built between 5.8K and 11.3K; `partPhases` fixture covers 06e/06f, 06h, 09a ranges | `275a3c0` |
+| EVAL-P10-003 | gate | `progress.md` rotated losslessly, under budget, with Now and the template | PASS | The docs-steward seat checked the archive is byte-identical to the old file after a 4-line header (`docs/prompts/reviews/2026-09-22-10a/docs-steward.md`); `npm run agents:check` doc budgets PASS (`output/phase-9-exit/final-verify.log`) | `0da4f40` |
+| EVAL-P10-004 | gate + review | three or more blind seats reviewed 10a; merged, scored, acted on | PASS | `npm run agents:reviews -- docs/prompts/reviews/2026-09-22-10a --expect docs-steward,qa-eval,principal-engineer` -> `3 reviews, 31 evidenced findings (2 BLOCK), 0 format problems` (`docs/prompts/reviews/2026-09-22-10a/MERGED.md`, `docs/prompts/reviews/SCORES.md`); both BLOCKs and the MAJORs fixed in `275a3c0`, resolution in `docs/prompts/handoff/10a-agent-system.md` | `275a3c0` |
+| EVAL-P10-005 | gate | always-read files within budget, stale facts gone, doc paths resolve, handoff 01 corrected | PASS | `npm run agents:check` -> doc budgets, doc paths, handoffs PASS (`output/phase-9-exit/final-verify.log`); `AGENTS.md` 84 lines, `CLAUDE.md` 10; counts point at `npm run agents:facts`; handoff 01 status corrected with `D-003` open and blocking entry 5 | `275a3c0` |
+| EVAL-P10-006 | gate | (10b) CI runs `npm run agents:check` on every push | PASS | `.github/workflows/ci.yml:25` runs `npm run agents:check` before `npm ci`, with `fetch-depth: 0` so commit cells resolve; `D-011` DECIDED by panel (`docs/prompts/reviews/2026-09-22-decisions/MERGED.md`); first GitHub run happens on Craig's next push | `67d2d34` |
+| EVAL-P10-007 | gate | (10b) evidence tied to commits: summaries carry `commit` and `dirty`; per-eval snapshots | PASS | `scripts/lib/provenance.mjs` spread into the smoke and sweep summaries; `npm run agents:evidence` wrote `docs/prompts/evidence/EVAL-P1-007.json` (commit, dirty, file hashes) and `output/evidence/EVAL-P1-007/` | `67d2d34` |
+| EVAL-P10-008 | gate | (10b) a test builds every part's pack under 30K; 06 and 08 carry the sections they cite from 02 and 04 | PASS | `tests/context-packs.test.ts` builds every part of 05 to 11 under 30K inside `npm run -s gate -- test` -> `# pass 291` (`output/gates/test.log`); `sharedSections` in `tests/agent-budget.json` adds 02 Route budget and 03 Production rules | `67d2d34` |
+| EVAL-P10-009 | review | (10b) retro at each prompt exit proposes at most one rule change as a DECISIONS row | PENDING | `npm run agents:retro -- --prompt 10` -> `output/retro/10.md: 9 ledger rows, 3 score rows, 2 decisions, 3 progress entries`; the first docs-steward retro proposal runs at 05's exit (with P11-008) | |
+
+## Prompt 11: Token efficiency
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P11-001 | gate | `npm run agents:packet` writes a packet (brief, format, scope, diff) and exits 1 over budget naming the largest parts | PASS | `npm run agents:packet -- --seat qa-eval --scope ... --diff HEAD` -> `~22167 tokens (budget 20000)`, exit 1, `largest parts: Diff HEAD ~21412, ...`; a scoped packet with one excerpt and one image -> `~1402 tokens` (`output/packets/qa-eval-2026-09-230110-qa-eval.md` is the over-budget one, written before the exit) | `67d2d34` |
+| EVAL-P11-002 | gate | `parseTokens` fixture; `SCORES.md` Tokens column; merges warn over budget | PASS | `tests/agents-checks.test.ts` "parseTokens reads the Tokens header" inside `# pass 291` (`output/gates/test.log`); `merge-reviews.mjs` rewrites the SCORES header with Tokens; `merge-decisions.mjs` warns over `tokens.panelSeat` | `67d2d34` |
+| EVAL-P11-003 | gate | every `.claude/agents/*.md` has a `model:` line; runner and implementer exist; README tier tables match | PASS | `grep -h '^model:' .claude/agents/*.md` -> 10 sonnet, 1 opus, 1 haiku; `docs/prompts/seats/README.md` "Model tiers" and the risk-tier table | `67d2d34` |
+| EVAL-P11-004 | review | one fast-tier worker run from a task card returns a valid result card | PASS | haiku worker, runner brief, card for `npm run test` and `agents:check` -> `Outcome: DONE`, `# pass 291 # fail 0`, `0 errors, 5 legacy warnings` (`output/runner/test.log`); 7 calls, 57K tokens: the measurement that set the calls-times-context rule and the gate wrapper | `67d2d34` |
+| EVAL-P11-005 | review | (11b) first R2 review of 05a with packets: each seat at most 60K tokens and 5 calls, findings evidenced, Tokens in `SCORES.md` | PENDING | | |
+| EVAL-P11-006 | gate | a quiet gate wrapper keeps full logs in `output/gates/` and prints one result line per script | PASS | `npm run -s gate -- test agents:check` -> `PASS test (11s): # pass 291 ... # fail 0 (output/gates/test.log)` and `PASS agents:check (0s): agents:check: 0 errors, 5 legacy warnings ...` | `67d2d34` |
+| EVAL-P11-007 | gate | (11b) `run-seats.sh --diff` through Codex with `CODEX_MODEL`, merged green | PENDING | | |
+| EVAL-P11-008 | review | (11b) 05 exit retro compares Tokens per seat with the 2026-09-22 audit and proposes at most one budget change | PENDING | | |

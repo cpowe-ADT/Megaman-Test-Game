@@ -1,0 +1,14 @@
+{
+  "enemy_rocket_bot_sheet_v1_20260213_210000.png": { "hue_degrees": 28, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_slicer_bot_sheet_v1_20260213_210000.png": { "hue_degrees": 70, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_armored_bot_sheet_v1_20260213_210000.png": { "hue_degrees": 120, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_shock_hopper_sheet_v1_20260213_210000.png": { "hue_degrees": 165, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_bouncer_sheet_v1_20260213_210000.png": { "hue_degrees": 200, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_mine_bot_sheet_v1_20260213_210000.png": { "hue_degrees": 235, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_frost_turret_sheet_v1_20260213_210000.png": { "hue_degrees": 255, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_laser_eye_sheet_v1_20260213_210000.png": { "hue_degrees": 285, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_drone_sheet_v1_20260213_210000.png": { "hue_degrees": 315, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_fly_trap_sheet_v1_20260213_210000.png": { "hue_degrees": 340, "notes": "Derived via hue shift from enemy_gunner_bot_sheet_v1. Placeholder until real sheet exists." },
+  "enemy_shield_drone_sheet_v2_20260213_210000.png": { "hue_degrees": 18, "notes": "Derived via hue shift from enemy_shield_drone_sheet_v1. Used to keep v2 generation deterministic." }
+}
+

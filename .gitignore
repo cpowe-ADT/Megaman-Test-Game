@@ -3,3 +3,8 @@ dist/
 .vscode/
 .DS_Store
 npm-debug.log*
+assets/private/
+tmp/
+output/
+__pycache__/
+*.py[cod]

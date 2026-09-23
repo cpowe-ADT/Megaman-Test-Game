@@ -1,0 +1,138 @@
+{
+  "$comment": "Budgets and chain rules for npm run agents:check (scripts/agents/check.mjs). Lower a ceiling when you beat it; raising one needs a ledger row that says why. Doc budgets are bytes (about 4 bytes per token) of the files an agent reads at the start of a session.",
+  "gameTsMaxLines": 3639,
+  "tsNocheckAllowed": [
+    "src/scenes/Game.ts"
+  ],
+  "enforceLedgerFrom": 5,
+  "docs": {
+    "AGENTS.md": {
+      "maxLines": 150,
+      "maxBytes": 12000
+    },
+    "CLAUDE.md": {
+      "maxLines": 40,
+      "maxBytes": 3000
+    },
+    "progress.md": {
+      "maxBytes": 20000
+    },
+    "docs/prompts/START.md": {
+      "maxBytes": 9000
+    },
+    "docs/prompts/00-orchestrator-charter.md": {
+      "maxBytes": 30000
+    },
+    "docs/prompts/EVAL_LEDGER.md": {
+      "maxBytes": 24000
+    },
+    "docs/prompts/DECISIONS.md": {
+      "maxBytes": 16000
+    },
+    "docs/prompts/05-feel-hero-and-camera.md": {
+      "maxBytes": 24000
+    },
+    "docs/prompts/06-levels-mechanics-and-enemies.md": {
+      "maxBytes": 24000
+    },
+    "docs/prompts/07-bosses-weapons-and-story.md": {
+      "maxBytes": 24000
+    },
+    "docs/prompts/08-audio-presentation-and-release.md": {
+      "maxBytes": 24000
+    },
+    "docs/prompts/09-footprint-and-performance.md": {
+      "maxBytes": 24000
+    },
+    "docs/prompts/10-agent-system.md": {
+      "maxBytes": 24000
+    },
+    "docs/prompts/11-token-efficiency.md": {
+      "maxBytes": 12000
+    },
+    "docs/prompts/seats/BRIEF_FORMAT.md": {
+      "maxBytes": 3000
+    }
+  },
+  "pathCheckedDocs": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/prompts/START.md",
+    "docs/prompts/10-agent-system.md",
+    "docs/prompts/seats/README.md",
+    "docs/prompts/DECISIONS.md",
+    "docs/README.md",
+    "docs/prompts/handoff/09-footprint-and-performance.md",
+    "docs/prompts/handoff/10a-agent-system.md",
+    "docs/prompts/handoff/09a-footprint-and-performance.md",
+    "docs/prompts/README.md",
+    "docs/prompts/11-token-efficiency.md",
+    "docs/prompts/handoff/10-agent-system.md"
+  ],
+  "chain": {
+    "5": {
+      "handoffs": [
+        "01-foundation-and-story"
+      ],
+      "evals": [
+        "EVAL-ART-001",
+        "EVAL-ART-002",
+        "EVAL-ART-003",
+        "EVAL-ART-004"
+      ]
+    },
+    "6": {
+      "handoffs": [
+        "05-feel-hero-and-camera"
+      ],
+      "evals": [
+        "P5"
+      ]
+    },
+    "7": {
+      "handoffs": [
+        "06-levels-mechanics-and-enemies"
+      ],
+      "evals": [
+        "P6"
+      ]
+    },
+    "8": {
+      "handoffs": [
+        "07-bosses-weapons-and-story"
+      ],
+      "evals": [
+        "P7"
+      ]
+    },
+    "9": {
+      "handoffs": [],
+      "evals": []
+    },
+    "10": {
+      "handoffs": [],
+      "evals": []
+    },
+    "11": {
+      "handoffs": [],
+      "evals": []
+    }
+  },
+  "sharedSections": {
+    "02": [
+      "Route budget"
+    ],
+    "03": [
+      "Production rules"
+    ]
+  },
+  "tokens": {
+    "$comment": "Token budgets per agent run (docs/prompts/11-token-efficiency.md). packet fails agents:packet; the others warn in agents:reviews / agents:decisions and need a reason in the progress entry. Measured 2026-09-22: 16 seat and panel runs used 93K-344K each (about 2.6M); these ceilings are that work done with packets.",
+    "packet": 20000,
+    "seatReview": 60000,
+    "panelSeat": 40000,
+    "workerFast": 20000,
+    "workerStandard": 60000,
+    "sessionHandoff": 3000
+  }
+}

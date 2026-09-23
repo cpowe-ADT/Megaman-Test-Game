@@ -1,0 +1,375 @@
+{
+  "frames": {
+    "enemy_bouncer/idle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/idle/001": {
+      "frame": {
+        "x": 40,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/idle/002": {
+      "frame": {
+        "x": 80,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/run/000": {
+      "frame": {
+        "x": 120,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/run/001": {
+      "frame": {
+        "x": 160,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/run/002": {
+      "frame": {
+        "x": 200,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/run/003": {
+      "frame": {
+        "x": 0,
+        "y": 34,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/attack_windup/000": {
+      "frame": {
+        "x": 40,
+        "y": 34,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/attack_windup/001": {
+      "frame": {
+        "x": 80,
+        "y": 34,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/attack_windup/002": {
+      "frame": {
+        "x": 120,
+        "y": 34,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/attack_active/000": {
+      "frame": {
+        "x": 160,
+        "y": 34,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/attack_active/001": {
+      "frame": {
+        "x": 200,
+        "y": 34,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/attack_active/002": {
+      "frame": {
+        "x": 0,
+        "y": 68,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/hurt/000": {
+      "frame": {
+        "x": 40,
+        "y": 68,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/death/000": {
+      "frame": {
+        "x": 80,
+        "y": 68,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/death/001": {
+      "frame": {
+        "x": 120,
+        "y": 68,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/death/002": {
+      "frame": {
+        "x": 160,
+        "y": 68,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    },
+    "enemy_bouncer/death/003": {
+      "frame": {
+        "x": 200,
+        "y": 68,
+        "w": 40,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 34
+      }
+    }
+  },
+  "meta": {
+    "app": "codex.slice_sheet_to_atlas",
+    "version": "1.0",
+    "image": "enemy_bouncer.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 240,
+      "h": 102
+    },
+    "scale": "1"
+  }
+}

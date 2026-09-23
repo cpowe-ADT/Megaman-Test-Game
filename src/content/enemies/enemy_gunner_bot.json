@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1",
+  "id": "enemy_gunner_bot",
+  "displayName": "Gunner Bot",
+  "hp": 4,
+  "traits": ["grounded", "ranged"],
+  "movement": {
+    "profile": "ground_patrol",
+    "params": {
+      "speed": 62
+    }
+  },
+  "combat": {
+    "contactDamage": 1,
+    "iFrameMs": 70,
+    "hitstunLightMs": 120,
+    "hitstunHeavyMs": 220,
+    "knockbackResist": 0.2
+  },
+  "attack": {
+    "type": "projectile",
+    "cooldownMs": 900,
+    "windupMs": 180,
+    "activeMs": 120,
+    "recoveryMs": 220,
+    "range": 170,
+    "projectileKey": "enemy_shot_basic"
+  },
+  "animationKeys": {
+    "idle": "enemy_gunner_bot_idle",
+    "move": "enemy_gunner_bot_move",
+    "attackWindup": "enemy_gunner_bot_attack_windup",
+    "attackActive": "enemy_gunner_bot_attack_active",
+    "hurt": "enemy_gunner_bot_hurt",
+    "death": "enemy_gunner_bot_death"
+  }
+}

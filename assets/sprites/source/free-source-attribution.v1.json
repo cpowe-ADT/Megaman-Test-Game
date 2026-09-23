@@ -1,0 +1,320 @@
+{
+  "version": "1",
+  "generatedAt": "2026-03-10T18:00:00-05:00",
+  "entries": [
+    {
+      "id": "enemy-platformer-security-robot",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/robot-platformer-sprites",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Robot platformer sprites by GearShocky.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_robot_platformer_sheet_free_v1_20260312_120000.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/*_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/*/*.png",
+        "assets/sprites/enemies/*/*.atlas.json"
+      ],
+      "notes": "Downloaded raw robot-platformer sheet, then derived the humanoid and standard drone enemy variants used across the v2 full-roster enemy rebuild."
+    },
+    {
+      "id": "enemy-kenney-robot-pack",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/robot-pack",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Robot pack by Kenney. Credit Kenney.nl is appreciated but not required on the source page.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_robot_pack_side_sheet_free_v1_20260312_120000.png",
+      "runtimeOutputs": [],
+      "notes": "Retained as an earlier CC0 tracked-robot intake candidate, but the active heavy/turret rebuilds have since moved to more specialized source packs."
+    },
+    {
+      "id": "enemy-plant-monster",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/plant-monster",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Plant Monster by bevouliin.com.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_plant_monster_frame1_free_v1_20260312_184600.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_fly_trap_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.png",
+        "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.atlas.json"
+      ],
+      "notes": "Stored the two transparent plant-monster source frames and used them as the base silhouette for the fly-trap toxic harrier rebuild."
+    },
+    {
+      "id": "enemy-jumping-blob",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/jumping-blob",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Jumping Blob by Master484.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_jumping_blob_strip_free_v1_20260312_184600.png",
+      "runtimeOutputs": [],
+      "notes": "Retained as an earlier CC0 intake candidate for hazard/blob silhouettes, but superseded in the active bouncer rebuild by the Slime First Gen sheet."
+    },
+    {
+      "id": "enemy-scorpy-scorp",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/scorpy-scorp",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Scorpy Scorp by AntumDeluge.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_scorpy_scorp_walk_sheet_free_v1_20260312_184600.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_mine_bot_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.png",
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.atlas.json"
+      ],
+      "notes": "Stored the scorpion walk and stab sheets and used them to rebuild the mine-bot as a grounded hazard crawler with a distinct silhouette."
+    },
+    {
+      "id": "enemy-slime-first-gen-weak",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/slime-monster-sprites",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Slime Monster Sprites by BDragon1727.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_slime_first_gen_weak_free_v1_20260312_190900.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_bouncer_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.png",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.atlas.json"
+      ],
+      "notes": "Used the green slime row and splash frames as the upgraded squash-and-stretch source for the active bouncer rebuild."
+    },
+    {
+      "id": "enemy-eye-monster",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/floating-eye-monster-16x16",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Floating Eye Monster 16x16 by Bevouliin.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_eye_monster_sheet_free_v1_20260312_190900.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_laser_eye_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.png",
+        "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.atlas.json"
+      ],
+      "notes": "Used the floating-eye frame grid as the active laser-eye rebuild so the beam sentinel now has a dedicated eye silhouette instead of a recolored saucer."
+    },
+    {
+      "id": "enemy-cannon-gun",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/cannon-gun",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Cannon Gun by Clint Bellanger / Liberated Pixel Cup contributors as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_cannon_gun_sheet_free_v1_20260312_191500.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_frost_turret_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.png",
+        "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.atlas.json"
+      ],
+      "notes": "Used the cannon-gun animation row as the active frost-turret rebuild so the stage turret now reads as a dedicated mounted cannon instead of a recolored tracked robot."
+    },
+    {
+      "id": "enemy-kenney-tanks-pack",
+      "family": "enemies",
+      "sourceUrl": "https://opengameart.org/content/tanks",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Tanks by Kenney.",
+      "localSourcePath": "assets/sprites/source/enemies/enemy_kenney_tank_grey1_free_v1_20260312_194000.png",
+      "runtimeOutputs": [
+        "assets/sprites/source/enemies/enemy_armored_bot_sheet_v2_20260312_120000.png",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.png",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.atlas.json"
+      ],
+      "notes": "Used the grey tank body variants from Kenney's CC0 tanks pack as the active armored-bot rebuild so the heavy bruiser now reads as a dedicated tank silhouette."
+    },
+    {
+      "id": "boss-enemy-free-roster",
+      "family": "bosses-enemies",
+      "sourceUrl": "https://opengameart.org/content/mech-designs",
+      "license": "CC0",
+      "attribution": "OpenGameArt: Mech Designs by AntumDeluge / contributors as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/bosses/boss_roster_sheet_free_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/*.png",
+        "assets/sprites/bosses/*.json",
+        "assets/sprites/enemies/*/*.png",
+        "assets/sprites/enemies/*/*.atlas.json"
+      ],
+      "notes": "Composite free roster sheet built from downloaded mech GIFs and palette-shifted per-slot variants for deterministic atlas generation."
+    },
+    {
+      "id": "projectile-robotfree-objects",
+      "family": "projectiles",
+      "sourceUrl": "https://opengameart.org/content/robot-2d-sprites",
+      "license": "CC-BY 3.0",
+      "attribution": "OpenGameArt: Robot 2D Sprites by azrielantistier.",
+      "localSourcePath": "assets/sprites/source/projectiles/projectile_robotfree_objects_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.atlas.json",
+        "assets/sprites/effects/effects_core/effects_core.png",
+        "assets/sprites/effects/effects_core/effects_core.atlas.json"
+      ],
+      "notes": "Curated object strip assembled from RobotFree bullet and muzzle sprites."
+    },
+    {
+      "id": "effects-explosion03",
+      "family": "effects",
+      "sourceUrl": "https://opengameart.org/content/16x16-explosion-animation",
+      "license": "CC-BY 4.0",
+      "attribution": "OpenGameArt: 16x16 Explosion Animation by bluecarrot16 / qubodup as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/projectiles/effects_explosion03_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/effects/effects_core/effects_core.png",
+        "assets/sprites/effects/effects_core/effects_core.atlas.json"
+      ]
+    },
+    {
+      "id": "effects-ring95",
+      "family": "effects",
+      "sourceUrl": "https://opengameart.org/content/magic-effect",
+      "license": "CC-BY 4.0",
+      "attribution": "OpenGameArt: Magic Effect by Cainos / bluecarrot16 as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/projectiles/effects_ring95_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "assets/sprites/effects/effects_core/effects_core.png"
+      ]
+    },
+    {
+      "id": "effects-aura38",
+      "family": "effects",
+      "sourceUrl": "https://opengameart.org/content/magic-effect",
+      "license": "CC-BY 4.0",
+      "attribution": "OpenGameArt: Magic Effect by Cainos / bluecarrot16 as listed on the source page.",
+      "localSourcePath": "assets/sprites/source/projectiles/effects_aura38_sheet_v1_20260310_180000.png",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_core/projectiles_core.png",
+        "assets/sprites/effects/effects_core/effects_core.png"
+      ]
+    },
+    {
+      "id": "boss-tide-reaver-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Tide Reaver art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_tide_reaver_sheet_hf_v1_20260910_b.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/tide_reaver.png",
+        "assets/sprites/bosses/tide_reaver.json"
+      ],
+      "notes": "Variant a kept beside it as an alternate. Cut with scripts/sprites/hf_sheet_to_atlas.py. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-sentinel-rook-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Sentinel Rook art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_sentinel_rook_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/sentinel_rook.png",
+        "assets/sprites/bosses/sentinel_rook.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 2e7dbc9b-9959-4c8d-b657-c33aca77f4c8. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-pyro-maw-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Pyro Maw art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_pyro_maw_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/pyro_maw.png",
+        "assets/sprites/bosses/pyro_maw.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 17b82743-3547-487c-b71f-2a58e08fd872. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-volt-hopper-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Volt Hopper art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_volt_hopper_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/volt_hopper.png",
+        "assets/sprites/bosses/volt_hopper.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 756a25cf-96db-4ad2-8de8-d88df727c625. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-basalt-titan-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Basalt Titan art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_basalt_titan_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/basalt_titan.png",
+        "assets/sprites/bosses/basalt_titan.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b9ff4612-9409-4462-a736-1db6b01270d5. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-ferro-blade-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Ferro Blade art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_ferro_blade_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/ferro_blade.png",
+        "assets/sprites/bosses/ferro_blade.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 1c731281-78f6-485b-afd8-7d1841a141e2. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-mire-wraith-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Mire Wraith art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_mire_wraith_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/mire_wraith.png",
+        "assets/sprites/bosses/mire_wraith.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job ca5cb1d7-b07c-4b15-bd9d-8b8065383049. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-gale-vixen-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Gale Vixen art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_gale_vixen_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/gale_vixen.png",
+        "assets/sprites/bosses/gale_vixen.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 925e5d54-7062-47a3-ba15-922c529ea51f. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-glacier-ronin-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Glacier Ronin art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_glacier_ronin_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/glacier_ronin.png",
+        "assets/sprites/bosses/glacier_ronin.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b239060e-ed9c-49fd-a141-e570bc4f902a. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    },
+    {
+      "id": "boss-omega-core-hf-v1",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Omega Core art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/boss_omega_core_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/omega_core.png",
+        "assets/sprites/bosses/omega_core.json"
+      ],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 91be13e3-4710-49ba-9add-a362db9ce859. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+    }
+  ]
+}
