@@ -47,6 +47,14 @@ type DevEntry = {
  * registry, collision logging, the DEBUG_UI overlay and the automation debug snapshots. Moved out
  * of `Game` unchanged in behaviour (EVAL-P5-010, slice 5.0c); `Game._dev` still reads `state`.
  */
+/** The automation hooks (window.stageDebug, bossDebug) are installed by the scene, synchronously, so the
+ * progression hooks that extend window.stageDebug afterwards are never overwritten. Injected so this
+ * module stays free of GameDebugHooks' runtime Phaser import and loads under node for fake-host tests. */
+export interface DevUxHooks {
+  install: (host: DevUxHost, dump: () => unknown) => void
+  uninstall: (dump: () => unknown) => void
+}
+
 export class DevUx {
   readonly state = {
     on: false,
@@ -59,7 +67,7 @@ export class DevUx {
   }
   overlay?: DebugOverlay
 
-  constructor(private readonly host: DevUxHost) {}
+  constructor(private readonly host: DevUxHost, private readonly hooks?: DevUxHooks) {}
 
   init(): void {
     const host = this.host
@@ -107,12 +115,9 @@ export class DevUx {
       return rows
     }
 
-    // Loaded lazily, gated on AUTOMATION.enabled (which the functions also check internally): this
-    // module has no runtime dependency on `./GameDebugHooks`, which still imports real Phaser, so
-    // DevUx keeps loading under node for fake-host tests when automation is off (the normal case).
-    if (AUTOMATION.enabled) {
-      void import('./GameDebugHooks').then(({ installGameDebugHooks }) => installGameDebugHooks(host, dump))
-    }
+    // Installed synchronously here, before Game.create() installs the progression hooks that extend
+    // window.stageDebug; an asynchronous install replaced that object a frame later (found by 33/33b/13e).
+    this.hooks?.install(host, dump)
     const toggleOverlay = () => {
       this.state.on = !this.state.on
       if (!this.state.on) {
@@ -137,9 +142,7 @@ export class DevUx {
         this.state.initOnce = false
         this.state.entries.clear()
         this.state.tick = 0
-        if (AUTOMATION.enabled) {
-          void import('./GameDebugHooks').then(({ uninstallGameDebugHooks }) => uninstallGameDebugHooks(dump))
-        }
+        this.hooks?.uninstall(dump)
       })
     }
   }

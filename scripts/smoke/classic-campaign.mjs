@@ -3,6 +3,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { chromium } from 'playwright'
 
+// The debug hooks install asynchronously after Game.create() (DevUx loads them on demand), so wait for them
+// before the first direct call instead of assuming they exist the frame the scene state says 'Game'.
+async function waitForDebugHooks(page) {
+  await page.waitForFunction(() => Boolean(window.stageDebug?.crossBossGate && window.bossDebug?.unlockIntro), null, { timeout: 8000 })
+}
+
 export async function runClassicCampaignScenario(name, { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }) {
   const dir=path.join(outputDir,name);fs.rmSync(dir,{recursive:true,force:true});fs.mkdirSync(dir,{recursive:true})
   const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader']})
@@ -55,6 +61,7 @@ export async function runClassicCampaignScenario(name, { outputDir, titleUrl, re
     await tapKey(page,'Enter');await waitForState(page,s=>s.scene==='NewCampaign')
     await advanceFrames(page,3);await tapKey(page,'Enter')
     await waitForState(page,s=>s.scene==='Game'&&s.stageRuntime?.stageId==='tutorial_sentinel')
+    await waitForDebugHooks(page)
     await page.evaluate(()=>{window.stageDebug.crossBossGate();window.bossDebug.unlockIntro()})
     await advanceFrames(page,12)
     await page.evaluate(()=>{window.bossDebug.damage(999);window.stageDebug.skipDialogue()})
@@ -122,6 +129,7 @@ export async function runClassicUpgradeScenario(name, { outputDir, titleUrl, rea
   try {
     await page.goto(`${titleUrl}&startScene=StageSelect`);await waitForState(page,s=>s.scene==='StageSelect');await tapKey(page,'Enter')
     await waitForState(page,s=>s.scene==='Game'&&s.newPlayer?.locomotion?.grounded)
+    await waitForDebugHooks(page)
     evidence.armor=await page.evaluate(()=>{
       const scene=window.__phaserGame.scene.getScene('Game')
       window.stageDebug.grantUpgrade('armor_body');window.stageDebug.grantUpgrade('armor_helmet')

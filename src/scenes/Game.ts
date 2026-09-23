@@ -15,6 +15,7 @@ import { bossHudLabel } from '../bosses/types'
 import { CameraDirector } from './game/CameraDirector'
 import { DeathSequence } from './game/DeathSequence'
 import { DevUx } from './game/DevUx'
+import { installGameDebugHooks, uninstallGameDebugHooks } from './game/GameDebugHooks'
 import { RunState } from './game/RunState'
 import { StoryDirector, pendingMilestoneId } from './game/StoryDirector'
 import { ToastLane } from '../ui/ToastLane'
@@ -125,7 +126,6 @@ const JUMP_VELOCITY = -420
 interface GameData {
   bossId: BossId
 }
-
 
 
 export class Game extends Phaser.Scene {
@@ -361,7 +361,7 @@ export class Game extends Phaser.Scene {
   private scaleResizeHandler?: Phaser.Types.Core.ScaleEventCallback
   private readonly missingAnimationWarnings = new Set<string>()
   // ======================= [DEV-UX-BEGIN] (moved to ./game/DevUx; `_dev` stays readable for smoke)
-  private readonly devUx = new DevUx(this)
+  private readonly devUx = new DevUx(this, { install: installGameDebugHooks, uninstall: uninstallGameDebugHooks })
   private get _dev() { return this.devUx.state }
   // ======================= [DEV-UX-END]
   private readonly cameraDirector = new CameraDirector(this)
