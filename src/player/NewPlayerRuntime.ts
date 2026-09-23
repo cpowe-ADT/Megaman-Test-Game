@@ -4,11 +4,16 @@ import { type SceneInputActions } from '../input/InputActions'
 import type { DigitalButtonPad } from '../input/DigitalButtonPad'
 import { AnimationManifest } from './AnimationManifest'
 import { PlayerAnimator } from './PlayerAnimator'
-import { applyPlayerBodyProfile, resolvePlayerBodyProfileKey, type PlayerBodyProfileKey } from './PlayerBodyProfiles'
+import {
+  applyPlayerBodyProfile,
+  PLAYER_BODY_PROFILES,
+  resolvePlayerBodyProfileKey,
+  type PlayerBodyProfileKey
+} from './PlayerBodyProfiles'
 import { PlayerCombat } from './PlayerCombat'
 import { PlayerController } from './PlayerController'
 import { PlayerDebug } from './PlayerDebug'
-import { PlayerMotor } from './PlayerMotor'
+import { PlayerMotor, type MotorTerrainProbe } from './PlayerMotor'
 import { PlayerStateMachine } from './PlayerStateMachine'
 import { VfxSfxRouter } from './VfxSfxRouter'
 import { PLAYER_GAMEPLAY_CONFIG, resolveSwordVisualFacing, shouldFlipPlayerSpriteForFacing } from './config'
@@ -25,6 +30,37 @@ import type {
   ResolvedHitbox,
   SpawnProjectileRequest
 } from './types'
+
+/**
+ * Solid stage platforms (tagged `platformType: 'solid'` by PlatformCollisionSystem) as the motor's
+ * terrain probe. The query rect is inset so edge contact (standing on a floor) is not overlap.
+ */
+function createSolidPlatformProbe(scene: Phaser.Scene): MotorTerrainProbe {
+  const inset = 0.05
+  return {
+    isSolid(x: number, y: number, width: number, height: number): boolean {
+      const physics = scene.physics
+      if (typeof physics?.overlapRect !== 'function' || width <= inset * 2 || height <= inset * 2) {
+        return false
+      }
+      const bodies: Array<Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody> = physics.overlapRect(
+        x + inset,
+        y + inset,
+        width - inset * 2,
+        height - inset * 2,
+        false,
+        true
+      )
+      for (const body of bodies) {
+        const gameObject = body.gameObject as Phaser.GameObjects.GameObject | undefined
+        if (gameObject?.data?.get('platformType') === 'solid') {
+          return true
+        }
+      }
+      return false
+    }
+  }
+}
 
 type RuntimeHooks = {
   setAnimation: (key: string) => void
@@ -82,6 +118,7 @@ export class NewPlayerRuntime {
   ) {
     this.controller = new PlayerController(scene, actions)
     this.motor = new PlayerMotor(player, PLAYER_GAMEPLAY_CONFIG.movement, PLAYER_GAMEPLAY_CONFIG.dash)
+    this.motor.setTerrainProbe(createSolidPlatformProbe(scene), PLAYER_BODY_PROFILES.stand.height)
     this.combat = new PlayerCombat(
       player,
       flags,

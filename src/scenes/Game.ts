@@ -1316,7 +1316,6 @@ export class Game extends Phaser.Scene {
 
     this.player = this.physics.add.sprite(stage.arena.spawn.x, stage.arena.spawn.y, 'atlas_player_main', 'player_main/idle/000')
     this.player.setCollideWorldBounds(true)
-    this.player.setDragX(900)
     const movementSpeedMultiplier = getMovementSpeedMultiplier(this.progressionSave)
     const movementLimits = resolvePlayerPhysicsLimits(PLAYER_GAMEPLAY_CONFIG, movementSpeedMultiplier)
     this.player.setMaxVelocity(movementLimits.maxVelocityX, movementLimits.maxVelocityY)

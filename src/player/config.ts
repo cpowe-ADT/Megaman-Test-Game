@@ -8,6 +8,8 @@ export type MovementTuningConfig = {
   gravity: number
   terminalVelocity: number
   jumpVelocity: number
+  /** Releasing jump while rising faster than this (negative, px/s) sets vy to it. */
+  jumpCutVelocity: number
   jumpHoldGravityScale: number
   coyoteTimeMs: number
   jumpBufferMs: number
@@ -16,6 +18,14 @@ export type MovementTuningConfig = {
   wallJumpVelocityY: number
   wallJumpBoostMultiplier: number
   wallJumpLockMs: number
+  /** A wall kick stays available this long after wall contact is lost. */
+  wallKickGraceMs: number
+  /** Pressing away from a wall holds the hero on it this long before letting go. */
+  wallStickMs: number
+  /** A ceiling edge overlapping the head by up to this many px nudges the hero aside. */
+  cornerNudgePx: number
+  /** Grounded runs step up lips of up to this many px. */
+  stepUpPx: number
 }
 
 export type DashConfig = {
@@ -107,6 +117,24 @@ export type PlayerPhysicsLimits = {
   maxVelocityY: number
 }
 
+/** Feel constants authored per 60Hz frame (hit-stop frames, follow lerp) are converted by real time. */
+export const FEEL_FRAME_MS = 1000 / 60
+
+/** Counts a hit-stop authored in 60Hz frames down by elapsed time; returns 0 once spent. */
+export function tickHitstopFrames(remainingFrames: number, deltaMs: number): number {
+  const next = remainingFrames - Math.max(0, deltaMs) / FEEL_FRAME_MS
+  return next <= 0.1 ? 0 : next
+}
+
+/** The lerp factor for a frame of `deltaMs` that converges like `lerpPerFrame` does at 60Hz. */
+export function timeScaledLerp(lerpPerFrame: number, deltaMs: number): number {
+  const factor = Math.min(1, Math.max(0, lerpPerFrame))
+  if (factor >= 1) {
+    return 1
+  }
+  return 1 - Math.pow(1 - factor, Math.max(0, deltaMs) / FEEL_FRAME_MS)
+}
+
 export function normalizeMovementSpeedMultiplier(value: number): number {
   return Number.isFinite(value) && value > 0 ? value : 1
 }
@@ -175,9 +203,10 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     accel: 1700,
     decel: 2100,
     airAccel: 1050,
-    gravity: 800,
+    gravity: 1050,
     terminalVelocity: 550,
-    jumpVelocity: -420,
+    jumpVelocity: -400,
+    jumpCutVelocity: -140,
     jumpHoldGravityScale: 0.55,
     coyoteTimeMs: 100,
     jumpBufferMs: 100,
@@ -185,12 +214,16 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     wallJumpVelocityX: 240,
     wallJumpVelocityY: -355,
     wallJumpBoostMultiplier: 1.28,
-    wallJumpLockMs: 140
+    wallJumpLockMs: 140,
+    wallKickGraceMs: 80,
+    wallStickMs: 60,
+    cornerNudgePx: 3,
+    stepUpPx: 3
   },
   dash: {
     dashSpeed: 320,
-    dashDurationMs: 140,
-    dashCooldownMs: 420,
+    dashDurationMs: 280,
+    dashCooldownMs: 60,
     dashCancelRules: {
       canShootDuringDash: true,
       canSlashDuringDash: false

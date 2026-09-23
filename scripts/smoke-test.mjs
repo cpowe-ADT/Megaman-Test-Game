@@ -1849,6 +1849,48 @@ async function runMovementFeelScenario(name) {
     await page.keyboard.up('ArrowRight')
     return trace
   }
+  const readBody = () =>
+    page.evaluate(() => {
+      const scene = window.__phaserGame?.scene?.getScene?.('Game')
+      const body = scene?.player?.body
+      return {
+        vx: Number(body?.velocity?.x ?? 0),
+        vy: Number(body?.velocity?.y ?? 0),
+        grounded: Boolean(body?.blocked?.down || body?.onFloor?.()),
+        x: Number(scene?.player?.x ?? 0),
+        y: Number(scene?.player?.y ?? 0)
+      }
+    })
+  // Dash-jump (EVAL-P5-002): dash right, press jump on dash frame 3, release after four frames
+  // (a short hop keeps the arc clear of stage geometry), sample until the apex.
+  const sampleDashJump = async () => {
+    const trace = []
+    await page.keyboard.down('ArrowRight')
+    await page.keyboard.down('z')
+    try {
+      for (let frame = 0; frame < 3; frame += 1) {
+        await advanceFrames(page, 1)
+        trace.push({ frame, phase: 'dash', ...(await readBody()) })
+      }
+      await page.keyboard.down('Space')
+      for (let frame = 3; frame < 60; frame += 1) {
+        if (frame === 7) {
+          await page.keyboard.up('Space')
+        }
+        await advanceFrames(page, 1)
+        const sample = { frame, phase: 'jump', ...(await readBody()) }
+        trace.push(sample)
+        if (!sample.grounded && sample.vy >= 0) {
+          break
+        }
+      }
+    } finally {
+      await page.keyboard.up('Space')
+      await page.keyboard.up('z')
+      await page.keyboard.up('ArrowRight')
+    }
+    return trace
+  }
 
   try {
     await waitForState(
@@ -1938,12 +1980,30 @@ async function runMovementFeelScenario(name) {
       return result
     })
 
+    const dragState = await page.evaluate(() => {
+      const body = window.__phaserGame?.scene?.getScene?.('Game')?.player?.body
+      return { dragX: Number(body?.drag?.x ?? Number.NaN), allowDrag: Boolean(body?.allowDrag) }
+    })
+    await resetMovement(false)
+    await waitForState(
+      page,
+      (state) => state.newPlayer?.locomotion?.grounded === true,
+      4000,
+      'grounded player before dash-jump trace'
+    )
+    // resetForRespawn suppresses jump for 120ms of scene time; let it lapse before the trace.
+    await advanceFrames(page, 30)
+    const dashJumpTrace = await sampleDashJump()
+    const airborne = dashJumpTrace.filter((sample) => sample.phase === 'jump' && !sample.grounded)
+    const takeoff = airborne[0] ?? null
+    const apex = airborne.find((sample) => sample.vy >= 0) ?? null
+
     const peak = (trace) => Math.max(...trace.map((sample) => Math.abs(sample.vx)))
     const basePeak = peak(baseTrace)
     const speedsterPeak = peak(speedsterTrace)
     fs.writeFileSync(
       path.join(scenarioDir, 'dash-traces.json'),
-      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, playerAfter: (await readState(page))?.newPlayer ?? null }, null, 2)
+      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, dragState, dashJumpTrace, playerAfter: (await readState(page))?.newPlayer ?? null }, null, 2)
     )
     if (baseLimits.maxVelocityX !== 320 || basePeak < 315 || basePeak > 321) {
       throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} peak=${basePeak}.`)
@@ -1956,14 +2016,24 @@ async function runMovementFeelScenario(name) {
     if (!wallJump.wallJumping || wallJump.jumpSource !== 'wall' || Math.abs(wallJump.vx + 353.28) > 0.01) {
       throw new Error(`Expected boosted Speedster wall-jump launch vx=-353.28, got ${JSON.stringify(wallJump)}.`)
     }
+    if (dragState.dragX !== 0) {
+      throw new Error(`Expected the player body drag.x to be 0 (the motor owns X), got ${JSON.stringify(dragState)}.`)
+    }
+    if (!takeoff || Math.abs(takeoff.vx) < 315 || Math.abs(takeoff.vx) > 321) {
+      throw new Error(`Expected the dash-jump to leave the ground near 320, got ${JSON.stringify(takeoff)}.`)
+    }
+    if (!apex || Math.abs(apex.vx) < 300) {
+      throw new Error(`Expected the dash-jump to hold at least 300 at apex, got ${JSON.stringify(apex)}.`)
+    }
 
     const finalState = await readState(page)
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
       path.join(scenarioDir, 'state-0.json'),
-      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, finalState }, null, 2)
+      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, dragState, dashJumpTrace, finalState }, null, 2)
     )
   } finally {
+    await page.keyboard.up('Space').catch(() => {})
     await page.keyboard.up('z').catch(() => {})
     await page.keyboard.up('ArrowRight').catch(() => {})
     await closeGameplayPage(browser, scenarioDir, errors)

@@ -3,6 +3,10 @@ import { getCampaignStage } from '../../content/campaign'
 import { getBossRoomCameraBounds } from '../../content/stageArenaLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { Settings } from '../../systems/Settings'
+import { tickHitstopFrames, timeScaledLerp } from '../../player/config'
+
+/** Camera follow lerp per 60Hz frame, as passed to `startFollow` in `Game.create`. */
+const FOLLOW_LERP_PER_FRAME = 0.1
 
 interface AnimationPausable {
   pauseAnimations?(): void
@@ -11,6 +15,7 @@ interface AnimationPausable {
 
 /** The members of the Game scene that hit-stop, screen shake and camera bounds read and write. */
 export interface CameraDirectorHost {
+  readonly game: Phaser.Game
   readonly physics: Phaser.Physics.Arcade.ArcadePhysics
   readonly cameras: Phaser.Cameras.Scene2D.CameraManager
   hitstopRemainingFrames: number
@@ -68,10 +73,17 @@ export class CameraDirector {
     host.bossRoomCameraLocked = true
   }
 
+  /**
+   * Runs once per `Game.update`. Hit-stop frames and the follow lerp are authored at 60Hz and
+   * counted by real time, so they last and converge the same at 30, 60 and 144fps.
+   */
   tickHitstop(): boolean {
     const host = this.host
+    const deltaMs = host.game.loop.delta
+    const lerp = timeScaledLerp(FOLLOW_LERP_PER_FRAME, deltaMs)
+    host.cameras.main?.setLerp(lerp, lerp)
     if (host.hitstopRemainingFrames > 0) {
-      host.hitstopRemainingFrames -= 1
+      host.hitstopRemainingFrames = tickHitstopFrames(host.hitstopRemainingFrames, deltaMs)
       if (host.hitstopRemainingFrames <= 0) {
         host.physics.world.resume()
         host.newPlayerRuntime?.resumeAnimations?.()
