@@ -19,9 +19,11 @@ import { Save } from './systems/Save'
 import { AUTOMATION } from './config/automation'
 import { GAME_HEIGHT, GAME_WIDTH, STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
 import { describeRenderView, installHdRendering, resolveRenderScale } from './config/hdRender'
+import { WORLD_GRAVITY_Y } from './player/config'
 import { resolvePlayerFeatureFlags } from './player/featureFlags'
 import { summarizeSpriteKinematics } from './tools/debug/StateSnapshot'
 import { getStageContentRetentionReport } from './content/campaign'
+import { stepGameFrames, type StepGameFramesOptions } from './config/frameStepping'
 
 const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
 const rendererType = query?.get('renderer') === 'canvas' ? Phaser.CANVAS : Phaser.AUTO
@@ -56,7 +58,7 @@ const config: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { x: 0, y: 800 },
+      gravity: { x: 0, y: WORLD_GRAVITY_Y },
       debug: false
     }
   },
@@ -78,55 +80,8 @@ type DebugWindow = Window & {
   __phaserGame?: Phaser.Game
   render_game_to_text?: () => string
   advanceTime?: (ms: number) => Promise<void>
-  stepFrames?: (frames: number) => number
+  stepFrames?: (frames: number, options?: StepGameFramesOptions) => number
   stepFramesActive?: boolean
-}
-
-// Deterministic frame stepping for automation: sleeps Phaser's TimeStep (per node_modules/phaser's
-// Phaser 3.90 core/TimeStep.js sleep/wake pair) so no requestAnimationFrame callback races the steps
-// below, then drives `Phaser.Game#step` directly with a monotonic 60Hz clock so every step's delta is
-// exactly 1000/60 regardless of wall-clock time, and wakes the loop again before returning.
-// `Phaser.Game#step` never touches `loop.lastTime`/`loop.frame` (only TimeStep's own rAF-bound
-// `step`/`stepLimitFPS` do), so this function advances them itself: without it, `loop.lastTime` stays
-// stale across separate calls (every call would restart `now` from the same frozen value instead of
-// continuing where the previous one left off, un-anchoring scene timers such as i-frames, jump
-// suppression and dash duration from step count), and `loop.frame` stays frozen for the whole session
-// (breaking anything, in or out of this codebase, that keys a per-step cache off it, e.g.
-// `SceneInputActions`'s action-sampling de-dup).
-function stepGameFrames(targetGame: Phaser.Game, frames: number): number {
-  const requested = Math.max(0, Math.trunc(frames))
-  if (requested === 0) {
-    return 0
-  }
-
-  const debugWindow = window as DebugWindow
-  const loop = targetGame.loop
-  const wasRunning = loop.running
-
-  debugWindow.stepFramesActive = true
-  if (wasRunning) {
-    loop.sleep()
-  }
-
-  const frameMs = 1000 / 60
-  let now = loop.lastTime > 0 ? loop.lastTime : window.performance.now()
-  let stepped = 0
-  for (let i = 0; i < requested; i += 1) {
-    now += frameMs
-    targetGame.step(now, frameMs)
-    loop.lastTime = now
-    // `frame` is typed read-only (Phaser.Core.TimeStep#frame), but TimeStep's own step/stepLimitFPS
-    // mutate it directly; this mirrors that for the direct-step path above.
-    ;(loop as unknown as { frame: number }).frame += 1
-    stepped += 1
-  }
-
-  if (wasRunning) {
-    loop.wake()
-  }
-  debugWindow.stepFramesActive = false
-
-  return stepped
 }
 
 function installDevCrashOverlay(enable: boolean): void {
@@ -466,7 +421,12 @@ function installDebugHooks(targetGame: Phaser.Game): void {
   }
   if (AUTOMATION.enabled) {
     debugWindow.__phaserGame = targetGame
-    debugWindow.stepFrames = (frames: number) => stepGameFrames(targetGame, frames)
+    debugWindow.stepFrames = (frames: number, options?: StepGameFramesOptions) => {
+      debugWindow.stepFramesActive = true
+      const stepped = stepGameFrames(targetGame, frames, options)
+      debugWindow.stepFramesActive = false
+      return stepped
+    }
     debugWindow.stepFramesActive = false
   } else {
     delete debugWindow.__phaserGame

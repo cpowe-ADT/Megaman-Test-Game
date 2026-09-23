@@ -1,8 +1,10 @@
 import Phaser from 'phaser'
 import { AUTOMATION } from '../../config/automation'
 import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
+import type { StepGameFramesOptions } from '../../config/frameStepping'
 import { getCampaignStage } from '../../content/campaign'
 import { getWeaponConfig } from '../../content/weapons'
+import { INPUT_ACTIONS, type InputAction } from '../../input/ActionState'
 import { getLatestActiveProjectile, spawnDebugProjectileClash, summarizeProjectilePool } from '../../projectiles/diagnostics/ProjectileDevTools'
 import { Save } from '../../systems/Save'
 
@@ -18,7 +20,18 @@ export type GameDebugHost = Phaser.Scene & Record<string, any>
  */
 /** A held-action set from a given frame until the next row (`docs/prompts/05a-*` input replay). */
 export type InputScriptRow = Readonly<{ frame: number; held?: readonly string[] }>
-export type InputReplayResult = Readonly<{ frames: number; finalPlayer: { x: number; y: number; vx: number; vy: number } }>
+export type InputReplayOptions = Readonly<{
+  /** Return a sample after every stepped frame (not just row boundaries) under `trace`. */
+  trace?: boolean
+  /** Keep the automation-held set latched after the replay ends; default releases it. */
+  keepHeld?: boolean
+}>
+export type InputReplaySample = Readonly<{ frame: number; x: number; y: number; vx: number; vy: number; grounded: boolean; dashing: boolean }>
+export type InputReplayResult = Readonly<{
+  frames: number
+  finalPlayer: { x: number; y: number; vx: number; vy: number }
+  trace?: readonly InputReplaySample[]
+}>
 
 function readFinalPlayer(host: GameDebugHost): InputReplayResult['finalPlayer'] {
   const body = host.player?.body as Phaser.Physics.Arcade.Body | undefined
@@ -30,12 +43,29 @@ function readFinalPlayer(host: GameDebugHost): InputReplayResult['finalPlayer'] 
   }
 }
 
+function readLocomotion(host: GameDebugHost): { grounded: boolean; dashing: boolean } {
+  const debugState = host.getNewPlayerDebugState?.() as { locomotion?: { grounded?: boolean; dashing?: boolean } } | null | undefined
+  return {
+    grounded: Boolean(debugState?.locomotion?.grounded),
+    dashing: Boolean(debugState?.locomotion?.dashing)
+  }
+}
+
 export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown): void {
   if (!AUTOMATION.enabled) return
   let recordingRows: Array<{ frame: number; held: string[] }> | null = null
   let recordingLastKey = ''
   let recordingStartFrame = 0
   let recordingHandler: (() => void) | null = null
+  /** Removes any live `recordInputs` preupdate handler; called at the start of a new recording (so
+   * a second `recordInputs()` call cannot leak the first handler), by `stopRecording`, and once on
+   * scene shutdown (a scene shutting down mid-recording must not leave an orphaned handler running
+   * when Phaser reuses the instance). */
+  const stopRecordingHandler = (): void => {
+    if (recordingHandler) host.events.off('preupdate', recordingHandler)
+    recordingHandler = null
+  }
+  host.events.once('shutdown', stopRecordingHandler)
   ;(window as any).dump = dump
       ;(window as any).dump = dump
       ;(window as any).bossDebug = {
@@ -245,31 +275,79 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
       return { subTanks: host.progressionSave.subTanks, subTankFill: host.progressionSave.subTankFill }
     },
     /**
-     * Frame-exact input replay (prompt 05 §5.1 item 9): `script` is a sparse list of
-     * `{ frame, held }` rows, each held-action set applying from its frame until the next row's.
-     * Feeds the automation-only action source (`SceneInputActions.setAutomationHeld`), which the
-     * keyboard hub latches presses/releases against exactly like a physical key change, and steps
-     * `window.stepFrames` between rows.
+     * Frame-exact input replay (prompt 05 §5.1 item 9, hardened in 5.1c): `script` is a sparse
+     * list of `{ frame, held }` rows, each held-action set applying from its frame until the next
+     * row's. Feeds the automation-only action source (`SceneInputActions.setAutomationHeld`),
+     * which the keyboard hub latches presses/releases against exactly like a physical key change.
+     *
+     * Sleeps the loop once for the whole replay and wakes it once at the end (rather than letting
+     * each `window.stepFrames` call manage sleep/wake itself, whose `wake()` runs one immediate,
+     * uncontrolled-delta step) so every stepped frame is exactly 1000/60 regardless of how many
+     * rows the script has. Throws on an unknown action name, a missing `window.stepFrames`
+     * (non-automation build) or a paused game, instead of silently stepping zero frames. Under
+     * `trace: true`, steps one frame at a time and returns a sample after each.
      */
-    replayInputs: (script: readonly InputScriptRow[]): InputReplayResult => {
+    replayInputs: (script: readonly InputScriptRow[], options?: InputReplayOptions): InputReplayResult => {
+      const stepFrames = (window as any).stepFrames as
+        | ((n: number, stepOptions?: StepGameFramesOptions) => number)
+        | undefined
+      if (typeof stepFrames !== 'function') {
+        throw new Error('stageDebug.replayInputs requires window.stepFrames (automation build only, ?automation=1).')
+      }
+      if (host.game.isPaused) {
+        throw new Error('stageDebug.replayInputs cannot step frames while the game is paused.')
+      }
       const rows = Array.isArray(script) ? [...script].sort((a, b) => a.frame - b.frame) : []
-      let framesStepped = 0
-      const stepFrames = (window as any).stepFrames as ((n: number) => number) | undefined
-      for (let index = 0; index < rows.length; index += 1) {
-        const row = rows[index]
-        const held: Record<string, boolean> = {}
-        for (const action of row.held ?? []) held[action] = true
-        host.actions?.setAutomationHeld(held)
-        const next = rows[index + 1]
-        if (next) {
-          const delta = Math.max(0, Math.round(next.frame - row.frame))
-          if (delta > 0) framesStepped += stepFrames?.(delta) ?? 0
+      for (const row of rows) {
+        for (const action of row.held ?? []) {
+          if (!INPUT_ACTIONS.includes(action as InputAction)) {
+            throw new Error(`stageDebug.replayInputs: unknown action "${action}".`)
+          }
         }
       }
-      return { frames: framesStepped, finalPlayer: readFinalPlayer(host) }
+
+      const trace: InputReplaySample[] = []
+      const sampleAt = (frame: number): InputReplaySample => ({
+        frame,
+        ...readFinalPlayer(host),
+        ...readLocomotion(host)
+      })
+
+      const loop = host.game.loop as { running: boolean; sleep: () => void; wake: (seamless?: boolean) => void }
+      const wasRunning = loop.running
+      if (wasRunning) loop.sleep()
+
+      let framesStepped = 0
+      try {
+        for (let index = 0; index < rows.length; index += 1) {
+          const row = rows[index]
+          const held: Record<string, boolean> = {}
+          for (const action of row.held ?? []) held[action] = true
+          host.actions?.setAutomationHeld(held)
+          const next = rows[index + 1]
+          if (!next) continue
+          const delta = Math.max(0, Math.round(next.frame - row.frame))
+          if (delta === 0) continue
+          if (options?.trace) {
+            for (let step = 0; step < delta; step += 1) {
+              framesStepped += stepFrames(1, { manageLoop: false })
+              trace.push(sampleAt(row.frame + step + 1))
+            }
+          } else {
+            framesStepped += stepFrames(delta, { manageLoop: false })
+          }
+        }
+      } finally {
+        if (wasRunning) loop.wake()
+        if (!options?.keepHeld) host.actions?.setAutomationHeld({})
+      }
+
+      const result: InputReplayResult = { frames: framesStepped, finalPlayer: readFinalPlayer(host) }
+      return options?.trace ? { ...result, trace } : result
     },
     /** Starts capturing the held-action set per frame from real input into the same `{ frame, held }` shape. */
     recordInputs: (): boolean => {
+      stopRecordingHandler()
       recordingRows = []
       recordingLastKey = ''
       recordingStartFrame = host.game.loop.frame
@@ -286,8 +364,7 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
     },
     /** Stops `recordInputs()` and returns the recorded script (a valid `replayInputs` input). */
     stopRecording: (): Array<{ frame: number; held: string[] }> => {
-      if (recordingHandler) host.events.off('preupdate', recordingHandler)
-      recordingHandler = null
+      stopRecordingHandler()
       const rows = recordingRows ?? []
       recordingRows = null
       return rows

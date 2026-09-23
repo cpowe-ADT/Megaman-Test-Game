@@ -122,6 +122,7 @@ export class SceneInputActions {
   }
   cancelPendingInput(): void {
     for (const action of INPUT_ACTIONS) delete this.pulses[action]
+    this.automationHeld = {}
     this.buttons?.reset()
     this.cancellationListeners.forEach(handler => handler())
     this.state.reset(this.rawHeld())
