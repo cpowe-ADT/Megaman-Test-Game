@@ -82,6 +82,7 @@ Branch `codex/mega-runtime-and-assets-pass`, PR #58:
 - **The `game-*` project agents did not appear in this session's agent list.** The runner ran as general-purpose on haiku with the brief on its card. The first thing 05a checks is that they appear in a fresh session; the fallback works for every seat.
 - **`workerStandard` (60K) is a guess** until `game-implementer` runs one slice.
 - **Codex is still broken on the Mac** (`npm i -g @openai/codex`), so P11-007 and `run-seats.sh` are unproven.
+- **CI `browser-gates` (manual run) is red for two known reasons.** It ran for the first time on 2026-09-23 (run 35826809506). Smoke `4-title-controls` fails on Linux system fonts, which 8.2's bundled font fixes. The sweep finished its artifacts, but Chromium took more than 5s to close on the runner (`hung_after_artifacts`). `test-and-build` (agents:check, test, build) is green on push and PR.
 - **Cold starts:** smoke run with `SMOKE_ONLY` straight after a sweep can time out on a cold Vite start. A rerun passes.
 
 ## Inputs for prompt 05

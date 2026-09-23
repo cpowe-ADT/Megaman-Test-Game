@@ -117,7 +117,7 @@ Ledger: `EVAL-P8-010`.
 ## Panel conditions (2026-09-22, delegated decisions)
 
 From the audio-director panel (`D-009`), 8.1 follows this rule: every looping cue and every boss stem is 30 to 60s, cut on a bar line, loop seam under 3dB, a boss's two stems share length and tempo; decoded cost is seconds x 0.384MB (the 48kHz context resamples; a lower sample rate saves disk, not memory). The phase-two stem decodes after the stage track is evicted and starts at the playing stem's offset (worst case near 49MB). Streaming only for a non-looping track over 60s (ending, credits) through Phaser's one AudioContext; never stream loops or stems. Budgets stay (`boss.decodedAudioMB` 64, `stage.decodedAudioMB` 16); the STOP 8.1 table gains a decoded-MB column and a switch-peak row (outgoing plus incoming plus SFX, at most 64MB); trimmed CC0 tracks are credited as edits.
-From the art-director panel (`D-002`): 8.2 bundles one font for HUD, Stage Select and menus (today `monospace`, Trebuchet and Arial mix).
+From the art-director panel (`D-002`): 8.2 bundles one font for HUD, Stage Select and menus (today `monospace`, Trebuchet and Arial mix). Evidence it matters: the first CI `browser-gates` run (Ubuntu, 2026-09-23, run 35826809506) failed smoke `4-title-controls` with "stage descriptor must fit above progress" because Linux has none of those fonts; 8.2's exit includes that job green.
 From the qa-eval panel (`D-004`): headroom is thin (Phaser gzip 294 of 300KB, Title audio 15.6 of 16MB, hi-DPI at its limit); re-measure before tightening any ceiling, and a new cue must fit, not raise, the budget.
 
 ## Exit Gate
