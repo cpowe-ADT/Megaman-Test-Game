@@ -76,7 +76,7 @@ export class DevUx {
 
     const world = host.physics.world as any
     world.createDebugGraphic?.()
-    // createDebugGraphic() turns drawDebug on, which drew every body into host hidden graphic each frame.
+    // createDebugGraphic() turns drawDebug on, which drew every body into this hidden graphic each frame.
     world.drawDebug = false
     world.debugGraphic?.clear?.()
     world.debugGraphic?.setVisible?.(false)
@@ -151,7 +151,7 @@ export class DevUx {
     }
     data?.set?.('kind', kind)
 
-    // The overlay label is created in devUpdate the first time the overlay shows host entry: up to
+    // The overlay label is created in devUpdate the first time the overlay shows this entry: up to
     // 132 Text objects per stage (player, boss, every pooled bullet) otherwise sat unused in normal play.
     let entry = this.state.entries.get(id)
     if (!entry) {
