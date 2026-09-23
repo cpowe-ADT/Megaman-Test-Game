@@ -1,5 +1,5 @@
 import { IDENTITY } from '../content/identity'
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/renderPolicy'
+import { GAME_WIDTH } from '../config/renderPolicy'
 import Phaser from 'phaser'
 import { getHudLayout } from './hudLayout'
 import { BakedGraphics, type BakeBounds } from './BakedGraphics'
@@ -105,14 +105,8 @@ export class HUD {
     this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', 9, 1, 0)
     this.root.add(this.tBoss)
 
-    this.tLives = mkText(
-      GAME_WIDTH - 20,
-      GAME_HEIGHT - 12,
-      'RETRY ×03',
-      10,
-      1,
-      1
-    )
+    // In the HUD band under the boss panel: on the floor it covered the boss spawn point in most rooms.
+    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'RETRY ×03', 10, 1, 0)
     this.root.add(this.tLives)
   }
 
@@ -220,7 +214,7 @@ export class HUD {
     this.drawChrome()
     const layout = getHudLayout(GAME_WIDTH)
     this.tBoss.setPosition(layout.bossLabel.x, layout.bossLabel.y)
-    this.tLives.setPosition(GAME_WIDTH - 20, GAME_HEIGHT - 12)
+    this.tLives.setPosition(layout.livesLabel.x, layout.livesLabel.y)
     this.tPlayer.setPosition(layout.playerLabel.x, layout.playerLabel.y)
     this.tWeapon.setPosition(layout.weaponLabel.x, layout.weaponLabel.y)
     this.tPlayer.setText(this.playerName)

@@ -171,7 +171,9 @@ export class EndingScene extends Phaser.Scene {
     if (this.phase === 'credits') {
       this.speakerText.setText('')
       this.bodyText.setText('')
-      this.footer.setText('ENTER FINISH   ESC FINISH')
+      this.footer.setText('ENTER / ESC FINISH').setDepth(11)
+      // The credits scroll behind a band so they never run through the footer text.
+      this.add.rectangle(width / 2, height - 12, width, 24, 0x050913, 0.96).setDepth(10)
       const authored = DIALOGUE_REGISTRY.getGlobalSequence('credits')?.lines.map((line) => line.text) ?? []
       const lines = [...authored, '', ...ASSET_CREDITS, '', IDENTITY.GAME_TITLE, IDENTITY.GAME_SUBTITLE]
       this.creditsText = this.add.text(width / 2, height + 8, lines.join('\n'), {

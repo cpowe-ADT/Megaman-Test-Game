@@ -25,3 +25,11 @@ test('boss meter mirrors the player meter inside the opposite panel', () => {
   assert.equal(layout.playerBar.height, layout.bossBar.height)
   assert.equal(layout.playerPanel.x + layout.playerPanel.width, 448 - layout.bossPanel.x)
 })
+
+test('the lives readout sits in the HUD band under the boss panel, off the playfield', () => {
+  const layout = getHudLayout(448)
+  const label = layout.livesLabel
+  assert.ok(label.y >= layout.bossPanel.y + layout.bossPanel.height + 2, 'below the boss panel')
+  assert.ok(label.y + 12 <= layout.height, 'inside the 58px HUD band')
+  assert.ok(label.x > 448 / 2, 'on the right, mirroring the weapon row')
+})

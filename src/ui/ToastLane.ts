@@ -15,6 +15,7 @@ export type ToastLaneSnapshot = {
   speaker: string | null
   text: string | null
   queued: number
+  bounds: ReturnType<ToastLane['getBounds']> | null
 }
 
 /**
@@ -31,23 +32,39 @@ export class ToastLane {
   private readonly speakerText: Phaser.GameObjects.Text
   private readonly bodyText: Phaser.GameObjects.Text
   private readonly laneWidth: number
+  private readonly bottomY: number
 
   constructor(private readonly scene: Phaser.Scene) {
     const { width, height } = GAME_SIZE
-    // Leaves the bottom-right 100px to the HUD's RETRY readout.
-    this.laneWidth = width - 24 - 100
-    const y = height - 15
+    // Full width: the RETRY readout moved into the HUD band. Lines wrap inside the lane and the lane grows
+    // upward to fit them; one unwrapped line used to run past the panel and under RETRY (29 of 32 radio lines).
+    this.laneWidth = width - 24
+    this.bottomY = height - 4
     this.background = scene.add.rectangle(0, 0, this.laneWidth, 22, 0x07142a, 0.94).setStrokeStyle(1, 0x62b6ff, 0.8)
-    this.speakerText = scene.add.text(-this.laneWidth / 2 + 8, -6, '', {
+    this.speakerText = scene.add.text(-this.laneWidth / 2 + 8, 0, '', {
       fontFamily: 'monospace', fontSize: '8px', color: '#7de8ff', fontStyle: 'bold'
-    }).setOrigin(0, 0.5)
-    this.bodyText = scene.add.text(-this.laneWidth / 2 + 8, 4, '', {
-      fontFamily: 'monospace', fontSize: '9px', color: '#f4f8ff'
-    }).setOrigin(0, 0.5)
-    this.container = scene.add.container(12 + this.laneWidth / 2, y, [this.background, this.speakerText, this.bodyText])
+    }).setOrigin(0, 0)
+    this.bodyText = scene.add.text(-this.laneWidth / 2 + 8, 0, '', {
+      fontFamily: 'monospace', fontSize: '9px', color: '#f4f8ff', lineSpacing: 1,
+      wordWrap: { width: this.laneWidth - 16, useAdvancedWrap: true }
+    }).setOrigin(0, 0)
+    this.container = scene.add.container(12 + this.laneWidth / 2, this.bottomY - 11, [this.background, this.speakerText, this.bodyText])
     this.container.setScrollFactor(0).setDepth(3000).setVisible(false)
-    if (y - 11 < GAMEPLAY_VIEWPORT_TOP) throw new Error('ToastLane must sit below the HUD band')
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy())
+  }
+
+  /** Lane rectangle in game pixels, for automation: the text must stay inside it and inside the frame. */
+  getBounds(): { x: number; y: number; width: number; height: number; textBottom: number; textRight: number } {
+    const height = this.background.height
+    const top = this.container.y - height / 2
+    return {
+      x: this.container.x - this.laneWidth / 2,
+      y: top,
+      width: this.laneWidth,
+      height,
+      textBottom: this.container.y + this.bodyText.y + this.bodyText.height,
+      textRight: this.container.x + this.bodyText.x + this.bodyText.width
+    }
   }
 
   enqueue(item: ToastLaneItem): void {
@@ -72,7 +89,8 @@ export class ToastLane {
       kind: this.current?.kind ?? null,
       speaker: this.current?.speaker ?? null,
       text: this.current?.text ?? null,
-      queued: this.queue.length
+      queued: this.queue.length,
+      bounds: this.current ? this.getBounds() : null
     }
   }
 
@@ -91,8 +109,16 @@ export class ToastLane {
     this.remainingMs = this.current.durationMs
     const hasSpeaker = Boolean(this.current.speaker)
     this.speakerText.setText(hasSpeaker ? String(this.current.speaker).toUpperCase() : '').setVisible(hasSpeaker)
-    this.bodyText.setText(this.current.text).setY(hasSpeaker ? 4 : 0)
+    this.bodyText.setText(this.current.text)
+    const padding = 4
+    const speakerHeight = hasSpeaker ? 10 : 0
+    const laneHeight = Math.max(22, padding * 2 + speakerHeight + Math.ceil(this.bodyText.height))
+    this.background.setSize(this.laneWidth, laneHeight)
+    this.container.setY(this.bottomY - laneHeight / 2)
+    this.speakerText.setY(-laneHeight / 2 + padding)
+    this.bodyText.setY(-laneHeight / 2 + padding + speakerHeight)
     this.background.setFillStyle(this.current.kind === 'radio' ? 0x07142a : 0x101827, 0.94)
     this.container.setVisible(true)
+    if (this.container.y - laneHeight / 2 < GAMEPLAY_VIEWPORT_TOP) throw new Error('ToastLane text is too long for the playfield')
   }
 }

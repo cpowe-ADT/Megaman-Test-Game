@@ -11,6 +11,8 @@ export type HudLayout = {
   playerLabel: { x: number; y: number }
   weaponLabel: { x: number; y: number }
   bossLabel: { x: number; y: number }
+  /** Right-aligned under the boss panel, inside the HUD band (it used to sit on the playfield floor). */
+  livesLabel: { x: number; y: number }
 }
 
 export function getHudLayout(viewWidth: number): HudLayout {
@@ -30,6 +32,7 @@ export function getHudLayout(viewWidth: number): HudLayout {
     bossBar: { x: bossPanelX + 9, y: 20, width: barWidth, height: 10 },
     playerLabel: { x: barX, y: 8 },
     weaponLabel: { x: barX, y: 31 },
-    bossLabel: { x: viewWidth - barX, y: 8 }
+    bossLabel: { x: viewWidth - barX, y: 8 },
+    livesLabel: { x: viewWidth - barX, y: 40 }
   }
 }

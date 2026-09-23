@@ -69,11 +69,13 @@ export async function runPrologueFlowScenario(name, { outputDir, storyUrl, readS
     assert.equal(briefing.dialogue.sequenceId, 'tutorial_sentinel_briefing')
     assert.equal(briefing.dialogue.lineCount, 3)
     await capture('briefing')
-    // The overlay ignores advance for 160ms after a line opens (one key press must not skip two lines).
-    // The capture used to take longer than that; with the HUD baked (09b) frames are fast enough that a
-    // call right after it landed inside the window and was dropped. Let at least 200ms of game time pass.
-    await advanceFrames(page, 12)
-    await page.evaluate(() => window.stageDebug?.advanceDialogue?.())
+    // The overlay ignores advance for 160ms of scene time after a line opens (one key press must not skip two
+    // lines). Retry against the state instead of guessing a delay: a fixed wait is timing-dependent (09 review).
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      await page.evaluate(() => window.stageDebug?.advanceDialogue?.())
+      if ((await readState(page))?.dialogue?.lineIndex === 1) break
+      await advanceFrames(page, 2)
+    }
     await waitForState(page, (state) => state.dialogue?.lineIndex === 1)
     await page.evaluate(() => window.stageDebug?.skipDialogue?.())
     const control = await waitForState(page, (state) => state.stageIntro?.phase === 'done' && state.newPlayer?.locomotion?.grounded === true, 6000)
@@ -83,6 +85,16 @@ export async function runPrologueFlowScenario(name, { outputDir, storyUrl, readS
     assert.deepEqual(errors, [])
     return control
   } finally { await browser.close() }
+}
+
+// The ticker's wrapped text must stay inside its lane, the lane inside the 448x252 frame and below the HUD band.
+function assertTickerInBounds(state, label) {
+  const bounds = state.ticker?.bounds
+  assert.ok(bounds, `${label}: ticker bounds reported`)
+  assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 448, `${label}: lane inside the frame horizontally`)
+  assert.ok(bounds.y >= 58 && bounds.y + bounds.height <= 252, `${label}: lane below the HUD band and above the frame bottom`)
+  assert.ok(bounds.textRight <= bounds.x + bounds.width - 4, `${label}: text ends inside the lane (right ${bounds.textRight})`)
+  assert.ok(bounds.textBottom <= bounds.y + bounds.height, `${label}: text ends inside the lane (bottom ${bounds.textBottom})`)
 }
 
 export async function runRadioTickerScenario(name, { outputDir, storyUrl, readState, waitForState, advanceFrames, tapKey }) {
@@ -113,9 +125,11 @@ export async function runRadioTickerScenario(name, { outputDir, storyUrl, readSt
     assert.equal(iona.playerState.paused, false)
     assert.equal(iona.dialogue.active, false, 'radio never blocks')
     await capture('radio-iona')
+    assertTickerInBounds(iona, 'Iona radio line')
     const omega = await waitForState(page, (state) => state.ticker?.kind === 'radio' && /omega/i.test(state.ticker.speaker ?? ''), 12000)
     assert.match(omega.ticker.text, /Unit 09/)
     await capture('radio-omega')
+    assertTickerInBounds(omega, 'OMEGA radio line')
     assert.ok(omega.save.storyFlags.includes('pyro_maw_radio'))
     assert.deepEqual(errors, [])
     return omega
@@ -155,6 +169,8 @@ export async function runEndingFlowScenario(name, { outputDir, storyUrl, readSta
     await capture('record')
     await page.evaluate(() => window.narrativeDebug?.advance?.())
     await waitForState(page, (state) => state.ending?.phase === 'credits')
+    // The credits start below the screen and scroll up: capture once they are on screen, not the empty start.
+    await advanceFrames(page, 120)
     await capture('credits')
     await page.evaluate(() => window.narrativeDebug?.skip?.())
     const done = await waitForState(page, (state) => (state.scene === 'Title' || state.scene === 'StageSelect') && state.save?.gameCompleted === true, 10000)
