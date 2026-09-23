@@ -97,6 +97,7 @@ Do not break these without updating scripts and docs together:
 | `SMOKE_FROM=<name>` | Starts with that exact scenario and runs the remaining scenarios; earlier entries are recorded as `skipped`. |
 | `SMOKE_PORT=4400` | Smoke server port; default `4173`, bound to `127.0.0.1` with strict port selection. |
 | `SWEEP_PORT=4401` | Visual-sweep server port; default `4173`. Use different ports for concurrent browser runs. |
+| `SWEEP_CLEANUP_TIMEOUT_MS=30000` | How long the sweep waits for the browser to close before failing as `hung_after_artifacts`; default `5000`. CI `browser-gates` sets 30000. |
 | `SMOKE_SERVER=preview` | Uses the already-built `dist/` through Vite preview. `npm run test:smoke:preview` builds first. Default smoke server mode is `dev`. |
 | `WEB_GAME_CLIENT=<path>` | Legacy generic-helper client path (repository copy, then installed skill client by default). The harness checks that this path exists, but the currently registered scenarios use their own Playwright routines; run the skill client separately when required. |
 | `?automation=1` | Enables automation scene selection, debug hooks, and `window.__phaserGame`. The dev smoke harness also sets `VITE_AUTOMATION=1` and `VITE_SMOKE=1`. |

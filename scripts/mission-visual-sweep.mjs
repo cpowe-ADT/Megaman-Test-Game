@@ -11,7 +11,8 @@ const outputRoot = path.resolve('output/mission-visual-sweep')
 const visualSweepSummaryPath = path.join(outputRoot, 'summary.json')
 const STAGE_SELECT_STATE_TIMEOUT_MS = 10_000
 const GAME_TRANSITION_TIMEOUT_MS = 10_000
-const CLEANUP_TIMEOUT_MS = 5_000
+// CI runners can take longer than 5s to close Chromium after every artifact is written (2026-09-23).
+const CLEANUP_TIMEOUT_MS = Number(process.env.SWEEP_CLEANUP_TIMEOUT_MS ?? 5_000)
 
 const missionSlots = [
   { stageId: 'tutorial_sentinel', bossId: 'sentinel_rook', direct: true },

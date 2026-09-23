@@ -44,6 +44,8 @@ jobs:
           SMOKE_PORT: '4400'
       - run: npm run test:visual-sweep
         if: success() || failure()
+        env:
+          SWEEP_CLEANUP_TIMEOUT_MS: '30000'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
