@@ -1,4 +1,4 @@
-import Phaser from 'phaser'
+import type Phaser from 'phaser'
 import { AUTOMATION } from '../../config/automation'
 import { DEBUG_UI } from '../../config/debug'
 import { STRICT_PIXEL_RENDER_POLICY } from '../../config/renderPolicy'
@@ -9,7 +9,10 @@ import type { PlatformCollisionSystem } from '../../physics'
 import type { CombatDebugBus } from '../../tools/debug/CombatDebugBus'
 import { makeGameCombatSnapshot } from '../../tools/debug/StateSnapshot'
 import { DebugOverlay } from '../../ui/DebugOverlay'
-import { installGameDebugHooks, uninstallGameDebugHooks } from './GameDebugHooks'
+
+/** The Phaser scene-systems shutdown event name (`Phaser.Scenes.Events.SHUTDOWN`), kept as a plain
+ * string so this module has no runtime dependency on Phaser. */
+const SHUTDOWN_EVENT = 'shutdown'
 
 /** The Game scene as the developer overlay, entity registry and debug snapshots see it. */
 export interface DevUxHost extends Phaser.Scene {
@@ -104,7 +107,12 @@ export class DevUx {
       return rows
     }
 
-    installGameDebugHooks(host, dump)
+    // Loaded lazily, gated on AUTOMATION.enabled (which the functions also check internally): this
+    // module has no runtime dependency on `./GameDebugHooks`, which still imports real Phaser, so
+    // DevUx keeps loading under node for fake-host tests when automation is off (the normal case).
+    if (AUTOMATION.enabled) {
+      void import('./GameDebugHooks').then(({ installGameDebugHooks }) => installGameDebugHooks(host, dump))
+    }
     const toggleOverlay = () => {
       this.state.on = !this.state.on
       if (!this.state.on) {
@@ -125,11 +133,13 @@ export class DevUx {
       host.actions.onPressed('debugDump', handleDump)
       host.actions.onPressed('debugPhysics', handlePhysics)
 
-      host.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      host.events.once(SHUTDOWN_EVENT, () => {
         this.state.initOnce = false
         this.state.entries.clear()
         this.state.tick = 0
-        uninstallGameDebugHooks(dump)
+        if (AUTOMATION.enabled) {
+          void import('./GameDebugHooks').then(({ uninstallGameDebugHooks }) => uninstallGameDebugHooks(dump))
+        }
       })
     }
   }
@@ -387,7 +397,7 @@ export class DevUx {
 
     if (DEBUG_UI) {
       this.overlay = new DebugOverlay(host)
-      host.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.overlay?.destroy())
+      host.events.once(SHUTDOWN_EVENT, () => this.overlay?.destroy())
     }
   }
 

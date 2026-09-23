@@ -1,4 +1,4 @@
-import Phaser from 'phaser'
+import type Phaser from 'phaser'
 import AudioService from '../../audio'
 import type { BossProjectileController } from '../../boss/framework/BossProjectileController'
 import { getCampaignStage } from '../../content/campaign'
@@ -9,6 +9,12 @@ import type { CampaignSessionStatistics } from '../../progression/statistics'
 import type { HUD } from '../../ui/HUD'
 import { Save } from '../../systems/Save'
 import type { StoryDirector } from './StoryDirector'
+
+/** A plain 2D point, used instead of `Phaser.Math.Vector2` so this module has no runtime Phaser dependency. */
+export interface Vec2 {
+  x: number
+  y: number
+}
 
 /** The members of the Game scene that death, respawn, checkpoints and game over read and write. */
 export interface DeathSequenceHost {
@@ -23,7 +29,7 @@ export interface DeathSequenceHost {
   bossEncounterActive: boolean
   activeStageId: string
   activeBossRoom?: { playerIntroX: number }
-  respawnPoint?: Phaser.Math.Vector2
+  respawnPoint?: Vec2
   currentCheckpointIndex: number
   currentCheckpointId: string | null
   progressionSave: ReturnType<typeof Save.load>
@@ -61,7 +67,7 @@ export class DeathSequence {
       return
     }
     host.currentCheckpointIndex += 1
-    host.respawnPoint = new Phaser.Math.Vector2(nextCheckpoint.x, nextCheckpoint.y)
+    host.respawnPoint = { x: nextCheckpoint.x, y: nextCheckpoint.y }
     host.currentCheckpointId = nextCheckpoint.id
     host.flushStatistics()
     Save.unlockCheckpoint(host.activeStageId, nextCheckpoint.id)
@@ -92,7 +98,7 @@ export class DeathSequence {
     host.currentCheckpointIndex = checkpointIndex
     host.currentCheckpointId = checkpoint.id
     host.player.setPosition(checkpoint.x, checkpoint.y)
-    host.respawnPoint = new Phaser.Math.Vector2(checkpoint.x, checkpoint.y)
+    host.respawnPoint = { x: checkpoint.x, y: checkpoint.y }
     Save.setSelectedCheckpoint(stageId, checkpoint.id)
     Save.unlockCheckpoint(stageId, checkpoint.id)
     host.progressionSave = Save.load()
@@ -156,7 +162,7 @@ export class DeathSequence {
     Save.clearActiveRun()
     AudioService.stopMusic()
     AudioService.playSfx('game_over')
-    const stageId = ((host as any).stageId as string | undefined) ?? 'unknown'
+    const stageId = host.activeStageId ?? 'unknown'
     if (host.scene.manager.keys['GameOver']) {
       host.scene.start('GameOver', { stageId, checkpointId: host.currentCheckpointId ?? null })
     }

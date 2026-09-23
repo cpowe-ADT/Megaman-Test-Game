@@ -12,15 +12,13 @@ import { BossController } from '../bosses/BossController'
 import { BossId } from '../bosses/types'
 import { getBossById } from '../bosses/roster'
 import { bossHudLabel } from '../bosses/types'
-import { installGameDebugHooks, uninstallGameDebugHooks } from './game/GameDebugHooks'
 import { CameraDirector } from './game/CameraDirector'
 import { DeathSequence } from './game/DeathSequence'
 import { DevUx } from './game/DevUx'
 import { RunState } from './game/RunState'
 import { StoryDirector, pendingMilestoneId } from './game/StoryDirector'
 import { ToastLane } from '../ui/ToastLane'
-import { Settings } from '../systems/Settings'
-import { drinkSubTank, fillSubTankFromPickup } from '../systems/subTanks'
+import { fillSubTankFromPickup } from '../systems/subTanks'
 import type { PauseInventory } from './menu/systemMenuSelector'
 import { getBossDefinitionById } from '../boss/config'
 import {
@@ -38,7 +36,6 @@ import {
 } from '../content/dialogue/index'
 import {
   getBossRoomActivationX,
-  getBossRoomCameraBounds,
   getBossRoomGateX,
   getBossRoomMovementBounds
 } from '../content/stageArenaLayout'
@@ -53,9 +50,8 @@ import {
   SABER_WEAPON_RECHARGE_COOLDOWN_MS
 } from '../content/weaponEnergyEconomy'
 import { AUTOMATION } from '../config/automation'
-import { DEBUG_UI } from '../config/debug'
 import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP, getGameplayWorldBounds } from '../config/gameplayLayout'
-import { GAME_HEIGHT, GAME_WIDTH, STRICT_PIXEL_RENDER_POLICY } from '../config/renderPolicy'
+import { GAME_HEIGHT, GAME_WIDTH } from '../config/renderPolicy'
 import { returnToStageSelect, showToast } from '../core/navigation'
 import { DigitalButtonPad } from '../input/DigitalButtonPad'
 import InputActions, { type SceneInputActions } from '../input/InputActions'
@@ -67,7 +63,6 @@ import { resolveSwordHitboxOrigin, swordHitboxIntersectsTarget } from '../player
 import type { PlayerDamageRequest, PlayerDamageResult, ResolvedHitbox } from '../player/types'
 import { ActiveRunSaveData, Save } from '../systems/Save'
 import { queueStageBackgrounds, resolveGameStageId } from './game/stageBackgroundLoading'
-import { DebugOverlay } from '../ui/DebugOverlay'
 import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD } from '../ui/HUD'
 import { VictoryModal } from '../ui/VictoryModal'
@@ -105,7 +100,6 @@ import {
   resolveLevelEnemyMarkers
 } from '../enemy'
 import { CombatDebugBus } from '../tools/debug/CombatDebugBus'
-import { makeGameCombatSnapshot } from '../tools/debug/StateSnapshot'
 import { PlatformCollisionSystem, PlatformType } from '../physics'
 import {
   createDefaultProjectileRegistry,

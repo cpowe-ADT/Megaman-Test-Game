@@ -1,4 +1,4 @@
-import Phaser from 'phaser'
+import type Phaser from 'phaser'
 import AudioService from '../../audio'
 import type { BossController } from '../../bosses/BossController'
 import { getCampaignStage } from '../../content/campaign'
@@ -7,6 +7,17 @@ import type { ProjectileSystem } from '../../projectiles'
 import { ActiveRunSaveData, Save } from '../../systems/Save'
 import { drinkSubTank } from '../../systems/subTanks'
 import type { HUD } from '../../ui/HUD'
+
+/** A plain 2D point, used instead of `Phaser.Math.Vector2` so this module has no runtime Phaser dependency. */
+export interface Vec2 {
+  x: number
+  y: number
+}
+
+/** Plain-value clamp so this module has no runtime dependency on Phaser (`Phaser.Math.Clamp`). */
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
 
 /** The members of the Game scene that the active-run snapshot, sub-tanks and combat freeze touch. */
 export interface RunStateHost {
@@ -23,7 +34,7 @@ export interface RunStateHost {
   gameOverTriggered: boolean
   activeStageId: string
   activeBossId?: ActiveRunSaveData['bossId']
-  respawnPoint?: Phaser.Math.Vector2
+  respawnPoint?: Vec2
   currentCheckpointIndex: number
   currentCheckpointId: string | null
   currentWeaponIndex: number
@@ -160,7 +171,7 @@ export class RunState {
       return null
     }
     host.flushStatistics()
-    const stageId = ((host as any).stageId as string | undefined) ?? host.activeStageId
+    const stageId = host.activeStageId
     return {
       version: 2,
       savedAt: Date.now(),
@@ -185,14 +196,14 @@ export class RunState {
     }
 
     host.playerMaxHp = Math.max(1, Math.round(run.playerMaxHp))
-    host.playerHp = Phaser.Math.Clamp(run.playerHp, Number.EPSILON, host.playerMaxHp)
+    host.playerHp = clampNumber(run.playerHp, Number.EPSILON, host.playerMaxHp)
     host.playerLives = Math.max(0, Math.round(run.playerLives))
     const weaponIndexFromId =
       typeof run.currentWeaponId === 'string' ? host.weapons.indexOf(run.currentWeaponId) : -1
     host.currentWeaponIndex =
       weaponIndexFromId >= 0
         ? weaponIndexFromId
-        : Phaser.Math.Clamp(Math.round(run.currentWeaponIndex), 0, host.weapons.length - 1)
+        : clampNumber(Math.round(run.currentWeaponIndex), 0, host.weapons.length - 1)
     host.weaponEnergyById = {
       ...host.weaponEnergyById,
       ...(run.weaponEnergyById ?? {})
@@ -206,13 +217,13 @@ export class RunState {
       const checkpoint = stage.arena.checkpoints[checkpointIndex]
       host.currentCheckpointIndex = checkpointIndex
       host.currentCheckpointId = checkpoint.id
-      host.respawnPoint = new Phaser.Math.Vector2(checkpoint.x, checkpoint.y)
+      host.respawnPoint = { x: checkpoint.x, y: checkpoint.y }
       host.player.setPosition(checkpoint.x, checkpoint.y)
     } else if (typeof run.checkpointIndex === 'number' && stage.arena.checkpoints[run.checkpointIndex]) {
       const checkpoint = stage.arena.checkpoints[run.checkpointIndex]
       host.currentCheckpointIndex = run.checkpointIndex
       host.currentCheckpointId = checkpoint.id
-      host.respawnPoint = new Phaser.Math.Vector2(checkpoint.x, checkpoint.y)
+      host.respawnPoint = { x: checkpoint.x, y: checkpoint.y }
       host.player.setPosition(checkpoint.x, checkpoint.y)
     }
 

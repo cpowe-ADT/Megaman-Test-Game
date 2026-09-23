@@ -1,4 +1,4 @@
-import Phaser from 'phaser'
+import type Phaser from 'phaser'
 import { getCampaignStage } from '../../content/campaign'
 import { getBossRoomCameraBounds } from '../../content/stageArenaLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
@@ -7,6 +7,11 @@ import { tickHitstopFrames, timeScaledLerp } from '../../player/config'
 
 /** Camera follow lerp per 60Hz frame, as passed to `startFollow` in `Game.create`. */
 const FOLLOW_LERP_PER_FRAME = 0.1
+
+/** Plain-value clamp so this module has no runtime dependency on Phaser (`Phaser.Math.Clamp`). */
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
 
 interface AnimationPausable {
   pauseAnimations?(): void
@@ -65,7 +70,7 @@ export class CameraDirector {
     }
     const bounds = getBossRoomCameraBounds(host.activeBossRoom, GAME_HEIGHT)
     host.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
-    host.cameras.main.scrollX = Phaser.Math.Clamp(
+    host.cameras.main.scrollX = clampNumber(
       host.cameras.main.scrollX,
       bounds.x,
       bounds.x + bounds.width - host.cameras.main.width
