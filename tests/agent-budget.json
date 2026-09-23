@@ -55,7 +55,11 @@
     "docs/prompts/10-agent-system.md",
     "docs/prompts/seats/README.md",
     "docs/prompts/DECISIONS.md",
-    "docs/README.md"
+    "docs/README.md",
+    "docs/prompts/handoff/09-footprint-and-performance.md",
+    "docs/prompts/handoff/10a-agent-system.md",
+    "docs/prompts/handoff/09a-footprint-and-performance.md",
+    "docs/prompts/README.md"
   ],
   "chain": {
     "5": {

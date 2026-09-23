@@ -2,7 +2,7 @@
 
 Active seats: Orchestrator, **Docs Steward / Context Engineer (lead)**, QA / Eval Lead, Principal Game Engineer (writes the scripts), Release Engineer (CI).
 
-Craig builds this game only through models: Claude (Claude Code and claude.ai) and OpenAI (Codex and ChatGPT). This prompt is the system those models work inside: how a session starts, what it reads, how work chains from one session to the next, how helper agents review it, where Craig decides, and which programs check all of it so no model can talk its way past a rule. Part `10a` was built on 2026-09-22 in the same session as prompt 09; `10b` is below.
+Craig builds this game only through models: Claude (Claude Code and claude.ai) and OpenAI (Codex and ChatGPT). This prompt is the system those models work inside: how a session starts, what it reads, how work chains from one session to the next, how helper agents review it, where Craig decides, and which programs check all of it so no model can talk its way past a rule. Part `10a` was built on 2026-09-22 in the same session as prompt 09, reviewed blind by three seats (31 evidenced findings, 2 BLOCK, all acted on: `docs/prompts/handoff/10a-agent-system.md`); `10b` is below.
 
 | Part | What | Evals | STOP asks Craig for |
 | --- | --- | --- | --- |
@@ -58,8 +58,8 @@ In this order, stopping when it knows enough: `progress.md` Now, the last three 
 
 | File or read | 2026-09-22 before | After 10a | Budget (`tests/agent-budget.json`) |
 | --- | ---: | ---: | ---: |
-| `progress.md` | 201KB (~50K tokens) | ~7KB | 20KB |
-| `docs/prompts/EVAL_LEDGER.md` | 33KB | ~11KB (01 to 04 archived) | 24KB |
+| `progress.md` | 201KB (~50K tokens) | ~9KB (Now, template, four entries) | 20KB |
+| `docs/prompts/EVAL_LEDGER.md` | 33KB | ~14KB (01 to 04 archived; each prompt archives at its exit) | 24KB |
 | `docs/prompts/00-orchestrator-charter.md` | 28KB | ~27KB (Definition of Final moved to `PLAN_v2.md`) | 30KB |
 | `AGENTS.md` | 5.6KB (plus a "read in full" list of about 60K tokens) | ~7.6KB, self-contained | 150 lines, 12KB |
 | Default start of a prompt session | ~115K tokens | `AGENTS.md` + pack for the part (about 20K; `npm run agents:context` prints the number) | pack 30K |

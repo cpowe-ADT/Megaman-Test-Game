@@ -4,11 +4,10 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
 
 ## Now
 
-- Branch `codex/mega-runtime-and-assets-pass`. No prompt is mid-run.
-- Next: prompt 05, part 05a (`docs/prompts/START.md` section A), once Craig has answered the entry decisions in `docs/prompts/DECISIONS.md`. Check it can start with `npm run agents:check -- --entry 5`.
-- Standing gates: `npm run verify` (includes `agents:check`), `npm run test:visual-sweep`, and after `npm run build`, `npm run perf:footprint`.
-- Open decisions for Craig: `docs/prompts/DECISIONS.md` (every OPEN row has a recommendation).
-- Agent system: `docs/prompts/10-agent-system.md` (how sessions chain, seats review, checks run, and context is packed).
+- Branch `codex/mega-runtime-and-assets-pass`. Prompt 09 is complete; prompt 10 part 10a is complete and seat-reviewed. No prompt is mid-run.
+- Next: prompt 05 part 05a (`docs/prompts/START.md` block A). It is blocked until Craig answers `D-001`, `D-002` and `D-003` in `docs/prompts/DECISIONS.md`; `npm run agents:check -- --entry 5` shows it. Also waiting on Craig: `D-004` (play Pyro Maw) and the disk and Docker decisions `D-005` to `D-008`.
+- After that, 10b (one session: CI, evidence snapshots, pack test, retro) once `D-011` is answered.
+- Standing gates: `npm run verify` (starts with `agents:check`), `npm run test:visual-sweep`, and after `npm run build`, `npm run perf:footprint`.
 
 ## Entry template (1.5KB at most)
 
@@ -39,3 +38,13 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
   - Numbers (`output/perf/footprint-baseline.md` -> `footprint-09a.md`, headless): `dist/` 19.98 -> 7.98MB; download before Title 6.11 -> about 2MB; Title 3.6s -> 1.1s; decoded audio 86MB -> 15.6MB at Title and in a stage, 61MB at the boss; textures in a stage 22.1 -> 8.3MB; largest canvas 45 -> 16MB; step p95 10.7 -> 6.8ms; revisit growth flat.
   - Gates: `npm run test` 12 boss + 268 scene tests, 0 fail; `npm run verify` exit 0 with smoke 51/51 (`output/phase-9a/verify.log`, `full-smoke/`); visual sweep 10/10 (`output/phase-9a/sweep.log`, `visual-sweep/`); `npm run perf:footprint` 20/20, 0 page errors. Automation state gained `audio.musicPlayingCue`, `musicLoading`, `residentMusicKeys`, `options.rowObjects`, `shownValues`, `systemMenu.rowBackplates` (documented in `TESTING.md`); `musicCue` still reports the requested cue.
   - Open: STOP 9.4 (Craig plays a stage, pauses twice, opens Options twice); 09b pools, HUD and text cost, second `AudioContext`; 09c disk (`.git` 185MB loose, about 111MB packed; `assets/sprites/source` 115MB). Charter gained rule 14: keep `npm run perf:footprint` green.
+- 2026-09-22, prompt 09 parts 09b and 09c and the exit, Claude Code (Opus 5.5)
+  - Changed: HUD panels and bars baked into textures (`src/ui/BakedGraphics.ts`, `src/ui/HUD.ts`; a stage frame 4.6ms to 0.4ms headless, HUD pixel-identical); retired enemies destroyed; dead per-frame enemy loop removed; projectile data writes on change; one AudioContext; late music decodes evicted; `VictoryModal` on `GAME_SIZE`; `disk:report` and `clean:artifacts`; `git gc --prune=never`; budgets lowered. Pooling, a save cache, parallax and text-resolution changes measured and dropped (no gain).
+  - Gates on `275a3c0`: `npm run verify` exit 0 (`# pass 286`, smoke 51/51), sweep 10/10, `footprint: 22/22 within budget, 0 page errors` (`output/phase-9-exit/`, `output/perf/footprint-09-exit.md`).
+  - Decisions: `D-004` to `D-010` raised. Ledger P9-009 to P9-012 PASS. Handoff `docs/prompts/handoff/09-footprint-and-performance.md`.
+  - Open: smoke `34-prologue-flow` had a latent 160ms dialogue-debounce race the faster frames exposed; fixed by waiting 12 frames.
+- 2026-09-22, prompt 10 part 10a (the agent system), Claude Code (Opus 5.5)
+  - Changed: `npm run agents:check` / `agents:context` / `agents:facts` / `agents:reviews` / `agents:rotate-progress` (`scripts/agents/`), `docs/prompts/DECISIONS.md`, `docs/prompts/seats/` and `.claude/agents/game-*.md`, `AGENTS.md` rewritten, `CLAUDE.md`, `START.md` blocks A to G, this log archived and restarted, ledger 01 to 04 archived, charter amendments and rule 15, `docs/prompts/10-agent-system.md`.
+  - Gates: same exit run as 09; `tests/agents-checks.test.ts` 16 fixtures; seat review `npm run agents:reviews -- docs/prompts/reviews/2026-09-22-10a --expect docs-steward,qa-eval,principal-engineer` -> `3 reviews, 31 evidenced findings (2 BLOCK), 0 format problems`, all acted on in `275a3c0`.
+  - Decisions: `D-001` to `D-003` block entry 5; `D-011`, `D-012` for 10b. Ledger P10-001 to P10-005 PASS. Handoff `docs/prompts/handoff/10a-agent-system.md`.
+  - Open: the Codex CLI on this Mac is broken (missing binary), so `scripts/agents/run-seats.sh` has not run; CI does not run `agents:check` yet.

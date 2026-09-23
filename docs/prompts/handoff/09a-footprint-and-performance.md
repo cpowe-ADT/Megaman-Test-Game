@@ -1,6 +1,6 @@
 # Handoff 09a: Footprint and performance (phases 9.0 to 9.4)
 
-## Status: COMPLETE for 09a (9.0 to 9.4). 09b (9.5, 9.6) and 09c (9.7, exit gate) are not started.
+## Status: COMPLETE for 09a (9.0 to 9.4). 09b, 09c and the exit followed the same day: `docs/prompts/handoff/09-footprint-and-performance.md`.
 
 Run by Claude in the planning session on 2026-09-22, at Craig's request to make the game lighter, faster to load and cheaper to run, with a plan, evals, prompts and a persona. The plan is `docs/prompts/09-footprint-and-performance.md`. STOP 9.4 (Craig plays one stage, pauses twice, opens Options twice) is still owed.
 
