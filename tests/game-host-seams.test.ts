@@ -285,3 +285,111 @@ test('DevUx.state.on toggles through the host and stays reachable like Game._dev
 
   assert.equal(devUx.state.on, true)
 })
+
+// ----------------------------------------------------------------------------------
+// Prompt 05 §5.2: contact hit-stop, the shake budget and the death sequence timing.
+// ----------------------------------------------------------------------------------
+
+test('5.2-1 CameraDirector.onContactHit records the hit before its hit-stop: sword 5, pellet 2, weakness 8', (t) => {
+  storageFixture(t)
+  const { host, calls } = makeCameraHost()
+  const director = new CameraDirector(host)
+  director.onContactHit('sword_ground', 5)
+  assert.equal(host.hitstopRemainingFrames, 5)
+  assert.deepEqual(director.contactHits.map((hit) => [hit.kind, hit.frames]), [['sword_ground', 5]])
+  assert.deepEqual(director.hitstops.map((stop) => [stop.kind, stop.frames]), [['sword_ground', 5]])
+  director.onContactHit('pellet')
+  director.onContactHit('boss_weakness')
+  assert.equal(host.hitstopRemainingFrames, 8)
+  assert.equal(calls.filter((call) => call === 'pause').length, 3)
+})
+
+test('5.2-6 CameraDirector caps shakes at 0.016 and never stacks a weaker one on a running shake', (t) => {
+  storageFixture(t)
+  const shakes: Array<{ duration: number; intensity: number; force?: boolean }> = []
+  const { host } = makeCameraHost()
+  const main = host.cameras.main as unknown as { shake: unknown; shakeEffect: { isRunning: boolean } }
+  main.shakeEffect = { isRunning: false }
+  main.shake = (duration: number, intensity: number, force?: boolean) => {
+    shakes.push({ duration, intensity, force })
+    main.shakeEffect.isRunning = true
+  }
+  const director = new CameraDirector(host)
+  director.onCameraShake({ intensity: 0.025, duration: 300 })
+  assert.deepEqual(shakes, [{ duration: 300, intensity: 0.016, force: true }])
+  director.onCameraShake({ intensity: 0.012, duration: 180 })
+  director.onCameraShake({ intensity: 0.016, duration: 300 })
+  assert.equal(shakes.length, 1, 'no second shake while one runs')
+  main.shakeEffect.isRunning = false
+  director.onCameraShake({ intensity: 0.005, duration: 100 })
+  assert.equal(shakes.length, 2)
+})
+
+test('5.2-5 DeathSequence plays player_death, freezes 250ms, bursts at 250 and respawns at 900ms with READY', () => {
+  const timers: Array<{ delay: number; callback: () => void }> = []
+  const emitted: Array<[string, unknown]> = []
+  const runtime: string[] = []
+  const { host, log } = makeDeathHost({
+    time: { now: 1000, delayedCall: (delay: number, callback: () => void) => timers.push({ delay, callback }) },
+    events: { emit: (name: string, value: unknown) => (emitted.push([name, value]), true) },
+    respawnPoint: { x: 120, y: 200 },
+    showStageToast: (message: string, durationMs?: number) => log.push(`toast:${message}:${durationMs}`),
+    newPlayerRuntime: {
+      playDeath: () => runtime.push('playDeath'),
+      playDeathBurst: () => runtime.push('playDeathBurst'),
+      playBeamIn: () => runtime.push('playBeamIn'),
+      resetForRespawn: (ms?: number) => runtime.push(`resetForRespawn:${ms}`)
+    }
+  } as unknown as Partial<DeathSequenceHost>)
+  const player = host.player as unknown as Record<string, unknown>
+  Object.assign(player, { enableBody: () => {}, disableBody: () => {}, setVisible: () => player })
+  const death = new DeathSequence(host)
+
+  death.killPlayer('pit')
+  assert.deepEqual(runtime, ['playDeath'])
+  assert.deepEqual(emitted, [['player.hitstop', 15]])
+  assert.deepEqual(timers.map((timer) => timer.delay), [250, 650, 900])
+  assert.equal(death.trace?.animationKey, 'player_death')
+  assert.equal(death.trace?.sfxKey, 'player_death')
+  assert.equal(death.trace?.reason, 'pit')
+
+  for (const timer of timers) {
+    ;(host.time as unknown as { now: number }).now = 1000 + timer.delay
+    timer.callback()
+  }
+  assert.deepEqual(runtime, ['playDeath', 'playDeathBurst', 'resetForRespawn:1000', 'playBeamIn'])
+  assert.ok(log.includes('toast:READY:600'))
+  assert.equal(host.fallingToDeath, false)
+  assert.equal(host.playerHp, host.playerMaxHp)
+  assert.ok((death.trace?.respawnedAtMs ?? 0) - (death.trace?.diedAtMs ?? 0) >= 900)
+})
+
+test('5.2-5 the kill plane routes a fall through requestPlayerDamage (fatal, bypassing i-frames)', () => {
+  const requests: unknown[] = []
+  const { host } = makeDeathHost({
+    requestPlayerDamage: ((request: unknown) => (requests.push(request), { accepted: true })) as never
+  })
+  ;(host.player as unknown as { y: number }).y = 10_000
+  const stage = getCampaignStage(host.activeStageId)
+  if (!stage.arena.allowFallOff) {
+    return
+  }
+  new DeathSequence(host).checkStageKillPlane()
+  assert.equal(requests.length, 1)
+  assert.equal((requests[0] as { sourceType: string }).sourceType, 'fall')
+  assert.equal((requests[0] as { bypassIFrames: boolean }).bypassIFrames, true)
+})
+
+test('5.2-1 the boss-weakness hit-stop fires only when damage landed at 1.4x or more (never on IMMUNE or BLOCKED)', (t) => {
+  storageFixture(t)
+  const { host } = makeCameraHost()
+  const director = new CameraDirector(host)
+  director.onBossHit(1.5, 0) // IMMUNE: nothing applied
+  director.onBossHit(0, 0) // BLOCKED by weakness rules
+  director.onBossHit(1, 3) // a normal hit
+  assert.equal(host.hitstopRemainingFrames, 0)
+  assert.equal(director.contactHits.length, 0)
+  director.onBossHit(1.5, 3)
+  assert.equal(host.hitstopRemainingFrames, 8)
+  assert.deepEqual(director.contactHits.map((hit) => hit.kind), ['boss_weakness'])
+})

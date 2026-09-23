@@ -54,6 +54,8 @@ export class PlayerCombat {
   private nextFireAt = 0
   private charging = false
   private chargeStartedAt = 0
+  /** A charged release that landed inside the fire-rate window fires at `nextFireAt` instead. */
+  private deferredReleaseLevel: 0 | 1 | 2 | 3 | 4 = 0
   private chargeLevel: 0 | 1 | 2 | 3 | 4 = 0
 
   private slashDirection: Direction8 = 'e'
@@ -95,7 +97,6 @@ export class PlayerCombat {
     this.transientShotFired = false
     this.transientChargeReleased = false
     this.transientReleasedChargeLevel = 0
-    this.chargeElapsedMs = this.charging ? Math.max(0, now - this.chargeStartedAt) : 0
 
     this.iFramesRemainingMs = Math.max(0, this.iFramesRemainingMs - deltaMs)
     this.hitstunRemainingMs = Math.max(0, this.hitstunRemainingMs - deltaMs)
@@ -116,45 +117,58 @@ export class PlayerCombat {
     const canAct = this.hitstunRemainingMs <= 0
 
     if (canAct) {
-      const canShoot = true
-      if (canShoot && intent.shootPressed) {
+      if (this.deferredReleaseLevel > 0 && now >= this.nextFireAt) {
+        const level = this.deferredReleaseLevel
+        this.deferredReleaseLevel = 0
+        this.fireProjectile(events, level, facing, now)
+      }
+
+      // The pellet fires on press and the charge starts on the same frame (prompt 05 §5.2 item 3).
+      if (intent.shootPressed) {
+        this.fireProjectile(events, 0, facing, now)
         if (canChargeShot) {
           this.charging = true
           this.chargeStartedAt = now
           this.chargeLevel = 0
           this.chargeCueLevel = 0
           this.chargeElapsedMs = 0
-          events.push({ type: 'vfx', key: 'fx_charge_aura_lv1' })
-          events.push({ type: 'sfx', key: 'charge_start' })
-        } else {
-          this.fireProjectile(events, 0, facing)
         }
       }
 
-      if (this.charging && intent.shootHeld) {
-        const nextChargeLevel = this.resolveChargeLevel(now - this.chargeStartedAt)
-        this.chargeElapsedMs = Math.max(0, now - this.chargeStartedAt)
+      // The charge clock is accumulated frame time, so it stops in hit-stop and dialogue.
+      if (this.charging && intent.shootHeld && !intent.shootPressed) {
+        this.chargeElapsedMs += Math.max(0, deltaMs)
+        const nextChargeLevel = this.resolveChargeLevel(this.chargeElapsedMs)
         this.chargeLevel = nextChargeLevel
         if (nextChargeLevel > 0 && nextChargeLevel > this.chargeCueLevel) {
-          this.chargeCueLevel = nextChargeLevel
           events.push({ type: 'vfx', key: `fx_charge_aura_lv${nextChargeLevel}` })
-          events.push({ type: 'sfx', key: 'charge_loop' })
+          events.push({ type: 'sfx', key: this.chargeCueLevel === 0 ? 'charge_start' : 'charge_loop' })
+          this.chargeCueLevel = nextChargeLevel
         }
       }
 
       if (this.charging && intent.shootReleased) {
-        const level = canChargeShot ? this.resolveChargeLevel(now - this.chargeStartedAt) : 0
-        this.fireProjectile(events, level, facing)
+        const level = canChargeShot ? this.resolveChargeLevel(this.chargeElapsedMs) : 0
         this.charging = false
         this.chargeLevel = 0
         this.chargeCueLevel = 0
         this.chargeElapsedMs = 0
-        this.transientChargeReleased = true
-        this.transientReleasedChargeLevel = level
+        if (level > 0) {
+          if (now >= this.nextFireAt) {
+            this.fireProjectile(events, level, facing, now)
+          } else {
+            this.deferredReleaseLevel = level
+          }
+          this.transientChargeReleased = true
+          this.transientReleasedChargeLevel = level
+        }
       }
 
       const canSlash = this.flags.enableSword && !dashing
       if (canSlash && intent.slashPressed && this.slashPhase == null) {
+        if (this.flags.enableChargeShot && this.blaster.chargeCancelOnSlash) {
+          this.clearCharge()
+        }
         this.saberReleaseArmed = true
         this.slashDirection = resolveEightDirection(intent.aim, facing, this.sword.aimDeadzone)
         this.slashGrounded = grounded
@@ -207,10 +221,7 @@ export class PlayerCombat {
     this.hooks.onKnockback(knockback.x, knockback.y)
 
     if (this.blaster.chargeCancelOnHit) {
-      this.charging = false
-      this.chargeLevel = 0
-      this.chargeCueLevel = 0
-      this.chargeElapsedMs = 0
+      this.clearCharge()
     }
 
     const events: PlayerRuntimeEvent[] = []
@@ -225,16 +236,26 @@ export class PlayerCombat {
 
   cancelPendingCharge(): void {
     this.saberReleaseArmed = false
-    this.charging = false
+    this.clearCharge()
     this.chargeStartedAt = 0
+  }
+
+  getHitstunRemainingMs(): number {
+    return this.hitstunRemainingMs
+  }
+
+  private clearCharge(): void {
+    this.charging = false
     this.chargeLevel = 0
     this.chargeCueLevel = 0
     this.chargeElapsedMs = 0
+    this.deferredReleaseLevel = 0
   }
 
   resetForRespawn(): void {
     this.saberReleaseArmed = false
     this.nextFireAt = 0
+    this.deferredReleaseLevel = 0
     this.charging = false
     this.chargeStartedAt = 0
     this.chargeLevel = 0
@@ -298,20 +319,16 @@ export class PlayerCombat {
       events.push({ type: 'vfx', key: `fx_sword_trail_dir_${this.slashDirection}` })
       if (!this.slashHitboxFired) {
         const window = this.getSwordWindow(this.slashGrounded, this.slashDirection)
+        // No hit-stop or shake here: the sword-hit path emits them only when a target is hit.
         events.push({
           type: 'hitbox',
           request: {
             shape: window.hitbox,
             direction: this.slashDirection,
-            grounded: this.slashGrounded
+            grounded: this.slashGrounded,
+            hitstopFrames: this.flags.enableHitstop ? window.hitstopFrames : 0
           }
         })
-        if (this.flags.enableHitstop && window.hitstopFrames > 0) {
-          events.push({ type: 'hitstop', frames: window.hitstopFrames })
-          if (window.hitstopFrames >= 4) {
-            events.push({ type: 'vfx', key: 'fx_shake_camera_medium' })
-          }
-        }
         this.slashHitboxFired = true
       }
       return
@@ -330,8 +347,8 @@ export class PlayerCombat {
     this.slashHitboxFired = false
   }
 
-  private fireProjectile(events: PlayerRuntimeEvent[], chargeLevel: 0 | 1 | 2 | 3 | 4, facing: 1 | -1): void {
-    if (this.player.scene.time.now < this.nextFireAt) {
+  private fireProjectile(events: PlayerRuntimeEvent[], chargeLevel: 0 | 1 | 2 | 3 | 4, facing: 1 | -1, now: number): void {
+    if (now < this.nextFireAt) {
       return
     }
 
@@ -341,26 +358,12 @@ export class PlayerCombat {
       facing
     }
 
-    this.nextFireAt = this.player.scene.time.now + this.blaster.fireRateMs
+    this.nextFireAt = now + this.blaster.fireRateMs
     this.transientShotFired = true
 
     events.push({ type: 'projectile', request })
     events.push({ type: 'vfx', key: 'fx_muzzle_small' })
     events.push({ type: 'sfx', key: chargeLevel > 0 ? `shot_charge_lv${chargeLevel}` : 'shot_basic' })
-
-    if (this.flags.enableChargeShot && chargeLevel > 0) {
-      this.charging = false
-      this.chargeLevel = 0
-      this.chargeCueLevel = 0
-      this.chargeElapsedMs = 0
-    }
-
-    if (this.flags.enableChargeShot && this.blaster.chargeCancelOnSlash && this.slashPhase != null) {
-      this.charging = false
-      this.chargeLevel = 0
-      this.chargeCueLevel = 0
-      this.chargeElapsedMs = 0
-    }
 
     this.player.setFlipX(shouldFlipPlayerSpriteForFacing(facing))
   }

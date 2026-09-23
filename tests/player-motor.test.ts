@@ -426,8 +426,12 @@ test('PlayerMotor keeps dash-jump carry and jump cut on a 144Hz render frame wit
   motor.update(createIntent({ moveAxis: 1, dashPressed: true, dashHeld: true }), frameMs, false)
   const jump = motor.update(createIntent({ moveAxis: 1, dashHeld: true, jumpPressed: true, jumpHeld: true }), frameMs, false)
   assert.equal(jump.justJumped, true)
-  // No physics step yet: Arcade's floor flags still say grounded from before the jump.
-  const stale = motor.update(createIntent({ moveAxis: 1, dashHeld: true }), frameMs, false)
+  // No physics step yet: Arcade's floor flags still say grounded from before the jump. The release
+  // is honoured once the 3-frame minimum hold (prompt 05 §5.2 item 8) has run out.
+  let stale = motor.update(createIntent({ moveAxis: 1, dashHeld: true }), frameMs, false)
+  for (let frame = 1; frame <= Math.ceil(playerConfig.JUMP_MIN_HOLD_MS / frameMs); frame += 1) {
+    stale = motor.update(createIntent({ moveAxis: 1, dashHeld: true }), frameMs, false)
+  }
   assert.equal(stale.grounded, false)
   assert.equal(state.velocity.x, DASH.dashSpeed)
   assert.equal(state.velocity.y, MOVE.jumpCutVelocity)
@@ -574,4 +578,142 @@ test('timeScaledLerp converges the camera by the same amount per second at 30, 6
   for (const fps of [30, 144]) {
     assert.ok(Math.abs(remainingAfterOneSecond(fps) - reference) < 1e-6, `${fps}fps lerp drifted`)
   }
+})
+
+// ---- prompt 05 §5.2 items 2, 4, 7 and 8 ----
+
+test('5.2-2 knockback holds vx for the 170ms hurt lock against opposite input, and jump is skipped', () => {
+  const { motor, state } = createMotor(groundedBody())
+  const stun = PLAYER_GAMEPLAY_CONFIG.damage.hitstunMs.light
+  assert.equal(stun, 170)
+  motor.applyKnockback(-165, -170)
+  state.onFloor = false
+  state.blocked.down = false
+  let elapsed = 0
+  while (elapsed < stun) {
+    const snapshot = motor.update(createIntent({ moveAxis: 1, jumpPressed: elapsed === 0, dashPressed: true }), FRAME_60, true, stun - elapsed)
+    assert.equal(state.velocity.x, -165, `vx held at ${elapsed.toFixed(0)}ms`)
+    assert.equal(snapshot.justJumped, false)
+    assert.equal(snapshot.dashing, false)
+    stepBody(state, FRAME_60 / 1000)
+    elapsed += FRAME_60
+  }
+  motor.update(createIntent({ moveAxis: 1 }), FRAME_60, true, 0)
+  assert.ok(state.velocity.x > -165, 'control returns when the lock ends')
+})
+
+function landAt(speed: number) {
+  const { motor, state } = createMotor({ velocity: { x: 0, y: speed } })
+  motor.update(createIntent(), FRAME_60, false)
+  state.velocity.y = 0
+  state.onFloor = true
+  state.blocked.down = true
+  return { motor, state, landing: motor.update(createIntent(), FRAME_60, false) }
+}
+
+test('5.2-4 a hard landing (over 400px/s) locks run and jump for 80ms; the buffered jump still fires after', () => {
+  const { motor, state, landing } = landAt(520)
+  assert.equal(landing.justLanded, true)
+  assert.equal(landing.hardLanding, true)
+  assert.ok((landing.landingSpeed ?? 0) > playerConfig.HARD_LANDING_SPEED)
+  for (let frame = 0; frame < 4; frame += 1) {
+    const locked = motor.update(createIntent({ moveAxis: 1, jumpPressed: frame === 3 }), FRAME_60, false)
+    assert.equal(state.velocity.x, 0)
+    assert.equal(locked.justJumped, false)
+  }
+  motor.update(createIntent({ moveAxis: 1 }), FRAME_60, false)
+  const after = motor.update(createIntent({ moveAxis: 1 }), FRAME_60, false)
+  assert.ok(state.velocity.x > 0)
+  assert.equal(after.justJumped, true, 'a jump pressed in the lag is buffered, not eaten')
+})
+
+test('5.2-4 a light landing keeps control on the landing frame after', () => {
+  const { motor, state, landing } = landAt(300)
+  assert.equal(landing.justLanded, true)
+  assert.equal(landing.hardLanding, false)
+  const next = motor.update(createIntent({ moveAxis: 1, jumpPressed: true }), FRAME_60, false)
+  assert.ok(state.velocity.x > 0)
+  assert.equal(next.justJumped, true)
+})
+
+test('5.2-8 minimum jump hold: a tap and a 50ms hold give the same minimum hop', () => {
+  const tap = simulateJumpApex(60, 0)
+  const hold50 = simulateJumpApex(60, 50)
+  assert.ok(Math.abs(tap - hold50) < 0.001, `tap ${tap.toFixed(2)} vs 50ms ${hold50.toFixed(2)}`)
+  assert.ok(tap >= 30 && tap <= 45, `minimum hop ${tap.toFixed(1)}px, want about 40`)
+})
+
+test('5.2-8 hop height rises monotonically with hold: tap < 80ms < 140ms < full', () => {
+  const heights = [0, 80, 140, 900].map((hold) => simulateJumpApex(60, hold))
+  for (let index = 1; index < heights.length; index += 1) {
+    assert.ok(heights[index] > heights[index - 1], `heights ${heights.map((h) => h.toFixed(1)).join(', ')}`)
+  }
+})
+
+test('5.2-7 at 144fps with 60Hz physics sub-steps a short hop lands once and is not swallowed by the stale-floor rule', () => {
+  const { motor, state } = createMotor(groundedBody())
+  const render = 1000 / 144
+  const physicsStep = 1000 / 60
+  const floorY = state.y
+  let accumulator = 0
+  let landings = 0
+  let airborne = false
+  motor.update(createIntent({ jumpPressed: true }), render, false)
+  let last = motor.update(createIntent(), render, false)
+  for (let frame = 0; frame < 300; frame += 1) {
+    accumulator += render
+    while (accumulator >= physicsStep) {
+      accumulator -= physicsStep
+      stepBody(state, physicsStep / 1000)
+      const onFloor = state.y >= floorY && state.velocity.y >= 0
+      if (onFloor) {
+        state.y = floorY
+        state.velocity.y = 0
+      }
+      state.onFloor = onFloor
+      state.blocked.down = onFloor
+    }
+    last = motor.update(createIntent(), render, false)
+    airborne ||= !last.grounded
+    if (last.justLanded) landings += 1
+  }
+  assert.equal(airborne, true)
+  assert.equal(landings, 1)
+  assert.equal(last.grounded, true)
+})
+
+test('5.2-7 the terrain probe reports no solid and skips overlapRect while the world is paused or the body is disabled', async () => {
+  const { createSolidPlatformProbe } = await import('../src/player/SolidPlatformProbe')
+  let calls = 0
+  const world = { isPaused: true }
+  const scene = {
+    physics: {
+      world,
+      overlapRect: () => {
+        calls += 1
+        return [{ gameObject: { data: { get: () => 'solid' } } }]
+      }
+    }
+  }
+  const owner = { body: { enable: true } }
+  const probe = createSolidPlatformProbe(scene, owner)
+  assert.equal(probe.isSolid(0, 0, 10, 10), false)
+  assert.equal(calls, 0)
+  world.isPaused = false
+  assert.equal(probe.isSolid(0, 0, 10, 10), true)
+  assert.equal(calls, 1)
+  owner.body.enable = false
+  assert.equal(probe.isSolid(0, 0, 10, 10), false)
+  assert.equal(calls, 1)
+})
+
+test('5.2-7 one world-gravity constant feeds the hero body offset and the enemy motor', async () => {
+  const { readFileSync } = await import('node:fs')
+  assert.equal(playerConfig.WORLD_GRAVITY_Y, 800)
+  const { motor, state } = createMotor()
+  motor.update(createIntent(), FRAME_60, false)
+  assert.equal(state.gravity.y, MOVE.gravity - playerConfig.WORLD_GRAVITY_Y)
+  const enemyMotor = readFileSync('src/enemy/EnemyMotor.ts', 'utf8')
+  assert.match(enemyMotor, /WORLD_GRAVITY_Y \* definition\.stats\.gravityScale/)
+  assert.doesNotMatch(enemyMotor, /\b800 \*/)
 })

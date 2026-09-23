@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GAME_WIDTH } from '../config/renderPolicy'
+import { WORLD_GRAVITY_Y } from '../player/config'
 import { EnemyDefinition, EnemyRuntimeContext } from './types'
 
 export class EnemyMotor {
@@ -25,7 +26,7 @@ export class EnemyMotor {
 
     const usesGravity = definition.movementType !== 'flyer' && definition.movementType !== 'drone' && definition.movementType !== 'turret'
     body.allowGravity = usesGravity
-    body.setGravityY(usesGravity ? 800 * definition.stats.gravityScale : 0)
+    body.setGravityY(usesGravity ? WORLD_GRAVITY_Y * definition.stats.gravityScale : 0)
     body.setCollideWorldBounds(true)
   }
 

@@ -1344,7 +1344,7 @@ export class Game extends Phaser.Scene {
       getPlayer: () => this.player,
       getNow: () => this.time.now,
       getFacing: () => this.facing,
-      damageBoss: (damage, meta) => this.applyDamageToBoss(damage, meta),
+      damageBoss: (damage, meta) => { this.cameraDirector.onContactHit('pellet'); this.applyDamageToBoss(damage, meta) },
       damagePlayer: (damage, meta) =>
         this.requestPlayerDamage({
           amount: damage,
@@ -1355,6 +1355,7 @@ export class Game extends Phaser.Scene {
           element: meta.element
         }),
       damageEnemy: (enemy, damage) => {
+        this.cameraDirector.onContactHit('pellet')
         const handledByFramework = this.enemySpawner?.applyDamageToSprite(enemy, {
           amount: damage,
           type: 'bullet',
@@ -1981,10 +1982,9 @@ export class Game extends Phaser.Scene {
     })
 
     const boss = this.bossTarget ?? this.bossBody
+    const onHit = () => { AudioService.playSfx('sword_hit'); this.cameraDirector.onContactHit(hitbox.grounded ? 'sword_ground' : 'sword_air', hitbox.hitstopFrames) }
     if (!boss || !boss.active || this.victoryTriggered) {
-      if (hitConfirmed) {
-        AudioService.playSfx('sword_hit')
-      }
+      if (hitConfirmed) onHit()
       return
     }
 
@@ -2002,10 +2002,7 @@ export class Game extends Phaser.Scene {
       this.spawnSwordImpactFx(boss.x + this.facing * 10, boss.y - 6, true)
       hitConfirmed = true
     }
-
-    if (hitConfirmed) {
-      AudioService.playSfx('sword_hit')
-    }
+    if (hitConfirmed) onHit()
   }
 
   private onBulletHitsEnemy(
@@ -2275,7 +2272,7 @@ export class Game extends Phaser.Scene {
         yoyo: true,
         duration: 70
       })
-      AudioService.playSfx('boss_hit')
+      AudioService.playSfx('boss_hit'); this.cameraDirector.onBossHit(multiplier, hit.amountApplied)
       this.showBossHitFeedback(weaponId, multiplier)
       if (hit.defeated || hp.current <= 0) {
         this.onBossDefeated()
@@ -2298,7 +2295,7 @@ export class Game extends Phaser.Scene {
     target.data?.set?.('maxHp', max)
     this.bossHp = { current: next, max }
     this.hud?.updateBossHp(next, max)
-    AudioService.playSfx('boss_hit')
+    AudioService.playSfx('boss_hit'); this.cameraDirector.onBossHit(multiplier, scaledDamage)
     this.showBossHitFeedback(weaponId, multiplier)
 
     if (next <= 0) {

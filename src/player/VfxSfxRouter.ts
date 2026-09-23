@@ -3,6 +3,8 @@ import AudioService from '../audio'
 import type { PlayerRuntimeEvent } from './types'
 import { GAMEPLAY_TEXTURE_KEYS } from '../ui/gameplay/GameplayTextures'
 import { resolveSwordTrailPose } from './SwordTrailProfile'
+import { SHAKES } from './hitFeel'
+import { FEEL_FRAME_MS, LANDING_SQUASH_FRAMES } from './config'
 
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
 
@@ -12,10 +14,18 @@ const VFX_FRAMES = {
   spark: ['effects_core/core/011', 'effects_core/core/019', 'effects_core/core/003']
 } as const
 
+/** Death burst orbs (the atlas's round aura frames) and the respawn beam-in. */
+const DEATH_ORB_COUNT = 8
+const DEATH_ORB_RADIUS_PX = 56
+const DEATH_ORB_MS = 600
+const BEAM_IN_MS = 180
+
 export class VfxSfxRouter {
   private readonly ownedResources = new Set<{ destroy: () => void }>()
   private readonly ownedTimers = new Set<Phaser.Time.TimerEvent>()
   private destroyed = false
+  private scaleTween?: Phaser.Tweens.Tween
+  private baseScale?: { x: number; y: number }
 
   constructor(private readonly scene: Phaser.Scene, private readonly player: Phaser.GameObjects.Sprite) {}
 
@@ -39,6 +49,8 @@ export class VfxSfxRouter {
       return
     }
     this.destroyed = true
+    this.scaleTween?.stop()
+    this.scaleTween = undefined
     this.ownedTimers.forEach((timer) => timer.remove(false))
     this.ownedTimers.clear()
     this.ownedResources.forEach((resource) => resource.destroy())
@@ -65,15 +77,15 @@ export class VfxSfxRouter {
     }
 
     if (key === 'fx_shake_camera_light') {
-      this.scene.events.emit('camera.shake', { intensity: 0.005, duration: 100 })
+      this.scene.events.emit('camera.shake', { ...SHAKES.light })
       return
     }
     if (key === 'fx_shake_camera_medium') {
-      this.scene.events.emit('camera.shake', { intensity: 0.012, duration: 180 })
+      this.scene.events.emit('camera.shake', { ...SHAKES.medium })
       return
     }
     if (key === 'fx_shake_camera_heavy') {
-      this.scene.events.emit('camera.shake', { intensity: 0.025, duration: 300 })
+      this.scene.events.emit('camera.shake', { ...SHAKES.heavy })
       return
     }
 
@@ -125,7 +137,36 @@ export class VfxSfxRouter {
         this.destroyLater(ring, 470 + level * 40)
         break
       }
+      case 'fx_land_squash': {
+        this.tweenPlayerScale(1.18, 0.78, LANDING_SQUASH_FRAMES * FEEL_FRAME_MS)
+        break
+      }
+      case 'fx_beam_in': {
+        this.tweenPlayerScale(0.2, 1.8, BEAM_IN_MS)
+        break
+      }
+      case 'fx_death_orbs': {
+        for (let index = 0; index < DEATH_ORB_COUNT; index += 1) {
+          const angle = (index / DEATH_ORB_COUNT) * Math.PI * 2
+          const frame = VFX_FRAMES.aura[index % VFX_FRAMES.aura.length]
+          const orb = this.own(this.scene.add.sprite(this.player.x, this.player.y, EFFECTS_ATLAS_KEY, frame))
+          orb.setDepth(this.player.depth + 2)
+          orb.setBlendMode(Phaser.BlendModes.ADD)
+          orb.setScale(1.4)
+          this.scene.tweens.add({
+            targets: orb,
+            x: this.player.x + Math.cos(angle) * DEATH_ORB_RADIUS_PX,
+            y: this.player.y + Math.sin(angle) * DEATH_ORB_RADIUS_PX,
+            alpha: 0.2,
+            duration: DEATH_ORB_MS,
+            ease: 'Quad.Out'
+          })
+          this.destroyLater(orb, DEATH_ORB_MS + 40)
+        }
+        break
+      }
       case 'fx_hit_spark':
+      case 'fx_land_dust':
       case 'dash_dust': {
         const frames = key === 'dash_dust' ? VFX_FRAMES.spark : VFX_FRAMES.spark
         const emitter = this.own(this.scene.add.particles(this.player.x, this.player.y + 8, EFFECTS_ATLAS_KEY, {
@@ -251,6 +292,24 @@ export class VfxSfxRouter {
         break
       }
     }
+  }
+
+  /** Squash or beam-in: set a scale relative to the resting scale and tween back; never compounds. */
+  private tweenPlayerScale(fromX: number, fromY: number, durationMs: number): void {
+    this.scaleTween?.stop()
+    const base = this.baseScale ?? { x: this.player.scaleX, y: this.player.scaleY }
+    this.baseScale = base
+    this.player.setScale(base.x * fromX, base.y * fromY)
+    this.scaleTween = this.scene.tweens.add({
+      targets: this.player,
+      scaleX: base.x,
+      scaleY: base.y,
+      duration: durationMs,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        this.scaleTween = undefined
+      }
+    })
   }
 
   private playSfx(key: string): void {

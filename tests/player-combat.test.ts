@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PlayerCombat } from '../src/player/PlayerCombat'
-import { PLAYER_GAMEPLAY_CONFIG } from '../src/player/config'
+import { FEEL_FRAME_MS, PLAYER_GAMEPLAY_CONFIG } from '../src/player/config'
+import { iFrameBlinkAlpha, IFRAME_BLINK_ALPHA } from '../src/player/hitFeel'
 import { DEFAULT_PLAYER_FEATURE_FLAGS } from '../src/player/featureFlags'
 import type { PlayerIntent, PlayerRuntimeEvent } from '../src/player/types'
 
@@ -24,7 +25,7 @@ function createIntent(overrides: Partial<PlayerIntent> = {}): PlayerIntent {
   }
 }
 
-function createCombat(options: { chargeShot?: boolean } = {}) {
+function createCombat(options: { chargeShot?: boolean; fireRateMs?: number } = {}) {
   const emitted: PlayerRuntimeEvent[][] = []
   const damageAccepted: number[] = []
   const knockbacks: Array<{ x: number; y: number }> = []
@@ -43,7 +44,7 @@ function createCombat(options: { chargeShot?: boolean } = {}) {
       ...DEFAULT_PLAYER_FEATURE_FLAGS,
       enableChargeShot: options.chargeShot ?? false
     },
-    PLAYER_GAMEPLAY_CONFIG.blaster,
+    { ...PLAYER_GAMEPLAY_CONFIG.blaster, fireRateMs: options.fireRateMs ?? PLAYER_GAMEPLAY_CONFIG.blaster.fireRateMs },
     PLAYER_GAMEPLAY_CONFIG.sword,
     PLAYER_GAMEPLAY_CONFIG.damage,
     {
@@ -78,9 +79,11 @@ test('PlayerCombat reports charge thresholds and releases matching charge projec
   combat.update(createIntent({ shootPressed: true, shootHeld: true }), 0, 0, 1, true, false)
 
   const thresholds = PLAYER_GAMEPLAY_CONFIG.blaster.chargeThresholdsMs
+  let held = 0
   thresholds.forEach((threshold, index) => {
     player.scene.time.now = threshold
-    const result = combat.update(createIntent({ shootHeld: true }), threshold, 16, 1, true, false)
+    const result = combat.update(createIntent({ shootHeld: true }), threshold, threshold - held, 1, true, false)
+    held = threshold
     assert.equal(result.snapshot.chargeLevel, index + 1)
   })
 
@@ -182,7 +185,105 @@ test('modal charge cancellation leaves invulnerability intact and produces no de
   assert.equal(resumed.snapshot.charging, false)
   assert.equal(resumed.snapshot.iFramesRemainingMs, 1000)
   assert.equal(projectileEvents(resumed.events).length, 0)
-  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 900, 0, 1, true, false)
-  const next = combat.update(createIntent({ shootReleased: true }), 950, 0, 1, true, false)
-  assert.equal(projectileEvents(next.events).length, 1)
+  const pressed = combat.update(createIntent({ shootPressed: true, shootHeld: true }), 900, 0, 1, true, false)
+  assert.equal(projectileEvents(pressed.events).length, 1, 'the pellet fires on press')
+  const next = combat.update(createIntent({ shootReleased: true }), 950, 50, 1, true, false)
+  assert.equal(projectileEvents(next.events).length, 0, 'a release below level 1 fires nothing more')
+})
+
+// ---- prompt 05 §5.2 items 1 to 3 ----
+
+function slashThroughWindow(combat: PlayerCombat, grounded: boolean): PlayerRuntimeEvent[] {
+  const all: PlayerRuntimeEvent[] = []
+  all.push(...combat.update(createIntent({ slashPressed: true }), 0, FEEL_FRAME_MS, 1, grounded, false).events)
+  for (let frame = 1; frame < 30; frame += 1) {
+    all.push(...combat.update(createIntent(), frame * FEEL_FRAME_MS, FEEL_FRAME_MS, 1, grounded, false).events)
+  }
+  return all
+}
+
+test('5.2-1 a whiffed slash emits no hit-stop or shake; the hitbox carries 5 (ground) / 4 (air) frames for the hit path', () => {
+  const ground = slashThroughWindow(createCombat().combat, true)
+  assert.equal(ground.filter((event) => event.type === 'hitstop').length, 0)
+  assert.equal(ground.filter((event) => event.type === 'vfx' && event.key.startsWith('fx_shake_camera')).length, 0)
+  const groundHitbox = ground.find((event) => event.type === 'hitbox')
+  assert.equal(groundHitbox?.type === 'hitbox' ? groundHitbox.request.hitstopFrames : -1, 5)
+  const air = slashThroughWindow(createCombat().combat, false)
+  const airHitbox = air.find((event) => event.type === 'hitbox')
+  assert.equal(airHitbox?.type === 'hitbox' ? airHitbox.request.hitstopFrames : -1, 4)
+})
+
+test('5.2-2 hitstun is exposed for the motor hurt lock and counts down by frame time', () => {
+  const { combat } = createCombat()
+  combat.receiveDamage(1, true, 1, 'light')
+  assert.equal(combat.getHitstunRemainingMs(), PLAYER_GAMEPLAY_CONFIG.damage.hitstunMs.light)
+  combat.update(createIntent(), 100, 100, 1, true, false)
+  assert.equal(combat.getHitstunRemainingMs(), PLAYER_GAMEPLAY_CONFIG.damage.hitstunMs.light - 100)
+})
+
+test('5.2-2 hurt blink toggles alpha every 4 frames while i-frames remain', () => {
+  const four = 4 * FEEL_FRAME_MS
+  assert.equal(iFrameBlinkAlpha(0, 500), IFRAME_BLINK_ALPHA)
+  assert.equal(iFrameBlinkAlpha(four - 1, 500), IFRAME_BLINK_ALPHA)
+  assert.equal(iFrameBlinkAlpha(four + 1, 500), 1)
+  assert.equal(iFrameBlinkAlpha(2 * four + 1, 500), IFRAME_BLINK_ALPHA)
+  assert.equal(iFrameBlinkAlpha(2 * four + 1, 0), 1)
+})
+
+test('5.2-3 the pellet fires on press and charging starts on the same frame', () => {
+  const { combat } = createCombat({ chargeShot: true })
+  const pressed = combat.update(createIntent({ shootPressed: true, shootHeld: true }), 0, FEEL_FRAME_MS, 1, true, false)
+  const shots = projectileEvents(pressed.events)
+  assert.equal(shots.length, 1)
+  assert.equal(shots[0].request.type, 'pellet')
+  assert.equal(pressed.snapshot.charging, true)
+  assert.equal(pressed.snapshot.chargeLevel, 0)
+})
+
+test('5.2-3 a release below level 1 fires nothing; at level 1 or above it fires the charge shot', () => {
+  const { combat } = createCombat({ chargeShot: true })
+  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 0, 0, 1, true, false)
+  const tap = combat.update(createIntent({ shootReleased: true }), 150, 150, 1, true, false)
+  assert.equal(projectileEvents(tap.events).length, 0)
+
+  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 1000, 0, 1, true, false)
+  combat.update(createIntent({ shootHeld: true }), 1200, 200, 1, true, false)
+  const release = combat.update(createIntent({ shootReleased: true }), 1216, 16, 1, true, false)
+  const shots = projectileEvents(release.events)
+  assert.equal(shots.length, 1)
+  assert.equal(shots[0].request.type, 'charge')
+  assert.equal(shots[0].request.chargeLevel, 1)
+})
+
+test('5.2-3 a charged release inside the fire-rate window is deferred to nextFireAt, not dropped', () => {
+  const { combat } = createCombat({ chargeShot: true, fireRateMs: 500 })
+  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 0, 0, 1, true, false)
+  combat.update(createIntent({ shootHeld: true }), 200, 200, 1, true, false)
+  const release = combat.update(createIntent({ shootReleased: true }), 216, 16, 1, true, false)
+  assert.equal(projectileEvents(release.events).length, 0)
+  assert.equal(projectileEvents(combat.update(createIntent(), 499, 16, 1, true, false).events).length, 0)
+  const deferred = projectileEvents(combat.update(createIntent(), 500, 16, 1, true, false).events)
+  assert.equal(deferred.length, 1)
+  assert.equal(deferred[0].request.chargeLevel, 1)
+  assert.equal(projectileEvents(combat.update(createIntent(), 520, 16, 1, true, false).events).length, 0)
+})
+
+test('5.2-3 the charge clock is accumulated frame time, so a hit-stop or dialogue gap does not charge', () => {
+  const { combat } = createCombat({ chargeShot: true })
+  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 0, 0, 1, true, false)
+  const afterGap = combat.update(createIntent({ shootHeld: true }), 2000, FEEL_FRAME_MS, 1, true, false)
+  assert.equal(afterGap.snapshot.chargeLevel, 0)
+  assert.ok(Math.abs(afterGap.snapshot.chargeElapsedMs - FEEL_FRAME_MS) < 0.001)
+})
+
+test('5.2-3 chargeCancelOnSlash drops the charge on the slash press', () => {
+  const { combat } = createCombat({ chargeShot: true })
+  assert.equal(PLAYER_GAMEPLAY_CONFIG.blaster.chargeCancelOnSlash, true)
+  combat.update(createIntent({ shootPressed: true, shootHeld: true }), 0, 0, 1, true, false)
+  combat.update(createIntent({ shootHeld: true }), 400, 400, 1, true, false)
+  const slashed = combat.update(createIntent({ shootHeld: true, slashPressed: true }), 416, 16, 1, true, false)
+  assert.equal(slashed.snapshot.charging, false)
+  assert.equal(slashed.snapshot.chargeLevel, 0)
+  const release = combat.update(createIntent({ shootReleased: true }), 432, 16, 1, true, false)
+  assert.equal(projectileEvents(release.events).length, 0)
 })

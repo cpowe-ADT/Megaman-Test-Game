@@ -64,6 +64,10 @@ export type MotorSnapshot = {
   dashRemainingMs: number
   dashCooldownRemainingMs: number
   isGravityInverted: boolean
+  /** Fall speed (px/s) of the landing reported by `justLanded`. */
+  landingSpeed?: number
+  /** `justLanded` above `HARD_LANDING_SPEED`: squash, dust and a short control lag follow. */
+  hardLanding?: boolean
 }
 
 export type CombatSnapshot = {
@@ -118,6 +122,8 @@ export type ResolvedHitbox = {
   shape: HitboxShape
   direction: Direction8
   grounded: boolean
+  /** Hit-stop (60Hz frames) the sword-hit path emits when this hitbox touches a target; 0 when disabled. */
+  hitstopFrames?: number
 }
 
 export type PlayerRuntimeEvent =

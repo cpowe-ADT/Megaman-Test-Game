@@ -1,5 +1,13 @@
 import type Phaser from 'phaser'
-import { normalizeMovementSpeedMultiplier, type MovementTuningConfig, type DashConfig } from './config'
+import {
+  HARD_LANDING_LAG_MS,
+  HARD_LANDING_SPEED,
+  JUMP_MIN_HOLD_MS,
+  WORLD_GRAVITY_Y,
+  normalizeMovementSpeedMultiplier,
+  type MovementTuningConfig,
+  type DashConfig
+} from './config'
 import type { PlayerIntent, MotorSnapshot } from './types'
 
 /**
@@ -42,6 +50,11 @@ export class PlayerMotor {
    * on render frames without a physics step, where Arcade's floor flags are stale from before the jump.
    */
   private launchPending = false
+  /** Release is ignored while this runs (a tap and a 50ms hold give the same minimum hop). */
+  private jumpMinHoldRemainingMs = 0
+  /** Control lag after a hard landing: no run, jump or dash; the jump buffer still fills. */
+  private landingLagRemainingMs = 0
+  private lastAirborneVelocityY = 0
   private terrainProbe?: MotorTerrainProbe
   private standBodyHeight = 0
 
@@ -60,10 +73,30 @@ export class PlayerMotor {
     this.standBodyHeight = Math.max(0, standBodyHeight)
   }
 
-  update(intent: PlayerIntent, deltaMs: number, allowAirDash: boolean): MotorSnapshot {
+  /**
+   * `hitstunRemainingMs` above 0 is the hurt lock: run, jump and dash are skipped and the knockback
+   * velocity is held against any input. A hard landing's lag skips them too but lets vx settle.
+   */
+  update(rawIntent: PlayerIntent, deltaMs: number, allowAirDash: boolean, hitstunRemainingMs = 0): MotorSnapshot {
     const body = this.player.body as Phaser.Physics.Arcade.Body
     this.claimBody(body)
     const dt = Math.max(0, deltaMs)
+    const stunned = hitstunRemainingMs > 0
+    const controlLocked = stunned || this.landingLagRemainingMs > 0
+    this.landingLagRemainingMs = Math.max(0, this.landingLagRemainingMs - dt)
+    const intent: PlayerIntent = controlLocked
+      ? {
+          ...rawIntent,
+          moveAxis: 0,
+          jumpHeld: stunned ? false : rawIntent.jumpHeld,
+          dashPressed: false,
+          dashHeld: false,
+          dashReleased: false,
+          crouchHeld: false
+        }
+      : rawIntent
+    let minHoldActive = this.jumpMinHoldRemainingMs > 0.5
+    this.jumpMinHoldRemainingMs = Math.max(0, this.jumpMinHoldRemainingMs - dt)
     const dtSeconds = dt / 1000
     const previousDashRemainingMs = this.dashRemainingMs
 
@@ -104,6 +137,8 @@ export class PlayerMotor {
       this.isAirDashing = false
       this.dashJumpCarry = false
       this.jumpCutArmed = false
+      this.jumpMinHoldRemainingMs = 0
+      minHoldActive = false
       this.lastWallSide = 0
       this.wallKickGraceRemainingMs = 0
       this.wallStickRemainingMs = 0
@@ -112,7 +147,7 @@ export class PlayerMotor {
     if (this.jumpCutArmed) {
       if (body.velocity.y >= 0) {
         this.jumpCutArmed = false
-      } else if (!intent.jumpHeld && body.velocity.y < this.movement.jumpCutVelocity) {
+      } else if (!intent.jumpHeld && !minHoldActive && body.velocity.y < this.movement.jumpCutVelocity) {
         body.setVelocityY(this.movement.jumpCutVelocity)
         this.jumpCutArmed = false
       }
@@ -155,7 +190,7 @@ export class PlayerMotor {
     // Wall kicks read the jump buffer, not the raw press, and forgive a short loss of contact.
     const kickSide: WallSide =
       wallContact !== 0 ? wallContact : this.wallKickGraceRemainingMs > 0 ? this.lastWallSide : 0
-    if (this.jumpBufferRemainingMs > 0 && kickSide !== 0) {
+    if (!controlLocked && this.jumpBufferRemainingMs > 0 && kickSide !== 0) {
       const away: 1 | -1 = kickSide === -1 ? 1 : -1
       const boostMultiplier = intent.dashHeld ? this.movement.wallJumpBoostMultiplier : 1
       body.setVelocityX(this.movement.wallJumpVelocityX * boostMultiplier * this.wallJumpSpeedMultiplier * away)
@@ -170,6 +205,8 @@ export class PlayerMotor {
       this.wallStickRemainingMs = 0
       this.dashJumpCarry = false
       this.jumpCutArmed = true
+      this.jumpMinHoldRemainingMs = JUMP_MIN_HOLD_MS
+      minHoldActive = true
       this.launchPending = true
       justJumped = true
       jumpSource = 'wall'
@@ -179,7 +216,7 @@ export class PlayerMotor {
     const canUseJump = grounded || this.coyoteRemainingMs > 0
     const groundDashing = this.dashRemainingMs > 0 && !this.isAirDashing
     const dashBlocksJump = this.dashRemainingMs > 0 && (this.isAirDashing || !this.hasStandHeadroom(body))
-    if (!justJumped && this.jumpBufferRemainingMs > 0 && canUseJump && !dashBlocksJump) {
+    if (!controlLocked && !justJumped && this.jumpBufferRemainingMs > 0 && canUseJump && !dashBlocksJump) {
       if (groundDashing) {
         this.startDashJumpCarry(this.facing)
       }
@@ -187,6 +224,8 @@ export class PlayerMotor {
       this.jumpBufferRemainingMs = 0
       this.coyoteRemainingMs = 0
       this.jumpCutArmed = true
+      this.jumpMinHoldRemainingMs = JUMP_MIN_HOLD_MS
+      minHoldActive = true
       this.launchPending = true
       justJumped = true
       jumpSource = grounded ? 'ground' : 'coyote'
@@ -234,7 +273,8 @@ export class PlayerMotor {
     }
 
     const pressingAwayFromWall = this.lastWallSide !== 0 && intent.moveAxis === -this.lastWallSide
-    if (this.wallJumpRemainingMs > 0) {
+    if (stunned || this.wallJumpRemainingMs > 0) {
+      // Hurt lock and wall-kick lock: vx is held (knockback or kick), not steered.
       body.setAccelerationX(0)
     } else if (this.dashRemainingMs > 0) {
       if (dashHeldByCeiling && intent.moveAxis !== 0) {
@@ -267,7 +307,8 @@ export class PlayerMotor {
       }
     }
 
-    if (body.velocity.y < 0 && intent.jumpHeld) {
+    // Held rise (and the minimum hold after launch) falls at the lighter gravity; the launch frame keeps jumpVelocity exact.
+    if (!justJumped && body.velocity.y < 0 && (intent.jumpHeld || minHoldActive)) {
       const correction = this.movement.gravity * (1 - this.movement.jumpHoldGravityScale) * dtSeconds
       body.setVelocityY(body.velocity.y - correction)
     }
@@ -290,6 +331,12 @@ export class PlayerMotor {
 
     const nowGrounded = (body.onFloor() || body.blocked.down) && !this.launchPending
     const justLanded = nowGrounded && !this.wasGrounded
+    const landingSpeed = justLanded ? Math.max(0, Math.round(this.lastAirborneVelocityY)) : 0
+    const hardLanding = justLanded && landingSpeed > HARD_LANDING_SPEED
+    if (hardLanding) {
+      this.landingLagRemainingMs = HARD_LANDING_LAG_MS
+    }
+    this.lastAirborneVelocityY = nowGrounded ? 0 : body.velocity.y
     const turnRequested =
       nowGrounded &&
       !wallSliding &&
@@ -320,13 +367,24 @@ export class PlayerMotor {
       jumpBufferRemainingMs: this.jumpBufferRemainingMs,
       dashRemainingMs: this.dashRemainingMs,
       dashCooldownRemainingMs: this.dashCooldownRemainingMs,
-      isGravityInverted: false
+      isGravityInverted: false,
+      landingSpeed,
+      hardLanding
     }
   }
 
+  /** Knockback replaces any dash, carry or jump cut; the stale floor flag is not trusted after an upward hit. */
   applyKnockback(x: number, y: number): void {
     const body = this.player.body as Phaser.Physics.Arcade.Body
     body.setVelocity(x, y)
+    this.dashRemainingMs = 0
+    this.isAirDashing = false
+    this.dashJumpCarry = false
+    this.jumpCutArmed = false
+    this.jumpMinHoldRemainingMs = 0
+    this.landingLagRemainingMs = 0
+    this.launchPending = y < 0
+    this.setGravitySuspended(body, false)
   }
 
   resetForRespawn(): void {
@@ -348,6 +406,9 @@ export class PlayerMotor {
     this.wallKickGraceRemainingMs = 0
     this.wallStickRemainingMs = 0
     this.launchPending = false
+    this.jumpMinHoldRemainingMs = 0
+    this.landingLagRemainingMs = 0
+    this.lastAirborneVelocityY = 0
   }
 
   setFacing(facing: 1 | -1): void {
@@ -369,7 +430,7 @@ export class PlayerMotor {
       body.setAllowDrag(false)
     }
     // Optional chaining keeps partial test bodies (velocity and flags only) working.
-    const worldGravityY = body.world?.gravity?.y ?? this.movement.gravity
+    const worldGravityY = body.world?.gravity?.y ?? WORLD_GRAVITY_Y
     const bodyGravityY = this.movement.gravity - worldGravityY
     if (body.gravity && body.gravity.y !== bodyGravityY) {
       body.setGravityY(bodyGravityY)

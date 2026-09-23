@@ -120,6 +120,20 @@ export type PlayerPhysicsLimits = {
 /** Feel constants authored per 60Hz frame (hit-stop frames, follow lerp) are converted by real time. */
 export const FEEL_FRAME_MS = 1000 / 60
 
+/**
+ * Arcade world gravity (px/s^2) set in `src/main.ts`. The hero's body gravity is `movement.gravity`
+ * minus this; enemies read it too (`src/enemy/EnemyMotor.ts`), so there is one number to change.
+ */
+export const WORLD_GRAVITY_Y = 800
+
+/** Release is ignored for the first 3 physics frames of a jump, so a tap and a 50ms hold give the same minimum hop. */
+export const JUMP_MIN_HOLD_MS = 3 * FEEL_FRAME_MS
+
+/** A landing faster than this (px/s) is hard: squash, dust and a short control lag. */
+export const HARD_LANDING_SPEED = 400
+export const HARD_LANDING_LAG_MS = 80
+export const LANDING_SQUASH_FRAMES = 6
+
 /** Counts a hit-stop authored in 60Hz frames down by elapsed time; returns 0 once spent. */
 export function tickHitstopFrames(remainingFrames: number, deltaMs: number): number {
   const next = remainingFrames - Math.max(0, deltaMs) / FEEL_FRAME_MS

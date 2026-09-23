@@ -4,6 +4,7 @@ import { getBossRoomCameraBounds } from '../../content/stageArenaLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { Settings } from '../../systems/Settings'
 import { tickHitstopFrames, timeScaledLerp } from '../../player/config'
+import { CONTACT_HIT_FEEL, isWeaknessContact, resolveShakeRequest, type ContactHitKind, type ShakeConfig } from '../../player/hitFeel'
 
 /** Camera follow lerp per 60Hz frame, as passed to `startFollow` in `Game.create`. */
 const FOLLOW_LERP_PER_FRAME = 0.1
@@ -12,6 +13,14 @@ const FOLLOW_LERP_PER_FRAME = 0.1
 function clampNumber(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
+
+/** Recent hit-stops and the contact hits that caused them, newest last (smoke 24 reads both). */
+export interface HitFeelTraceEntry {
+  kind: ContactHitKind | 'player_hit' | 'other'
+  frames: number
+  atMs: number
+}
+const HIT_FEEL_TRACE_LIMIT = 16
 
 interface AnimationPausable {
   pauseAnimations?(): void
@@ -37,10 +46,38 @@ export interface CameraDirectorHost {
  * scenarios reset `scene.hitstopRemainingFrames` directly.
  */
 export class CameraDirector {
+  readonly contactHits: HitFeelTraceEntry[] = []
+  readonly hitstops: HitFeelTraceEntry[] = []
+  private activeShakeIntensity = 0
+
   constructor(private readonly host: CameraDirectorHost) {}
 
-  onHitstop(frames: number): void {
+  /**
+   * The only source of hit-stop for attacks: called from the sword-hit and projectile-impact paths
+   * after a target was hit (prompt 05 §5.2 item 1). `hitstopFrames` overrides the table (sword windows).
+   */
+  onContactHit(kind: ContactHitKind, hitstopFrames?: number): void {
+    const feel = CONTACT_HIT_FEEL[kind]
+    const frames = Math.max(0, hitstopFrames ?? feel.hitstopFrames)
+    this.trace(this.contactHits, { kind, frames, atMs: this.nowMs() })
+    if (frames > 0) {
+      this.onHitstop(frames, kind)
+    }
+    if (feel.shake) {
+      this.onCameraShake(feel.shake)
+    }
+  }
+
+  /** Boss damage landed: the weakness hit-stop fires only when damage was applied at a weakness multiplier. */
+  onBossHit(multiplier: number, amountApplied: number): void {
+    if (isWeaknessContact(multiplier, amountApplied)) {
+      this.onContactHit('boss_weakness')
+    }
+  }
+
+  onHitstop(frames: number, kind: HitFeelTraceEntry['kind'] = 'other'): void {
     const host = this.host
+    this.trace(this.hitstops, { kind, frames, atMs: this.nowMs() })
     host.hitstopRemainingFrames = Math.max(host.hitstopRemainingFrames, frames)
     host.physics.world.pause()
     host.newPlayerRuntime?.pauseAnimations?.()
@@ -48,11 +85,28 @@ export class CameraDirector {
     host.bossController?.pauseAnimations?.()
   }
 
-  onCameraShake(config: { intensity: number; duration: number }): void {
+  /** Capped at the heavy budget and never stacked: a weaker shake during a running one is dropped. */
+  onCameraShake(config: ShakeConfig): void {
     const host = this.host
     if (!Settings.get().screenShake) return
+    const camera = host.cameras.main
+    const running = Boolean((camera as { shakeEffect?: { isRunning?: boolean } }).shakeEffect?.isRunning)
+    const shake = resolveShakeRequest(config, { running, intensity: this.activeShakeIntensity })
+    if (!shake) return
+    this.activeShakeIntensity = shake.intensity
     // Shake amplitude is intensity * canvas width * zoom; the HD canvas is already zoom times wider.
-    host.cameras.main.shake(config.duration, config.intensity / Math.max(1, host.cameras.main.zoom))
+    camera.shake(shake.duration, shake.intensity / Math.max(1, camera.zoom), true)
+  }
+
+  private nowMs(): number {
+    return Number(this.host.game?.loop?.time ?? 0)
+  }
+
+  private trace(list: HitFeelTraceEntry[], entry: HitFeelTraceEntry): void {
+    list.push(entry)
+    if (list.length > HIT_FEEL_TRACE_LIMIT) {
+      list.shift()
+    }
   }
 
   applyStageCameraBounds(stageId: string): void {

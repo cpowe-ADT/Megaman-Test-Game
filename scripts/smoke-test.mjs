@@ -697,8 +697,9 @@ async function runChargeShotScenario(name) {
     )
     const finalShots = Number(finalState.combatDebug?.player?.shotsFiredTotal ?? 0)
     const lastProjectile = finalState.combatDebug?.player?.lastProjectile
-    if (finalShots - baselineShots !== 1) {
-      throw new Error(`Expected one accepted charge input to spawn exactly one projectile; saw ${finalShots - baselineShots}.`)
+    // Prompt 05 §5.2 item 3: the pellet fires on press and the held charge fires on release.
+    if (finalShots - baselineShots !== 2) {
+      throw new Error(`Expected a held shot to spawn a pellet on press and one charge shot on release; saw ${finalShots - baselineShots}.`)
     }
     if (
       lastProjectile?.weaponId !== 'Buster' ||
@@ -1202,6 +1203,36 @@ async function runBossRoomActivationScenario(name) {
   }
 }
 
+/** Prompt 05 §5.2 item 5: the death pose sampled during the 250ms freeze, then the trace after respawn. */
+async function sampleDeathPose(page) {
+  return page.evaluate(() => {
+    const scene = window.__phaserGame?.scene?.getScene?.('Game')
+    return {
+      animationKey: String(scene?.player?.anims?.currentAnim?.key ?? ''),
+      frameName: String(scene?.player?.frame?.name ?? ''),
+      trace: scene?.deathSequence?.trace ? { ...scene.deathSequence.trace } : null
+    }
+  })
+}
+
+async function assertDeathSequence(page, pose) {
+  const trace = await page.evaluate(() => {
+    const scene = window.__phaserGame?.scene?.getScene?.('Game')
+    return scene?.deathSequence?.trace ? { ...scene.deathSequence.trace } : null
+  })
+  if (pose.animationKey !== 'player_death' && !pose.frameName.includes('/death/')) {
+    throw new Error(`Expected a player_death sample during the freeze; saw ${pose.animationKey} ${pose.frameName}.`)
+  }
+  if (trace?.sfxKey !== 'player_death' || trace?.animationKey !== 'player_death' || Number(trace?.orbCount) !== 8) {
+    throw new Error(`Expected the death trace to record player_death and 8 orbs; saw ${JSON.stringify(trace)}.`)
+  }
+  const delay = Number(trace.respawnedAtMs) - Number(trace.diedAtMs)
+  if (!Number.isFinite(delay) || delay < 900) {
+    throw new Error(`Expected a respawn delay of at least 900ms; saw ${delay}.`)
+  }
+  return { pose, trace, respawnDelayMs: delay }
+}
+
 async function runCheckpointRespawnScenario(name) {
   const scenarioDir = path.join(outputDir, name)
   fs.rmSync(scenarioDir, { recursive: true, force: true })
@@ -1250,6 +1281,9 @@ async function runCheckpointRespawnScenario(name) {
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.forcePlayerDeath))
     await page.evaluate(() => window.stageDebug?.forcePlayerDeath?.())
+    const deathPose = await sampleDeathPose(page)
+    await advanceFrames(page, 22)
+    await page.screenshot({ path: path.join(scenarioDir, 'death-burst.png') })
 
     const respawnState = await waitForState(
       page,
@@ -1264,7 +1298,8 @@ async function runCheckpointRespawnScenario(name) {
     )
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
-    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(respawnState, null, 2))
+    const death = await assertDeathSequence(page, deathPose)
+    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify({ ...respawnState, death }, null, 2))
 
     if (errors.length > 0) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
@@ -1766,8 +1801,16 @@ async function runUnifiedPlayerDamageScenario(name) {
     )
     const baselineHp = Number(baseline.playerState.hp)
 
+    const readPlayerX = () => page.evaluate(() => Number(window.__phaserGame?.scene?.getScene?.('Game')?.player?.x ?? NaN))
+    const beforeHitX = await readPlayerX()
     const first = await requestDebugDamage('damage_matrix_first')
     const repeated = await requestDebugDamage('damage_matrix_iframe_repeat')
+    // Prompt 05 §5.2 item 2: the hurt lock holds the knockback, so the hero visibly moves.
+    await advanceFrames(page, 20)
+    const knockbackDx = (await readPlayerX()) - beforeHitX
+    if (!(Math.abs(knockbackDx) >= 20)) {
+      throw new Error(`Expected at least 20px of knockback after a hit; saw ${knockbackDx}.`)
+    }
     const iframeState = await waitForState(
       page,
       (state) =>
@@ -1952,19 +1995,58 @@ async function runMovementFeelScenario(name) {
       const body = window.__phaserGame?.scene?.getScene?.('Game')?.player?.body
       return { dragX: Number(body?.drag?.x ?? Number.NaN), allowDrag: Boolean(body?.allowDrag) }
     })
+    // Local (this scenario only): `replayInputs`/`releaseReplayedInputs` above cover the plain
+    // base/Speedster traces; the dash-jump and dash-recycle traces below need `trace: true`
+    // per-step samples (EVAL-P5-002 review, MERGED.md 2026-09-23-5.1b-replay), so they call
+    // `stageDebug.replayInputs` directly with rows/options instead.
+    const replayRows = (rows, options) => page.evaluate(({ r, o }) => window.stageDebug.replayInputs(r, o), { r: rows, o: options })
+    const replayScriptFile = async (scriptPath, options) => {
+      const parsed = JSON.parse(fs.readFileSync(path.resolve(scriptPath), 'utf8'))
+      return replayRows(Array.isArray(parsed) ? parsed : parsed.rows, options)
+    }
+
+    // Dash-recycle (5.1c review): a grounded dash release ends the dash immediately and starts its
+    // cooldown (PlayerMotor), so releasing after 2 dashing frames, waiting 5 more, then pressing
+    // again must start a second dash within 100ms (6 frames) of that second press. Runs here, before
+    // the dash-jump replay below, because dash-jump ends mid-air at the apex: resetMovement keeps
+    // the player's current y (it only re-centers x), so a reset after dash-jump would start this
+    // grounded-dash test still falling instead of grounded.
+    await resetMovement(false)
+    const dashRecycleRows = [
+      { frame: 0, held: [] },
+      { frame: 2, held: ['moveRight', 'dash'] },
+      { frame: 4, held: [] },
+      { frame: 10, held: ['moveRight', 'dash'] },
+      { frame: 18, held: [] }
+    ]
+    const recycleReplay = await replayRows(dashRecycleRows, { trace: true })
+    const recycleTrace = recycleReplay.trace ?? []
+    const secondPressFrame = 10
+    const recycleWindowFrames = Math.ceil(100 / (1000 / 60))
+    const firstDashReleased = recycleTrace.some((sample) => sample.frame >= 5 && sample.frame <= secondPressFrame && !sample.dashing)
+    const secondDashStarted = recycleTrace.find(
+      (sample) => sample.frame > secondPressFrame && sample.frame <= secondPressFrame + recycleWindowFrames && sample.dashing
+    )
+
     await resetMovement(false)
     // The wall-jump probe above left synthetic blocked/touching flags; dashJumpScript's leading 30
     // idle deterministic frames both recompute real ground contact and let the respawn jump-
     // suppression window (120ms) lapse before the dash+jump rows run.
-    const dashJumpReplay = await replayInputs(page, dashJumpScript)
+    const dashJumpReplay = await replayScriptFile(dashJumpScript, { trace: true })
     // The dash carries vx=320 unchanged through takeoff and the whole flight in this motor (see
-    // scripts/smoke/inputs/dash-jump.json), so the single 18-step read below stands in for both the
-    // former takeoff and apex velocity samples; apex is where vy first reaches 0.
-    const apex = dashJumpReplay.finalPlayer
+    // scripts/smoke/inputs/dash-jump.json); takeoff is the first airborne sample, apex is the first
+    // airborne sample where vy reaches 0 (restored as separate reads per the 5.1b review).
+    const airborne = (dashJumpReplay.trace ?? []).filter((sample) => !sample.grounded)
+    const takeoff = airborne[0] ?? null
+    const apex = airborne.find((sample) => sample.vy >= 0) ?? null
 
     fs.writeFileSync(
       path.join(scenarioDir, 'dash-traces.json'),
-      JSON.stringify({ baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, playerAfter: (await readState(page))?.newPlayer ?? null }, null, 2)
+      JSON.stringify(
+        { baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, takeoff, apex, recycleReplay, playerAfter: (await readState(page))?.newPlayer ?? null },
+        null,
+        2
+      )
     )
     if (baseLimits.maxVelocityX !== 320 || baseReplay.finalPlayer.vx < 315 || baseReplay.finalPlayer.vx > 321) {
       throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} vx=${baseReplay.finalPlayer.vx}.`)
@@ -1986,21 +2068,27 @@ async function runMovementFeelScenario(name) {
     if (dragState.dragX !== 0) {
       throw new Error(`Expected the player body drag.x to be 0 (the motor owns X), got ${JSON.stringify(dragState)}.`)
     }
-    if (apex.vx < 315 || apex.vx > 321) {
-      throw new Error(`Expected the dash-jump to leave the ground near 320, got ${JSON.stringify(apex)}.`)
+    if (!takeoff || takeoff.grounded || takeoff.vx < 315 || takeoff.vx > 321) {
+      throw new Error(`Expected the dash-jump to leave the ground near 320, got ${JSON.stringify(takeoff)}.`)
     }
-    if (apex.vy < 0 || apex.vx < 300) {
-      throw new Error(`Expected the dash-jump to hold at least 300 at apex, got ${JSON.stringify(apex)}.`)
+    if (!apex || apex.grounded || apex.vx < 315 || apex.vx > 321) {
+      throw new Error(`Expected the dash-jump to hold near 320 at apex, got ${JSON.stringify(apex)}.`)
     }
     if (!near(apex.x, 265.33, 2) || !near(apex.y, 180.77, 2)) {
       throw new Error(`Expected the dash-jump apex near x=265.33 y=180.77, got ${JSON.stringify(apex)}.`)
+    }
+    if (!firstDashReleased) {
+      throw new Error(`Expected the first grounded dash to release before the second press, got trace ${JSON.stringify(recycleTrace)}.`)
+    }
+    if (!secondDashStarted) {
+      throw new Error(`Expected a second dash to start within 100ms of the second press, got trace ${JSON.stringify(recycleTrace)}.`)
     }
 
     const finalState = await readState(page)
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
       path.join(scenarioDir, 'state-0.json'),
-      JSON.stringify({ baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, finalState }, null, 2)
+      JSON.stringify({ baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, takeoff, apex, recycleReplay, finalState }, null, 2)
     )
   } finally {
     await page.keyboard.up('Space').catch(() => {})
@@ -2689,6 +2777,7 @@ async function runBossRoomRespawnScenario(name) {
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.forcePlayerDeath))
     await page.evaluate(() => window.stageDebug?.forcePlayerDeath?.())
+    const deathPose = await sampleDeathPose(page)
 
     const respawnState = await waitForState(
       page,
@@ -2706,7 +2795,7 @@ async function runBossRoomRespawnScenario(name) {
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
       path.join(scenarioDir, 'state-0.json'),
-      JSON.stringify({ activeBossRoomState, respawnState }, null, 2)
+      JSON.stringify({ activeBossRoomState, respawnState, death: await assertDeathSequence(page, deathPose) }, null, 2)
     )
 
     if (errors.length > 0) {
@@ -2868,6 +2957,28 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
       })
     })
     await advanceFrames(page, 2)
+    // Prompt 05 §5.2 item 1: a whiff emits no hit-stop; the hit-stop follows the recorded hit.
+    const readHitFeel = () =>
+      page.evaluate(() => {
+        const director = window.__phaserGame?.scene?.getScene?.('Game')?.cameraDirector
+        return { contactHits: [...(director?.contactHits ?? [])], hitstops: [...(director?.hitstops ?? [])] }
+      })
+    if (!moving) {
+      // Streamed enemies can walk in; clear them again so the swing is a true whiff.
+      await page.evaluate(() => {
+        const scene = window.__phaserGame?.scene?.getScene?.('Game')
+        scene?.enemies?.getChildren?.().forEach((child) => child?.disableBody?.(true, true))
+      })
+      const beforeWhiff = await readHitFeel()
+      await tapKey(page, 'c', 2)
+      await advanceFrames(page, 24)
+      const afterWhiff = await readHitFeel()
+      const newHits = afterWhiff.contactHits.length - beforeWhiff.contactHits.length
+      const newStops = afterWhiff.hitstops.length - beforeWhiff.hitstops.length
+      if (newStops !== newHits || newStops !== 0) {
+        throw new Error(`Expected no hit-stop from a whiffed slash; saw ${JSON.stringify(afterWhiff)}.`)
+      }
+    }
     await waitForPageCheck(page, () => Boolean(window.spawnEnemyDebug))
     if (moving) {
       await page.keyboard.down('ArrowRight')
@@ -2910,6 +3021,20 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
         ? immediateSlashState
         : await waitForState(page, isEastSlashState, 2500)
       await captureScenarioState(page, scenarioDir, 0, slashState)
+      await waitForPageCheck(
+        page,
+        () => (window.__phaserGame?.scene?.getScene?.('Game')?.cameraDirector?.contactHits ?? []).some((hit) => String(hit.kind).startsWith('sword')),
+        2500,
+        'a recorded sword contact hit'
+      )
+      const hitFeel = await readHitFeel()
+      const swordHits = hitFeel.contactHits.filter((hit) => String(hit.kind).startsWith('sword'))
+      const firstSwordHitAt = Math.min(...swordHits.map((hit) => Number(hit.atMs)))
+      const early = hitFeel.hitstops.filter((stop) => Number(stop.atMs) < firstSwordHitAt || stop.kind === 'other')
+      if (early.length > 0 || !hitFeel.hitstops.some((stop) => String(stop.kind).startsWith('sword') && Number(stop.frames) >= 4)) {
+        throw new Error(`Expected hit-stop only after the recorded sword hit; saw ${JSON.stringify(hitFeel)}.`)
+      }
+      fs.writeFileSync(path.join(scenarioDir, 'hit-feel.json'), JSON.stringify(hitFeel, null, 2))
     }
   } finally {
     if (moving) {

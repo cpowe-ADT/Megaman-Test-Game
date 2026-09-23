@@ -13,7 +13,9 @@ import {
 import { PlayerCombat } from './PlayerCombat'
 import { PlayerController } from './PlayerController'
 import { PlayerDebug } from './PlayerDebug'
-import { PlayerMotor, type MotorTerrainProbe } from './PlayerMotor'
+import { PlayerMotor } from './PlayerMotor'
+import { createSolidPlatformProbe } from './SolidPlatformProbe'
+import { iFrameBlinkAlpha } from './hitFeel'
 import { PlayerStateMachine } from './PlayerStateMachine'
 import { VfxSfxRouter } from './VfxSfxRouter'
 import { PLAYER_GAMEPLAY_CONFIG, resolveSwordVisualFacing, shouldFlipPlayerSpriteForFacing } from './config'
@@ -30,37 +32,6 @@ import type {
   ResolvedHitbox,
   SpawnProjectileRequest
 } from './types'
-
-/**
- * Solid stage platforms (tagged `platformType: 'solid'` by PlatformCollisionSystem) as the motor's
- * terrain probe. The query rect is inset so edge contact (standing on a floor) is not overlap.
- */
-function createSolidPlatformProbe(scene: Phaser.Scene): MotorTerrainProbe {
-  const inset = 0.05
-  return {
-    isSolid(x: number, y: number, width: number, height: number): boolean {
-      const physics = scene.physics
-      if (typeof physics?.overlapRect !== 'function' || width <= inset * 2 || height <= inset * 2) {
-        return false
-      }
-      const bodies: Array<Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody> = physics.overlapRect(
-        x + inset,
-        y + inset,
-        width - inset * 2,
-        height - inset * 2,
-        false,
-        true
-      )
-      for (const body of bodies) {
-        const gameObject = body.gameObject as Phaser.GameObjects.GameObject | undefined
-        if (gameObject?.data?.get('platformType') === 'solid') {
-          return true
-        }
-      }
-      return false
-    }
-  }
-}
 
 type RuntimeHooks = {
   setAnimation: (key: string) => void
@@ -104,6 +75,10 @@ export class NewPlayerRuntime {
   private lastDamageTier: HitTier | 'none' = 'none'
   private lastKnockback = { x: 0, y: 0 }
   private destroyed = false
+  /** Set by `playDeath` until `resetForRespawn`: the runtime stops driving the hero. */
+  private deathActive = false
+  private iFrameElapsedMs = 0
+  private blinking = false
   private removeDebugInput?: () => void
   private removeCancelledInput?: () => void
   private readonly debugToggleHandler = () => this.debug.toggle()
@@ -118,7 +93,7 @@ export class NewPlayerRuntime {
   ) {
     this.controller = new PlayerController(scene, actions)
     this.motor = new PlayerMotor(player, PLAYER_GAMEPLAY_CONFIG.movement, PLAYER_GAMEPLAY_CONFIG.dash)
-    this.motor.setTerrainProbe(createSolidPlatformProbe(scene), PLAYER_BODY_PROFILES.stand.height)
+    this.motor.setTerrainProbe(createSolidPlatformProbe(scene, player), PLAYER_BODY_PROFILES.stand.height)
     this.combat = new PlayerCombat(
       player,
       flags,
@@ -158,8 +133,16 @@ export class NewPlayerRuntime {
   }
 
   update(now: number, deltaMs: number): void {
+    if (this.deathActive) {
+      return
+    }
     const intent = this.controller.sampleIntent(this.motor.getFacing())
-    const motorSnapshot = this.motor.update(intent, deltaMs, this.flags.enableAirDash && this.modifiers.allowAirDash)
+    const motorSnapshot = this.motor.update(
+      intent,
+      deltaMs,
+      this.flags.enableAirDash && this.modifiers.allowAirDash,
+      this.combat.getHitstunRemainingMs()
+    )
 
     const combatResult = this.combat.update(
       intent,
@@ -172,6 +155,7 @@ export class NewPlayerRuntime {
     )
 
     this.consumeCombatEvents(combatResult.events)
+    this.updateIFrameBlink(deltaMs, combatResult.snapshot.iFramesRemainingMs)
     if (motorSnapshot.justJumped) {
       this.lastJumpSource = motorSnapshot.jumpSource
     }
@@ -267,7 +251,34 @@ export class NewPlayerRuntime {
     return this.motor.getFacing()
   }
 
+  /** Death beat 1 (`DeathSequence`): the hero stops updating and plays `player_death` with its sfx. */
+  playDeath(): void {
+    this.deathActive = true
+    this.combat.cancelPendingCharge()
+    this.activeHitbox = undefined
+    this.blinking = false
+    this.player.setAlpha(1)
+    this.currentAnimationKey = 'player_death'
+    this.hooks.setAnimation('player_death')
+    this.vfxSfx.dispatch([{ type: 'sfx', key: 'player_death' }])
+  }
+
+  /** Death beat 2: eight orbs from the effects atlas and a heavy (capped) shake. */
+  playDeathBurst(): void {
+    this.vfxSfx.dispatch([
+      { type: 'vfx', key: 'fx_death_orbs' },
+      { type: 'vfx', key: 'fx_shake_camera_heavy' }
+    ])
+  }
+
+  /** Respawn: the hero beams in (a scale tween back to the resting scale). */
+  playBeamIn(): void {
+    this.vfxSfx.dispatch([{ type: 'vfx', key: 'fx_beam_in' }])
+  }
+
   resetForRespawn(iFrameMs = PLAYER_GAMEPLAY_CONFIG.damage.iFramesMs): void {
+    this.deathActive = false
+    this.iFrameElapsedMs = 0
     this.controller.suppressJumpFor(120)
     this.motor.resetForRespawn()
     this.combat.resetForRespawn()
@@ -400,17 +411,17 @@ export class NewPlayerRuntime {
     }
 
     if (motorSnapshot.justLanded) {
-      const lastVelocityY = this.lastMotorSnapshot?.velocityY ?? 0
-      this.lastLandingSpeed = Math.max(0, Math.round(lastVelocityY))
-      if (lastVelocityY > 400) {
-        this.vfxSfx.dispatch([
-          { type: 'sfx', key: 'land' },
-          { type: 'vfx', key: 'fx_shake_camera_light' },
-          { type: 'hitstop', frames: 3 }
-        ])
-      } else {
-        this.vfxSfx.dispatch([{ type: 'sfx', key: 'land' }])
-      }
+      this.lastLandingSpeed = motorSnapshot.landingSpeed ?? 0
+      // A hard landing squashes and puffs dust (the motor applies the lag); no hit-stop, nothing was hit.
+      this.vfxSfx.dispatch(
+        motorSnapshot.hardLanding
+          ? [
+              { type: 'sfx', key: 'land' },
+              { type: 'vfx', key: 'fx_land_dust' },
+              { type: 'vfx', key: 'fx_land_squash' }
+            ]
+          : [{ type: 'sfx', key: 'land' }]
+      )
     }
 
     const lastDashMs = this.lastMotorSnapshot?.dashRemainingMs ?? 0
@@ -437,6 +448,19 @@ export class NewPlayerRuntime {
 
     if (!motorSnapshot.wallSliding) {
       this.nextWallSlideFxAt = now
+    }
+  }
+
+  /** Hurt blink: alpha toggles every 4 frames while i-frames remain, then returns to 1. */
+  private updateIFrameBlink(deltaMs: number, iFramesRemainingMs: number): void {
+    if (iFramesRemainingMs > 0) {
+      this.iFrameElapsedMs += Math.max(0, deltaMs)
+      this.blinking = true
+      this.player.setAlpha(iFrameBlinkAlpha(this.iFrameElapsedMs, iFramesRemainingMs))
+    } else if (this.blinking) {
+      this.blinking = false
+      this.iFrameElapsedMs = 0
+      this.player.setAlpha(1)
     }
   }
 
