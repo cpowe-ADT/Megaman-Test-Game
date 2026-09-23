@@ -46,6 +46,12 @@
     },
     "docs/prompts/10-agent-system.md": {
       "maxBytes": 24000
+    },
+    "docs/prompts/11-token-efficiency.md": {
+      "maxBytes": 12000
+    },
+    "docs/prompts/seats/BRIEF_FORMAT.md": {
+      "maxBytes": 3000
     }
   },
   "pathCheckedDocs": [
@@ -59,7 +65,8 @@
     "docs/prompts/handoff/09-footprint-and-performance.md",
     "docs/prompts/handoff/10a-agent-system.md",
     "docs/prompts/handoff/09a-footprint-and-performance.md",
-    "docs/prompts/README.md"
+    "docs/prompts/README.md",
+    "docs/prompts/11-token-efficiency.md"
   ],
   "chain": {
     "5": {
@@ -104,6 +111,27 @@
     "10": {
       "handoffs": [],
       "evals": []
+    },
+    "11": {
+      "handoffs": [],
+      "evals": []
     }
+  },
+  "sharedSections": {
+    "02": [
+      "Route budget"
+    ],
+    "03": [
+      "Production rules"
+    ]
+  },
+  "tokens": {
+    "$comment": "Token budgets per agent run (docs/prompts/11-token-efficiency.md). packet fails agents:packet; the others warn in agents:reviews / agents:decisions and need a reason in the progress entry. Measured 2026-09-22: 16 seat and panel runs used 93K-344K each (about 2.6M); these ceilings are that work done with packets.",
+    "packet": 20000,
+    "seatReview": 60000,
+    "panelSeat": 40000,
+    "workerFast": 20000,
+    "workerStandard": 60000,
+    "sessionHandoff": 3000
   }
 }

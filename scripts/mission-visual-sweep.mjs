@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { chromium } from 'playwright'
+import { provenance } from './lib/provenance.mjs'
 
 const host = '127.0.0.1'
 const port = Number(process.env.SWEEP_PORT ?? 4173)
@@ -138,6 +139,7 @@ function createVisualSweepSummary() {
   return {
     status: 'running',
     startedAt: new Date().toISOString(),
+    ...provenance(),
     outputDir: outputRoot,
     missions: []
   }

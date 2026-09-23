@@ -12,9 +12,12 @@ import {
   handoffStatus,
   missingDocPaths,
   openBlockers,
+  parseDecisionFile,
   parseLedger,
   parseReview,
-  partPhases
+  parseTokens,
+  partPhases,
+  tallyDecisions
 } from '../scripts/agents/checks.mjs'
 
 const ledger = (rows: string[]) => `## Prompt 05\n\n| Id | Kind | What passes | Status | Evidence | Commit |\n| --- | --- | --- | --- | --- | --- |\n${rows.join('\n')}\n`
@@ -122,23 +125,23 @@ test('doc paths: a named repo path that does not exist is reported; placeholders
 })
 
 test('decisions: a row needs a question, a recommendation, OPEN or DECIDED, and a reply when DECIDED', () => {
-  const head = '| Id | Raised | Question | Recommendation | Blocks | Status | Reply | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n'
-  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | | OPEN | | |'), [])
-  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | entry 6 | DECIDED | "yes ship it" | 2026-09-23 |'), [])
-  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | | | OPEN | | |')[0].message, /recommendation/)
-  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | | MAYBE | | |')[0].message, /OPEN or DECIDED/)
-  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | | DECIDED | | |')[0].message, /reply/)
+  const head = '| Id | Raised | Question | Recommendation | Panel | Blocks | Status | Reply | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n'
+  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | qa-eval | | OPEN | | |'), [])
+  assert.deepEqual(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | qa-eval | entry 6 | DECIDED | "yes ship it" | 2026-09-23 |'), [])
+  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | | qa-eval | | OPEN | | |')[0].message, /recommendation/)
+  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | qa-eval | | MAYBE | | |')[0].message, /OPEN or DECIDED/)
+  assert.match(checkDecisions(head + '| D-001 | STOP 5.2 | Ship? | Yes | qa-eval | | DECIDED | | |')[0].message, /reply/)
   assert.match(checkDecisions(head)[0].message, /no decision rows/)
 })
 
 test('human checkpoints: an OPEN decision that blocks entry N stops prompt N; answering it clears the block', () => {
-  const head = '| Id | Raised | Question | Recommendation | Blocks | Status | Reply | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n'
-  const open = head + '| D-001 | STOP 1.2 | Approve the title? | Approve | entry 5 | OPEN | | |'
+  const head = '| Id | Raised | Question | Recommendation | Panel | Blocks | Status | Reply | Date |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n'
+  const open = head + '| D-001 | STOP 1.2 | Approve the title? | Approve | qa-eval | entry 5 | OPEN | | |'
   assert.deepEqual(openBlockers(open, 5).map((row: { id: string }) => row.id), ['D-001'])
   assert.deepEqual(openBlockers(open, 15), [], 'entry 5 does not block entry 15')
   const chain = { '5': { handoffs: [], evals: [] } }
   assert.match(checkEntry(5, { chain, handoffs: {}, rows: [], decisions: open })[0].message, /D-001 is OPEN and blocks entry 5/)
-  const decided = head + '| D-001 | STOP 1.2 | Approve the title? | Approve | entry 5 | DECIDED | "approved" | 2026-09-23 |'
+  const decided = head + '| D-001 | STOP 1.2 | Approve the title? | Approve | qa-eval | entry 5 | DECIDED | "approved" | 2026-09-23 |'
   assert.deepEqual(checkEntry(5, { chain, handoffs: {}, rows: [], decisions: decided }), [])
 })
 
@@ -191,4 +194,28 @@ test('reviews: a finding without evidence, a SHIP with a BLOCK, or a missing ver
   assert.ok(parseReview(review('FIX', '`src/a.ts:1`', 'CRITICAL')).issues.some((issue: { message: string }) => /unknown severity/.test(issue.message)))
   assert.ok(parseReview(review('SHIP', '`src/a.ts:1`', 'BLOCK')).issues.some((issue: { message: string }) => /SHIP verdict with a BLOCK/.test(issue.message)))
   assert.ok(parseReview(review('maybe', '`src/a.ts:1`')).issues.some((issue: { message: string }) => /Verdict must be/.test(issue.message)))
+})
+
+test('decision panels: a REJECT keeps a decision OPEN; a later round replaces only the decisions it covers', () => {
+  const file = (seat: string, round: number, rows: string[]) =>
+    parseDecisionFile(`Seat: ${seat}\nRound: ${round}\nCommit: abc1234\n\n| Decision | Verdict | Reason | Evidence | Conditions |\n| --- | --- | --- | --- | --- |\n${rows.join('\n')}\n`, `${seat}-${round}`)
+  const first = file('game-director', 1, ['| D-001 | REJECT | text overflows | `shot.png` | wrap it |', '| D-004 | APPROVE | same | `a.png` | none |'])
+  const other = file('qa-eval', 1, ['| D-001 | APPROVE WITH CONDITIONS | ok | `b.json` | note |'])
+  assert.equal(tallyDecisions([first, other]).find((entry: { id: string }) => entry.id === 'D-001').result, 'OPEN')
+  const second = file('game-director', 2, ['| D-001 | APPROVE | fixed | `shot2.png` | none |'])
+  const tally = tallyDecisions([second, first, other])
+  assert.equal(tally.find((entry: { id: string }) => entry.id === 'D-001').result, 'DECIDED', 'round 2 replaces round 1 for D-001')
+  assert.equal(tally.find((entry: { id: string }) => entry.id === 'D-004').result, 'DECIDED', 'round 1 still stands for D-004')
+  assert.match(parseDecisionFile('Seat: x\n\n| D-009 | MAYBE | r | `a.md` | none |').issues[0].message, /not APPROVE/)
+  assert.match(parseDecisionFile('Seat: x\n\n| D-009 | APPROVE | r | trust me | none |').issues[0].message, /without file or artifact evidence/)
+})
+
+test('parseTokens reads the Tokens header written from the tool usage report', () => {
+  assert.equal(parseTokens('41200'), 41200)
+  assert.equal(parseTokens('41.2K'), 41200)
+  assert.equal(parseTokens('1,120,000 tokens'), 1120000)
+  assert.equal(parseTokens('unknown'), null)
+  assert.equal(parseTokens(undefined), null)
+  assert.equal(parseReview(review('FIX', '`src/player/PlayerMotor.ts:88`').replace('Scope:', 'Tokens: 52K\nScope:')).tokens, 52000)
+  assert.equal(parseReview(review('FIX', '`src/player/PlayerMotor.ts:88`')).tokens, null, 'absent header is null, not zero')
 })

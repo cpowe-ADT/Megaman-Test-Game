@@ -1,4 +1,5 @@
 import { runInputFocusLossScenario } from './smoke/input-focus-loss.mjs'
+import { provenance } from './lib/provenance.mjs'
 import { runEndingFlowScenario, runPrologueFlowScenario, runRadioTickerScenario, runStoryReplaySkipScenario } from './smoke/story-surfaces.mjs'
 import { runOptionsPersistScenario, runPauseWeaponSelectScenario, runTitleContinueScenario } from './smoke/pause-options.mjs'
 import { runBossGroundingScenario } from './smoke/boss-grounding.mjs'
@@ -289,6 +290,7 @@ function createSmokeSummary() {
   return {
     status: 'running',
     startedAt: new Date().toISOString(),
+    ...provenance(),
     serverMode: smokeServerMode,
     outputDir,
     scenarios: []
@@ -311,7 +313,8 @@ async function executeSmokeScenario(summary, name, runScenario) {
     }
   }
 
-  if (smokeOnlyScenarios.size > 0 && !smokeOnlyScenarios.has(name)) {
+  // SMOKE_ONLY takes full names or their numeric prefix (35 matches 35-radio-ticker).
+  if (smokeOnlyScenarios.size > 0 && !smokeOnlyScenarios.has(name) && !smokeOnlyScenarios.has(name.split('-')[0])) {
     summary.scenarios.push({
       name,
       status: 'skipped',
@@ -3610,6 +3613,10 @@ async function main() {
     await executeSmokeScenario(summary, '32-viewport-energy-economy', () =>
       runViewportAndEnergyEconomyScenario('32-viewport-energy-economy')
     )
+    // A filter that matches nothing must not report a pass with every scenario skipped.
+    if (smokeOnlyScenarios.size > 0 && summary.scenarios.every((scenario) => scenario.status === 'skipped')) {
+      throw new Error(`SMOKE_ONLY=${[...smokeOnlyScenarios].join(',')} matched no scenario`)
+    }
     summary.status = 'pass'
   } finally {
     if (!vite.killed) {
@@ -3622,7 +3629,8 @@ async function main() {
     writeSmokeSummary(summary)
   }
 
-  console.log(`Smoke test complete. Artifacts: ${outputDir}`)
+  const ran = summary.scenarios.filter((scenario) => scenario.status !== 'skipped').length
+  console.log(`Smoke test complete: ${ran} ran, ${summary.scenarios.length - ran} skipped. Artifacts: ${outputDir}`)
 }
 
 main().catch((error) => {

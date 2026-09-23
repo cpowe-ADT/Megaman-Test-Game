@@ -47,6 +47,10 @@ Details and scenario names: `TESTING.md`. Merge blockers: `docs/testing/quality-
 - Review seats and helper agents answer in at most 600 words with evidence, never file dumps (`docs/prompts/seats/REVIEW_FORMAT.md`).
 - Budgets for the files every session reads live in `tests/agent-budget.json`; `npm run agents:check` fails when one grows past its budget. When it does, rotate or move text, do not raise the budget.
 - `npm run agents:rotate-progress` moves old log entries to `docs/archive/progress/` when `progress.md` grows.
+- **Lean by default.** Spend more only for a risky or irreversible change, a release, a finding that needs it, or a change that saves tokens later; say which in the progress entry's `Tokens:` line. Budgets per run are `tokens` in `tests/agent-budget.json`; the design is `docs/prompts/11-token-efficiency.md`.
+- **Never hand an agent the session.** Send a task card and a packet (`docs/prompts/seats/BRIEF_FORMAT.md`, `npm run agents:packet`); the agent answers with a result card. A new session starts from `progress.md` Now and `npm run agents:context`, not a transcript.
+- **Cost is calls times context.** Every tool call re-sends everything read so far: run gates with `npm run -s gate -- test agents:check build` (one result line each, logs in `output/gates/`), batch commands, and cap an agent's calls on its task card.
+- **Cheap does, strong checks.** Mechanical work goes to `game-runner` (fast tier), settled slices to `game-implementer` (standard), and review depth follows the risk tier in `docs/prompts/seats/README.md` (R0 none to R3 three seats with the strong code reviewer).
 
 ## Where things are (read the row for your task)
 

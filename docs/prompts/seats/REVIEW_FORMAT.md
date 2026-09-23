@@ -7,6 +7,7 @@ Seat: <seat id, e.g. performance-engineer>
 Commit: <short sha reviewed>
 Scope: <what the orchestrator asked you to review, one line>
 Artifacts opened: <paths you actually opened, or "none">
+Tokens: <filled by whoever saves the file, from the tool's usage report; "unknown" if the tool shows none>
 
 | Severity | Finding | Evidence | Fix |
 | --- | --- | --- | --- |

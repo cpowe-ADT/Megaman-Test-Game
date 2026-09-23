@@ -9,7 +9,7 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { partPhases } from './checks.mjs'
+import { citedSections, partPhases } from './checks.mjs'
 
 const root = path.resolve('.')
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
@@ -55,7 +55,21 @@ if (phaseIds.length === 0 && partSections.length === 0) {
   process.exit(1)
 }
 const intro = prompt.split('\n## ')[0].trim()
-const promptBody = sections(prompt, ['Entry conditions', 'Ground truth', 'Outcome', ...phaseIds.map((id) => `Phase ${id}`), ...partSections, 'Exit Gate'])
+const promptBody = sections(prompt, ['Entry conditions', 'Ground truth', 'Outcome', ...phaseIds.map((id) => `Phase ${id}`), ...partSections, 'Panel conditions', 'Exit Gate'])
+
+// Sections of superseded prompts (02 to 04) that this part cites, plus the shared sections those prompts
+// define once (02's route budget, 03's production rules), so nobody reads the old prompt in full.
+const shared = JSON.parse(read('tests/agent-budget.json')).sharedSections ?? {}
+const citations = citedSections(promptBody)
+const citedPrompts = [...new Set(citations.map((citation) => citation.prompt))]
+const citedBody = citedPrompts
+  .map((number) => {
+    const file = fs.readdirSync(path.join(root, 'docs/prompts')).find((name) => name.startsWith(`${number}-`))
+    const wanted = [...(shared[number] ?? []), ...citations.filter((citation) => citation.prompt === number).map((citation) => citation.section)]
+    return file ? `### From docs/prompts/${file}\n\n${demote(demote(sections(read(`docs/prompts/${file}`), wanted)))}` : ''
+  })
+  .filter(Boolean)
+  .join('\n\n')
 
 const charter = read('docs/prompts/00-orchestrator-charter.md')
 const amendments = charter.slice(charter.indexOf('**Amendments'), charter.indexOf('## 3.')).trim()
@@ -108,7 +122,7 @@ ${demote(intro.replace(/^# .*\n+/, ''))}
 
 ${demote(promptBody)}
 
-## Ledger rows for prompt ${part.slice(0, 2)}
+${citedBody ? `## Sections this part cites from superseded prompts\n\n${citedBody}\n\n` : ''}## Ledger rows for prompt ${part.slice(0, 2)}
 
 | Id | Kind | What passes | Status | Evidence | Commit |
 | --- | --- | --- | --- | --- | --- |

@@ -56,15 +56,27 @@ const merged = [
 fs.writeFileSync(path.join(folder, 'MERGED.md'), merged + '\n')
 
 const scoresFile = path.join('docs/prompts/reviews/SCORES.md')
+const scoresHeader = '| Date and slice | Seat | Verdict | Mean | BLOCK | MAJOR | MINOR | Valid | Tokens |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |'
 if (!fs.existsSync(scoresFile)) {
-  fs.writeFileSync(scoresFile, '# Seat scores\n\nOne row per seat review, appended by `npm run agents:reviews`. Mean is the mean rubric score (1 to 5).\n\n| Date and slice | Seat | Verdict | Mean | BLOCK | MAJOR | MINOR | Valid |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n')
+  fs.writeFileSync(scoresFile, `# Seat scores\n\nOne row per seat review, appended by \`npm run agents:reviews\`. Mean is the mean rubric score (1 to 5). Tokens comes from the review's "Tokens:" header (blank before 2026-09-22).\n\n${scoresHeader}\n`)
 }
+// Token budget per seat review (tests/agent-budget.json tokens.seatReview): over it is a warning, not a failure,
+// so the reason goes in the progress entry instead of the review being thrown away.
+const seatBudget = JSON.parse(fs.readFileSync('tests/agent-budget.json', 'utf8')).tokens?.seatReview ?? Infinity
+reviews.forEach((review) => {
+  if (review.tokens === null) console.log(`  ${review.file}: no "Tokens:" header; add the tool's usage when saving`)
+  else if (review.tokens > seatBudget) console.log(`  ${review.file}: ${review.tokens} tokens, over the ${seatBudget} seat budget; say why in the progress entry`)
+})
 const scoreRows = reviews.map((review) => {
   const countOf = (severity) => review.findings.filter((finding) => finding.severity === severity).length
-  return `| ${slice} | ${review.seat || review.file} | ${verdictWord(review.verdict)} | ${mean(review.scores)} | ${countOf('BLOCK')} | ${countOf('MAJOR')} | ${countOf('MINOR')} | ${review.issues.length ? 'no' : 'yes'} |`
+  return `| ${slice} | ${review.seat || review.file} | ${verdictWord(review.verdict)} | ${mean(review.scores)} | ${countOf('BLOCK')} | ${countOf('MAJOR')} | ${countOf('MINOR')} | ${review.issues.length ? 'no' : 'yes'} | ${review.tokens ?? ''} |`
 })
 // Re-running the merge for a slice replaces its rows instead of appending duplicates.
-const kept = fs.readFileSync(scoresFile, 'utf8').split('\n').filter((line) => !line.startsWith(`| ${slice} |`))
+const kept = fs
+  .readFileSync(scoresFile, 'utf8')
+  .replace(/^\| Date and slice \|.*\n\| --- .*$/m, scoresHeader)
+  .split('\n')
+  .filter((line) => !line.startsWith(`| ${slice} |`))
 fs.writeFileSync(scoresFile, kept.join('\n').replace(/\n*$/, '\n') + scoreRows.join('\n') + '\n')
 
 console.log(`${reviews.length} reviews, ${findings.length} evidenced findings (${findings.filter((f) => f.severity === 'BLOCK').length} BLOCK), ${issues.length} format problems -> ${path.join(folder, 'MERGED.md')}`)

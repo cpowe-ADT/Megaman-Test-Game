@@ -13,11 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Full history: agents:check verifies that ledger rows cite commits on this branch (D-011).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
+      # No dependencies needed: fails fast on a broken ledger, handoff, budget or decision log.
+      - run: npm run agents:check
       - run: npm ci
       - run: npm run test
       - run: npm run build

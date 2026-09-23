@@ -90,6 +90,19 @@ export function partPhases(promptMarkdown, part) {
   return [...ids].sort((a, b) => Number(a.split('.')[1]) - Number(b.split('.')[1]))
 }
 
+/**
+ * Sections of other prompts that a text cites, e.g. `prompt 04 "Phase 4.1"`, `prompt 02 section "Phase 2.1"`,
+ * or a path to `docs/prompts/03-art-animation-bosses.md` followed by `section "Phase 3.3"`. The context pack
+ * includes exactly these instead of asking a session to read the superseded prompt in full.
+ */
+export function citedSections(text) {
+  const found = new Map()
+  const add = (prompt, section) => found.set(`${prompt}|${section}`, { prompt, section })
+  for (const match of text.matchAll(/prompt (0\d)(?: section)? "([^"]+)"/g)) add(match[1], match[2])
+  for (const match of text.matchAll(/docs\/prompts\/(0\d)-[\w-]+\.md`?,? section "([^"]+)"/g)) add(match[1], match[2])
+  return [...found.values()]
+}
+
 /** An artifact path: something under output/, or a repo file with an extension. */
 export function hasArtifact(text) {
   return /output\/[\w./{},*-]+|(?:src|tests|scripts|docs)\/[\w./-]+\.\w+/.test(text)
@@ -205,13 +218,64 @@ export function missingDocPaths(markdown, exists) {
   return [...new Set(missing)]
 }
 
-/** Decisions log rows: `| D-001 | raised | question | recommendation | blocks | OPEN or DECIDED | Craig's reply | date |`. */
+/** Decisions log rows: `| D-001 | raised | question | recommendation | panel | blocks | OPEN or DECIDED | reply | date |`. */
 export function parseDecisions(markdown) {
   return markdown
     .split('\n')
     .map(splitRow)
     .filter((cells) => cells && /^D-\d{3}$/.test(cells[0]))
-    .map(([id, raised, question, recommendation, blocks, status, reply, date]) => ({ id, raised, question, recommendation, blocks: blocks ?? '', status, reply, date }))
+    .map(([id, raised, question, recommendation, panel, blocks, status, reply, date]) => ({ id, raised, question, recommendation, panel: panel ?? '', blocks: blocks ?? '', status, reply, date }))
+}
+
+const VERDICTS = ['APPROVE', 'APPROVE WITH CONDITIONS', 'REJECT', 'ABSTAIN']
+
+/** A panel seat's decision file (docs/prompts/seats/DECISION_FORMAT.md): { seat, rows, issues }. */
+export function parseDecisionFile(markdown, name = 'decision') {
+  const seat = (markdown.match(/^Seat:\s*(.+)$/m)?.[1] ?? '').trim()
+  const round = Number(markdown.match(/^Round:\s*(\d+)/m)?.[1] ?? 1)
+  const rows = []
+  const issues = []
+  for (const line of markdown.split('\n')) {
+    const cells = splitRow(line)
+    if (!cells || !/^D-\d{3}/.test(cells[0])) continue
+    const [idCell, verdictCell = '', reason = '', evidence = '', conditions = ''] = cells
+    const id = idCell.match(/^D-\d{3}/)[0]
+    const verdict = verdictCell.replace(/[*_`]/g, '').trim().toUpperCase()
+    if (!VERDICTS.includes(verdict)) issues.push({ level: 'error', id: name, message: `${id}: verdict "${verdictCell.slice(0, 30)}" is not ${VERDICTS.join(', ')}` })
+    if (verdict !== 'ABSTAIN' && !/[\w./-]+\.\w+(:\d+)?|`[^`]+`\s*(->|→)/.test(evidence)) {
+      issues.push({ level: 'error', id: name, message: `${id}: verdict without file or artifact evidence` })
+    }
+    rows.push({ id, verdict, reason, evidence, conditions })
+  }
+  if (!seat) issues.push({ level: 'error', id: name, message: 'missing "Seat:" header' })
+  if (rows.length === 0) issues.push({ level: 'error', id: name, message: 'no decision rows' })
+  return { seat, round, rows, issues, tokens: parseTokens(markdown.match(/^Tokens:\s*(.+)$/m)?.[1]) }
+}
+
+/**
+ * Tally panel files. A seat's rows for a decision in a higher `Round:` replace its rows for that decision in
+ * earlier rounds (a re-review after a fix); its other decisions stand. A decision is DECIDED when every seat
+ * that ruled on it approved; any REJECT keeps it OPEN.
+ */
+export function tallyDecisions(files) {
+  const bySeatAndId = new Map()
+  for (const file of [...files].sort((a, b) => (a.round ?? 1) - (b.round ?? 1))) {
+    const ids = new Set(file.rows.map((row) => row.id))
+    ids.forEach((id) => bySeatAndId.set(`${file.seat}|${id}`, { seat: file.seat, rows: file.rows.filter((row) => row.id === id) }))
+  }
+  const byId = new Map()
+  for (const { seat, rows } of bySeatAndId.values()) {
+    for (const row of rows) {
+      if (row.verdict === 'ABSTAIN') continue
+      const entry = byId.get(row.id) ?? { id: row.id, verdicts: [], conditions: [] }
+      entry.verdicts.push({ seat, verdict: row.verdict })
+      if (row.conditions && row.conditions !== 'none') entry.conditions.push(`${seat}: ${row.conditions}`)
+      byId.set(row.id, entry)
+    }
+  }
+  return [...byId.values()]
+    .map((entry) => ({ ...entry, result: entry.verdicts.some((v) => v.verdict === 'REJECT') ? 'OPEN' : 'DECIDED' }))
+    .sort((a, b) => a.id.localeCompare(b.id))
 }
 
 /** OPEN decisions whose Blocks cell names `entry <N>`: prompt N cannot start until Craig answers them. */
@@ -281,5 +345,16 @@ export function parseReview(markdown, name = 'review') {
   if (/^SHIP/.test(verdict) && findings.some((finding) => finding.severity === 'BLOCK')) {
     issues.push({ level: 'error', id: name, message: 'SHIP verdict with a BLOCK finding' })
   }
-  return { seat, verdict, findings, scores, issues }
+  return { seat, verdict, findings, scores, issues, tokens: parseTokens(header('Tokens')) }
+}
+
+/**
+ * The optional "Tokens:" header on a review or decision file, written by whoever saves it from the tool's usage
+ * report ("41200", "41.2K", "41,200 tokens"). Returns a number, or null when absent or "unknown".
+ */
+export function parseTokens(value) {
+  const match = String(value ?? '').replace(/,/g, '').match(/^(\d+(?:\.\d+)?)\s*([kKmM]?)/)
+  if (!match) return null
+  const scale = { k: 1e3, m: 1e6 }[match[2].toLowerCase()] ?? 1
+  return Math.round(Number(match[1]) * scale)
 }
