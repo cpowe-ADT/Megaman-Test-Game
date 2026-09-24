@@ -27,3 +27,4 @@ One row per seat review, appended by `npm run agents:reviews`. Mean is the mean 
 | 2026-09-24-5.3-camera | game-director | FIX | 3.8 | 1 | 0 | 2 | yes | 36611 |
 | 2026-09-24-5.3-camera | principal-engineer | FIX | 4.0 | 0 | 3 | 3 | yes | 64252 |
 | 2026-09-24-5.3-camera | principal-engineer | FIX | 3.3 | 2 | 1 | 3 | yes | 51538 |
+| 2026-09-24-05b-qa | qa-eval | SHIP | 4.5 | 0 | 0 | 1 | yes | 55012 |
