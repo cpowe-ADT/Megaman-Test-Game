@@ -68,15 +68,20 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     // Record every item the lane shows for the rest of the run. Replays step many frames inside one
     // evaluate, so a timer would miss short items: wrap the lane's own advance instead (test-side only).
     await page.evaluate(() => {
-      const lane = window.__phaserGame.scene.getScene('Game').toastLane
+      const game = window.__phaserGame.scene.getScene('Game')
+      const lane = game.toastLane
       const record = () => {
         const item = lane.current
-        if (item) window.__laneLog.push({ kind: item.kind, speaker: item.speaker ?? null, text: item.text, bounds: lane.getBounds() })
+        if (item) window.__laneLog.push({ kind: item.kind, speaker: item.speaker ?? null, text: item.text, heroX: game.player.x, bounds: lane.getBounds() })
       }
       window.__laneLog = []
+      window.__laneEnqueued = []
       record()
       const advance = lane.next.bind(lane)
       lane.next = () => { advance(); record() }
+      // Checkpoint toasts and the stage radio arrive through enqueue (the coach goes through supersede).
+      const enqueue = lane.enqueue.bind(lane)
+      lane.enqueue = (item) => { window.__laneEnqueued.push({ kind: item.kind, speaker: item.speaker ?? null, text: item.text, heroX: game.player.x }); enqueue(item) }
     })
     await shield()
     const armed = await capture('armed-jump')
@@ -85,7 +90,6 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     assert.ok(locksOf(armed).every((entry) => entry.gateClosed), 'every gate starts closed')
     const hint = await waitForState(page, (state) => state.ticker?.kind === 'hint' && state.ticker.text === HINTS[0], 8000)
     assertLaneInBounds(hint, 'jump key hint')
-    await coachWhileArmed(0)
 
     // 1 jump: walking into the closed gate does not pass it; a jump opens it.
     await warp(400)
@@ -95,10 +99,17 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     assert.equal(locksOf(blocked)[0].phase, 'locked')
     await replay('dash')
     assert.equal((await lock(0)).phase, 'locked', 'a dash does not open the jump lock')
+    await coachWhileArmed(0)
     await replay('jump')
     assert.equal((await lock(0)).phase, 'open', 'the jump opens the jump lock')
-    await replay('walk-right')
-    assert.ok((await readState(page)).player.x > 448, 'the open gate lets the hero through')
+    // A real supersede: arm the dash lock while Rook's step one still plays; the dash hint replaces it within 3 frames.
+    const stepOne = await readState(page)
+    assert.ok(stepOne.ticker?.kind === 'radio' && String(stepOne.ticker.text).startsWith(ROOK_STEPS[0]), `step one still plays when the dash lock arms (${stepOne.ticker?.text})`)
+    await page.evaluate((value) => window.stageDebug.setPlayerX(value), 470)
+    await advanceFrames(page, 3)
+    const superseded = await readState(page)
+    assert.equal(locksOf(superseded)[1].phase, 'locked')
+    assert.equal(superseded.ticker?.text, HINTS[1], 'the dash hint replaces the stale step-one line within 3 frames')
 
     // 2 dash: a jump is the wrong verb, the dash is the right one.
     await advanceFrames(page, 2)
@@ -153,6 +164,10 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     await replay('charge')
     await capture('charge')
     assert.equal((await lock(3)).phase, 'open', 'a charged shot opens the charge lock')
+    // The stage radio first shows after the shaft exit checkpoint queued it.
+    await waitForState(page, (state) => state.ticker?.kind === 'radio' && /iona/i.test(state.ticker.speaker ?? ''), 20000)
+    const radioFirst = await capture('radio-first')
+    fs.writeFileSync(path.join(dir, 'radio-first.json'), JSON.stringify({ heroX: radioFirst.player.x, heroY: radioFirst.player.y, checkpointIndex: radioFirst.stageRuntime?.checkpointIndex, locks: locksOf(radioFirst).map((entry) => entry.phase) }, null, 2))
 
     // 5 saber: the scrap gate blocks, a pellet does nothing, three cuts bring it down.
     await warp(2180)
@@ -182,6 +197,13 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
       throw error
     })
     const laneLog = await page.evaluate(() => window.__laneLog)
+    const enqueued = await page.evaluate(() => window.__laneEnqueued)
+    fs.writeFileSync(path.join(dir, 'lane-enqueued.json'), JSON.stringify(enqueued, null, 2))
+    const stageRadio = enqueued.filter((item) => item.kind === 'radio')
+    assert.ok(stageRadio.length >= 1, 'the stage radio queued')
+    assert.ok(stageRadio.every((item) => item.heroX >= 1380), `the radio queues at the shaft exit checkpoint, never before (x ${stageRadio.map((item) => Math.round(item.heroX))})`)
+    const dashExit = enqueued.find((item) => item.kind === 'toast' && item.text === 'Checkpoint 2')
+    assert.ok(dashExit && dashExit.heroX >= 896 && dashExit.heroX < 1000, 'checkpoint 2 at the dash exit shows its toast and queues no radio')
     fs.writeFileSync(path.join(dir, 'lane-log.json'), JSON.stringify(laneLog, null, 2))
     for (const entry of laneLog.filter((item) => item.kind === 'hint' || /rook/i.test(item.speaker ?? ''))) {
       assertLaneInBounds({ ticker: entry }, entry.text)

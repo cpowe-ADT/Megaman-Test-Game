@@ -71,7 +71,7 @@ export class NewPlayerRuntime {
   private lastLandingSpeed = 0
   private lastJumpSource: MotorSnapshot['jumpSource'] = 'none'
   private lastDashStartedAtMs = 0
-  /** Saber swings started (room-lock saber hits count these, so a short active window is never missed). */
+  /** Saber swings that reached `active` (room-lock saber hits count these; a swing cancelled in startup is not a hit). */
   private slashesStarted = 0
   private lastDashEndedAtMs = 0
   private lastDamageSource = 'none'
@@ -165,7 +165,7 @@ export class NewPlayerRuntime {
     this.dispatchLocomotionSfx(now, motorSnapshot)
     const slashPhase = combatResult.snapshot.slashPhase
     const prevSlashPhase = this.lastCombatSnapshot?.slashPhase
-    if ((slashPhase === 'startup' && prevSlashPhase !== 'startup') || (slashPhase === 'active' && prevSlashPhase !== 'active' && prevSlashPhase !== 'startup')) this.slashesStarted += 1
+    if (slashPhase === 'active' && prevSlashPhase !== 'active') this.slashesStarted += 1
     this.lastMotorSnapshot = motorSnapshot
     this.lastCombatSnapshot = combatResult.snapshot
 

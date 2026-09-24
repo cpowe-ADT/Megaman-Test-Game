@@ -186,7 +186,7 @@ test('validator: finale phases, epilogue cards, narration, and stageId placement
   assert.ok(errorsOf(cardElsewhere).some((e) => e.includes('may not carry a district card')))
 })
 
-test('validator: tutorial_coach is Rook only, tutorial only, 4 to 6 lines, exactly once', () => {
+test('validator: tutorial_coach is Rook only, tutorial only, one line per lock, exactly once', () => {
   const coachOf = (content: any) => content.sequences.find((sequence: any) => sequence.trigger === 'tutorial_coach')
   assert.equal(coachOf(cloneContent())?.stageId, TUTORIAL_STAGE_ID)
   assert.equal(coachOf(cloneContent())?.lines.length, 5, 'one recorded prompt per teach lock')
@@ -203,11 +203,14 @@ test('validator: tutorial_coach is Rook only, tutorial only, 4 to 6 lines, exact
 
   const tooShort = cloneContent()
   coachOf(tooShort).lines = coachOf(tooShort).lines.slice(0, 3)
-  assert.ok(errorsOf(tooShort).some((error) => /must contain 4 to 6 lines/.test(error)))
+  assert.ok(errorsOf(tooShort).some((error) => /must contain 5 to 5 lines/.test(error)), 'the line bound is the tutorial lock count')
 
   const fourLines = cloneContent()
   coachOf(fourLines).lines = coachOf(fourLines).lines.slice(0, 4)
-  assert.ok(errorsOf(fourLines).some((error) => /must carry one line per tutorial room lock \(5, found 4\)/.test(error)))
+  assert.ok(errorsOf(fourLines).some((error) => /must contain 5 to 5 lines/.test(error)))
+  const sixLines = cloneContent()
+  coachOf(sixLines).lines.push({ ...coachOf(sixLines).lines[4] })
+  assert.ok(errorsOf(sixLines).some((error) => /must contain 5 to 5 lines/.test(error)), 'a sixth line that never plays is refused')
 
   const swapped = cloneContent()
   const [first, second] = coachOf(swapped).lines

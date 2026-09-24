@@ -602,7 +602,7 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
 type StageExtensionPatch = {
   width: number
   bossSpawnX: number
-  checkpoints: Array<{ id: string; x: number; y: number; triggerX: number }>
+  checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
   hazards?: Array<{ id: string; x: number; y: number }>
   midPlatforms?: StagePlatformDefinition[]
   enemyMarkers?: EnemyLevelMarker[]
@@ -635,7 +635,8 @@ const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPat
     checkpoints: [
       checkpoint('tutorial_start', 44, 40, 0),
       checkpoint('tutorial_dash_exit', 928, 40, 912),
-      checkpoint('tutorial_shaft_exit', 1392, 40, 1380),
+      // The radio pair belongs at the shaft exit; the dash exit is checkpoint 2's toast only.
+      { ...checkpoint('tutorial_shaft_exit', 1392, 40, 1380), radioSequenceId: 'tutorial_sentinel_radio' },
       // The last checkpoint starts the boss door on every stage; kept at the approach's end.
       checkpoint('tutorial_boss_gate', 2450, 40, 2536)
     ],
@@ -1120,6 +1121,20 @@ for (const stage of Object.values(CAMPAIGN_STAGES)) {
 
 export function getCampaignStage(id: string): CampaignStageDefinition {
   return CAMPAIGN_STAGES[id as CampaignStageId] ?? CAMPAIGN_STAGES.pyro_maw
+}
+
+/**
+ * The radio sequence a checkpoint starts: the one it declares; otherwise the stage radio at index 1,
+ * but only for stages that declare no radio checkpoint at all (the tutorial moves its radio to the shaft exit).
+ */
+export function resolveCheckpointRadioId(
+  stageId: string,
+  index: number,
+  checkpoints: ReadonlyArray<{ radioSequenceId?: string }>
+): string | undefined {
+  const declared = checkpoints[index]?.radioSequenceId
+  if (declared) return declared
+  return index === 1 && !checkpoints.some((entry) => entry.radioSequenceId) ? `${stageId}_radio` : undefined
 }
 
 export function getRobotMasterStages(): CampaignStageDefinition[] {

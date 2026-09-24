@@ -1,6 +1,6 @@
 import type Phaser from 'phaser'
 import { AUTOMATION } from '../../config/automation'
-import { getCampaignStage, type CampaignStageId } from '../../content/campaign'
+import { getCampaignStage, resolveCheckpointRadioId, type CampaignStageId } from '../../content/campaign'
 import {
   DIALOGUE_REGISTRY,
   resolveDialogueText,
@@ -15,7 +15,6 @@ import { Settings } from '../../systems/Settings'
 import type { DialogueOverlayController } from '../../ui/DialogueOverlayController'
 import { StageIntroPresenter } from '../../ui/StageIntroPresenter'
 import type { ToastLane, ToastLaneItem } from '../../ui/ToastLane'
-import type { RoomLockInput } from '../../mechanics/roomLock'
 
 export const RADIO_LINE_MS = 4500
 export const CHECKPOINT_TOAST_MS = 900
@@ -113,7 +112,7 @@ export class StoryDirector {
   onCheckpoint(index: number, checkpoint: { id: string; radioSequenceId?: string }): void {
     const lane = this.deps.lane()
     lane?.enqueue({ kind: 'toast', text: `Checkpoint ${index + 1}`, durationMs: CHECKPOINT_TOAST_MS })
-    const radioId = checkpoint.radioSequenceId ?? (index === 1 ? `${this.deps.stageId}_radio` : undefined)
+    const radioId = checkpoint.radioSequenceId ?? resolveCheckpointRadioId(this.deps.stageId, index, getCampaignStage(this.deps.stageId).arena.checkpoints)
     if (!radioId || !lane) return
     const policy = currentStoryPolicy()
     if (!shouldPlayStory(Save.load().storyFlags, radioId, policy)) return
@@ -127,16 +126,16 @@ export class StoryDirector {
 
   /**
    * A tutorial room lock armed: the lane shows the key hint (UI, from the bindings), then Rook's
-   * recorded intake prompt keyed to that lock's input (`tutorial_coach` line `lock`) when story is
+   * recorded intake prompt for that lock by position (the validator binds line N to lock N) when story is
    * on. Both replace any coach items still queued, so the lane never trails the hero by a segment.
    * Neither opens the gate; only the verb does.
    */
-  onRoomLockArmed(input: RoomLockInput, keyHint: string): void {
+  onRoomLockArmed(lockIndex: number, keyHint: string): void {
     const lane = this.deps.lane()
     if (!lane) return
     const items: ToastLaneItem[] = [{ kind: 'hint', text: keyHint, durationMs: KEY_HINT_MS }]
     const sequence = DIALOGUE_REGISTRY.getSequence(this.deps.stageId, 'tutorial_coach')
-    const line = sequence?.lines.find((entry) => entry.lock === input)
+    const line = sequence?.lines[lockIndex]
     if (sequence && line && currentStoryPolicy().enabled) {
       const [resolved] = resolvePlaybackLines(sequence.id, [line], this.deps.values())
       items.push({ kind: 'radio', speaker: resolved.speakerName, text: resolved.text, durationMs: RADIO_LINE_MS })

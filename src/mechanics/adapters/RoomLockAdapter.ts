@@ -31,7 +31,8 @@ export type RoomLockAdapterDeps = {
   player: () => Phaser.Physics.Arcade.Sprite | undefined
   runtime: () => RoomLockRuntime | undefined
   /** A lock armed: the story director plays Rook's recorded prompt and the lane shows the key hint. */
-  onArmed: (input: RoomLockInput, keyHint: string) => void
+  /** The lock's position in the stage's `roomLocks` (the coach line with the same position plays). */
+  onArmed: (lockIndex: number, keyHint: string) => void
   /** Hands the camera back to the host: the boss-room lock when it is on, else the stage bounds. */
   restoreCamera: () => void
 }
@@ -97,8 +98,7 @@ export class RoomLockAdapter {
     if (index >= 0 && this.states[index].phase === 'dormant') {
       this.states[index] = armRoomLock(this.states[index])
       this.prevSample = null
-      const input = this.locks[index].requiredInput
-      this.deps.onArmed(input, roomLockKeyHint(input, Settings.get().bindings))
+      this.deps.onArmed(index, roomLockKeyHint(this.locks[index].requiredInput, Settings.get().bindings))
     }
     if (index >= 0 && this.states[index].phase === 'locked') {
       const sample = this.deps.runtime()?.getVerbSample() ?? null
@@ -150,7 +150,9 @@ export class RoomLockAdapter {
     })
     if (world.bounds.y !== top) world.setBounds(base.x, top, base.width, base.y + base.height - top)
     if (room) {
-      camera.setBounds(room.x, room.y, room.width, room.height)
+      // A hero drifting out of the shaft high into the next (locked) room stays on screen.
+      const cameraTop = top < base.y ? Math.min(room.y, top - 8) : room.y
+      camera.setBounds(room.x, cameraTop, room.width, room.y + room.height - cameraTop)
       this.cameraRoom = index
     } else if (top < base.y) {
       const cameraTop = Math.min(0, top - 8)

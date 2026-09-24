@@ -15,7 +15,7 @@ import {
   type RoomLockVerbSample
 } from '../src/mechanics/roomLock.ts'
 import { DEFAULT_BINDINGS } from '../src/input/ActionState.ts'
-import { getCampaignStage, getStageContentRetentionReport, TUTORIAL_STAGE_ID } from '../src/content/campaign.ts'
+import { getCampaignStage, getStageContentRetentionReport, resolveCheckpointRadioId, TUTORIAL_STAGE_ID } from '../src/content/campaign.ts'
 
 const DASH_LOCK: RoomLockDefinition = { id: 'l', room: { x: 448, y: 0, width: 448, height: 252 }, gateX: 896, requiredInput: 'dash' }
 const SAMPLE: RoomLockVerbSample = {
@@ -112,4 +112,20 @@ test('tutorial: six screens, five teach locks in order, checkpoints at start and
   assert.ok(stage.arena.checkpoints[2].x > 1344 && stage.arena.checkpoints[2].x < 1792)
   assert.ok(stage.enemyMarkers.some((enemy) => enemy.typeKey === 'enemy_armored_bot' && enemy.x > 1344 && enemy.x < 1792))
   assert.equal(stage.arena.bossRoom.x, 2688)
+})
+
+test('checkpoint radio: a stage that declares its radio checkpoint plays it there, never at the index-1 default', () => {
+  const tutorial = getCampaignStage(TUTORIAL_STAGE_ID).arena.checkpoints
+  assert.deepEqual(
+    tutorial.map((_, index) => resolveCheckpointRadioId(TUTORIAL_STAGE_ID, index, tutorial) ?? null),
+    [null, null, 'tutorial_sentinel_radio', null],
+    'the tutorial radio waits for the shaft exit, not the dash exit'
+  )
+  assert.equal(tutorial[2].id, 'tutorial_shaft_exit')
+  const pyro = getCampaignStage('pyro_maw').arena.checkpoints
+  assert.deepEqual(
+    pyro.map((_, index) => resolveCheckpointRadioId('pyro_maw', index, pyro) ?? null),
+    pyro.map((_, index) => (index === 1 ? 'pyro_maw_radio' : null)),
+    'stages that declare nothing keep the index-1 default'
+  )
 })

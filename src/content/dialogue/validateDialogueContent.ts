@@ -235,7 +235,8 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
           globalCoverage.set(trigger, (globalCoverage.get(trigger) ?? 0) + 1)
         }
       }
-      const limits = DIALOGUE_LINE_LIMITS[trigger]
+      const coachLines = (getCampaignStage(TUTORIAL_STAGE_ID).arena.roomLocks ?? []).length
+      const limits = trigger === 'tutorial_coach' ? { min: coachLines, max: coachLines } : DIALOGUE_LINE_LIMITS[trigger]
       const rules: LineRules = {
         min: limits.min,
         max: limits.max,
@@ -256,9 +257,6 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
       }
       if (trigger === 'tutorial_coach') {
         const lockOrder = (getCampaignStage(TUTORIAL_STAGE_ID).arena.roomLocks ?? []).map((lock) => lock.requiredInput)
-        if (lines.length !== lockOrder.length) {
-          errors.push(`${path} must carry one line per tutorial room lock (${lockOrder.length}, found ${lines.length})`)
-        }
         lines.forEach((line, lineIndex) => {
           if (line.speakerId !== 'sentinel_rook') {
             errors.push(`${path}.lines[${lineIndex}] must be spoken by sentinel_rook (the recorded intake prompts)`)

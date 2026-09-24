@@ -1,4 +1,4 @@
-import Phaser from 'phaser'
+import type Phaser from 'phaser'
 import { GAMEPLAY_VIEWPORT_TOP } from '../config/gameplayLayout'
 import { GAME_SIZE } from '../config/renderPolicy'
 
@@ -53,7 +53,7 @@ export class ToastLane {
     }).setOrigin(0, 0)
     this.container = scene.add.container(12 + this.laneWidth / 2, this.bottomY - 11, [this.background, this.speakerText, this.bodyText])
     this.container.setScrollFactor(0).setDepth(3000).setVisible(false)
-    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy())
+    scene.events.once('shutdown', () => this.destroy()) // Phaser.Scenes.Events.SHUTDOWN; a type-only import keeps the lane testable without Phaser
   }
 
   /** Lane rectangle in game pixels, for automation: the text must stay inside it and inside the frame. */
