@@ -45,6 +45,9 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 | EVAL-P6-014 | gate | StageBuilder, PickupSystem and EnemyRuntime extracted; Game.ts at or below 3,000 | PENDING | | |
 | EVAL-P6-015 | gate | hit contract: one resolveHurtbox for sword, shots and overlay; enemy melee vs the body profile; idempotent platform colliders; HitWires.ts; Game.ts at or below 2,700 | PENDING | | |
 | EVAL-P6-016 | gate + review | eight warden base sheets regenerated (idle, move, attack, hurt, death) with a grounding capture per boss | PENDING | | |
+| EVAL-P6-017 | gate | tiles drawn from a per-biome tileset (pure frame picking tested), rectangles as fallback, collisions unchanged; no boss framing in the HUD before the fight | PENDING | | |
+| EVAL-P6-018 | gate + review | relay biome tileset and three-layer background from Higgsfield, cut, attributed | PENDING | | |
+| EVAL-P6-019 | gate + review | tutorial rebuilt: safe dash teach, spikes after the verb, roster, secret, crumble group; smoke 49 green | PENDING | | |
 
 ## Prompt 07: Bosses, weapons, and story
 
