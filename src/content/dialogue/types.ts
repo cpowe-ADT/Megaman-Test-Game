@@ -1,4 +1,5 @@
 import type { CampaignStageId } from '../campaign'
+import type { RoomLockInput } from '../../mechanics/roomLock'
 
 export const DIALOGUE_SCHEMA_VERSION = '2' as const
 
@@ -89,6 +90,8 @@ export type DialogueLineDefinition = {
   text: string
   /** Epilogue only: the warden stage whose district card this line captions. */
   card?: CampaignStageId
+  /** tutorial_coach only: the room lock (by required input) whose arming plays this line. */
+  lock?: RoomLockInput
 }
 
 export type DialogueSequenceDefinition = {

@@ -205,6 +205,21 @@ test('validator: tutorial_coach is Rook only, tutorial only, 4 to 6 lines, exact
   coachOf(tooShort).lines = coachOf(tooShort).lines.slice(0, 3)
   assert.ok(errorsOf(tooShort).some((error) => /must contain 4 to 6 lines/.test(error)))
 
+  const fourLines = cloneContent()
+  coachOf(fourLines).lines = coachOf(fourLines).lines.slice(0, 4)
+  assert.ok(errorsOf(fourLines).some((error) => /must carry one line per tutorial room lock \(5, found 4\)/.test(error)))
+
+  const swapped = cloneContent()
+  const [first, second] = coachOf(swapped).lines
+  coachOf(swapped).lines[0] = second
+  coachOf(swapped).lines[1] = first
+  assert.ok(errorsOf(swapped).some((error) => /lines\[0\]\.lock must be jump/.test(error)))
+  assert.deepEqual(coachOf(cloneContent()).lines.map((line: any) => line.lock), ['jump', 'dash', 'wall_jump', 'charge', 'saber'])
+
+  const strayLock = cloneContent()
+  strayLock.sequences.find((sequence: any) => sequence.trigger === 'radio').lines[0].lock = 'dash'
+  assert.ok(errorsOf(strayLock).some((error) => /lock belongs only to tutorial_coach/.test(error)))
+
   const duplicated = cloneContent()
   duplicated.sequences.push({ ...coachOf(duplicated), id: 'tutorial_sentinel_coach_copy' })
   assert.ok(errorsOf(duplicated).some((error) => /coverage tutorial_sentinel:tutorial_coach must appear exactly once \(found 2\)/.test(error)))

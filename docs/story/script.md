@@ -30,7 +30,7 @@ _Staging: After the stage card, before control. The first line is the Stage Sele
 
 _Staging: Radio ticker as each teach lock arms, one line per lock, after the lane's key hint. Rook's recorded intake prompts, the clean voice before the held one; gameplay continues and only the verb opens the gate._
 
-- **Sentinel Rook:** Step one. Recovery units walk before they run. Clear the step ahead and the gate reads you through.
+- **Sentinel Rook:** Step one. Clear the step ahead. The gate reads your stride, not your file.
 - **Sentinel Rook:** Step two. Burst your thrusters and cover the floor faster than your legs can. The gate listens for the burst.
 - **Sentinel Rook:** Step three. Two wall faces, one shaft. Kick off each face until you reach the top.
 - **Sentinel Rook:** Step four. That frame is armored. Hold your buster until it sings, then let it go.

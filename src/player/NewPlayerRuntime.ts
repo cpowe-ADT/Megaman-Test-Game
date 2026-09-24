@@ -20,6 +20,7 @@ import { PlayerStateMachine } from './PlayerStateMachine'
 import { VfxSfxRouter } from './VfxSfxRouter'
 import { PLAYER_GAMEPLAY_CONFIG, resolveSwordVisualFacing, shouldFlipPlayerSpriteForFacing } from './config'
 import type { PlayerFeatureFlags } from './featureFlags'
+import type { RoomLockVerbSample } from '../mechanics/roomLock'
 import type {
   CombatSnapshot,
   HitTier,
@@ -70,6 +71,8 @@ export class NewPlayerRuntime {
   private lastLandingSpeed = 0
   private lastJumpSource: MotorSnapshot['jumpSource'] = 'none'
   private lastDashStartedAtMs = 0
+  /** Saber swings started (room-lock saber hits count these, so a short active window is never missed). */
+  private slashesStarted = 0
   private lastDashEndedAtMs = 0
   private lastDamageSource = 'none'
   private lastDamageTier: HitTier | 'none' = 'none'
@@ -160,6 +163,9 @@ export class NewPlayerRuntime {
       this.lastJumpSource = motorSnapshot.jumpSource
     }
     this.dispatchLocomotionSfx(now, motorSnapshot)
+    const slashPhase = combatResult.snapshot.slashPhase
+    const prevSlashPhase = this.lastCombatSnapshot?.slashPhase
+    if ((slashPhase === 'startup' && prevSlashPhase !== 'startup') || (slashPhase === 'active' && prevSlashPhase !== 'active' && prevSlashPhase !== 'startup')) this.slashesStarted += 1
     this.lastMotorSnapshot = motorSnapshot
     this.lastCombatSnapshot = combatResult.snapshot
 
@@ -301,6 +307,25 @@ export class NewPlayerRuntime {
     this.lastKnockback = { x: 0, y: 0 }
     applyPlayerBodyProfile(this.player, this.currentBodyProfile)
     this.hooks.setAnimation('player-idle')
+  }
+
+  /** The room-lock verbs' per-frame read (prompt 05 §5.7): typed, no debug surface. */
+  getVerbSample(): RoomLockVerbSample | null {
+    const motor = this.lastMotorSnapshot
+    const combat = this.lastCombatSnapshot
+    if (!motor || !combat) return null
+    const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+    return {
+      grounded: motor.grounded,
+      velocityY: body?.velocity.y ?? motor.velocityY,
+      lastJumpSource: this.lastJumpSource,
+      dashStartedAtMs: this.lastDashStartedAtMs,
+      wallJumping: motor.wallJumping,
+      projectileSpawnMs: this.lastProjectileSpawnMs,
+      projectileChargeLevel: this.lastProjectile?.chargeLevel ?? 0,
+      slashesStarted: this.slashesStarted,
+      hurtLocked: combat.hitstunRemainingMs > 0
+    }
   }
 
   getDebugState(): Record<string, unknown> | null {

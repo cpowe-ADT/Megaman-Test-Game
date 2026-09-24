@@ -5,6 +5,8 @@ import { GAME_SIZE } from '../config/renderPolicy'
 export type ToastLaneItem = {
   /** `hint`: a UI key hint (never dialogue), e.g. the tutorial's `DASH: Z`. */
   kind: 'toast' | 'radio' | 'hint'
+  /** Items on one channel replace each other through `supersede` (the tutorial coach). */
+  channel?: string
   text: string
   speaker?: string
   durationMs: number
@@ -71,6 +73,19 @@ export class ToastLane {
   enqueue(item: ToastLaneItem): void {
     this.queue.push(item)
     if (!this.current) this.next()
+  }
+
+  /**
+   * Replaces a channel: its queued items are dropped, its playing item ends now, and `items` play
+   * next, ahead of other channels' queued items. The tutorial coach follows the armed lock this way
+   * instead of queueing behind a stale prompt.
+   */
+  supersede(channel: string, items: ToastLaneItem[]): void {
+    for (let index = this.queue.length - 1; index >= 0; index -= 1) {
+      if (this.queue[index].channel === channel) this.queue.splice(index, 1)
+    }
+    this.queue.unshift(...items.map((item) => ({ ...item, channel })))
+    if (!this.current || this.current.channel === channel) this.next()
   }
 
   /** Call once per frame; paused scenes stop calling and the lane holds. */

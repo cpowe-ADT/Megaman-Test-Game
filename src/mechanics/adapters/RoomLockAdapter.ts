@@ -10,6 +10,7 @@ import {
   findRoomIndex,
   isSaberInReach,
   resolveCameraRoomIndex,
+  resolveWorldCeiling,
   roomLockKeyHint,
   type RoomLockDefinition,
   type RoomLockInput,
@@ -18,9 +19,9 @@ import {
   type RoomRect
 } from '../roomLock'
 
-/** The player runtime surface the adapter reads: its public per-frame state and facing. */
+/** The player runtime surface the adapter reads: the typed verb sample and facing. */
 export type RoomLockRuntime = {
-  getDebugState(): Record<string, unknown> | null
+  getVerbSample(): RoomLockVerbSample | null
   getFacing(): 1 | -1
 }
 
@@ -30,8 +31,8 @@ export type RoomLockAdapterDeps = {
   player: () => Phaser.Physics.Arcade.Sprite | undefined
   runtime: () => RoomLockRuntime | undefined
   /** A lock armed: the story director plays Rook's recorded prompt and the lane shows the key hint. */
-  onArmed: (index: number, keyHint: string) => void
-  /** Hands the camera back to the stage bounds (the camera director owns them). */
+  onArmed: (input: RoomLockInput, keyHint: string) => void
+  /** Hands the camera back to the host: the boss-room lock when it is on, else the stage bounds. */
   restoreCamera: () => void
 }
 
@@ -40,6 +41,8 @@ export const ROOM_LOCK_DATA_KEY = 'roomLocks'
 const GATE_WIDTH = 12
 const ENERGY_GATE_COLOR = 0x7ec8ff
 const SCRAP_WALL_COLOR = 0x6b5a48
+/** `cameraRoom` while the stage bounds keep the shaft's raised top (the hero left the shaft high). */
+const RAISED_STAGE_CAMERA = -2
 
 /**
  * Phaser edge of `room_lock` (prompt 05 §5.7): closes a gate body at each room's exit, arms a lock
@@ -94,38 +97,18 @@ export class RoomLockAdapter {
     if (index >= 0 && this.states[index].phase === 'dormant') {
       this.states[index] = armRoomLock(this.states[index])
       this.prevSample = null
-      this.deps.onArmed(index, roomLockKeyHint(this.locks[index].requiredInput, Settings.get().bindings))
+      const input = this.locks[index].requiredInput
+      this.deps.onArmed(input, roomLockKeyHint(input, Settings.get().bindings))
     }
     if (index >= 0 && this.states[index].phase === 'locked') {
-      const sample = this.sample(player)
+      const sample = this.deps.runtime()?.getVerbSample() ?? null
       const verbs = sample ? detectRoomLockVerbs(this.prevSample, sample) : []
       this.prevSample = sample
       for (const verb of verbs) this.apply(index, verb, player)
     } else {
       this.prevSample = null
     }
-    this.syncCamera(player.x)
-  }
-
-  private sample(player: Phaser.Physics.Arcade.Sprite): RoomLockVerbSample | null {
-    const debug = this.deps.runtime()?.getDebugState() as
-      | { locomotion?: Record<string, unknown>; combat?: Record<string, unknown> }
-      | null
-      | undefined
-    if (!debug) return null
-    const locomotion = debug.locomotion ?? {}
-    const combat = debug.combat ?? {}
-    const projectile = combat.lastProjectile as { chargeLevel?: number } | null | undefined
-    return {
-      grounded: Boolean(locomotion.grounded),
-      velocityY: Number(player.body?.velocity.y ?? 0),
-      lastJumpSource: String(locomotion.lastJumpSource ?? 'none'),
-      dashStartedAtMs: Number(locomotion.lastDashStartedAtMs ?? 0) || 0,
-      wallJumping: Boolean(locomotion.wallJumping),
-      projectileSpawnMs: Number(combat.lastProjectileSpawnMs ?? 0) || 0,
-      projectileChargeLevel: Number(projectile?.chargeLevel ?? 0) || 0,
-      slashPhase: typeof combat.slashPhase === 'string' ? combat.slashPhase : null
-    }
+    this.syncBounds(player)
   }
 
   private apply(index: number, verb: RoomLockInput, player: Phaser.Physics.Arcade.Sprite): void {
@@ -145,20 +128,38 @@ export class RoomLockAdapter {
     this.deps.scene.tweens.add({ targets: gate, alpha: 0, duration: 240, onComplete: () => gate.setVisible(false) })
   }
 
-  private syncCamera(x: number): void {
-    const index = resolveCameraRoomIndex(this.locks, this.states, x, GAME_HEIGHT)
+  /**
+   * Camera and world ceiling. The camera holds the player's room while its gate is closed (and the
+   * tall shaft for as long as the hero is in it, at its full height so the follow can scroll). The
+   * raised ceiling outlives the shaft until the hero is below the base ceiling or grounded; until
+   * then the camera keeps the stage width with the raised top instead of snapping down.
+   */
+  private syncBounds(player: Phaser.Physics.Arcade.Sprite): void {
+    const index = resolveCameraRoomIndex(this.locks, this.states, player.x, GAME_HEIGHT)
     const world = this.deps.scene.physics.world
+    const camera = this.deps.scene.cameras.main
     const base = this.defaultWorld
-    if (index >= 0) {
-      const room = this.locks[index].room
-      this.deps.scene.cameras.main.setBounds(room.x, room.y, room.width, room.height)
-      const top = room.height > GAME_HEIGHT ? Math.min(base.y, room.y + 8) : base.y
-      if (world.bounds.y !== top) world.setBounds(base.x, top, base.width, base.y + base.height - top)
-    } else if (this.cameraRoom >= 0) {
-      world.setBounds(base.x, base.y, base.width, base.height)
-      this.deps.restoreCamera()
+    const room = index >= 0 ? this.locks[index].room : null
+    const body = player.body as Phaser.Physics.Arcade.Body | undefined
+    const top = resolveWorldCeiling({
+      baseTop: base.y,
+      currentTop: world.bounds.y,
+      tallRoomTop: room && room.height > GAME_HEIGHT ? room.y + 8 : null,
+      heroTop: body?.top ?? player.y,
+      grounded: Boolean(body?.blocked.down)
+    })
+    if (world.bounds.y !== top) world.setBounds(base.x, top, base.width, base.y + base.height - top)
+    if (room) {
+      camera.setBounds(room.x, room.y, room.width, room.height)
+      this.cameraRoom = index
+    } else if (top < base.y) {
+      const cameraTop = Math.min(0, top - 8)
+      camera.setBounds(base.x, cameraTop, base.width, GAME_HEIGHT - cameraTop)
+      this.cameraRoom = RAISED_STAGE_CAMERA
+    } else {
+      if (this.cameraRoom !== -1) this.deps.restoreCamera()
+      this.cameraRoom = -1
     }
-    this.cameraRoom = index
   }
 
   private destroy(): void {

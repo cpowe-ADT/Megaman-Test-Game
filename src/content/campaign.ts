@@ -634,20 +634,23 @@ const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPat
     bossSpawnX: 2622,
     checkpoints: [
       checkpoint('tutorial_start', 44, 40, 0),
+      checkpoint('tutorial_dash_exit', 928, 40, 912),
       checkpoint('tutorial_shaft_exit', 1392, 40, 1380),
       // The last checkpoint starts the boss door on every stage; kept at the approach's end.
       checkpoint('tutorial_boss_gate', 2450, 40, 2536)
     ],
     hazards: [
-      { id: 'tutorial_dash_spike_1', x: 648, y: 230 },
-      { id: 'tutorial_dash_spike_2', x: 680, y: 230 },
-      { id: 'tutorial_dash_spike_3', x: 712, y: 230 },
+      { id: 'tutorial_dash_spike_1', x: 620, y: 230 },
+      { id: 'tutorial_dash_spike_2', x: 665, y: 230 },
+      { id: 'tutorial_dash_spike_3', x: 710, y: 230 },
+      { id: 'tutorial_dash_spike_4', x: 755, y: 230 },
       { id: 'tutorial_spike_2', x: 2330, y: 230 }
     ],
     midPlatforms: [
       { id: 'tutorial_step', x: 360, y: 224, width: 40, height: 24, type: 'solid', color: 0x2a3a52 },
-      { id: 'tutorial_dash_ledge_a', x: 560, y: 216, width: 96, height: 40, type: 'solid', color: 0x2a3a52 },
-      { id: 'tutorial_dash_ledge_b', x: 800, y: 216, width: 96, height: 40, type: 'solid', color: 0x2a3a52 },
+      // A 216px gap between equal ledges: a plain running jump covers about 168px, a dash jump about 244px.
+      { id: 'tutorial_dash_ledge_a', x: 540, y: 216, width: 80, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_dash_ledge_b', x: 836, y: 216, width: 80, height: 40, type: 'solid', color: 0x2a3a52 },
       { id: 'tutorial_shaft_wall_left', x: 1040, y: -30, width: 16, height: 424, type: 'wall', color: 0x3b4f6e },
       { id: 'tutorial_shaft_wall_right', x: 1120, y: 50, width: 16, height: 372, type: 'wall', color: 0x3b4f6e },
       { id: 'tutorial_mid_5', x: 2000, y: 176, width: 56, type: 'oneWay', color: 0x304a6d },

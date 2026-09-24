@@ -476,7 +476,7 @@ export class Game extends Phaser.Scene {
     this.bossGateLocked = false
     this.bossRoomCameraLocked = false
     this.installEntityPlatformCollisions()
-    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (index, hint) => this.storyDirector?.onRoomLockArmed(index, hint), restoreCamera: () => this.applyStageCameraBounds(stageId) })
+    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (input, hint) => this.storyDirector?.onRoomLockArmed(input, hint), restoreCamera: () => (this.bossRoomCameraLocked ? this.applyBossRoomCameraLock() : this.applyStageCameraBounds(stageId)) })
   }
 
   private rebuildBossGateBarrier(): void {

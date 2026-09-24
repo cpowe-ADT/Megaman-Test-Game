@@ -82,7 +82,7 @@ export function resolveCameraRoomIndex(
   return states[index]?.phase === 'locked' || tall ? index : -1
 }
 
-/** One frame of the player runtime's public state, reduced to what the verbs need. */
+/** What the verbs need from the player runtime (`NewPlayerRuntime.getVerbSample()`), once per frame. */
 export type RoomLockVerbSample = {
   grounded: boolean
   velocityY: number
@@ -91,7 +91,10 @@ export type RoomLockVerbSample = {
   wallJumping: boolean
   projectileSpawnMs: number
   projectileChargeLevel: number
-  slashPhase: string | null
+  /** Saber swings started since the runtime was created; counted by the runtime, so no swing is missed between samples. */
+  slashesStarted: number
+  /** Hurt lock (hitstun): an upward knockback is not a jump. */
+  hurtLocked: boolean
 }
 
 /** Verb edges between two samples: a jump take-off, a dash start, a wall kick, a charged shot, a saber swing. */
@@ -99,7 +102,7 @@ export function detectRoomLockVerbs(prev: RoomLockVerbSample | null, next: RoomL
   if (!prev) return []
   const verbs: RoomLockInput[] = []
   const jumpSourceChanged = next.lastJumpSource !== prev.lastJumpSource
-  const groundTakeoff = prev.grounded && !next.grounded && next.velocityY < 0
+  const groundTakeoff = prev.grounded && !next.grounded && next.velocityY < 0 && !next.hurtLocked
   if (groundTakeoff || (jumpSourceChanged && (next.lastJumpSource === 'ground' || next.lastJumpSource === 'coyote'))) {
     verbs.push('jump')
   }
@@ -108,8 +111,26 @@ export function detectRoomLockVerbs(prev: RoomLockVerbSample | null, next: RoomL
     verbs.push('wall_jump')
   }
   if (next.projectileSpawnMs !== prev.projectileSpawnMs && next.projectileChargeLevel >= 1) verbs.push('charge')
-  if (next.slashPhase === 'active' && prev.slashPhase !== 'active') verbs.push('saber')
+  for (let swing = prev.slashesStarted; swing < next.slashesStarted; swing += 1) verbs.push('saber')
   return verbs
+}
+
+/**
+ * World ceiling (Arcade bounds top). Inside a room taller than the screen it rises to the room's top;
+ * after the hero leaves that room it stays raised until the hero's body is back below the base ceiling
+ * or grounded, so a hero leaving the shaft high is never snapped down by the bounds.
+ */
+export function resolveWorldCeiling(input: {
+  baseTop: number
+  currentTop: number
+  tallRoomTop: number | null
+  heroTop: number
+  grounded: boolean
+}): number {
+  if (input.tallRoomTop !== null) return Math.min(input.baseTop, input.tallRoomTop)
+  const raised = input.currentTop < input.baseTop
+  if (raised && input.heroTop < input.baseTop && !input.grounded) return input.currentTop
+  return input.baseTop
 }
 
 /** A saber swing lands on the breakable gate when the player faces it from within reach. */

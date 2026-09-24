@@ -42,6 +42,11 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
   const replay = (file) => page.evaluate((rows) => window.stageDebug.replayInputs(rows), readRows(file))
   const warp = async (x) => { await page.evaluate((value) => window.stageDebug.setPlayerX(value), x); await advanceFrames(page, 3) }
   const lock = async (index) => locksOf(await readState(page))[index]
+  const coachWhileArmed = async (index) => {
+    const state = await waitForState(page, (next) => next.ticker?.kind === 'radio' && /rook/i.test(next.ticker.speaker ?? '') && String(next.ticker.text).startsWith(ROOK_STEPS[index]), 15000)
+    assert.equal(locksOf(state)[index].phase, 'locked', `Rook's "${ROOK_STEPS[index]}" plays while lock ${index + 1} is still closed`)
+    return state
+  }
   // The hero is sampled for verbs, not for survival: long i-frames keep enemies from knocking the run off script.
   const shield = () => page.evaluate(() => window.__phaserGame?.scene?.getScene?.('Game')?.newPlayerRuntime?.resetForRespawn?.(600000))
   await page.addInitScript(() => localStorage.setItem('save.v1', JSON.stringify({ tutorialCleared: false, progressionWorld: { progressionMode: 'classic' } })))
@@ -80,6 +85,7 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     assert.ok(locksOf(armed).every((entry) => entry.gateClosed), 'every gate starts closed')
     const hint = await waitForState(page, (state) => state.ticker?.kind === 'hint' && state.ticker.text === HINTS[0], 8000)
     assertLaneInBounds(hint, 'jump key hint')
+    await coachWhileArmed(0)
 
     // 1 jump: walking into the closed gate does not pass it; a jump opens it.
     await warp(400)
@@ -97,33 +103,51 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     // 2 dash: a jump is the wrong verb, the dash is the right one.
     await advanceFrames(page, 2)
     assert.equal((await lock(1)).phase, 'locked')
+    await coachWhileArmed(1)
     await replay('jump')
     assert.equal((await lock(1)).phase, 'locked', 'a jump does not open the dash lock')
     await replay('dash')
     assert.equal((await lock(1)).phase, 'open', 'the dash opens the dash lock')
 
-    // 3 wall kick in the two-screen shaft: a ground jump does not count, a kick off the wall face does.
-    await warp(1080)
+    // 3 wall kick: from x 900, one replay and no warp climbs the two-screen shaft, clears the right
+    // wall and walks out past the gate at 1344; the camera must scroll up with the hero.
+    await warp(900)
     await shield()
     const shaft = await readState(page)
     assert.equal(locksOf(shaft)[2].phase, 'locked')
     assert.equal(locksOf(shaft)[2].cameraHeld, true, 'the camera is held to the shaft')
     assert.ok(locksOf(shaft)[2].room.height >= 504)
+    await coachWhileArmed(2)
+    await capture('shaft-coach')
     await replay('jump')
     assert.equal((await lock(2)).phase, 'locked', 'a ground jump does not open the wall lock')
-    for (let attempt = 0; attempt < 3 && (await lock(2)).phase !== 'open'; attempt += 1) {
-      await warp(1100)
-      await advanceFrames(page, 40)
-      await replay('wall-kick')
-    }
-    await capture('wall-kick')
-    assert.equal((await lock(2)).phase, 'open', 'a wall kick opens the shaft lock')
+    await page.evaluate(() => {
+      const game = window.__phaserGame.scene.getScenes(true)[0]
+      window.__climb = { minScrollY: game.cameras.main.scrollY, minHeroY: game.player.y, startX: game.player.x }
+      window.__climbProbe = () => {
+        window.__climb.minScrollY = Math.min(window.__climb.minScrollY, game.cameras.main.scrollY)
+        window.__climb.minHeroY = Math.min(window.__climb.minHeroY, game.player.y)
+      }
+      game.events.on('postupdate', window.__climbProbe)
+    })
+    await replay('wall-kick')
+    const climb = await page.evaluate(() => {
+      window.__phaserGame.scene.getScenes(true)[0].events.off('postupdate', window.__climbProbe)
+      return window.__climb
+    })
+    const climbed = await capture('wall-kick')
+    fs.writeFileSync(path.join(dir, 'climb.json'), JSON.stringify({ ...climb, endX: climbed.player.x, cameraBlock: climbed.camera ?? null }, null, 2))
+    assert.ok(climb.startX <= 902, `the climb starts at x 900 (${climb.startX})`)
+    assert.equal(locksOf(climbed)[2].phase, 'open', 'a wall kick opens the shaft lock')
+    assert.ok(climb.minHeroY < -136, `the hero clears the right wall top (peak y ${climb.minHeroY})`)
+    assert.ok(climb.minScrollY < -100, `the camera scrolls up with the climb (min scrollY ${climb.minScrollY})`)
+    assert.ok(climbed.player.x > 1344, `the hero walks out past the shaft gate (x ${climbed.player.x})`)
 
-    // 4 charge: a pellet does not count, a charged shot does.
-    await warp(1400)
+    // 4 charge: the climb ends inside the charge room; a pellet does not count, a charged shot does.
     await shield()
-    await capture('armed-charge')
     assert.equal((await lock(3)).phase, 'locked')
+    await coachWhileArmed(3)
+    await capture('armed-charge')
     await replay('pellet')
     assert.equal((await lock(3)).phase, 'locked', 'an uncharged pellet does not open the charge lock')
     await replay('charge')
@@ -133,6 +157,7 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     // 5 saber: the scrap gate blocks, a pellet does nothing, three cuts bring it down.
     await warp(2180)
     await shield()
+    await coachWhileArmed(4)
     await replay('walk-right')
     const scrap = await readState(page)
     assert.ok(scrap.player.x < 2240, `the scrap gate blocks the walk (x ${scrap.player.x})`)

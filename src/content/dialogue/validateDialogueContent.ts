@@ -2,6 +2,7 @@ import {
   FINAL_STAGE_ID,
   ROBOT_MASTER_STAGE_IDS,
   TUTORIAL_STAGE_ID,
+  getCampaignStage,
   type CampaignStageId
 } from '../campaign'
 import {
@@ -254,10 +255,21 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
         })
       }
       if (trigger === 'tutorial_coach') {
+        const lockOrder = (getCampaignStage(TUTORIAL_STAGE_ID).arena.roomLocks ?? []).map((lock) => lock.requiredInput)
+        if (lines.length !== lockOrder.length) {
+          errors.push(`${path} must carry one line per tutorial room lock (${lockOrder.length}, found ${lines.length})`)
+        }
         lines.forEach((line, lineIndex) => {
           if (line.speakerId !== 'sentinel_rook') {
             errors.push(`${path}.lines[${lineIndex}] must be spoken by sentinel_rook (the recorded intake prompts)`)
           }
+          if (line.lock !== lockOrder[lineIndex]) {
+            errors.push(`${path}.lines[${lineIndex}].lock must be ${lockOrder[lineIndex] ?? 'absent'} (the tutorial's room lock order)`)
+          }
+        })
+      } else {
+        lines.forEach((line, lineIndex) => {
+          if (line.lock !== undefined) errors.push(`${path}.lines[${lineIndex}].lock belongs only to tutorial_coach`)
         })
       }
       if (trigger === 'boss_defeat') {

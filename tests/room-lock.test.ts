@@ -9,6 +9,7 @@ import {
   formatKeyCode,
   isSaberInReach,
   resolveCameraRoomIndex,
+  resolveWorldCeiling,
   roomLockKeyHint,
   type RoomLockDefinition,
   type RoomLockVerbSample
@@ -19,7 +20,7 @@ import { getCampaignStage, getStageContentRetentionReport, TUTORIAL_STAGE_ID } f
 const DASH_LOCK: RoomLockDefinition = { id: 'l', room: { x: 448, y: 0, width: 448, height: 252 }, gateX: 896, requiredInput: 'dash' }
 const SAMPLE: RoomLockVerbSample = {
   grounded: true, velocityY: 0, lastJumpSource: 'none', dashStartedAtMs: 0, wallJumping: false,
-  projectileSpawnMs: 0, projectileChargeLevel: 0, slashPhase: null
+  projectileSpawnMs: 0, projectileChargeLevel: 0, slashesStarted: 0, hurtLocked: false
 }
 
 test('room lock: dormant until armed, ignores its verb before arming and every other verb after', () => {
@@ -53,8 +54,14 @@ test('room lock: verb edges come from the runtime sample, once per edge', () => 
   assert.deepEqual(detectRoomLockVerbs(air, { ...air, wallJumping: true, lastJumpSource: 'wall' }), ['wall_jump'])
   assert.deepEqual(detectRoomLockVerbs(SAMPLE, { ...SAMPLE, projectileSpawnMs: 900, projectileChargeLevel: 0 }), [], 'a pellet is not a charge')
   assert.deepEqual(detectRoomLockVerbs(SAMPLE, { ...SAMPLE, projectileSpawnMs: 900, projectileChargeLevel: 2 }), ['charge'])
-  assert.deepEqual(detectRoomLockVerbs({ ...SAMPLE, slashPhase: 'startup' }, { ...SAMPLE, slashPhase: 'active' }), ['saber'])
-  assert.deepEqual(detectRoomLockVerbs({ ...SAMPLE, slashPhase: 'active' }, { ...SAMPLE, slashPhase: 'active' }), [])
+  assert.deepEqual(detectRoomLockVerbs(SAMPLE, { ...SAMPLE, slashesStarted: 1 }), ['saber'])
+  assert.deepEqual(detectRoomLockVerbs(SAMPLE, { ...SAMPLE, slashesStarted: 2 }), ['saber', 'saber'], 'two swings between samples are two hits')
+  assert.deepEqual(detectRoomLockVerbs({ ...SAMPLE, slashesStarted: 2 }, { ...SAMPLE, slashesStarted: 2 }), [])
+  assert.deepEqual(
+    detectRoomLockVerbs(SAMPLE, { ...SAMPLE, grounded: false, velocityY: -200, hurtLocked: true }),
+    [],
+    'an upward hurt knockback is not a jump'
+  )
 })
 
 test('room lock: saber reach, key hints from bindings, camera room', () => {
@@ -77,6 +84,16 @@ test('room lock: saber reach, key hints from bindings, camera room', () => {
   assert.equal(resolveCameraRoomIndex(defs, states, 1000, 252), 1, 'the tall shaft holds the camera while the player is inside')
 })
 
+test('room lock: the shaft ceiling stays raised until the hero is below the base ceiling or grounded', () => {
+  const base = { baseTop: 90, tallRoomTop: null, grounded: false }
+  assert.equal(resolveWorldCeiling({ ...base, tallRoomTop: -244, currentTop: 90, heroTop: 200 }), -244, 'inside the shaft the ceiling rises')
+  assert.equal(resolveWorldCeiling({ ...base, currentTop: -244, heroTop: -100 }), -244, 'left the shaft high: keep it raised')
+  assert.equal(resolveWorldCeiling({ ...base, currentTop: -244, heroTop: 40 }), -244, 'still above the base ceiling')
+  assert.equal(resolveWorldCeiling({ ...base, currentTop: -244, heroTop: 120 }), 90, 'below the base ceiling: restore')
+  assert.equal(resolveWorldCeiling({ ...base, currentTop: -244, heroTop: -40, grounded: true }), 90, 'grounded (on a ledge): restore')
+  assert.equal(resolveWorldCeiling({ ...base, currentTop: 90, heroTop: -40 }), 90, 'never raised outside a tall room')
+})
+
 test('tutorial: six screens, five teach locks in order, checkpoints at start and after the shaft', () => {
   const stage = getCampaignStage(TUTORIAL_STAGE_ID)
   const report = getStageContentRetentionReport(TUTORIAL_STAGE_ID)
@@ -91,8 +108,8 @@ test('tutorial: six screens, five teach locks in order, checkpoints at start and
   assert.equal(locks[4].hitsRequired, 3)
   const walls = stage.arena.midPlatforms.filter((platform) => platform.type === 'wall')
   assert.ok(walls.length >= 2 && walls.every((wall) => wall.x > 896 && wall.x < 1344), 'two wall faces inside the shaft')
-  assert.deepEqual(stage.arena.checkpoints.map((entry) => entry.id), ['tutorial_start', 'tutorial_shaft_exit', 'tutorial_boss_gate'])
-  assert.ok(stage.arena.checkpoints[1].x > 1344 && stage.arena.checkpoints[1].x < 1792)
+  assert.deepEqual(stage.arena.checkpoints.map((entry) => entry.id), ['tutorial_start', 'tutorial_dash_exit', 'tutorial_shaft_exit', 'tutorial_boss_gate'])
+  assert.ok(stage.arena.checkpoints[2].x > 1344 && stage.arena.checkpoints[2].x < 1792)
   assert.ok(stage.enemyMarkers.some((enemy) => enemy.typeKey === 'enemy_armored_bot' && enemy.x > 1344 && enemy.x < 1792))
   assert.equal(stage.arena.bossRoom.x, 2688)
 })
