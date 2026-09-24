@@ -1,32 +1,33 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CameraDirector, decideVerticalFollowMode, type CameraDirectorHost } from '../src/scenes/game/CameraDirector'
+import { CameraDirector, type CameraDirectorHost, type CameraFollowTarget } from '../src/scenes/game/CameraDirector'
+import { stepCameraFollow, initialCameraFollowState } from '../src/scenes/game/cameraFollow'
 
 /**
- * Prompt 05 §5.3: the vertical follow mode is a pure decision (bounds height vs one screen tall),
- * and the facing look-ahead is a tweened follow offset driven off `host.facing`. Both are exercised
- * here without a scene, per AGENTS.md's "pure logic gets unit tests" rule.
+ * `CameraDirector` wiring around the pure `stepCameraFollow` (prompt 05 §5.3b, EVAL-P5-004 fix):
+ * it must stop any Phaser follow (never `startFollow`/`setDeadzone`/`setFollowOffset` again, the
+ * source of the commit 610fe2c review BLOCKs) and write `scrollX`/`scrollY` from the pure step's
+ * own bounds/view size every tick. The step's scenarios themselves live in camera-follow.test.ts.
  */
 
-test('5.3-1 decideVerticalFollowMode locks at or below one screen tall, scrolls above it', () => {
-  assert.equal(decideVerticalFollowMode(252, 252), 'locked')
-  assert.equal(decideVerticalFollowMode(200, 252), 'locked')
-  assert.equal(decideVerticalFollowMode(253, 252), 'scrolling')
-  assert.equal(decideVerticalFollowMode(504, 252), 'scrolling')
-})
+const VIEW = { x: 0, y: 0, width: 4000, height: 252 }
 
-function makeHost(facing: 1 | -1) {
-  const calls: Array<{ name: string; args: unknown[] }> = []
+function makeHost(target: CameraFollowTarget, facing: 1 | -1) {
+  const calls: string[] = []
   const camera = {
-    setLerp: (...args: unknown[]) => calls.push({ name: 'setLerp', args }),
-    setDeadzone: (...args: unknown[]) => calls.push({ name: 'setDeadzone', args }),
-    setFollowOffset: (...args: unknown[]) => calls.push({ name: 'setFollowOffset', args }),
-    startFollow: (...args: unknown[]) => calls.push({ name: 'startFollow', args }),
+    scrollX: 0,
+    scrollY: 0,
+    zoom: 1,
+    width: 100,
+    displayWidth: 448,
+    displayHeight: 252,
     shake: () => {},
     setBounds: () => {},
-    scrollX: 0,
-    zoom: 1,
-    width: 100
+    stopFollow: () => calls.push('stopFollow'),
+    startFollow: () => calls.push('startFollow'),
+    setDeadzone: () => calls.push('setDeadzone'),
+    setFollowOffset: () => calls.push('setFollowOffset'),
+    getBounds: () => ({ ...VIEW })
   }
   const host = {
     game: { loop: { delta: 1000 / 60 } },
@@ -36,31 +37,42 @@ function makeHost(facing: 1 | -1) {
     bossRoomCameraLocked: false,
     facing
   } as unknown as CameraDirectorHost
-  return { host, calls }
+  return { host, calls, camera }
 }
 
-test('5.3-2 startFollowingPlayer follows at 0.12/0.08 with a 64x40 deadzone', () => {
-  const { host, calls } = makeHost(1)
+test('5.3b-9 startFollowingPlayer stops any Phaser follow and never calls startFollow/setDeadzone/setFollowOffset', () => {
+  const target = { x: 600, y: 100 }
+  const { host, calls } = makeHost(target, 1)
   const director = new CameraDirector(host)
-  const target = {}
   director.startFollowingPlayer(target)
-  const startFollow = calls.find((c) => c.name === 'startFollow')
-  const deadzone = calls.find((c) => c.name === 'setDeadzone')
-  assert.deepEqual(startFollow?.args, [target, true, 0.12, 0.08])
-  assert.deepEqual(deadzone?.args, [64, 40])
+  director.tickHitstop()
+  assert.ok(calls.includes('stopFollow'))
+  assert.equal(calls.includes('startFollow'), false)
+  assert.equal(calls.includes('setDeadzone'), false)
+  assert.equal(calls.includes('setFollowOffset'), false)
 })
 
-test('5.3-3 tickHitstop tweens the look-ahead offset toward the facing direction, never snapping', () => {
-  const { host, calls } = makeHost(1)
+test('5.3b-10 tickHitstop writes scrollX/scrollY from the same math as stepCameraFollow, given the live bounds and view size', () => {
+  const target = { x: 600, y: 100 }
+  const { host, camera } = makeHost(target, 1)
   const director = new CameraDirector(host)
-  director.startFollowingPlayer({})
-  calls.length = 0
+  director.startFollowingPlayer(target)
 
-  director.tickHitstop()
-  const firstOffset = calls.find((c) => c.name === 'setFollowOffset')?.args[0] as number
-  assert.ok(firstOffset < 0 && firstOffset > -40, `expected a partial step toward -40, got ${firstOffset}`)
+  let expected = initialCameraFollowState(600, 100, 1, 0, 0)
+  for (let i = 0; i < 5; i += 1) {
+    target.x += 4
+    expected = stepCameraFollow(expected, {
+      heroX: target.x,
+      heroY: target.y,
+      facing: 1,
+      dtMs: 1000 / 60,
+      viewWidth: 448,
+      viewHeight: 252,
+      bounds: VIEW
+    })
+    director.tickHitstop()
+  }
 
-  for (let i = 0; i < 200; i += 1) director.tickHitstop()
-  const settledOffset = calls.filter((c) => c.name === 'setFollowOffset').at(-1)?.args[0] as number
-  assert.ok(Math.abs(settledOffset - -40) < 0.5, `expected convergence near -40, got ${settledOffset}`)
+  assert.equal(camera.scrollX, expected.scrollX)
+  assert.equal(camera.scrollY, expected.scrollY)
 })

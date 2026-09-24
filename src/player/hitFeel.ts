@@ -62,3 +62,15 @@ export function iFrameBlinkAlpha(elapsedMs: number, iFramesRemainingMs: number):
   const phase = Math.floor(Math.max(0, elapsedMs) / (IFRAME_BLINK_FRAMES * FEEL_FRAME_MS)) % 2
   return phase === 0 ? IFRAME_BLINK_ALPHA : 1
 }
+
+/**
+ * The charge ring's particle burst rate (prompt 05 §5.3 item 3, the first consumer of
+ * `Settings.reducedFlashing`, the accessibility setting for players sensitive to rapid flashing):
+ * a 340ms period is under 3Hz, well under the photosensitive-seizure guideline threshold, versus
+ * the normal 42ms burst-to-burst gap.
+ */
+const CHARGE_AURA_FREQUENCY_MS = 42
+const CHARGE_AURA_REDUCED_FREQUENCY_MS = 340
+export function resolveChargeAuraFrequencyMs(reducedFlashing: boolean): number {
+  return reducedFlashing ? CHARGE_AURA_REDUCED_FREQUENCY_MS : CHARGE_AURA_FREQUENCY_MS
+}

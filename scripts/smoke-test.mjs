@@ -2846,42 +2846,78 @@ async function runExtendedStageScenario(name) {
     await waitForState(page, (state) => state.scene === 'Game')
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.crossNextCheckpoint))
 
-    // Camera look-ahead trace (prompt 05 §5.3 item 5): a frame-exact 60-frame moveRight replay on
-    // flat ground at the spawn, read through `cameras.main.midPoint` directly (the pattern already
-    // used elsewhere in this file) rather than the render_game_to_text payload, so this scenario
-    // does not touch the automation contract.
+    // Camera follow trace (prompt 05 §5.3b, EVAL-P5-004 fix, review of commit 610fe2c): teleport
+    // at least one screen from both bounds first (the old scenario passed with the camera stuck at
+    // the left bound, which hid the bug), settle 30 frames, then read produced scroll from the
+    // `camera` automation payload (documented in TESTING.md) rather than a Phaser instance, so a
+    // render-scale skew like the one the review found would show up here.
     await waitForState(
       page,
       (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true,
       8000,
-      'grounded player before the camera look-ahead trace'
+      'grounded player before the camera trace'
     )
-    const beforeLookAhead = await page.evaluate(() => {
-      const scene = window.__phaserGame.scene.getScene('Game')
-      return { playerY: scene.player.y, midPointX: scene.cameras.main.midPoint.x }
-    })
-    const lookAheadReplay = await page.evaluate(() =>
+    const spawnState = await readState(page)
+    const boundsWidth = Number(spawnState.camera?.boundsWidth ?? 0)
+    const margin = 448 + 40
+    const midStageX = Math.min(Math.max(boundsWidth / 2, margin), Math.max(margin, boundsWidth - margin))
+    await page.evaluate((x) => window.stageDebug.setPlayerX(x), midStageX)
+    await advanceFrames(page, 30)
+
+    const before = await readState(page)
+    const rightReplay = await page.evaluate(() =>
       window.stageDebug.replayInputs([
         { frame: 0, held: ['moveRight'] },
         { frame: 60, held: [] }
       ])
     )
-    const afterLookAhead = await page.evaluate(() => {
-      const scene = window.__phaserGame.scene.getScene('Game')
-      return { midPointX: scene.cameras.main.midPoint.x }
-    })
-    const lookAheadLeadPx = afterLookAhead.midPointX - lookAheadReplay.finalPlayer.x
-    const lookAheadVerticalDriftPx = Math.abs(lookAheadReplay.finalPlayer.y - beforeLookAhead.playerY)
+    const afterRight = await readState(page)
     await page.screenshot({ path: path.join(scenarioDir, 'shot-lookahead.png') })
+
+    const heroScreenXRight = rightReplay.finalPlayer.x - afterRight.camera.scrollX
+    const leadRight = afterRight.camera.midPointX - rightReplay.finalPlayer.x
+    const verticalDriftPx = Math.abs(afterRight.camera.midPointY - before.camera.midPointY)
+
+    const leftReplay = await page.evaluate(() =>
+      window.stageDebug.replayInputs([
+        { frame: 0, held: ['moveLeft'] },
+        { frame: 30, held: [] }
+      ])
+    )
+    const afterLeft = await readState(page)
+    const leadLeft = afterLeft.camera.midPointX - leftReplay.finalPlayer.x
+
     fs.writeFileSync(
       path.join(scenarioDir, 'state-lookahead.json'),
-      JSON.stringify({ beforeLookAhead, lookAheadReplay, afterLookAhead, lookAheadLeadPx, lookAheadVerticalDriftPx }, null, 2)
+      JSON.stringify(
+        { midStageX, before, afterRight, rightReplay, heroScreenXRight, leadRight, verticalDriftPx, afterLeft, leftReplay, leadLeft },
+        null,
+        2
+      )
     )
-    if (lookAheadLeadPx < 24) {
-      throw new Error(`Camera look-ahead too small after one second running right: midPoint.x - player.x = ${lookAheadLeadPx}`)
+
+    if (!(afterRight.camera.scrollX > before.camera.scrollX)) {
+      throw new Error(`Camera did not scroll right: before ${before.camera.scrollX}, after ${afterRight.camera.scrollX}`)
     }
-    if (lookAheadVerticalDriftPx > 4) {
-      throw new Error(`Camera vertical drift on flat ground exceeded 4px: ${lookAheadVerticalDriftPx}`)
+    if (
+      !(
+        afterRight.camera.scrollX > afterRight.camera.boundsX &&
+        afterRight.camera.scrollX < afterRight.camera.boundsX + afterRight.camera.boundsWidth - 448
+      )
+    ) {
+      throw new Error(`Camera scroll not strictly inside bounds: ${afterRight.camera.scrollX}`)
+    }
+    if (!(heroScreenXRight >= 0 && heroScreenXRight <= 448)) {
+      throw new Error(`Hero left the frame: screen x ${heroScreenXRight}`)
+    }
+    if (!(leadRight >= 24 && leadRight <= 48)) {
+      throw new Error(`Camera lead out of [24,48] after running right: ${leadRight}`)
+    }
+    if (!(leadLeft < 0)) {
+      throw new Error(`Camera lead did not go negative after running left: ${leadLeft}`)
+    }
+    if (verticalDriftPx > 4) {
+      throw new Error(`Camera vertical drift on flat ground exceeded 4px: ${verticalDriftPx}`)
     }
 
     await page.evaluate(() => {

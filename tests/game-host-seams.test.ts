@@ -46,13 +46,14 @@ function makeCameraHost() {
     },
     cameras: {
       main: {
-        setLerp: () => {},
         shake: () => {},
         setBounds: () => {},
-        setDeadzone: () => {},
-        setFollowOffset: () => {},
-        startFollow: () => {},
+        stopFollow: () => {},
+        getBounds: () => ({ x: 0, y: 0, width: 2000, height: 252 }),
+        displayWidth: 448,
+        displayHeight: 252,
         scrollX: 0,
+        scrollY: 0,
         zoom: 1,
         width: 100
       }

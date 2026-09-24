@@ -292,6 +292,20 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
 
   if (scene.scene.key === 'Game') {
     payload.player = summarizeSpriteKinematics(scene.player)
+    {
+      const camera = scene.cameras.main
+      const cameraBounds = camera.getBounds()
+      payload.camera = {
+        scrollX: camera.scrollX,
+        scrollY: camera.scrollY,
+        midPointX: camera.midPoint.x,
+        midPointY: camera.midPoint.y,
+        boundsX: cameraBounds.x,
+        boundsY: cameraBounds.y,
+        boundsWidth: cameraBounds.width,
+        boundsHeight: cameraBounds.height
+      }
+    }
     payload.playerState = {
       hp: scene.playerHp ?? null,
       maxHp: scene.playerMaxHp ?? null,

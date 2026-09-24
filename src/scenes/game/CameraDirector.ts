@@ -2,32 +2,10 @@ import type Phaser from 'phaser'
 import { getCampaignStage } from '../../content/campaign'
 import { getBossRoomCameraBounds } from '../../content/stageArenaLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
-import {
-  CAMERA_FACING_LOOK_AHEAD_PX,
-  CAMERA_FOLLOW_DEADZONE_X,
-  CAMERA_FOLLOW_DEADZONE_Y_LOCKED,
-  CAMERA_FOLLOW_DEADZONE_Y_SCROLLING
-} from '../../config/gameplayLayout'
 import { Settings } from '../../systems/Settings'
-import { tickHitstopFrames, timeScaledLerp } from '../../player/config'
+import { tickHitstopFrames } from '../../player/config'
 import { CONTACT_HIT_FEEL, isWeaknessContact, resolveShakeRequest, type ContactHitKind, type ShakeConfig } from '../../player/hitFeel'
-
-/** Camera follow lerp per 60Hz frame (prompt 05 §5.3): x leads faster than y so a vertical bump
- *  on flat ground barely moves the camera, and the look-ahead tween below reuses the x constant
- *  so there is one shared time-scaled rate instead of a second tunable. */
-const FOLLOW_LERP_X_PER_FRAME = 0.12
-const FOLLOW_LERP_Y_PER_FRAME = 0.08
-
-/**
- * Locked vs scrolling y-follow, decided from the current camera bounds height against the one
- * screen tall (`GAME_HEIGHT`) baseline. Every stage today sets bounds exactly one screen tall, so
- * this always resolves to `locked`; prompt 06 stages taller than one screen resolve to `scrolling`
- * so the y-follow deadzone can open up instead of clamping every frame.
- */
-export type VerticalFollowMode = 'locked' | 'scrolling'
-export function decideVerticalFollowMode(boundsHeight: number, screenHeight: number): VerticalFollowMode {
-  return boundsHeight > screenHeight ? 'scrolling' : 'locked'
-}
+import { initialCameraFollowState, stepCameraFollow, type CameraFollowState } from './cameraFollow'
 
 /** Plain-value clamp so this module has no runtime dependency on Phaser (`Phaser.Math.Clamp`). */
 function clampNumber(value: number, min: number, max: number): number {
@@ -45,6 +23,12 @@ const HIT_FEEL_TRACE_LIMIT = 16
 interface AnimationPausable {
   pauseAnimations?(): void
   resumeAnimations?(): void
+}
+
+/** The subset of a Phaser sprite the camera follow step reads: its live world position. */
+export interface CameraFollowTarget {
+  readonly x: number
+  readonly y: number
 }
 
 /** The members of the Game scene that hit-stop, screen shake and camera bounds read and write. */
@@ -66,27 +50,38 @@ export interface CameraDirectorHost {
  * Hit-stop, screen shake and stage/boss-room camera bounds, moved out of `Game` unchanged in
  * behaviour (EVAL-P5-010, slice 5.0c). The hit-stop counter stays on the scene because smoke
  * scenarios reset `scene.hitstopRemainingFrames` directly.
+ *
+ * The hero follow itself (prompt 05 §5.3b, EVAL-P5-004 fix) no longer uses Phaser's
+ * `startFollow`/`setDeadzone`/`setFollowOffset`: those compute their rectangle in canvas pixels
+ * once a render scale is applied, which left the hero outside the frame at scale 2 (review BLOCK
+ * on commit 610fe2c). `stepCameraFollow` (a pure, Phaser-free function) computes `scrollX`/`scrollY`
+ * in game pixels every tick from the live bounds and view size, and this class only writes them.
  */
 export class CameraDirector {
   readonly contactHits: HitFeelTraceEntry[] = []
   readonly hitstops: HitFeelTraceEntry[] = []
   private activeShakeIntensity = 0
-  private worldBoundsHeight = GAME_HEIGHT
-  private lookAheadOffsetX = 0
+  private followTarget?: CameraFollowTarget
+  private followState: CameraFollowState = { anchorX: 0, anchorY: 0, lookAheadOffset: 0, scrollX: 0, scrollY: 0 }
 
   constructor(private readonly host: CameraDirectorHost) {}
 
   /**
-   * `startFollow(player, true, 0.12, 0.08)` plus the initial deadzone (prompt 05 §5.3 item 1).
-   * `HdCamera` folds the view centre into the follow offset already, so this sets no second
-   * centre; `tickHitstop` below re-applies the time-scaled lerp, deadzone and look-ahead offset
-   * every frame so they stay correct across resizes and frame rates.
+   * Cancels any Phaser follow left over (defensive: nothing on the hero path calls `startFollow`
+   * any more) and seeds the pure follow state from the hero's current position and facing.
+   * `tickHitstop` below steps and writes `scrollX`/`scrollY` every frame from here on.
    */
-  startFollowingPlayer(target: object): void {
+  startFollowingPlayer(target: CameraFollowTarget): void {
     const host = this.host
-    host.cameras.main.startFollow(target, true, FOLLOW_LERP_X_PER_FRAME, FOLLOW_LERP_Y_PER_FRAME)
-    host.cameras.main.setDeadzone(CAMERA_FOLLOW_DEADZONE_X, CAMERA_FOLLOW_DEADZONE_Y_LOCKED)
-    this.lookAheadOffsetX = 0
+    host.cameras.main.stopFollow()
+    this.followTarget = target
+    this.followState = initialCameraFollowState(
+      target.x,
+      target.y,
+      host.facing,
+      host.cameras.main.scrollX,
+      host.cameras.main.scrollY
+    )
   }
 
   /**
@@ -152,7 +147,6 @@ export class CameraDirector {
     const worldWidth = Math.max(GAME_WIDTH, Number(stage.arena.width ?? GAME_WIDTH))
     host.cameras.main.setBounds(0, 0, worldWidth, GAME_HEIGHT)
     host.bossRoomCameraLocked = false
-    this.worldBoundsHeight = GAME_HEIGHT
   }
 
   applyBossRoomCameraLock(): void {
@@ -168,31 +162,33 @@ export class CameraDirector {
       bounds.x + bounds.width - host.cameras.main.width
     )
     host.bossRoomCameraLocked = true
-    this.worldBoundsHeight = bounds.height
   }
 
   /**
-   * Runs once per `Game.update`. Hit-stop frames and the follow lerp/deadzone/look-ahead are
-   * authored at 60Hz and counted by real time, so they last and converge the same at 30, 60 and
-   * 144fps. The look-ahead tween reuses the x follow lerp (one shared time-scaled constant) so the
-   * camera settles 40px in front of the hero's facing direction instead of snapping there.
+   * Runs once per `Game.update`. Hit-stop frames are authored at 60Hz and counted by real time, so
+   * they last and converge the same at 30, 60 and 144fps; the camera step runs first (and every
+   * frame, hit-stop or not: facing is just frozen while paused) so the hero never stalls out of
+   * frame while everything else is stopped.
    */
   tickHitstop(): boolean {
     const host = this.host
     const deltaMs = host.game.loop.delta
-    const lerpX = timeScaledLerp(FOLLOW_LERP_X_PER_FRAME, deltaMs)
-    const lerpY = timeScaledLerp(FOLLOW_LERP_Y_PER_FRAME, deltaMs)
-    host.cameras.main?.setLerp(lerpX, lerpY)
 
-    const verticalMode = decideVerticalFollowMode(this.worldBoundsHeight, GAME_HEIGHT)
-    host.cameras.main?.setDeadzone(
-      CAMERA_FOLLOW_DEADZONE_X,
-      verticalMode === 'scrolling' ? CAMERA_FOLLOW_DEADZONE_Y_SCROLLING : CAMERA_FOLLOW_DEADZONE_Y_LOCKED
-    )
-
-    const targetLookAheadX = -host.facing * CAMERA_FACING_LOOK_AHEAD_PX
-    this.lookAheadOffsetX += (targetLookAheadX - this.lookAheadOffsetX) * lerpX
-    host.cameras.main?.setFollowOffset(this.lookAheadOffsetX, 0)
+    if (this.followTarget) {
+      const camera = host.cameras.main
+      const bounds = camera.getBounds()
+      this.followState = stepCameraFollow(this.followState, {
+        heroX: this.followTarget.x,
+        heroY: this.followTarget.y,
+        facing: host.facing,
+        dtMs: deltaMs,
+        viewWidth: camera.displayWidth,
+        viewHeight: camera.displayHeight,
+        bounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+      })
+      camera.scrollX = this.followState.scrollX
+      camera.scrollY = this.followState.scrollY
+    }
 
     if (host.hitstopRemainingFrames > 0) {
       host.hitstopRemainingFrames = tickHitstopFrames(host.hitstopRemainingFrames, deltaMs)

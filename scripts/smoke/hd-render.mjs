@@ -185,6 +185,28 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     assert.ok(staticIndices.length >= points.length * 0.6, `too few static sample points (${staticIndices.length}/${points.length})`)
     assert.ok(ratio >= 0.98, `only ${(ratio * 100).toFixed(1)}% of static world/HUD pixels match between 1x and 2x: ${JSON.stringify(diffs)}`)
 
+    // Hero-in-frame at 2x (prompt 05 §5.3b, EVAL-P5-004 fix): this is where the review found the
+    // hero outside the frame (commit 610fe2c, shot-0.png at scale 2), because the old deadzone math
+    // read canvas pixels once a render scale applied. `camera` (render_game_to_text, documented in
+    // TESTING.md) is game pixels regardless of scale, so a regression here fails the same way.
+    // Runs after the pixel-identity comparison above, which needs `hd` at its just-settled scroll.
+    const hdRun = await hd.evaluate(() =>
+      window.stageDebug.replayInputs([
+        { frame: 0, held: ['moveRight'] },
+        { frame: 60, held: [] }
+      ])
+    )
+    const hdCameraState = await readState(hd)
+    const hdHeroScreenX = hdRun.finalPlayer.x - hdCameraState.camera.scrollX
+    const hdLead = hdCameraState.camera.midPointX - hdRun.finalPlayer.x
+    fs.writeFileSync(
+      path.join(dir, 'camera-2x.json'),
+      JSON.stringify({ hdRun, camera: hdCameraState.camera, hdHeroScreenX, hdLead }, null, 2)
+    )
+    await hd.locator('canvas').screenshot({ path: path.join(dir, 'shot-2x-lookahead.png') })
+    assert.ok(hdHeroScreenX >= 0 && hdHeroScreenX <= 448, `hero left the 2x frame: screen x ${hdHeroScreenX}`)
+    assert.ok(hdLead >= 24, `2x camera lead too small: ${hdLead}`)
+
     // Resizing the 2x window down to 1x must shrink the canvas and cameras back.
     await hd.setViewportSize({ width: 448, height: 252 })
     await hd.evaluate(() => window.dispatchEvent(new Event('resize')))
