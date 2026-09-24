@@ -212,3 +212,26 @@ class PixelArtDownscaleTests(unittest.TestCase):
         self.assertEqual(cleaned.getpixel((2, 5))[3], 255, "a shape beside the body is not a shadow")
         self.assertEqual(cutter.body_anchor_x(cleaned.crop(cleaned.getchannel("A").getbbox())), 10.0)
 
+    def test_magenta_cast_greys_become_undersuit_grey_but_armour_and_amber_stay(self):
+        for purple in [(106, 88, 111), (48, 31, 70), (20, 0, 30)]:
+            self.assertTrue(cutter.has_magenta_cast(*purple), purple)
+        for keep in [(84, 147, 200), (14, 11, 47), (63, 111, 166), (242, 169, 59), (232, 210, 142), (20, 26, 38)]:
+            self.assertFalse(cutter.has_magenta_cast(*keep), keep)
+        self.assertEqual(cutter.decast(106, 88, 111), cutter.UNDERSUIT_GREYS[1])
+        self.assertEqual(cutter.decast(20, 0, 30), cutter.OUTLINE_RGB)
+
+    def test_fixed_palette_keeps_a_small_amber_patch_amber(self):
+        from PIL import Image
+        img = Image.new("RGBA", (40, 40), (0, 0, 0, 0))
+        for x in range(40):
+            for y in range(40):
+                shade = 60 + (x * 4) % 120
+                img.putpixel((x, y), (shade // 3, shade // 2 + 20, shade + 40, 255))
+        for x in range(2):
+            for y in range(2):
+                img.putpixel((x + 10, y + 10), (240, 170, 60, 255))
+        out = cutter.quantize_with_fixed(img, 8, cutter.HERO_FIXED_PALETTE)
+        r, g, b, _a = out.getpixel((10, 10))
+        self.assertGreater(r, 200)
+        self.assertLess(b, 100)
+

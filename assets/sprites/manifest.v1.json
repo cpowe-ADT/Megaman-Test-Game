@@ -202,7 +202,7 @@
         "localImagePath": "assets/sprites/player/main/player_main.png",
         "localDataPath": "assets/sprites/player/main/player_main.atlas.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from hero_sheet_v1_2026-09-24_e1.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from hero_sheet_v1_2026-09-24_a2_clean.png, hero_sheet_v1_2026-09-24_b2.png, hero_sheet_v1_2026-09-24_c2.png, hero_sheet_v1_2026-09-24_d3.png, hero_sheet_v1_2026-09-24_e1.png."
     },
     {
       "id": "enemies-enemy_rocket_bot",

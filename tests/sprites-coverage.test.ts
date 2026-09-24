@@ -90,3 +90,20 @@ test('buildSpriteCoverageReport fails when a hero group is missing from the play
   assert.equal(report.valid, false)
   assert.ok(report.missingPlayerGroups.some((entry) => entry.startsWith('idle ')))
 })
+
+test('hero minimum counts come from the bindings, and the Preload check names a short group (5.5 review)', async () => {
+  const { getRequiredPlayerGroups, findMissingPlayerGroups } = await import('../src/assets/coverageRequirements.ts')
+  const need = Object.fromEntries(getRequiredPlayerGroups().map(({ group, minCount }) => [group, minCount]))
+  assert.equal(need.idle, 4)
+  assert.equal(need.run, 6)
+  assert.equal(need.death, 2)
+  assert.equal(need.respawn, 3)
+  assert.equal(need.slash_ground_n, 4)
+  const full = getRequiredPlayerGroups().flatMap(({ group, minCount }) =>
+    Array.from({ length: minCount }, (_, i) => `player_main/${group}/${String(i).padStart(3, '0')}`)
+  )
+  assert.deepEqual(findMissingPlayerGroups(full), [])
+  const short = full.filter((name) => name !== 'player_main/death/001')
+  assert.deepEqual(findMissingPlayerGroups(short), [{ group: 'death', minCount: 2 }])
+})
+

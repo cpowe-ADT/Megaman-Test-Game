@@ -30,7 +30,7 @@
     "agents:retro": "node scripts/agents/retro.mjs",
     "test": "npm run test:logic && npm run test:scenes",
     "ci": "npm run test && npm run build",
-    "sprites:validate": "node --import ./tools/register-ts-loader.mjs scripts/sprites/validate-manifest.mjs && npm run sprites:coverage && npm run sprites:audit-player",
+    "sprites:validate": "node --import ./tools/register-ts-loader.mjs scripts/sprites/validate-manifest.mjs && npm run sprites:coverage && npm run sprites:audit-player && npm run sprites:test",
     "sprites:coverage": "node --import ./tools/register-ts-loader.mjs scripts/sprites/check-coverage.mjs",
     "sprites:audit-player": "node --import ./tools/register-ts-loader.mjs scripts/sprites/audit-player-frames.mjs",
     "sprites:test": ".venv/bin/python -m unittest scripts/sprites/test_hf_sheet_to_atlas.py",

@@ -188,7 +188,8 @@ def drop_small_components(image: Image.Image, min_area: int) -> Image.Image:
     return out
 
 
-def update_manifest(args: argparse.Namespace, image_path: Path, json_path: Path, target: int) -> None:
+def update_manifest(args: argparse.Namespace, image_path: Path, json_path: Path, target: int,
+                    sources: list[str] | None = None) -> None:
     manifest_path = ROOT / args.manifest
     manifest = json.load(manifest_path.open())
     entry_id = f"{'boss' if args.category == 'bosses' else args.category}-{args.type_key.replace('_', '-') if args.category == 'bosses' else args.type_key}"
@@ -199,7 +200,8 @@ def update_manifest(args: argparse.Namespace, image_path: Path, json_path: Path,
             "runtimeImage": f"/{image_path.relative_to(ROOT).as_posix()}", "runtimeData": f"/{json_path.relative_to(ROOT).as_posix()}",
             "localImagePath": image_path.relative_to(ROOT).as_posix(), "localDataPath": json_path.relative_to(ROOT).as_posix(),
         },
-        "notes": f"Original generated sheet ({args.generator}) cut by scripts/sprites/hf_sheet_to_atlas.py from {Path(args.input_path).name}.",
+        "notes": f"Original generated sheet ({args.generator}) cut by scripts/sprites/hf_sheet_to_atlas.py from "
+                 f"{', '.join(Path(p).name for p in (sources or [args.input_path]))}.",
     }
     if args.category == "bosses":
         payload["bossId"] = args.type_key
@@ -261,10 +263,10 @@ def cut_legacy(args: argparse.Namespace) -> None:
         "frames": entries,
         "meta": {"app": "scripts/sprites/hf_sheet_to_atlas.py", "version": "1.0", "image": image_path.name,
                  "format": "RGBA8888", "size": {"w": atlas.width, "h": atlas.height}, "scale": "1",
-                 "source": str(Path(args.input_path).as_posix()), "generator": args.generator},
+                 "source": str(Path(args.input_path).as_posix()), "sources": sources, "generator": args.generator},
     }, json_path.open("w"), indent=2)
 
-    update_manifest(args, image_path, json_path, target)
+    update_manifest(args, image_path, json_path, target, sources)
     print(f"Wrote {image_path.relative_to(ROOT)} ({len(frames)} frames of {target}px) and updated {args.manifest}")
 
 
@@ -324,6 +326,63 @@ def defringe(image: Image.Image) -> Image.Image:
     return out
 
 
+UNDERSUIT_GREYS = ((0x8A, 0x94, 0xA6), (0x55, 0x5E, 0x6E), (0x30, 0x38, 0x48))
+
+
+def has_magenta_cast(r: int, g: int, b: int) -> bool:
+    """A grey or dark pixel pulled purple by the magenta key (red and blue both above green, red at least half of
+    blue). The slate-blue armour (red about a third of blue) and the amber accents do not match."""
+    return min(r, b) - g > 10 and r >= b * 0.55 and not (r > 150 and g > 90)
+
+
+def decast(r: int, g: int, b: int) -> tuple[int, int, int]:
+    """Map a purple-cast pixel onto the hero brief's undersuit greys or the outline, by brightness (05c art review:
+    the joint rings read as red specks at 48px)."""
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    if lum >= 110:
+        return UNDERSUIT_GREYS[0]
+    if lum >= 62:
+        return UNDERSUIT_GREYS[1]
+    if lum >= 30:
+        return UNDERSUIT_GREYS[2]
+    return OUTLINE_RGB
+
+
+def decast_image(image: Image.Image) -> Image.Image:
+    out = image.copy()
+    px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a and has_magenta_cast(r, g, b):
+                px[x, y] = (*decast(r, g, b), a)
+    return out
+
+
+# The hero brief's accent and undersuit tones (docs/art/hero-brief.md). A plain median cut over the whole atlas
+# let the small amber cluster merge into the greys (05c: the chest stripe turned grey-green), so the player
+# atlas keeps these six as fixed palette entries.
+HERO_FIXED_PALETTE = (
+    (0xF2, 0xA9, 0x3B), (0xB8, 0x74, 0x1C), (0xFF, 0xD2, 0x7A),
+    (0x8A, 0x94, 0xA6), (0x55, 0x5E, 0x6E), (0xC4, 0xCB, 0xD6),
+)
+
+
+def quantize_with_fixed(image: Image.Image, colors: int, fixed: tuple[tuple[int, int, int], ...]) -> Image.Image:
+    """Median cut to `colors - len(fixed)` colours plus the fixed entries, mapped to the nearest colour, no dither."""
+    alpha = image.getchannel("A")
+    rgb = image.convert("RGB")
+    cut = rgb.quantize(colors=max(1, colors - len(fixed)), method=Image.Quantize.MEDIANCUT)
+    cut_palette = cut.getpalette()[: 3 * max(1, colors - len(fixed))]
+    palette = list(cut_palette) + [c for rgb3 in fixed for c in rgb3]
+    palette += [0] * (768 - len(palette))
+    pal_image = Image.new("P", (1, 1))
+    pal_image.putpalette(palette)
+    out = rgb.quantize(palette=pal_image, dither=Image.Dither.NONE).convert("RGBA")
+    out.putalpha(alpha)
+    return out
+
+
 def mode_block_color(samples: list[tuple[int, int, int, int]]) -> tuple[int, int, int, int]:
     """Most common opaque colour in a block, transparent when at most half the block is opaque."""
     opaque = [p[:3] for p in samples if p[3] > 0]
@@ -341,9 +400,8 @@ def mode_downscale(image: Image.Image, scale: float, colors: int = 24) -> Image.
     flat colours and hard edges survive instead of being averaged across the model's pixel grid (05c)."""
     if scale >= 1.0:
         return image
-    alpha = image.getchannel("A")
-    flat = image.convert("RGB").quantize(colors=colors, method=Image.Quantize.MEDIANCUT).convert("RGBA")
-    flat.putalpha(alpha)
+    # The fixed accent tones keep a small amber stripe or lamp from merging into the blues (05c art review).
+    flat = quantize_with_fixed(image, colors + len(HERO_FIXED_PALETTE), HERO_FIXED_PALETTE)
     src = flat.load()
     out_w, out_h = max(1, round(image.width * scale)), max(1, round(image.height * scale))
     out = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
@@ -462,7 +520,7 @@ def build_player_frame(
     keyed = drop_shadows(keyed)
     if global_scale != 1.0:
         keyed = mode_downscale(keyed, global_scale)
-    keyed = hard_alpha(keyed)
+    keyed = decast_image(hard_alpha(keyed))
     if outline:
         bounds = content_bounds(keyed)
         if bounds:
@@ -526,10 +584,19 @@ def cut_player(args: argparse.Namespace) -> None:
     image_path = out_dir / f"{args.type_key}.png"
     json_path = out_dir / f"{args.type_key}.atlas.json"
 
+    sources = [Path(args.input_path).as_posix()]
     if args.append:
         frames = load_existing_atlas(image_path, json_path)
+        # A group this run cuts replaces that whole group (5.5 review: a re-cut with fewer frames kept the old
+        # tail frames and mixed two sheets in one animation).
+        new_groups = {name.rsplit("/", 1)[0] + "/" for name in new_frames}
+        frames = {name: frame for name, frame in frames.items() if name.rsplit("/", 1)[0] + "/" not in new_groups}
         order = list(frames.keys())
         frames.update(new_frames)
+        if json_path.exists():
+            previous = json.load(json_path.open()).get("meta", {}).get("sources")
+            previous = previous or [json.load(json_path.open()).get("meta", {}).get("source")]
+            sources = [p for p in previous if p and p != sources[0]] + sources
         for name in new_frames:
             if name not in order:
                 order.append(name)
@@ -551,16 +618,16 @@ def cut_player(args: argparse.Namespace) -> None:
             "sourceSize": {"w": target, "h": target},
         }
 
-    atlas = quantize_rgba(atlas, args.colors)
+    atlas = quantize_with_fixed(atlas, args.colors, HERO_FIXED_PALETTE)
     atlas.save(image_path)
     json.dump({
         "frames": entries,
         "meta": {"app": "scripts/sprites/hf_sheet_to_atlas.py", "version": "1.0", "image": image_path.name,
                  "format": "RGBA8888", "size": {"w": atlas.width, "h": atlas.height}, "scale": "1",
-                 "source": str(Path(args.input_path).as_posix()), "generator": args.generator},
+                 "source": str(Path(args.input_path).as_posix()), "sources": sources, "generator": args.generator},
     }, json_path.open("w"), indent=2)
 
-    update_manifest(args, image_path, json_path, target)
+    update_manifest(args, image_path, json_path, target, sources)
 
     if shrunk_names:
         print(f"Clipped at the {target}px cell edge: {', '.join(shrunk_names)}")

@@ -111,6 +111,11 @@ export function decodePng(buffer: Buffer): DecodedPng {
   const idatChunks = chunks.filter((chunk) => chunk.type === 'IDAT').map((chunk) => chunk.data)
   const compressed = Buffer.concat(idatChunks)
   const raw = inflateSync(compressed)
+  const expected = height * (width * BYTES_PER_PIXEL + 1)
+  if (raw.length !== expected) {
+    // A truncated IDAT decoded as transparent rows and the audit reported "empty" frames (5.5 review).
+    throw new Error(`[pngDecode] Image data is ${raw.length} bytes, expected ${expected} for ${width}x${height} RGBA`)
+  }
   const pixels = unfilter(raw, width, height, BYTES_PER_PIXEL)
 
   return { width, height, pixels: pixels as Uint8Array }

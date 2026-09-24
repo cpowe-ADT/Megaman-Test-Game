@@ -8,7 +8,7 @@ import { residentBackgroundAssets } from './game/stageBackgroundLoading'
 import { AnimationManifest, type AnimationManifestEntry } from '../player/AnimationManifest'
 import { resolvePlayerAtlasBinding } from '../player/PlayerAtlasBindings'
 import { ensureGameplayTextures } from '../ui/gameplay/GameplayTextures'
-import { getRequiredPlayerGroups } from '../assets/coverageRequirements'
+import { findMissingPlayerGroups } from '../assets/coverageRequirements'
 
 const PLAYER_ATLAS_KEY = 'atlas_player_main'
 const PLAYER_SWORD_FX_ATLAS_KEY = 'atlas_player_sword_fx'
@@ -146,11 +146,7 @@ export class Preload extends Phaser.Scene {
   // for CI.
   private assertPlayerGroupsCovered(): void {
     const frameNames = this.textures.get(PLAYER_ATLAS_KEY).getFrameNames().filter((name) => name !== '__BASE')
-    const missing = getRequiredPlayerGroups().filter(({ group, minCount }) => {
-      const prefix = `player_main/${group}/`
-      const count = frameNames.filter((name) => name.startsWith(prefix)).length
-      return count < minCount
-    })
+    const missing = findMissingPlayerGroups(frameNames)
     if (missing.length > 0) {
       const detail = missing.map(({ group, minCount }) => `${group} (need ${minCount})`).join(', ')
       throw new Error(`[Preload] '${PLAYER_ATLAS_KEY}' is missing required hero groups: ${detail}`)
