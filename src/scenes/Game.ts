@@ -102,6 +102,7 @@ import {
 } from '../enemy'
 import { CombatDebugBus } from '../tools/debug/CombatDebugBus'
 import { PlatformCollisionSystem, PlatformType } from '../physics'
+import { installRoomLocks } from '../mechanics/adapters/RoomLockAdapter'
 import {
   createDefaultProjectileRegistry,
   getLatestActiveProjectile,
@@ -428,7 +429,6 @@ export class Game extends Phaser.Scene {
     const height = GAME_HEIGHT
     const worldWidth = Math.max(width, Number(cfg.width ?? width))
     this.activeBossRoom = cfg.bossRoom
-
     const gameplayBounds = getGameplayWorldBounds(worldWidth, height)
     this.physics.world.setBounds(
       gameplayBounds.x,
@@ -444,7 +444,6 @@ export class Game extends Phaser.Scene {
     this.applyStageCameraBounds(stageId)
     this.cameras.main.setBackgroundColor(cfg.background.baseColor ?? cfg.backgroundColor ?? '#0b1220')
     this.renderStageBackground(stageId, worldWidth)
-
     this.platformCollisionSystem?.destroy()
     this.platformCollisionSystem = new PlatformCollisionSystem(this)
 
@@ -477,6 +476,7 @@ export class Game extends Phaser.Scene {
     this.bossGateLocked = false
     this.bossRoomCameraLocked = false
     this.installEntityPlatformCollisions()
+    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (index, hint) => this.storyDirector?.onRoomLockArmed(index, hint), restoreCamera: () => this.applyStageCameraBounds(stageId) })
   }
 
   private rebuildBossGateBarrier(): void {

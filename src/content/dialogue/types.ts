@@ -35,7 +35,9 @@ export const STAGE_DIALOGUE_TRIGGERS = [
   'miniboss_callout',
   'boss_intro',
   'boss_defeat',
-  'district_restored'
+  'district_restored',
+  /** Tutorial only: Rook's recorded intake prompts, one per teach lock, on the ticker as each lock arms. */
+  'tutorial_coach'
 ] as const
 
 /** Triggers that belong to the campaign as a whole. */
@@ -64,6 +66,7 @@ export const DIALOGUE_LINE_LIMITS: Record<DialogueTrigger, { min: number; max: n
   boss_intro: { min: 2, max: 4 },
   boss_defeat: { min: 2, max: 4 },
   district_restored: { min: 1, max: 1 },
+  tutorial_coach: { min: 4, max: 6 },
   prologue: { min: 4, max: 12 },
   epilogue: { min: 9, max: 12 },
   credits: { min: 1, max: 40 },

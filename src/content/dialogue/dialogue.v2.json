@@ -81,6 +81,13 @@
       { "speakerId": "director_iona", "text": "Three acts. The spire, an archive of the wardens it copied, and the core. Everything you learned is in there." }
     ] },
 
+    { "id": "tutorial_sentinel_coach", "trigger": "tutorial_coach", "stageId": "tutorial_sentinel", "staging": "Radio ticker as each teach lock arms, one line per lock, after the lane's key hint. Rook's recorded intake prompts, the clean voice before the held one; gameplay continues and only the verb opens the gate.", "lines": [
+      { "speakerId": "sentinel_rook", "text": "Step one. Recovery units walk before they run. Clear the step ahead and the gate reads you through." },
+      { "speakerId": "sentinel_rook", "text": "Step two. Burst your thrusters and cover the floor faster than your legs can. The gate listens for the burst." },
+      { "speakerId": "sentinel_rook", "text": "Step three. Two wall faces, one shaft. Kick off each face until you reach the top." },
+      { "speakerId": "sentinel_rook", "text": "Step four. That frame is armored. Hold your buster until it sings, then let it go." },
+      { "speakerId": "sentinel_rook", "text": "Step five. The wall ahead is scrap. Three cuts with the saber and it comes down." }
+    ] },
     { "id": "tutorial_sentinel_radio", "trigger": "radio", "stageId": "tutorial_sentinel", "staging": "Radio ticker at the mid checkpoint; gameplay continues. Warden stages alternate an Iona evidence line with an OMEGA intrusion.", "lines": [
       { "speakerId": "director_iona", "text": "Rook's record is clean, {hero}. Whatever is driving it did not come from Rook." },
       { "speakerId": "director_iona", "text": "I am keeping this channel open. If the lattice notices you, you will hear it before I do." }

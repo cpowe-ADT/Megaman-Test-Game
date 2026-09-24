@@ -1,0 +1,1 @@
+{ "meta": { "stage": "tutorial_sentinel", "purpose": "49-tutorial-verbs: hold right for 60 frames (walk into a closed gate, or through an open one); no verb any lock reads." }, "rows": [ { "frame": 0, "held": ["moveRight"] }, { "frame": 60, "held": ["moveRight"] }, { "frame": 61, "held": [] } ] }

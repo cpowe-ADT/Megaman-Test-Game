@@ -12,6 +12,7 @@ import {
   type StageBossRoomDefinition
 } from './stageArenaLayout'
 import { getStageBackgroundDefinition } from './stageBackgroundCatalog'
+import type { RoomLockDefinition, RoomLockInput } from '../mechanics/roomLock'
 
 export type CampaignStageKind = 'tutorial' | 'robot_master' | 'final'
 
@@ -21,7 +22,8 @@ export type StagePlatformDefinition = {
   y: number
   width: number
   height?: number
-  type?: 'solid' | 'oneWay' | 'passThrough'
+  /** `wall`: a solid block whose side faces take wall slides and kicks (06 §6.1, pulled forward for the tutorial shaft). */
+  type?: 'solid' | 'oneWay' | 'passThrough' | 'wall'
   color?: number
   motion?: {
     toX: number
@@ -45,6 +47,8 @@ export type StageArenaDefinition = {
   checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
   hazards: Array<{ id: string; x: number; y: number }>
   midPlatforms: StagePlatformDefinition[]
+  /** Teach gates (prompt 05 §5.7): each opens once its verb was performed inside its room. */
+  roomLocks?: RoomLockDefinition[]
 }
 
 export type CampaignStageDefinition = {
@@ -159,9 +163,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         spawnTriggerX: 96,
         retireTriggerX: 282
       }),
-      marker('tutorial_drone', 'enemy_drone', 308, 126, undefined, undefined, {
-        spawnTriggerX: 144,
-        retireTriggerX: 360
+      marker('tutorial_drone', 'enemy_drone', 1480, 126, undefined, undefined, {
+        spawnTriggerX: 1360,
+        retireTriggerX: 1560
       })
     ],
     arena: {
@@ -602,33 +606,74 @@ type StageExtensionPatch = {
   hazards?: Array<{ id: string; x: number; y: number }>
   midPlatforms?: StagePlatformDefinition[]
   enemyMarkers?: EnemyLevelMarker[]
+  roomLocks?: RoomLockDefinition[]
+}
+
+const TEACH_SCREEN = 448
+
+/** One tutorial screen whose exit gate opens on `requiredInput`; the shaft passes a taller room. */
+function teachRoom(
+  index: number,
+  requiredInput: RoomLockInput,
+  extra: { hitsRequired?: number; room?: { y: number; height: number } } = {}
+): RoomLockDefinition {
+  return {
+    id: `tutorial_lock_${requiredInput}`,
+    room: { x: index * TEACH_SCREEN, y: extra.room?.y ?? 0, width: TEACH_SCREEN, height: extra.room?.height ?? 252 },
+    gateX: (index + 1) * TEACH_SCREEN,
+    requiredInput,
+    ...(extra.hitsRequired ? { hitsRequired: extra.hitsRequired } : {})
+  }
 }
 
 const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
+  // Six screens (2688px) before the unchanged boss room: move and jump, dash, the two-screen wall-kick
+  // shaft, charge, saber, then the approach. Each teach screen ends at a room_lock gate (prompt 05 §5.7).
   tutorial_sentinel: {
-    width: 640,
-    bossSpawnX: 574,
+    width: 2688,
+    bossSpawnX: 2622,
     checkpoints: [
       checkpoint('tutorial_start', 44, 40, 0),
-      checkpoint('tutorial_mid', 214, 40, 230),
-      checkpoint('tutorial_boss_gate', 402, 40, 488)
+      checkpoint('tutorial_shaft_exit', 1392, 40, 1380),
+      // The last checkpoint starts the boss door on every stage; kept at the approach's end.
+      checkpoint('tutorial_boss_gate', 2450, 40, 2536)
     ],
     hazards: [
-      { id: 'tutorial_spike_2', x: 434, y: 230 }
+      { id: 'tutorial_dash_spike_1', x: 648, y: 230 },
+      { id: 'tutorial_dash_spike_2', x: 680, y: 230 },
+      { id: 'tutorial_dash_spike_3', x: 712, y: 230 },
+      { id: 'tutorial_spike_2', x: 2330, y: 230 }
     ],
     midPlatforms: [
-      { id: 'tutorial_mid_3', x: 352, y: 166, width: 52, type: 'oneWay', color: 0x304a6d },
-      { id: 'tutorial_mid_4', x: 448, y: 132, width: 52, type: 'oneWay', color: 0x304a6d }
+      { id: 'tutorial_step', x: 360, y: 224, width: 40, height: 24, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_dash_ledge_a', x: 560, y: 216, width: 96, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_dash_ledge_b', x: 800, y: 216, width: 96, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_shaft_wall_left', x: 1040, y: -30, width: 16, height: 424, type: 'wall', color: 0x3b4f6e },
+      { id: 'tutorial_shaft_wall_right', x: 1120, y: 50, width: 16, height: 372, type: 'wall', color: 0x3b4f6e },
+      { id: 'tutorial_mid_5', x: 2000, y: 176, width: 56, type: 'oneWay', color: 0x304a6d },
+      { id: 'tutorial_mid_3', x: 2380, y: 166, width: 52, type: 'oneWay', color: 0x304a6d },
+      { id: 'tutorial_mid_4', x: 2500, y: 132, width: 52, type: 'oneWay', color: 0x304a6d }
     ],
     enemyMarkers: [
-      marker('tutorial_shield', 'enemy_shield_drone', 424, 142, undefined, undefined, {
-        spawnTriggerX: 248,
-        retireTriggerX: 506
+      marker('tutorial_armored', 'enemy_armored_bot', 1600, 185, 1540, 1700, {
+        spawnTriggerX: 1400,
+        retireTriggerX: 1760
       }),
-      marker('tutorial_rocket', 'enemy_rocket_bot', 510, 185, undefined, undefined, {
-        spawnTriggerX: 332,
-        retireTriggerX: 592
+      marker('tutorial_shield', 'enemy_shield_drone', 2420, 142, undefined, undefined, {
+        spawnTriggerX: 2260,
+        retireTriggerX: 2500
+      }),
+      marker('tutorial_rocket', 'enemy_rocket_bot', 2560, 185, undefined, undefined, {
+        spawnTriggerX: 2400,
+        retireTriggerX: 2660
       })
+    ],
+    roomLocks: [
+      teachRoom(0, 'jump'),
+      teachRoom(1, 'dash'),
+      teachRoom(2, 'wall_jump', { room: { y: -252, height: 504 } }),
+      teachRoom(3, 'charge'),
+      teachRoom(4, 'saber', { hitsRequired: 3 })
     ]
   },
   pyro_maw: {
@@ -993,7 +1038,8 @@ for (const [stageId, patch] of Object.entries(STAGE_EXTENSION_PATCHES) as Array<
     },
     checkpoints: patch.checkpoints,
     hazards: [...stage.arena.hazards, ...(patch.hazards ?? [])],
-    midPlatforms: [...stage.arena.midPlatforms, ...(patch.midPlatforms ?? [])]
+    midPlatforms: [...stage.arena.midPlatforms, ...(patch.midPlatforms ?? [])],
+    ...(patch.roomLocks ? { roomLocks: patch.roomLocks } : {})
   }
 }
 

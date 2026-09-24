@@ -3,7 +3,8 @@ import { GAMEPLAY_VIEWPORT_TOP } from '../config/gameplayLayout'
 import { GAME_SIZE } from '../config/renderPolicy'
 
 export type ToastLaneItem = {
-  kind: 'toast' | 'radio'
+  /** `hint`: a UI key hint (never dialogue), e.g. the tutorial's `DASH: Z`. */
+  kind: 'toast' | 'radio' | 'hint'
   text: string
   speaker?: string
   durationMs: number
@@ -117,7 +118,7 @@ export class ToastLane {
     this.container.setY(this.bottomY - laneHeight / 2)
     this.speakerText.setY(-laneHeight / 2 + padding)
     this.bodyText.setY(-laneHeight / 2 + padding + speakerHeight)
-    this.background.setFillStyle(this.current.kind === 'radio' ? 0x07142a : 0x101827, 0.94)
+    this.background.setFillStyle(this.current.kind === 'radio' ? 0x07142a : this.current.kind === 'hint' ? 0x2a2208 : 0x101827, 0.94)
     this.container.setVisible(true)
     if (this.container.y - laneHeight / 2 < GAMEPLAY_VIEWPORT_TOP) throw new Error('ToastLane text is too long for the playfield')
   }

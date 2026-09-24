@@ -18,6 +18,7 @@ import type { ToastLane } from '../../ui/ToastLane'
 
 export const RADIO_LINE_MS = 4500
 export const CHECKPOINT_TOAST_MS = 900
+export const KEY_HINT_MS = 2400
 
 export type StoryDirectorDeps = {
   scene: Phaser.Scene
@@ -120,6 +121,22 @@ export class StoryDirector {
     for (const line of resolvePlaybackLines(sequence.id, sequence.lines, this.deps.values())) {
       lane.enqueue({ kind: 'radio', speaker: line.speakerName, text: line.text, durationMs: RADIO_LINE_MS })
     }
+  }
+
+  /**
+   * A tutorial room lock armed: the lane shows the key hint (UI, from the bindings), then Rook's
+   * recorded intake prompt for that lock (`tutorial_coach`, one line per lock) when story is on.
+   * Neither opens the gate; only the verb does.
+   */
+  onRoomLockArmed(index: number, keyHint: string): void {
+    const lane = this.deps.lane()
+    if (!lane) return
+    lane.enqueue({ kind: 'hint', text: keyHint, durationMs: KEY_HINT_MS })
+    const sequence = DIALOGUE_REGISTRY.getSequence(this.deps.stageId, 'tutorial_coach')
+    const line = sequence?.lines[index]
+    if (!sequence || !line || !currentStoryPolicy().enabled) return
+    const [resolved] = resolvePlaybackLines(sequence.id, [line], this.deps.values())
+    lane.enqueue({ kind: 'radio', speaker: resolved.speakerName, text: resolved.text, durationMs: RADIO_LINE_MS })
   }
 
   /** Boss dialogue ignores the automation switch (existing smoke contracts) but honors seen flags. */

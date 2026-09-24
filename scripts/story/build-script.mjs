@@ -21,9 +21,9 @@ const STAGE_TITLES = {
   gale_vixen: 'Weather District (Gale Vixen)', glacier_ronin: 'Public Archives (Glacier Ronin)',
   omega_fortress: 'Central Core (OMEGA CORE)'
 }
-const STAGE_TRIGGER_ORDER = ['stage_briefing', 'radio', 'miniboss_callout', 'boss_intro', 'boss_defeat', 'district_restored']
+const STAGE_TRIGGER_ORDER = ['stage_briefing', 'tutorial_coach', 'radio', 'miniboss_callout', 'boss_intro', 'boss_defeat', 'district_restored']
 const TRIGGER_LABELS = {
-  stage_briefing: 'Briefing (before control)', radio: 'Radio (mid-stage checkpoint, non-blocking)',
+  stage_briefing: 'Briefing (before control)', tutorial_coach: 'Coach (ticker as each teach lock arms, non-blocking)', radio: 'Radio (mid-stage checkpoint, non-blocking)',
   miniboss_callout: 'Mini-boss callout (gate lock, ticker)', boss_intro: 'Boss intro (blocking)',
   boss_defeat: 'Boss defeat (blocking, before the weapon card)', district_restored: 'District restored (Stage Select tile)'
 }

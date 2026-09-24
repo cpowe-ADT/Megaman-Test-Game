@@ -5,7 +5,8 @@ import {
   type OneWayCollisionProbe
 } from './platformCollisionRules'
 
-export type PlatformType = 'solid' | 'oneWay' | 'passThrough'
+/** `wall`: a solid block joined to the solid group, so its side faces stop actors and take wall slides and kicks. */
+export type PlatformType = 'solid' | 'oneWay' | 'passThrough' | 'wall'
 
 export type PlatformDefinition = {
   id: string
@@ -63,7 +64,7 @@ export class PlatformCollisionSystem {
         platform.y,
         platform.width,
         platform.height,
-        platform.color ?? (platform.type === 'solid' ? 0x1a2230 : 0x33404f)
+        platform.color ?? (platform.type === 'solid' || platform.type === 'wall' ? 0x1a2230 : 0x33404f)
       )
       this.stageVisuals.push(visual)
 
@@ -78,7 +79,7 @@ export class PlatformCollisionSystem {
       visual.data?.set('platformId', platform.id)
       visual.data?.set('platformType', platform.type)
 
-      if (platform.type === 'solid') {
+      if (platform.type === 'solid' || platform.type === 'wall') {
         this.solidGroup.add(visual)
       } else if (platform.type === 'oneWay') {
         this.oneWayGroup.add(visual)

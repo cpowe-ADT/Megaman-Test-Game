@@ -46,7 +46,8 @@ export const STAGE_TRIGGER_COVERAGE: Record<StageDialogueTrigger, readonly Campa
   miniboss_callout: WARDEN_STAGE_IDS,
   boss_intro: CAMPAIGN_STAGE_IDS,
   boss_defeat: CAMPAIGN_STAGE_IDS,
-  district_restored: WARDEN_STAGE_IDS
+  district_restored: WARDEN_STAGE_IDS,
+  tutorial_coach: [TUTORIAL_STAGE_ID]
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -249,6 +250,13 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
           const other = mentionsOtherWarden(line.text, ownWardenId, wardens)
           if (other) {
             errors.push(`${path}.lines[${lineIndex}] names another warden (${other}); stage dialogue must stay order-independent`)
+          }
+        })
+      }
+      if (trigger === 'tutorial_coach') {
+        lines.forEach((line, lineIndex) => {
+          if (line.speakerId !== 'sentinel_rook') {
+            errors.push(`${path}.lines[${lineIndex}] must be spoken by sentinel_rook (the recorded intake prompts)`)
           }
         })
       }

@@ -51,7 +51,7 @@ test('dialogue v2 covers the required trigger table exactly once per stage', () 
   assert.ok(DIALOGUE_REGISTRY.getGlobalSequence('epilogue'))
   assert.ok(DIALOGUE_REGISTRY.getGlobalSequence('credits'))
   for (const phase of [1, 2, 3] as const) assert.ok(DIALOGUE_REGISTRY.getFinalePhase(phase), `finale phase ${phase}`)
-  assert.equal(DIALOGUE_REGISTRY.getSequences().length, 10 * 4 + 8 * 2 + 3 + 3)
+  assert.equal(DIALOGUE_REGISTRY.getSequences().length, 10 * 4 + 8 * 2 + 3 + 3 + 1)
   for (const stageId of ROBOT_MASTER_STAGE_IDS) {
     const defeat = DIALOGUE_REGISTRY.getStageSequence(stageId, 'boss_defeat')
     assert.ok(defeat?.lines.some((line) => line.text.includes('{rewardLabel}')), `${stageId} defeat acknowledges the reward`)
@@ -184,6 +184,30 @@ test('validator: finale phases, epilogue cards, narration, and stageId placement
   const cardElsewhere = cloneContent()
   findSequence(cardElsewhere, 'boss_intro', 'pyro_maw').lines[0].card = 'pyro_maw'
   assert.ok(errorsOf(cardElsewhere).some((e) => e.includes('may not carry a district card')))
+})
+
+test('validator: tutorial_coach is Rook only, tutorial only, 4 to 6 lines, exactly once', () => {
+  const coachOf = (content: any) => content.sequences.find((sequence: any) => sequence.trigger === 'tutorial_coach')
+  assert.equal(coachOf(cloneContent())?.stageId, TUTORIAL_STAGE_ID)
+  assert.equal(coachOf(cloneContent())?.lines.length, 5, 'one recorded prompt per teach lock')
+
+  const wrongSpeaker = cloneContent()
+  coachOf(wrongSpeaker).lines[2].speakerId = 'director_iona'
+  assert.ok(errorsOf(wrongSpeaker).some((error) => /lines\[2\] must be spoken by sentinel_rook/.test(error)))
+
+  const wrongStage = cloneContent()
+  coachOf(wrongStage).stageId = 'pyro_maw'
+  const stageErrors = errorsOf(wrongStage)
+  assert.ok(stageErrors.some((error) => /stageId must be one of the stages tutorial_coach covers/.test(error)))
+  assert.ok(stageErrors.some((error) => /coverage tutorial_sentinel:tutorial_coach must appear exactly once/.test(error)))
+
+  const tooShort = cloneContent()
+  coachOf(tooShort).lines = coachOf(tooShort).lines.slice(0, 3)
+  assert.ok(errorsOf(tooShort).some((error) => /must contain 4 to 6 lines/.test(error)))
+
+  const duplicated = cloneContent()
+  duplicated.sequences.push({ ...coachOf(duplicated), id: 'tutorial_sentinel_coach_copy' })
+  assert.ok(errorsOf(duplicated).some((error) => /coverage tutorial_sentinel:tutorial_coach must appear exactly once \(found 2\)/.test(error)))
 })
 
 test('validator: milestone kinds, counts, and speakers', () => {

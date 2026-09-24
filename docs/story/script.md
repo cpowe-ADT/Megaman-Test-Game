@@ -2,7 +2,7 @@
 
 Generated from `src/content/dialogue/dialogue.v2.json` by `npm run story:script`. Do not edit by hand; edit the JSON and regenerate. Tokens in braces are resolved at runtime: `{hero}` is the callsign from `src/content/identity.ts`, `{rewardLabel}` the reward the location placed, `{clearedCount}` and `{remainingCount}` the warden tally, `{districtName}` and `{wardenName}` the current stage.
 
-Line count: 152. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
+Line count: 157. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
 
 ## Prologue
 
@@ -25,6 +25,16 @@ _Staging: After the stage card, before control. The first line is the Stage Sele
 - **Director Iona Vale:** Drill hangar, {hero}. Rook runs the intake drills here, and it is broadcasting a live override it did not ask for.
 - **Director Iona Vale:** Relearn your feet on the course. Jump, dash, wall jump, charge, saber, in that order. The hangar was built to teach them.
 - **Director Iona Vale:** If Rook fights you for real, the override is real. That is the first thing we need to know.
+
+### Coach (ticker as each teach lock arms, non-blocking)
+
+_Staging: Radio ticker as each teach lock arms, one line per lock, after the lane's key hint. Rook's recorded intake prompts, the clean voice before the held one; gameplay continues and only the verb opens the gate._
+
+- **Sentinel Rook:** Step one. Recovery units walk before they run. Clear the step ahead and the gate reads you through.
+- **Sentinel Rook:** Step two. Burst your thrusters and cover the floor faster than your legs can. The gate listens for the burst.
+- **Sentinel Rook:** Step three. Two wall faces, one shaft. Kick off each face until you reach the top.
+- **Sentinel Rook:** Step four. That frame is armored. Hold your buster until it sings, then let it go.
+- **Sentinel Rook:** Step five. The wall ahead is scrap. Three cuts with the saber and it comes down.
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
