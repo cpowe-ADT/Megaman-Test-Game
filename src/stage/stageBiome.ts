@@ -5,7 +5,15 @@
  */
 const STAGE_BIOME: Readonly<Record<string, string>> = {
   tutorial_sentinel: 'relay',
-  pyro_maw: 'pyro'
+  pyro_maw: 'pyro',
+  tide_reaver: 'tide',
+  volt_hopper: 'volt',
+  basalt_titan: 'basalt',
+  ferro_blade: 'ferro',
+  mire_wraith: 'mire',
+  gale_vixen: 'gale',
+  glacier_ronin: 'glacier',
+  omega_fortress: 'omega'
 }
 
 export function getStageBiome(stageId: string): string | undefined {

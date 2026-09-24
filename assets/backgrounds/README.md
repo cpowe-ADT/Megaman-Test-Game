@@ -33,6 +33,13 @@ This folder contains stage background layers extracted from permissively license
   - License: `original-generated`
   - Notes: prompts and jobs in `source/pyro/pyro_v1.prompts.md`
 
+- `tide/*`, `volt/*`, `basalt/*`, `ferro/*`, `mire/*`, `gale/*`, `glacier/*`, `omega/*` (every district, finish plan, 2026-09-24)
+  - Source: generated
+  - Title: `District parallax`
+  - Author: `Original art generated with Higgsfield (gpt_image_2) for this project`
+  - License: `original-generated`
+  - Notes: prompts and jobs in `source/biomes_v1.prompts.md`; cut by `scripts/sprites/cut_biomes_v1.sh`
+
 ## Usage
 
 - Runtime loading is defined in `src/content/stageBackgroundCatalog.ts`.

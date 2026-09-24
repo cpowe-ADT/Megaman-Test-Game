@@ -27,3 +27,12 @@ Cut (from `scripts/sprites`): `../../.venv/bin/python cut_enemy_sheet.py --in ..
 
 Result URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_221258_<job>.png`. The mine bot and bouncer cut with `--fill-height` (their old art used a corner of the frame).
 
+## The last three families (finish plan, same day)
+
+| Family (atlas) | Design | Job and URL |
+| --- | --- | --- |
+| enemy_frost_turret | hovering boxy cryo turret with a frost cannon | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_222417_8e12f2f3-e8b8-4936-bfc8-4826eab85e9a.png (`enemy_frost_a.png`) |
+| enemy_laser_eye | floating sentry eye in an armored clam shell, thin red laser | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_222417_1c41a439-90b1-4904-8d4c-900cd9253153.png (`enemy_laser_a.png`) |
+| enemy_fly_trap | floating snap-trap pod with toothed jaws and a rotor | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_222417_08f58881-a6c9-411b-bede-4000c07be38e.png (`enemy_flytrap_a.png`) |
+
+All three cut with `--fill-height`.

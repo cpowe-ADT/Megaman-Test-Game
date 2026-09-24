@@ -162,8 +162,8 @@
     },
     "ferro_blade/shoot/000": {
       "frame": {
-        "x": 512,
-        "y": 0,
+        "x": 0,
+        "y": 64,
         "w": 64,
         "h": 64
       },
@@ -182,8 +182,8 @@
     },
     "ferro_blade/shoot/001": {
       "frame": {
-        "x": 576,
-        "y": 0,
+        "x": 64,
+        "y": 64,
         "w": 64,
         "h": 64
       },
@@ -202,8 +202,8 @@
     },
     "ferro_blade/shoot/002": {
       "frame": {
-        "x": 640,
-        "y": 0,
+        "x": 128,
+        "y": 64,
         "w": 64,
         "h": 64
       },
@@ -222,8 +222,8 @@
     },
     "ferro_blade/shoot/003": {
       "frame": {
-        "x": 704,
-        "y": 0,
+        "x": 192,
+        "y": 64,
         "w": 64,
         "h": 64
       },
@@ -242,16 +242,21 @@
     }
   },
   "meta": {
-    "app": "scripts/sprites/hf_sheet_to_atlas.py",
+    "app": "scripts/sprites/cut_enemy_sheet.py",
     "version": "1.0",
     "image": "ferro_blade.png",
     "format": "RGBA8888",
     "size": {
-      "w": 768,
-      "h": 64
+      "w": 512,
+      "h": 128
     },
     "scale": "1",
-    "source": "assets/sprites/source/bosses/boss_ferro_blade_sheet_hf_v1_20260910.png",
-    "generator": "Higgsfield gpt_image_2"
+    "source": "../../assets/sprites/source/bosses/hf_v2/boss_ferro_blade_v2_a.png",
+    "generator": "Higgsfield gpt_image_2",
+    "reskinTarget": {
+      "idleWidth": 48,
+      "idleHeight": 48,
+      "feetRow": 60
+    }
   }
 }

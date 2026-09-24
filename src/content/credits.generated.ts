@@ -36,5 +36,15 @@ export const ASSET_CREDITS: readonly string[] = [
   "Art: Original rogue enemy robots (gunner, hopper, drone, dozer, shield drone, rocket trooper), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original Heat Works tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original rogue enemy robots (mine bot, slicer, bouncer), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
-  "Art: Original Pyro Maw art (second design), generated with Higgsfield (gpt_image_2) for this project (original-generated)"
+  "Art: Original Pyro Maw art (second design), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original tide district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original volt district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original basalt district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original ferro district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original mire district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original gale district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original glacier district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original omega district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original warden art (second designs: Sentinel Rook, Tide Reaver, Volt Hopper, Basalt Titan, Ferro Blade, Mire Wraith, Gale Vixen, Glacier Ronin, Omega Core), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original rogue enemy robots (cryo turret, laser eye, snap trap drone), generated with Higgsfield (gpt_image_2) for this project (original-generated)"
 ]
