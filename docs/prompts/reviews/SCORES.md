@@ -30,3 +30,6 @@ One row per seat review, appended by `npm run agents:reviews`. Mean is the mean 
 | 2026-09-24-05b-qa | qa-eval | SHIP | 4.5 | 0 | 0 | 1 | yes | 55012 |
 | 2026-09-24-5.8-playtest | game-director | SHIP | 4.0 | 0 | 0 | 2 | yes | 41375 |
 | 2026-09-24-5.8-playtest | qa-eval | FIX | 4.0 | 0 | 1 | 1 | yes | 60657 |
+| 2026-09-24-5.5-hero-sheets | art-director | FIX | 4.5 | 0 | 1 | 2 | yes | 42552 |
+| 2026-09-24-5.5-hero-sheets | principal-engineer | SHIP | 4.0 | 0 | 0 | 7 | yes | 65032 |
+| 2026-09-24-5.5-hero-sheets | qa-eval | FIX | 3.8 | 0 | 1 | 1 | yes | 44564 |

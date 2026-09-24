@@ -33,7 +33,7 @@ No new gap outside 06. Advice: do not let 6.4 art land before 6.1 geometry.
 4. All hit wiring lives in untyped `Game.ts` (985-1040, 1433-1444, 2657-2708); move `HitWires.ts` into 6.0, lower EVAL-P6-014 to about 2,700. S.
 5. Automation has no box checks: report boxes and lint them in 6.9. S-M.
 6. Every hazard is 28x10 for 1 damage (`Game.ts:1401-1402`): 6.1. S.
-7. `installEntityPlatformCollisions` runs at four sites (`Game.ts:478, 1418, 1430, 1504`) and `attachActor` never detaches (`PlatformCollisionSystem.ts:111-134`): make idempotent, 6.0. S.
+7. (Checked by the orchestrator: false positive; `attachActor` calls `clearAttachedColliders` first, `PlatformCollisionSystem.ts:115`.) `installEntityPlatformCollisions` runs at four sites (`Game.ts:478, 1418, 1430, 1504`) and `attachActor` never detaches (`PlatformCollisionSystem.ts:111-134`): make idempotent, 6.0. S.
 8. Dead `applySaberDamage` (`Game.ts:1905`, hardcoded 44x36): delete, 6.0. S.
 9. Shots hit platforms by drawn bounds (`Game.ts:917-924`): 7.1. S.
 Already tested: sword hitbox, projectile router, boss body alignment, body profiles. Untested: enemy melee, touch damage, hazard contact, overlap wiring.
