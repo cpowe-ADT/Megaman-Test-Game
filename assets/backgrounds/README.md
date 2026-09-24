@@ -19,6 +19,13 @@ This folder contains stage background layers extracted from permissively license
   - Attribution notice from source: `https://admurin.itch.io/ - Admurin`
   - Notes: extracted PNG layers from the Cave, Dead Forest, Dock, Plains, and Snowy Mountains packs
 
+- `relay/*` (the tutorial's Drill Hangar, phase 6.P, 2026-09-24)
+  - Source: generated
+  - Title: `Drill Hangar parallax`
+  - Author: `Original art generated with Higgsfield (gpt_image_2) for this project`
+  - License: `original-generated`
+  - Notes: prompts, job ids and result URLs in `source/relay/relay_v1.prompts.md`; cut to one seamless period and a third (far) or a quarter (mid) of the source size by `scripts/sprites/cut_background_layer.py`
+
 ## Usage
 
 - Runtime loading is defined in `src/content/stageBackgroundCatalog.ts`.

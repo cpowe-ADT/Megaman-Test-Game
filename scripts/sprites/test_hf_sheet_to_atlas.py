@@ -213,7 +213,7 @@ class PixelArtDownscaleTests(unittest.TestCase):
         self.assertEqual(cutter.body_anchor_x(cleaned.crop(cleaned.getchannel("A").getbbox())), 10.0)
 
     def test_magenta_cast_greys_become_undersuit_grey_but_armour_and_amber_stay(self):
-        for purple in [(106, 88, 111), (48, 31, 70), (20, 0, 30)]:
+        for purple in [(106, 88, 111), (48, 31, 70), (20, 0, 30), (34, 0, 72)]:
             self.assertTrue(cutter.has_magenta_cast(*purple), purple)
         for keep in [(84, 147, 200), (14, 11, 47), (63, 111, 166), (242, 169, 59), (232, 210, 142), (20, 26, 38)]:
             self.assertFalse(cutter.has_magenta_cast(*keep), keep)

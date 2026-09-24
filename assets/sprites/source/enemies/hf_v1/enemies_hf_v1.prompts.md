@@ -1,0 +1,18 @@
+# Rogue enemy robots v1 (relay biome), Higgsfield gpt_image_2, 2026-09-24 (phase 6.P, EVAL-P6-018)
+
+Through the Higgsfield MCP (`generate_image_batch`), 3:4, 1k, quality medium, no reference image. Licence `original-generated`. Two variants per family; variant a picked for all six (clearest silhouettes and poses).
+
+Shared template: "16-bit pixel art animation sprite sheet of one original enemy robot for an SNES action platformer, crisp hard-edged pixels, no anti-aliasing, dark 1px outline, three-tone shading, light from the upper left. The enemy: {DESIGN}. Layout: exactly 4 columns and 5 rows of equal cells on a flat solid magenta background (#FF00FF), one robot centered in every cell, side view facing RIGHT, same size and same design in every cell, feet on one baseline, no grid lines, no borders, no text, no shadows. Row 1: three idle frames, then a hurt frame (flashing white). Row 2: four walking (or hovering) frames. Row 3: three attack wind-up frames, then the last wind-up pose again. Row 4: three firing frames with a small flat muzzle flash, then the last firing pose again. Row 5: four explosion frames: sparks, the body breaking apart, a burst of orange and grey debris, a small puff of smoke. No gradients, no blur, no photorealism, no glow, no watermark, original design." Armor for all: gunmetal grey (#5A5F6B base, #3A3E47 shadow, #8A909C light) with red hazard stripes (#E23A3A).
+
+| Family (atlas) | Design | Variant a job (picked) | Variant b job |
+| --- | --- | --- | --- |
+| enemy_gunner_bot | squat two-legged sentry, boxy head, red visor slit, heavy arm cannon | da4a9c87-7a44-47da-ba15-b8660a5bd2b8 | ebd19826-112b-47ed-a237-45f548ce7a79 |
+| enemy_shock_hopper | round body on one coiled spring leg, two electric coil antennae, red eye | aac2d7e4-6010-47ed-8612-346483c71436 | d88a99ef-6394-4c53-9e9f-a985664cac63 |
+| enemy_drone | wide flat drone, two rotor pods, one big red lens | 23ad830c-bc66-4eb6-a90e-487ffeaf75a5 | 7e24db37-5d89-4bb6-b782-32d177d0b286 |
+| enemy_armored_bot | wide tracked dozer, angled plow shield, stubby cannon, red visor | c709240b-8383-49a7-851e-b7b7fa5b5b07 | 5bf3e893-950a-48a4-9c4d-2e83a8b43c9e |
+| enemy_shield_drone | ducted-fan drone behind a tall curved riot shield, red eye | 03a09bf3-ab39-4e98-aee9-8792b55cfeb5 | 55e9b061-47ee-4ac6-9595-af42af8477f6 |
+| enemy_rocket_bot | lean biped with a shoulder rocket pod, four red-tipped rockets | cf7aa3e0-4b50-4bc8-aa7d-b74e11a882a3 | f9cbd10c-6b3f-4fc2-87fb-9f2284cd6849 |
+
+Result URLs: `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_2123NN_<job>.png` (NN 27 to 29; the exact names are the downloaded files' sources: `enemy_<family>_{a,b}.png` here).
+
+Cut (from `scripts/sprites`): `../../.venv/bin/python cut_enemy_sheet.py --in ../../assets/sprites/source/enemies/hf_v1/enemy_<family>_a.png --type-key <atlas>`; the shield drone adds `--fill-height` (its old art was a flat 38x19 box; the new design is taller, the body still sits at the frame bottom). Each atlas keeps its frame names, frame size and feet row; the target box is recorded in the atlas meta (`reskinTarget`) so reruns do not drift.

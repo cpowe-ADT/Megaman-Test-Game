@@ -133,7 +133,7 @@
         "assets/sprites/enemies/*/*.png",
         "assets/sprites/enemies/*/*.atlas.json"
       ],
-      "notes": "Composite free roster sheet built from downloaded mech GIFs and palette-shifted per-slot variants for deterministic atlas generation."
+      "notes": "Composite free roster sheet built from downloaded mech GIFs and palette-shifted per-slot variants for deterministic atlas generation. Since 2026-09-24 (6.P) six enemy families use original art (entry enemies-relay-rogue-hf-v1); the glob here still covers the other six."
     },
     {
       "id": "projectile-robotfree-objects",
@@ -335,6 +335,42 @@
         "assets/sprites/player/main/player_main.atlas.json"
       ],
       "notes": "Reference image: the C2 turnaround (job 986ea4a5-dcfd-4cc8-b1f9-7bc5d22e949c, assets/sprites/source/player/hero_turnaround_v1_2026-09-24_c2.png). Prompts, job ids, result URLs and the picks in assets/sprites/source/player/hero_sheets_v1_2026-09-24.prompts.md; cut by scripts/sprites/cut_hero_v1.sh with scripts/sprites/hf_sheet_to_atlas.py --category player. Replaces the February generated base sheet and the retired developer skin (05c, 2026-09-24)."
+    },
+    {
+      "id": "tiles-relay-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Drill Hangar tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_relay_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/relay/tiles_relay.png",
+        "assets/sprites/tiles/relay/tiles_relay.atlas.json"
+      ],
+      "notes": "Prompt, job ids and result URLs in assets/sprites/source/tiles/tiles_relay_v1.prompts.md; cut to 16px tiles by scripts/sprites/cut_tileset.py (phase 6.P)."
+    },
+    {
+      "id": "enemies-relay-rogue-hf-v1",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original rogue enemy robots (gunner, hopper, drone, dozer, shield drone, rocket trooper), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/enemies/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.png",
+        "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.png",
+        "assets/sprites/enemies/enemy_drone/enemy_drone.png",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.png",
+        "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.png",
+        "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.png",
+        "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.atlas.json",
+        "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.atlas.json",
+        "assets/sprites/enemies/enemy_drone/enemy_drone.atlas.json",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.atlas.json",
+        "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.atlas.json",
+        "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.atlas.json"
+      ],
+      "notes": "Prompts, job ids, URLs and picks in assets/sprites/source/enemies/hf_v1/enemies_hf_v1.prompts.md; cut by scripts/sprites/cut_enemy_sheet.py, which keeps each atlas's frame names, frame size and feet row (phase 6.P). The other six enemy families still use the CC0 roster entry."
     }
   ]
 }

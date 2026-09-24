@@ -332,6 +332,8 @@ UNDERSUIT_GREYS = ((0x8A, 0x94, 0xA6), (0x55, 0x5E, 0x6E), (0x30, 0x38, 0x48))
 def has_magenta_cast(r: int, g: int, b: int) -> bool:
     """A grey or dark pixel pulled purple by the magenta key (red and blue both above green, red at least half of
     blue). The slate-blue armour (red about a third of blue) and the amber accents do not match."""
+    if g * 2 < r and b - g > 40:
+        return True  # a dark purple with almost no green, e.g. (34, 0, 72) from a keyed background (6.P)
     return min(r, b) - g > 10 and r >= b * 0.55 and not (r > 150 and g > 90)
 
 

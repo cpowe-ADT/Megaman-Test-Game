@@ -12,6 +12,22 @@ const INDUSTRIAL_SOURCE_URL = 'https://opengameart.org/content/industrial-parall
 const ADMURIN_SOURCE_URL = 'https://opengameart.org/content/parallax-backgrounds'
 
 export const STAGE_BACKGROUND_ASSETS: StageBackgroundAsset[] = [
+  // Relay biome (the tutorial's Drill Hangar), original art for phase 6.P: Higgsfield gpt_image_2 layers cut to one
+  // seamless period by scripts/sprites/cut_background_layer.py (provenance: assets/backgrounds/source/relay/).
+  {
+    key: 'bg_relay_far',
+    path: 'assets/backgrounds/relay/relay_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_relay_mid',
+    path: 'assets/backgrounds/relay/relay_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
   {
     key: 'bg_industrial_bg',
     path: 'assets/backgrounds/opengameart/industrial/industrial_0003_bg.png',
@@ -307,7 +323,15 @@ function snowBackground(baseColor: string, tint: number): StageBackgroundDefinit
 export function getStageBackgroundDefinition(stageId: string): StageBackgroundDefinition {
   switch (stageId) {
     case 'tutorial_sentinel':
-      return dockBackground('#0d1a2b', 0x7dafff, 0xb0d1ff)
+      // Drill Hangar (6.P): far skyline 192px tall and drill rigs 144px tall, both bottom-aligned on the 252px
+      // frame and tinted down to the style sheet's shadow and base so the hero reads in front of them.
+      return {
+        baseColor: '#0E1622',
+        layers: [
+          { key: 'bg_relay_far', scrollFactorX: 0.08, y: 60, tint: 0x9aa8c4 },
+          { key: 'bg_relay_mid', scrollFactorX: 0.28, y: 108, tint: 0x7a86a6 }
+        ]
+      }
     case 'pyro_maw':
       return industrialBackground('#22100d', 0xff7f4f, 0xffb066)
     case 'tide_reaver':
