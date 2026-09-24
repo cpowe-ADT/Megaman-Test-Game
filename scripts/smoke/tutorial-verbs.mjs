@@ -2,7 +2,8 @@
 // prompts reach the lane. Each teach lock must stay shut until its own verb was performed inside its
 // room (a wrong verb first, then the right one, replayed from scripts/smoke/inputs/tutorial-*.json),
 // the lane must show every key hint and every Rook line, and walking into a closed gate must not pass
-// it. The debug warps (setPlayerX, crossBossGate) stay automation tools: smoke 5 and the sweep use them.
+// it, and the dash gap (06.P) must drop a plain jump safely on the bay floor and carry a dash jump to
+// ledge B. The debug warps (setPlayerX, crossBossGate) stay automation tools: smoke 5 and the sweep use them.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -43,6 +44,15 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
   const locksOf = (state) => state.mechanics?.roomLocks ?? []
   const replay = (file) => page.evaluate((rows) => window.stageDebug.replayInputs(rows), readRows(file))
   const warp = async (x) => { await page.evaluate((value) => window.stageDebug.setPlayerX(value), x); await advanceFrames(page, 3) }
+  // Test-side placement above a raised deck (setPlayerX keeps the hero's y, which would bury it in the deck).
+  const place = async (x, y) => {
+    await page.evaluate(({ x, y }) => {
+      const hero = window.__phaserGame.scene.getScene('Game').player
+      hero.setPosition(x, y)
+      hero.body?.setVelocity?.(0, 0)
+    }, { x, y })
+    await advanceFrames(page, 3)
+  }
   const lock = async (index) => locksOf(await readState(page))[index]
   const coachWhileArmed = async (index) => {
     const state = await waitForState(page, (next) => next.ticker?.kind === 'radio' && /rook/i.test(next.ticker.speaker ?? '') && String(next.ticker.text).startsWith(ROOK_STEPS[index]), 15000)
@@ -132,6 +142,18 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     assert.equal((await lock(1)).phase, 'locked', 'a jump does not open the dash lock')
     await replay('dash')
     assert.equal((await lock(1)).phase, 'open', 'the dash opens the dash lock')
+    // 06.P: the dash gap teaches without killing. A plain jump off the launch deck lands on the
+    // spike-free bay floor, one hop below the deck; a dash jump from the same spot lands on ledge B.
+    await place(560, 160)
+    await replay('gap-plain-jump')
+    const bay = await capture('dash-gap-fall')
+    assert.ok(bay.newPlayer?.locomotion?.grounded, 'the plain jump ends grounded')
+    assert.ok(bay.player.x > 600 && bay.player.x < 816 && bay.player.y > 200, `a plain jump lands on the bay floor (x ${bay.player.x}, y ${bay.player.y})`)
+    await place(560, 160)
+    await replay('gap-dash-jump')
+    const ledgeB = await capture('dash-gap-clear')
+    assert.ok(ledgeB.newPlayer?.locomotion?.grounded, 'the dash jump ends grounded')
+    assert.ok(ledgeB.player.x >= 812 && ledgeB.player.x <= 884 && ledgeB.player.y < 190, `a dash jump lands on ledge B (x ${ledgeB.player.x}, y ${ledgeB.player.y})`)
 
     // 3 wall kick: from x 900, one replay and no warp climbs the two-screen shaft, clears the right
     // wall and walks out past the gate at 1344; the camera must scroll up with the hero.
@@ -159,7 +181,8 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
       window.__phaserGame.scene.getScenes(true)[0].events.off('postupdate', window.__climbProbe)
       return window.__climb
     })
-    const climbed = await capture('wall-kick')
+    // The climb ends in the charge room, so this frame shows the charge key hint over the armored frame.
+    const climbed = await capture('shaft-exit-charge-hint')
     fs.writeFileSync(path.join(dir, 'climb.json'), JSON.stringify({ ...climb, endX: climbed.player.x, cameraBlock: climbed.camera ?? null }, null, 2))
     assert.ok(climb.startX <= 902, `the climb starts at x 900 (${climb.startX})`)
     assert.equal(locksOf(climbed)[2].phase, 'open', 'a wall kick opens the shaft lock')

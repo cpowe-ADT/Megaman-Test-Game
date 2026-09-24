@@ -159,9 +159,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         spawnTriggerX: 52,
         retireTriggerX: 204
       }),
-      marker('tutorial_hopper', 'enemy_shock_hopper', 220, 185, undefined, undefined, {
-        spawnTriggerX: 96,
-        retireTriggerX: 282
+      // 06.P: the hopper moved from the jump screen to the saber room (one threat at a time on screen one).
+      marker('tutorial_hopper', 'enemy_shock_hopper', 1860, 185, undefined, undefined, {
+        spawnTriggerX: 1800,
+        retireTriggerX: 1980
       }),
       marker('tutorial_drone', 'enemy_drone', 1480, 126, undefined, undefined, {
         spawnTriggerX: 1360,
@@ -181,7 +182,8 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         checkpoint('tutorial_start', 44, 40, 0),
         checkpoint('tutorial_boss_gate', 132, 40, 160)
       ],
-      hazards: [{ id: 'tutorial_spike_1', x: 240, y: 230 }],
+      // 06.P: no spike on the jump screen; spikes appear only after the verb they test (the approach).
+      hazards: [],
       midPlatforms: [
         { id: 'tutorial_mid_1', x: 150, y: 176, width: 56, type: 'oneWay', color: 0x304a6d },
         { id: 'tutorial_mid_2', x: 236, y: 138, width: 56, type: 'oneWay', color: 0x304a6d }
@@ -637,39 +639,55 @@ const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPat
       checkpoint('tutorial_dash_exit', 928, 40, 912),
       // The radio pair belongs at the shaft exit; the dash exit is checkpoint 2's toast only.
       { ...checkpoint('tutorial_shaft_exit', 1392, 40, 1380), radioSequenceId: 'tutorial_sentinel_radio' },
-      // The last checkpoint starts the boss door on every stage; kept at the approach's end.
-      checkpoint('tutorial_boss_gate', 2450, 40, 2536)
+      // The last checkpoint starts the boss door on every stage; kept at the approach's end, on the
+      // landing ledge past the dash check, so a respawn never drops into the spike bay.
+      checkpoint('tutorial_boss_gate', 2640, 40, 2624)
     ],
+    // 06.P: spikes only after the verb they test. The dash check on the approach: two spikes where a
+    // plain jump off the loading deck lands, a spike-free near floor where a walk-off lands.
     hazards: [
-      { id: 'tutorial_dash_spike_1', x: 620, y: 230 },
-      { id: 'tutorial_dash_spike_2', x: 665, y: 230 },
-      { id: 'tutorial_dash_spike_3', x: 710, y: 230 },
-      { id: 'tutorial_dash_spike_4', x: 755, y: 230 },
-      { id: 'tutorial_spike_2', x: 2330, y: 230 }
+      { id: 'tutorial_check_spike_1', x: 2556, y: 230 },
+      { id: 'tutorial_check_spike_2', x: 2584, y: 230 }
     ],
     midPlatforms: [
       { id: 'tutorial_step', x: 360, y: 224, width: 40, height: 24, type: 'solid', color: 0x2a3a52 },
-      // A 216px gap between equal ledges: a plain running jump covers about 168px, a dash jump about 244px.
-      { id: 'tutorial_dash_ledge_a', x: 540, y: 216, width: 80, height: 40, type: 'solid', color: 0x2a3a52 },
-      { id: 'tutorial_dash_ledge_b', x: 836, y: 216, width: 80, height: 40, type: 'solid', color: 0x2a3a52 },
+      // The dash teach (06.P): a launch deck and a landing ledge at one height over a 216px bay with a
+      // flat, spike-free floor. A plain running jump covers about 168px and lands in the bay (one hop
+      // back up the deck face); a dash jump covers about 244px and lands on ledge B.
+      { id: 'tutorial_dash_ledge_a', x: 544, y: 216, width: 112, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_dash_ledge_b', x: 848, y: 216, width: 64, height: 40, type: 'solid', color: 0x2a3a52 },
       { id: 'tutorial_shaft_wall_left', x: 1040, y: -30, width: 16, height: 424, type: 'wall', color: 0x3b4f6e },
       { id: 'tutorial_shaft_wall_right', x: 1120, y: 50, width: 16, height: 372, type: 'wall', color: 0x3b4f6e },
       { id: 'tutorial_mid_5', x: 2000, y: 176, width: 56, type: 'oneWay', color: 0x304a6d },
-      { id: 'tutorial_mid_3', x: 2380, y: 166, width: 52, type: 'oneWay', color: 0x304a6d },
-      { id: 'tutorial_mid_4', x: 2500, y: 132, width: 52, type: 'oneWay', color: 0x304a6d }
+      // The dash check on the approach: loading deck, a 212px bay, the landing ledge before the boss door.
+      { id: 'tutorial_check_ledge_a', x: 2368, y: 216, width: 64, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_check_ledge_b', x: 2640, y: 216, width: 56, height: 40, type: 'solid', color: 0x2a3a52 }
     ],
+    // Brief roster (8 placements, 5 types) plus the charge target; spawn triggers keep one arrival at a time.
     enemyMarkers: [
       marker('tutorial_armored', 'enemy_armored_bot', 1600, 185, 1540, 1700, {
         spawnTriggerX: 1400,
         retireTriggerX: 1760
       }),
-      marker('tutorial_shield', 'enemy_shield_drone', 2420, 142, undefined, undefined, {
-        spawnTriggerX: 2260,
-        retireTriggerX: 2500
+      marker('tutorial_drone_2', 'enemy_drone', 1740, 112, undefined, undefined, {
+        spawnTriggerX: 1640,
+        retireTriggerX: 1840
       }),
-      marker('tutorial_rocket', 'enemy_rocket_bot', 2560, 185, undefined, undefined, {
-        spawnTriggerX: 2400,
-        retireTriggerX: 2660
+      marker('tutorial_gunner_2', 'enemy_gunner_bot', 2040, 185, 2010, 2080, {
+        spawnTriggerX: 1980,
+        retireTriggerX: 2150
+      }),
+      marker('tutorial_hopper_2', 'enemy_shock_hopper', 2150, 185, undefined, undefined, {
+        spawnTriggerX: 2080,
+        retireTriggerX: 2250
+      }),
+      marker('tutorial_shield', 'enemy_shield_drone', 2296, 128, undefined, undefined, {
+        spawnTriggerX: 2240,
+        retireTriggerX: 2420
+      }),
+      marker('tutorial_rocket', 'enemy_rocket_bot', 2368, 145, undefined, undefined, {
+        spawnTriggerX: 2260,
+        retireTriggerX: 2440
       })
     ],
     roomLocks: [
