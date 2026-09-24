@@ -45,3 +45,13 @@ test('toast lane supersede: never drops or interrupts a non-coach item', () => {
   assert.equal(lane.getDebugState().text, 'Iona line', 'a playing radio line finishes')
   assert.deepEqual(play(lane, 200), ['Iona line', 'SABER: C', 'Step five.', 'Checkpoint 3'])
 })
+
+test('toast lane: an item tall enough to reach the floor row is refused (5.8 review: the guard used the frame bottom)', () => {
+  // A stand-in whose text measures 120px tall: 61 + 8 + 10 + 120 = 199, past the floor line at 160 but inside the frame.
+  const tall: any = new Proxy(function () {}, {
+    get: (_target, key) => (key === Symbol.toPrimitive ? () => 0 : key === 'height' ? 120 : key === 'y' ? 100 : ['x', 'width'].includes(String(key)) ? 0 : tall),
+    apply: () => tall
+  })
+  const lane = new ToastLane(tall)
+  assert.throws(() => lane.enqueue(radio('A radio line long enough to wrap past the floor row')), /too long for the playfield/)
+})

@@ -1,5 +1,5 @@
 import type Phaser from 'phaser'
-import { toastLaneTop } from './overlayLayout'
+import { PLAY_OVERLAY_MAX_BOTTOM, toastLaneTop } from './overlayLayout'
 import { GAME_SIZE } from '../config/renderPolicy'
 
 export type ToastLaneItem = {
@@ -35,14 +35,12 @@ export class ToastLane {
   private readonly speakerText: Phaser.GameObjects.Text
   private readonly bodyText: Phaser.GameObjects.Text
   private readonly laneWidth: number
-  private readonly frameBottom: number
 
   constructor(private readonly scene: Phaser.Scene) {
     const { width, height } = GAME_SIZE
     // Full width: the RETRY readout moved into the HUD band. Lines wrap inside the lane and the lane grows
     // upward to fit them; one unwrapped line used to run past the panel and under RETRY (29 of 32 radio lines).
     this.laneWidth = width - 24
-    this.frameBottom = height - 4
     this.background = scene.add.rectangle(0, 0, this.laneWidth, 22, 0x07142a, 0.94).setStrokeStyle(1, 0x62b6ff, 0.8)
     this.speakerText = scene.add.text(-this.laneWidth / 2 + 8, 0, '', {
       fontFamily: 'monospace', fontSize: '8px', color: '#7de8ff', fontStyle: 'bold'
@@ -137,6 +135,7 @@ export class ToastLane {
     this.bodyText.setY(-laneHeight / 2 + padding + speakerHeight)
     this.background.setFillStyle(this.current.kind === 'radio' ? 0x07142a : this.current.kind === 'hint' ? 0x2a2208 : 0x101827, 0.94)
     this.container.setVisible(true)
-    if (toastLaneTop() + laneHeight > this.frameBottom) throw new Error('ToastLane text is too long for the playfield')
+    // Same floor line as the dialogue panel (game-director review of 5.8): the floor row stays visible.
+    if (toastLaneTop() + laneHeight > PLAY_OVERLAY_MAX_BOTTOM) throw new Error('ToastLane text is too long for the playfield')
   }
 }
