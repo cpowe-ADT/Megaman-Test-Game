@@ -97,7 +97,7 @@ export class HUD {
     this.root.add(this.gBoss.image)
 
     const layout = getHudLayout(GAME_WIDTH)
-    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, 9)
+    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.HERO_CALLSIGN, 9)
     this.root.add(this.tPlayer)
 
     this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', 9)

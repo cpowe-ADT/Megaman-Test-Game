@@ -7,7 +7,8 @@ const distIndexPath = path.join(root, 'dist', 'index.html')
 const distRoot = path.join(root, 'dist', 'assets')
 const excludedRuntimeRoots = [
   path.join(sourceRoot, 'sprites', 'source'),
-  path.join(sourceRoot, 'private', 'source')
+  // The developer-only skin was retired in 05c (5.5): nothing under assets/private is a runtime asset.
+  path.join(sourceRoot, 'private')
 ]
 
 function isInside(parent, candidate) {
@@ -53,6 +54,11 @@ if (!fs.existsSync(distRoot)) {
 
 if (!fs.existsSync(distIndexPath)) {
   console.error(`Missing production index: ${path.relative(root, distIndexPath)}`)
+  process.exit(1)
+}
+
+if (fs.existsSync(path.join(distRoot, 'private'))) {
+  console.error('dist/assets/private exists: the retired developer skin must never ship')
   process.exit(1)
 }
 

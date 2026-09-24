@@ -3,6 +3,7 @@ dist/
 .vscode/
 .DS_Store
 npm-debug.log*
+# Retired developer skin (05c, 2026-09-24): kept ignored so a leftover local copy is never committed.
 assets/private/
 tmp/
 output/

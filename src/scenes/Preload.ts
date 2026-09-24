@@ -1,8 +1,6 @@
-import { IDENTITY } from '../content/identity'
 import Phaser from 'phaser'
 import spriteManifestData from '../../assets/sprites/manifest.v1.json'
 import { getLoadableAtlasEntries } from '../assets/manifest'
-import { countSpriteManifestOverrides, mergeSpriteManifest } from '../assets/privateSpriteManifest'
 import type { SpriteSheetManifestV1 } from '../assets/types'
 import { validateSpriteManifest } from '../assets/validateManifest'
 import { getSfxAssetEntries } from '../audio/sfxLibrary'
@@ -10,6 +8,7 @@ import { residentBackgroundAssets } from './game/stageBackgroundLoading'
 import { AnimationManifest, type AnimationManifestEntry } from '../player/AnimationManifest'
 import { resolvePlayerAtlasBinding } from '../player/PlayerAtlasBindings'
 import { ensureGameplayTextures } from '../ui/gameplay/GameplayTextures'
+import { getRequiredPlayerGroups } from '../assets/coverageRequirements'
 
 const PLAYER_ATLAS_KEY = 'atlas_player_main'
 const PLAYER_SWORD_FX_ATLAS_KEY = 'atlas_player_sword_fx'
@@ -27,20 +26,12 @@ export class Preload extends Phaser.Scene {
   }
 
   preload(): void {
-    const mergedManifest = mergeSpriteManifest(
-      spriteManifestData as SpriteSheetManifestV1,
-      IDENTITY.DEV_SKIN.enabled ? __PRIVATE_SPRITE_MANIFEST_DATA__ : null
-    )
-    const manifestValidation = validateSpriteManifest(mergedManifest)
+    const manifestValidation = validateSpriteManifest(spriteManifestData as SpriteSheetManifestV1)
     if (!manifestValidation.valid) {
       throw new Error(`[sprites] Manifest invalid: ${manifestValidation.errors.join('; ')}`)
     }
 
     const atlasEntries = getLoadableAtlasEntries(manifestValidation.manifest)
-    const privateOverrideEntries = countSpriteManifestOverrides(
-      spriteManifestData as SpriteSheetManifestV1,
-      manifestValidation.manifest
-    )
     atlasEntries.forEach((entry) => {
       if (!this.textures.exists(entry.atlasKey)) {
         this.load.atlas(entry.atlasKey, entry.runtimeImage, entry.runtimeData)
@@ -67,9 +58,7 @@ export class Preload extends Phaser.Scene {
       valid: true,
       entries: manifestValidation.manifest.entries.length,
       readyAtlases: atlasEntries.length,
-      backgroundImages: residentBackgroundAssets().length,
-      privateOverrideEntries,
-      manifestMode: privateOverrideEntries > 0 ? 'base+private' : 'base'
+      backgroundImages: residentBackgroundAssets().length
     })
   }
 
@@ -78,6 +67,9 @@ export class Preload extends Phaser.Scene {
     this.assertAtlasLoaded(PLAYER_ATLAS_KEY)
     this.assertAtlasLoaded(PROJECTILES_ATLAS_KEY)
     this.assertAtlasLoaded(EFFECTS_ATLAS_KEY)
+    if (import.meta.env?.DEV) {
+      this.assertPlayerGroupsCovered()
+    }
 
     this.createAtlasAnimation('player-idle', PLAYER_ATLAS_KEY, ['player_main/idle/'], 6, -1, {
       start: 0,
@@ -145,6 +137,23 @@ export class Preload extends Phaser.Scene {
   private assertAtlasLoaded(atlasKey: string): void {
     if (!this.textures.exists(atlasKey)) {
       throw new Error(`[Preload] Missing required atlas '${atlasKey}'`)
+    }
+  }
+
+  // Dev-only: catches a hero atlas that is missing a required group (e.g. a stale or partial cut)
+  // before any scene tries to play an animation from it. Production builds skip this so a base atlas
+  // that already shipped never throws at runtime; `npm run sprites:validate` covers the same ground
+  // for CI.
+  private assertPlayerGroupsCovered(): void {
+    const frameNames = this.textures.get(PLAYER_ATLAS_KEY).getFrameNames().filter((name) => name !== '__BASE')
+    const missing = getRequiredPlayerGroups().filter(({ group, minCount }) => {
+      const prefix = `player_main/${group}/`
+      const count = frameNames.filter((name) => name.startsWith(prefix)).length
+      return count < minCount
+    })
+    if (missing.length > 0) {
+      const detail = missing.map(({ group, minCount }) => `${group} (need ${minCount})`).join(', ')
+      throw new Error(`[Preload] '${PLAYER_ATLAS_KEY}' is missing required hero groups: ${detail}`)
     }
   }
 

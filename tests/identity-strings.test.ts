@@ -21,11 +21,11 @@ function bannedText(source: string): string[] {
   visit(tree)
   return [...matches]
 }
-function loadIdentity(manifest: unknown, publicFlag?: string) {
+function loadIdentity(publicFlag?: string) {
   const source=fs.readFileSync('src/content/identity.ts','utf8').replaceAll('import.meta.env','__testEnv')
   const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText
   const exports: Record<string, any>={}
-  vm.runInNewContext(code,{exports,__PRIVATE_SPRITE_MANIFEST_DATA__:manifest,__testEnv:{VITE_PUBLIC_BUILD:publicFlag}})
+  vm.runInNewContext(code,{exports,__testEnv:{VITE_PUBLIC_BUILD:publicFlag}})
   return exports.IDENTITY
 }
 
@@ -38,19 +38,19 @@ test('runtime source strings and comments have one original identity',()=>{
   const hits=files('src').flatMap(file=>bannedText(fs.readFileSync(file,'utf8')).map(text=>({file,text})))
   assert.deepEqual(hits,[])
 })
-for(const manifest of [null,{entries:[]}])for(const flag of [undefined,'0','1']){
-  test(`actual identity skin gate: manifest=${manifest===null?'null':'present'}, public=${flag}`,()=>{
-    const identity=loadIdentity(manifest,flag)
-    assert.equal(identity.DEV_SKIN.enabled,manifest!==null&&flag!=='1')
-    assert.ok(Object.isFrozen(identity));assert.ok(Object.isFrozen(identity.DEV_SKIN));assert.ok(Object.isFrozen(identity.WARDEN_NAMES))
+for(const flag of [undefined,'0','1']){
+  test(`identity is the same public identity in every build (public=${flag}); the developer skin is retired`,()=>{
+    const identity=loadIdentity(flag)
+    assert.equal('DEV_SKIN' in identity,false)
+    assert.ok(Object.isFrozen(identity));assert.ok(Object.isFrozen(identity.WARDEN_NAMES))
   })
 }
 test('identity uses exact original public terms and preserves eight distinct warden names',()=>{
-  const i=loadIdentity(null)
-  assert.deepEqual(JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(i).filter(([key])=>!['DEV_SKIN','WARDEN_NAMES'].includes(key))))),{
+  const i=loadIdentity()
+  assert.deepEqual(JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(i).filter(([key])=>!['WARDEN_NAMES'].includes(key))))),{
     GAME_TITLE:'OMEGA RELAY',GAME_SUBTITLE:'EIGHT WARDENS. ONE MANUFACTURED CRISIS.',HERO_CALLSIGN:'WREN',HERO_UNIT:'RECOVERY UNIT 09',OPERATOR_NAME:'Director Iona Vale',ANTAGONIST_NAME:'OMEGA CORE',WARDEN_TERM:'WARDEN',WARDEN_TERM_PLURAL:'WARDENS'
   })
-  assert.equal(i.DEV_SKIN.heroLabel,'MEGA MAN X');assert.match(i.HERO_CALLSIGN,/^[A-Z]{4,6}$/)
+  assert.match(i.HERO_CALLSIGN,/^[A-Z]{4,6}$/)
   assert.deepEqual(JSON.parse(JSON.stringify(i.WARDEN_NAMES)),{pyro_maw:'Pyro Maw',tide_reaver:'Tide Reaver',volt_hopper:'Volt Hopper',basalt_titan:'Basalt Titan',ferro_blade:'Ferro Blade',mire_wraith:'Mire Wraith',gale_vixen:'Gale Vixen',glacier_ronin:'Glacier Ronin'})
   assert.equal(fs.readFileSync('README.md','utf8').split('\n')[0],`# ${i.GAME_TITLE}`)
   assert.ok(fs.readFileSync('index.html','utf8').includes(`<title>${i.GAME_TITLE}</title>`))

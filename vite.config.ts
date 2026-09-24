@@ -1,11 +1,7 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { relative, resolve } from 'path'
 import { defineConfig, type Plugin } from 'vite'
 
-const privateSpriteManifestPath = resolve(__dirname, 'assets/private/runtime/private-sprite-overrides.manifest.json')
-const privateSpriteManifestData = existsSync(privateSpriteManifestPath)
-  ? JSON.parse(readFileSync(privateSpriteManifestPath, 'utf8'))
-  : null
 const smokeWatchIgnored = process.env.VITE_SMOKE === '1' ? ['**/*'] : undefined
 const smokeServerActive = process.env.VITE_SMOKE === '1'
 // Source maps are for debugging a build; the dev server has its own. Phaser's map alone is 10MB.
@@ -16,7 +12,7 @@ const buildSourcemap = process.env.BUILD_SOURCEMAP === '1' ? 'hidden' : false
 function copyRuntimeAssetsPlugin(): Plugin {
   const sourceRoot = resolve(__dirname, 'assets')
   const targetRoot = resolve(__dirname, 'dist/assets')
-  const ownedRuntimeDirs = ['audio', 'backgrounds', 'sprites', 'private']
+  const ownedRuntimeDirs = ['audio', 'backgrounds', 'sprites']
 
   return {
     name: 'copy-runtime-assets',
@@ -42,7 +38,8 @@ function copyRuntimeAssetsPlugin(): Plugin {
           if (assetPath === 'sprites/source' || assetPath.startsWith('sprites/source/')) {
             return false
           }
-          if (assetPath === 'private/source' || assetPath.startsWith('private/source/')) {
+          // The developer-only skin was retired in 05c (5.5); never ship anything left in assets/private.
+          if (assetPath === 'private' || assetPath.startsWith('private/')) {
             return false
           }
 
@@ -61,9 +58,6 @@ export default defineConfig(({ command }) => ({
     watch: smokeWatchIgnored ? { ignored: smokeWatchIgnored } : undefined
   },
   preview: { open: false },
-  define: {
-    __PRIVATE_SPRITE_MANIFEST_DATA__: JSON.stringify(privateSpriteManifestData)
-  },
   build: {
     sourcemap: buildSourcemap,
     rollupOptions: {

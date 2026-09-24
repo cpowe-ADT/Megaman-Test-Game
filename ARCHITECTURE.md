@@ -48,7 +48,7 @@ Scenes and the player controller consume named actions; keyboard aliases and sup
 
 `src/content/identity.ts` exports one frozen `IDENTITY` with exact public title/subtitle, hero/unit/operator/antagonist terms and a frozen map of the eight existing warden names. Title, HUD, campaign/roster, menus and dialogue speaker labels consume it. The generic dialogue registry and authored v1 JSON remain unchanged; the bundled-content adapter replaces proper display names from identity before registry construction, while the hero interpolation token always resolves to the canonical callsign.
 
-Private skin is enabled only when the compiled private manifest is non-null and `VITE_PUBLIC_BUILD` is not `1`; nested skin data is frozen too. Preload follows that decision when merging atlases, and only the developer HUD may use its alternative hero label. A flagged development preview uses WREN plus the base manifest. Ordinary Vite output still copies private assets, and the base artwork is not final original release art; production stripping and art acceptance remain later gates. Internal `robot_master` identifiers stay compatible until their planned cleanup.
+The developer-only skin was retired in 05c (5.5, 2026-09-24): there is no private manifest, no `DEV_SKIN`, and every build shows WREN from `assets/sprites/manifest.v1.json`; the Vite copy step never ships `assets/private/`.
 
 ## Known Architectural Debt
 - `src/scenes/Game.ts` is still the main complexity hotspot and remains under `@ts-nocheck`.

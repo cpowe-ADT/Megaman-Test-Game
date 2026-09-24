@@ -1,4 +1,4 @@
-/** Original public identity; the private skin changes only developer artwork and its HUD label. */
+/** Original public identity: the only source of public names (the developer-only skin was retired in 05c, 5.5). */
 export const IDENTITY = Object.freeze({
   GAME_TITLE: 'OMEGA RELAY',
   GAME_SUBTITLE: 'EIGHT WARDENS. ONE MANUFACTURED CRISIS.',
@@ -12,10 +12,5 @@ export const IDENTITY = Object.freeze({
     pyro_maw: 'Pyro Maw', tide_reaver: 'Tide Reaver', volt_hopper: 'Volt Hopper',
     basalt_titan: 'Basalt Titan', ferro_blade: 'Ferro Blade', mire_wraith: 'Mire Wraith',
     gale_vixen: 'Gale Vixen', glacier_ronin: 'Glacier Ronin'
-  }),
-  DEV_SKIN: Object.freeze({
-    enabled: typeof __PRIVATE_SPRITE_MANIFEST_DATA__ !== 'undefined' &&
-      __PRIVATE_SPRITE_MANIFEST_DATA__ !== null && import.meta.env?.VITE_PUBLIC_BUILD !== '1',
-    heroLabel: 'MEGA MAN X'
   })
 })

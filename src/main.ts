@@ -241,7 +241,6 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     ready: true,
     view: describeRenderView(targetGame, scene),
     identity: { title: IDENTITY.GAME_TITLE, heroCallsign: IDENTITY.HERO_CALLSIGN,
-      devSkinEnabled: IDENTITY.DEV_SKIN.enabled,
       heroLabel: (scene as any).hud?.tPlayer?.text ?? null },
     spriteManifest: scene.registry.get('sprite_manifest_summary') ?? null,
     timeMs: Math.round(scene.time?.now ?? 0)

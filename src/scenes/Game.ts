@@ -1674,7 +1674,7 @@ export class Game extends Phaser.Scene {
       this.bossBody?.data?.get?.('name') ??
       this.bossName ??
       '??'
-    this.hud.setNames(IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, String(bossLabelRaw))
+    this.hud.setNames(IDENTITY.HERO_CALLSIGN, String(bossLabelRaw))
     this.hud.setWeaponName(getWeaponDisplayName(this.getCurrentWeaponId()))
     this.hud.setWeaponColor(this.getCurrentWeaponConfig().tint)
     this.hud.setLives(this.playerLives)

@@ -906,11 +906,10 @@ async function runTitleControlsScenario(name) {
     await waitForState(page,state=>state.scene==='Game'&&state.newPlayer?.locomotion?.grounded===true)
     await waitForPageCheck(page,()=>!window.__phaserGame.scene.getScene('Game').cameras.main.fadeEffect.isRunning,2500,'entry fade to finish before HUD capture')
     const gameplayState=await readState(page)
-    const expectedPrivate=fs.existsSync('assets/private/runtime/private-sprite-overrides.manifest.json')&&process.env.VITE_PUBLIC_BUILD!=='1'
-    assert.equal(gameplayState.identity.devSkinEnabled,expectedPrivate)
-    assert.equal(gameplayState.identity.heroLabel,expectedPrivate?'MEGA MAN X':'WREN')
-    assert.equal(gameplayState.spriteManifest.manifestMode,expectedPrivate?'base+private':'base')
-    assert.equal(gameplayState.spriteManifest.privateOverrideEntries>0,expectedPrivate)
+    // The developer skin was retired in 05c (5.5): every build shows WREN from the base manifest alone.
+    assert.equal(gameplayState.identity.heroLabel,'WREN')
+    assert.equal('devSkinEnabled' in gameplayState.identity,false)
+    assert.equal('privateOverrideEntries' in (gameplayState.spriteManifest??{}),false)
     const dialogue=await page.evaluate(()=>window.__phaserGame.scene.getScene('Game').buildDialogueLines('tutorial_sentinel','boss_intro'))
     assert.ok(dialogue.some(line=>line.text.startsWith('WREN,')))
     assert.ok(dialogue.some(line=>line.speakerId==='hero'&&line.speakerName==='WREN'))
