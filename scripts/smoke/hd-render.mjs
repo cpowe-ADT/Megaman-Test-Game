@@ -233,13 +233,21 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     // shrank to 18, which failed the check under load at df941b3's code.
     // The run crosses Pyro's flame vent and a drone at x 700 to 790: a contact hit's knockback (5.2) cut the
     // run to 62px in one sample. The hero is invulnerable for the measurement, as in the sweep's boss sample.
+    // The replay is frame-exact (trace: x 692 at vx 220 on frame 60), but waking the loop lets real frames run
+    // before any read; under load (load average 80 to 250 on 2026-09-24) that was several frames of braking and
+    // a lead of 18 to 22. Keep the run held through the read, then release: the lead is read at full speed.
     const { hdRun, hdCameraState } = await hd.evaluate(async () => {
       window.__phaserGame.scene.getScene('Game').newPlayerRuntime?.resetForRespawn?.(60000)
-      const run = await window.stageDebug.replayInputs([
-        { frame: 0, held: ['moveRight'] },
-        { frame: 60, held: [] }
-      ])
-      return { hdRun: run, hdCameraState: JSON.parse(window.render_game_to_text()) }
+      const run = await window.stageDebug.replayInputs(
+        [
+          { frame: 0, held: ['moveRight'] },
+          { frame: 60, held: ['moveRight'] }
+        ],
+        { keepHeld: true }
+      )
+      const state = JSON.parse(window.render_game_to_text())
+      window.stageDebug.replayInputs([{ frame: 0, held: [] }])
+      return { hdRun: run, hdCameraState: state }
     })
     const hdHeroX = hdCameraState.player.x
     const hdHeroScreenX = hdHeroX - hdCameraState.camera.scrollX
