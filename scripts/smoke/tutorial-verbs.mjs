@@ -222,6 +222,50 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     assert.ok(through.player.x > 2240)
     assert.ok(locksOf(through).every((entry) => entry.phase === 'open' && !entry.gateClosed))
 
+    // 6 the fight (6.P; Craig: "i cant fight the first boss ... he hasnt spawned"). No scenario walked from the
+    // saber room into Rook's room: every boss scenario warps with crossBossGate. On real input: from ledge A a
+    // dash-jump over the check spikes to ledge B, then walk right; the gate must close, the camera lock, the intro
+    // play, and Rook be on screen and take damage.
+    // Take off from ledge A's right edge (from its middle the dash-jump lands at the foot of ledge B, x 2604), and
+    // jump once more on landing, as a player at the foot of ledge B would.
+    await place(2394, 170)
+    await advanceFrames(page, 20)
+    await page.evaluate((rows) => window.stageDebug.replayInputs(rows), [
+      { frame: 0, held: ['moveRight', 'dash'] },
+      { frame: 3, held: ['moveRight', 'dash', 'jump'] },
+      { frame: 24, held: ['moveRight', 'dash'] },
+      { frame: 60, held: ['moveRight'] },
+      { frame: 64, held: ['moveRight', 'jump'] },
+      { frame: 80, held: ['moveRight'] },
+      { frame: 170, held: [] }
+    ])
+    const entered = await readState(page)
+    fs.writeFileSync(path.join(dir, 'boss-entry.json'), JSON.stringify({ hero: entered.player, gate: await page.evaluate(() => window.stageDebug.bossGateState?.()), bossRoom: entered.stageRuntime?.bossRoom }, null, 2))
+    await waitForState(page, (state) => state.stageRuntime?.bossRoom?.cameraLocked === true, 15000)
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const state = await readState(page)
+      if (!state.dialogue?.active) break
+      await page.evaluate(() => window.stageDebug.skipDialogue())
+      await advanceFrames(page, 4)
+    }
+    await advanceFrames(page, 30)
+    const fight = await capture('boss-fight')
+    const rook = await page.evaluate(() => {
+      const game = window.__phaserGame.scene.getScene('Game')
+      const body = game.bossTarget ?? game.bossBody
+      const cam = game.cameras.main
+      return { active: game.bossEncounterActive, gateLocked: window.stageDebug.bossGateState?.().locked, x: body?.x, y: body?.y, visible: body?.visible, alpha: body?.alpha, camLeft: cam.scrollX, camRight: cam.scrollX + 448 }
+    })
+    fs.writeFileSync(path.join(dir, 'boss-fight.json'), JSON.stringify({ rook, hero: fight.player }, null, 2))
+    assert.equal(rook.active, true, 'walking into the room starts the encounter')
+    assert.equal(rook.gateLocked, true, 'the boss gate closes behind the hero')
+    assert.ok(rook.visible && rook.alpha > 0 && rook.x > rook.camLeft && rook.x < rook.camRight, `Rook is on screen (${JSON.stringify(rook)})`)
+    const hpBefore = (await readState(page)).bossState?.hp?.current
+    await page.evaluate(() => window.bossDebug?.damage?.(1))
+    await advanceFrames(page, 10)
+    const hpAfter = (await readState(page)).bossState?.hp?.current
+    assert.ok(hpAfter < hpBefore, `Rook takes damage (${hpBefore} -> ${hpAfter})`)
+
     // The lane showed every key hint and every recorded Rook prompt, inside its bounds.
     const laneWait = page.waitForFunction(({ hints, steps }) => {
       const log = window.__laneLog ?? []
