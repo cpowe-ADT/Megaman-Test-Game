@@ -2526,6 +2526,10 @@ async function runPickupRecoveryScenario(name) {
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.damagePlayer && window.stageDebug?.spawnPickup))
     await page.evaluate(() => {
       window.stageDebug?.damagePlayer?.(3)
+    })
+    // The hurt lock now carries the knockback (5.2), so let the hero settle before the pickups drop at his feet.
+    await advanceFrames(page, 24)
+    await page.evaluate(() => {
       window.stageDebug?.spawnPickup?.('health')
       window.stageDebug?.spawnPickup?.('ammo')
     })

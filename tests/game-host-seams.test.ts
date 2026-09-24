@@ -348,7 +348,7 @@ test('5.2-5 DeathSequence plays player_death, freezes 250ms, bursts at 250 and r
   death.killPlayer('pit')
   assert.deepEqual(runtime, ['playDeath'])
   assert.deepEqual(emitted, [['player.hitstop', 15]])
-  assert.deepEqual(timers.map((timer) => timer.delay), [250, 650, 900])
+  assert.deepEqual(timers.map((timer) => timer.delay), [250, 600, 900])
   assert.equal(death.trace?.animationKey, 'player_death')
   assert.equal(death.trace?.sfxKey, 'player_death')
   assert.equal(death.trace?.reason, 'pit')
@@ -369,11 +369,12 @@ test('5.2-5 the kill plane routes a fall through requestPlayerDamage (fatal, byp
   const { host } = makeDeathHost({
     requestPlayerDamage: ((request: unknown) => (requests.push(request), { accepted: true })) as never
   })
+  // Tide Reaver's arena allows falling off; the tutorial's does not, and an early return there made
+  // this test a silent no-op (5.2 QA review).
+  ;(host as unknown as { activeStageId: string }).activeStageId = 'tide_reaver'
   ;(host.player as unknown as { y: number }).y = 10_000
   const stage = getCampaignStage(host.activeStageId)
-  if (!stage.arena.allowFallOff) {
-    return
-  }
+  assert.equal(stage.arena.allowFallOff, true, 'the fixture stage must allow falling off')
   new DeathSequence(host).checkStageKillPlane()
   assert.equal(requests.length, 1)
   assert.equal((requests[0] as { sourceType: string }).sourceType, 'fall')

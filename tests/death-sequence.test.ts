@@ -18,7 +18,7 @@ test('5.2-5 the world freezes 250ms, eight orbs burst as it ends, respawn is at 
   assert.equal(DEATH_TIMELINE.orbCount, 8)
   assert.ok(DEATH_TIMELINE.respawnAtMs >= 900)
   assert.equal(DEATH_TIMELINE.readyMs, 600)
-  assert.ok(DEATH_TIMELINE.fadeOutAtMs + DEATH_TIMELINE.fadeOutMs <= DEATH_TIMELINE.respawnAtMs, 'the fade completes before respawn')
+  assert.ok(DEATH_TIMELINE.fadeOutAtMs + DEATH_TIMELINE.fadeOutMs + 100 <= DEATH_TIMELINE.respawnAtMs, 'the fade completes at least 100ms before respawn')
 })
 
 test('5.2-5 the 250ms freeze is 15 hit-stop frames at 60Hz', () => {

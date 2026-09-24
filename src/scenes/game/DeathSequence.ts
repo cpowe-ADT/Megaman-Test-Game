@@ -26,7 +26,7 @@ export const DEATH_TIMELINE = {
   freezeMs: 250,
   burstAtMs: 250,
   orbCount: 8,
-  fadeOutAtMs: 650,
+  fadeOutAtMs: 600,
   fadeOutMs: 200,
   respawnAtMs: 900,
   fadeInMs: 200,
