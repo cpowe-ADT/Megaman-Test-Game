@@ -30,5 +30,6 @@ export const ASSET_CREDITS: readonly string[] = [
   "Art: Original Mire Wraith art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original Gale Vixen art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original Glacier Ronin art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
-  "Art: Original Omega Core art, generated with Higgsfield (gpt_image_2) for this project (original-generated)"
+  "Art: Original Omega Core art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original WREN hero art (design C2), generated with Higgsfield (gpt_image_2) for this project (original-generated)"
 ]

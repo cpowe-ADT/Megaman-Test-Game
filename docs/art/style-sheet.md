@@ -5,8 +5,8 @@ Status: canonical for all generated art from prompt 05 §5.4. Owner: Art Directo
 ## Frame and scale
 
 - Game frame `448 x 252` (`GAME_WIDTH`, `GAME_HEIGHT`); the HUD band takes the top 58px (`GAMEPLAY_VIEWPORT_TOP`), so the playfield is `448 x 194`.
-- Hero cell 48px: body 38 to 42px tall, feet on the cell baseline 4px above the bottom. Bosses 64px cells (baseline 60). Enemies 32 or 48. A hero is a fifth of the playfield height, a boss a third; a detail under 3px vanishes, a silhouette feature under 8px does not read.
-- Sprites face right in source; the runtime flips. Light comes from the upper left in every sheet.
+- Hero cell 48px: body 38 to 42px tall, feet on row 46 (the tuned player body profiles end there; 05c). Other cells: feet on the baseline 4px above the bottom. Bosses 64px cells (baseline 60). Enemies 32 or 48. A hero is a fifth of the playfield height, a boss a third; a detail under 3px vanishes, a silhouette feature under 8px does not read.
+- Sprites face right in source and the runtime flips, except the hero: WREN's frames face left (the C2 reference's side view, and gpt_image_2 keeps it), which the player flip rule expects (`shouldFlipPlayerSpriteForFacing`). Light comes from the upper left in every sheet.
 - Downscale rule: Higgsfield draws at 1024px; a 4x3 sheet at 4:3 gives about 256px cells and a 3x1 turnaround about 341px cells. The cut (`hf_sheet_to_atlas.py`) box-downsamples each cell to the game cell (64, 48 or 32px, an integer factor when the grid allows it), then snaps to whole pixels with nearest-neighbour, sits every frame on the baseline, and quantizes to 32 colours. Gradients in the raw output are expected; the cut flattens them. Check the outline hue after the cut: it must be the cool or warm near-black, not pure black.
 
 ## Line and tone

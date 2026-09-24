@@ -4,7 +4,7 @@ All three: 1:1, 1k, quality medium, through the Higgsfield MCP (`generate_image_
 
 Shared block:
 
-> 16-bit pixel art character turnaround of one original video game hero, SNES action platformer style, crisp hard-edged pixels, no anti-aliasing, dark 1px outline, three-tone shading, light from the upper left. The character: {CHARACTER}. Layout: exactly 3 columns and 1 row of equal square cells on a flat solid magenta background (#FF00FF), character centered in every cell: cell 1 front view, cell 2 side view facing right, cell 3 back view, same size and same design in every cell, feet on one baseline, no grid lines, no borders, no text, no labels, no shadows, no extra objects. Nothing else in the image. Original design, not Mega Man, no round helmet gem, no large round shoulder pads, no gradients, no blur, no soft shading, no photorealism, no glow effects, no background scenery, no watermark.
+> 16-bit pixel art character turnaround of one original video game hero, SNES action platformer style, crisp hard-edged pixels, no anti-aliasing, dark 1px outline, three-tone shading, light from the upper left. The character: {CHARACTER}. Layout: exactly 3 columns and 1 row of equal square cells on a flat solid magenta background (#FF00FF), character centered in every cell: cell 1 front view, cell 2 side view facing right, cell 3 back view, same size and same design in every cell, feet on one baseline, no grid lines, no borders, no text, no labels, no shadows, no extra objects. Nothing else in the image. [the hero negatives from `docs/art/style-sheet.md`, Master Higgsfield prompt, "For the hero add"], no gradients, no blur, no soft shading, no photorealism, no glow effects, no background scenery, no watermark.
 
 | File | Job | Character block |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Contact sheet (three at 480px, side view at 42px, 4x nearest and 4x silhouette):
 
 ## Redraw after the Art Director review (2026-09-24, `docs/prompts/reviews/2026-09-24-5.4-hero/MERGED.md`)
 
-Candidate C (job 409cd9e7) is **excluded**: twin ear fins plus a white face plate read as the classic Mega Man helmet (MAJOR). Kept on disk as the record of the review. Replaced by C2:
+Candidate C (job 409cd9e7) is **excluded**: twin ear fins plus a white face plate read as the helmet of the franchise the style sheet names (MAJOR; wording in `docs/prompts/reviews/2026-09-24-5.4-hero/MERGED.md`). Kept on disk as the record of the review. Replaced by C2:
 
 | File | Job | Character block | Result URL |
 | --- | --- | --- | --- |

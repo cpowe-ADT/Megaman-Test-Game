@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generatedAt": "2026-09-10",
+  "generatedAt": "2026-09-24",
   "entries": [
     {
       "id": "boss-sentinel-rook",
@@ -202,7 +202,7 @@
         "localImagePath": "assets/sprites/player/main/player_main.png",
         "localDataPath": "assets/sprites/player/main/player_main.atlas.json"
       },
-      "notes": "Generated from source/player/player_full_combat_sheet_v1_20260207_201355.png via deterministic pose-window extraction."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from hero_sheet_v1_2026-09-24_e1.png."
     },
     {
       "id": "enemies-enemy_rocket_bot",

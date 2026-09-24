@@ -175,7 +175,7 @@ export function resolvePlayerPhysicsLimits(
   }
 }
 
-// The imported developer override sheets are authored facing left by default.
+// WREN's sheets (5.5, design C2) are authored facing left, as the C2 side view is: flip when facing right.
 export function shouldFlipPlayerSpriteForFacing(facing: 1 | -1): boolean {
   return facing === 1
 }

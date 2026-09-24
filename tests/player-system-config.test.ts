@@ -73,7 +73,7 @@ test('run and fire locomotion animations use readable frame rates', () => {
   assert.equal(AnimationManifest.animations.player_idle.frameRate >= 4, true)
 })
 
-test('private Mega Man sheets flip right-facing movement from left-authored source frames', () => {
+test('hero sheets are authored facing left, so the sprite flips when facing right', () => {
   assert.equal(shouldFlipPlayerSpriteForFacing(1), true)
   assert.equal(shouldFlipPlayerSpriteForFacing(-1), false)
 })
