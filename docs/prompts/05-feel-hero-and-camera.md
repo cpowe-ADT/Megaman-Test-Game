@@ -17,8 +17,8 @@ Three to four sessions: `05a` (5.0, 5.1 and 5.2), `05b` (5.3, 5.4 and 5.7), `05c
 ## Entry conditions
 
 - Charter pasted and its 2026-09-22 amendments read. `docs/prompts/handoff/01-foundation-and-story.md` is `COMPLETE`; `EVAL-ART-001` to `EVAL-ART-004` are `PASS` in the ledger. `docs/prompts/PLAN_v2.md` read.
-- Read in full: `src/player/config.ts`, `src/player/PlayerMotor.ts`, `src/player/PlayerCombat.ts`, `src/player/NewPlayerRuntime.ts`, `src/player/PlayerStateMachine.ts`, `src/player/VfxSfxRouter.ts`, `src/player/PlayerBodyProfiles.ts`, `src/player/PlayerAtlasBindings.ts`, `src/player/AnimationManifest.ts`, `tests/player-motor.test.ts`, `tests/player-combat.test.ts`, the camera, hit-stop, `killPlayer` and `playerDeathAndRespawn` code in `src/scenes/Game.ts`, `src/config/hdRender.ts` (the camera is an `HdCamera`; `startFollow` and `setFollowOffset` keep their meaning), `src/config/renderPolicy.ts`, `src/systems/Save.ts`, `src/scenes/NewCampaignScene.ts`, `src/scenes/Title.ts`, `scripts/sprites/hf_sheet_to_atlas.py`, `scripts/sprites/build_private_megaman_override_pack.py` (the group list is the animation inventory), `scripts/sprites/private_megaman_override_spec.json`, `docs/content/sprite-imagegen.md`, `docs/architecture/rendering.md`.
-- Run and paste: `npm run test` (256), `SMOKE_ONLY=13d-movement-feel,13c-unified-player-damage,9-checkpoint-respawn,24-ground-sword-enemy,40-hd-render npm run test:smoke`.
+- Read in full: `src/player/config.ts`, `src/player/PlayerMotor.ts`, `src/player/PlayerCombat.ts`, `src/player/NewPlayerRuntime.ts`, `src/player/PlayerStateMachine.ts`, `src/player/VfxSfxRouter.ts`, `src/player/PlayerBodyProfiles.ts`, `src/player/PlayerAtlasBindings.ts`, `src/player/AnimationManifest.ts`, `tests/player-motor.test.ts`, `tests/player-combat.test.ts`, the camera, hit-stop, `killPlayer` and `playerDeathAndRespawn` code in `src/scenes/Game.ts`, `src/config/hdRender.ts` (the camera is an `HdCamera`; since 5.3 the follow is the pure step in `src/scenes/game/cameraFollow.ts`, not `startFollow`), `src/config/renderPolicy.ts`, `src/systems/Save.ts`, `src/scenes/NewCampaignScene.ts`, `src/scenes/Title.ts`, `scripts/sprites/hf_sheet_to_atlas.py`, `scripts/sprites/build_private_megaman_override_pack.py` (the group list is the animation inventory), `scripts/sprites/private_megaman_override_spec.json`, `docs/content/sprite-imagegen.md`, `docs/architecture/rendering.md`.
+- Run and paste: `npm run test` (377 at 05c entry; `npm run agents:facts`), `SMOKE_ONLY=13d-movement-feel,13c-unified-player-damage,9-checkpoint-respawn,24-ground-sword-enemy,40-hd-render npm run test:smoke`.
 
 ## Outcome of this prompt
 
@@ -155,6 +155,10 @@ Show: the slot picker, the name entry, a briefing line with the name, the export
 Question for Craig: approve the flow? Recommended: yes.
 ```
 
+## Phase 5.8: Playtest fixes (added 2026-09-24 from Craig's play)
+
+Craig on Retina Safari: "i cant see the boss", "the text covers the screen at the beginning of the tutorial". Causes: every baked HUD panel and bar drew nothing under WebGL (Phaser 3.90 `DynamicTexture.setSize` keeps a 1x1 render target); `BOSS • <name>` and `BOSS GATE ADVANCE` showed from the first screen; the 112px briefing panel and the toast lane sat on the floor row over the hero. Fix: rebuild the texture on resize (`src/ui/BakedGraphics.ts`), `TARGET •` until the fight and `BOSS GATE AHEAD`, panel and lane hang from the HUD band (`src/ui/overlayLayout.ts`). Checks: smoke 40 samples the 2x player bar and reads the lead in the replay's frame; smoke 49 asserts the briefing and lane end above the hero; `tests/overlay-layout.test.ts`. Ledger: `EVAL-P5-011`.
+
 ## Panel conditions (2026-09-22, delegated decisions)
 
 - Done before 05 starts: the radio ticker wraps inside a full-width lane and smoke 35 asserts its bounds; the RETRY readout sits in the HUD band (D-001, `docs/prompts/reviews/2026-09-22-decisions/`). `tutorial_coach` lines (5.7) use that lane; keep smoke 35's bounds check green.
@@ -162,10 +166,10 @@ Question for Craig: approve the flow? Recommended: yes.
 
 ## Exit Gate
 
-- `EVAL-P5-001` to `EVAL-P5-010` `PASS` (P5-005 is Craig's pick).
+- `EVAL-P5-001` to `EVAL-P5-011` `PASS` (P5-005 is Craig's pick).
 - `npm run verify` and `npm run test:visual-sweep` green on the exit commit; result lines and artifact paths pasted.
 - `assets/private/` does not exist; `git grep -i "mega man\|mmx4\|spriters-resource" -- src scripts assets` prints nothing.
-- `wc -l src/scenes/Game.ts` at or below 3,400 after 5.0's extractions (it is 3,704 now); no phase after 5.0 adds a net line to it.
+- `wc -l src/scenes/Game.ts` at or below 3,400 after 5.0's extractions (2,920 at 05c entry); no phase after 5.0 adds a net line to it.
 - `docs/prompts/handoff/05-feel-hero-and-camera.md` per the charter, with `Inputs for prompt 06`: the movement constants as tuned (levels are built against them), the hero cell contract, the camera vertical-follow API, the style sheet, the input replay script format.
 
 ```
