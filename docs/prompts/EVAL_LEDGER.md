@@ -32,7 +32,7 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 | EVAL-P6-001 | gate | level v2 parity | PENDING | | |
 | EVAL-P6-002 | audit | content audit table, report-only | PENDING | | |
 | EVAL-P6-003 | gate | lint on parity stages; pit, wall-kick, vertical smoke | PENDING | | |
-| EVAL-P6-004 | gate | mechanics library and lab, smoke 42 | PENDING | | |
+| EVAL-P6-004 | gate | mechanics library and lab, smoke 42 | PENDING | partial 2026-09-24: vent, rising_liquid, crumble_group, breakable_wall, verticalSegments; 415 tests; smoke 42 `output/smoke-runs/2026-09-24T22-34-41-382Z/`; 7 of 12 rows left | |
 | EVAL-P6-005 | gate | mini-bosses, smoke 43, miniboss_callout wired | PENDING | | |
 | EVAL-P6-006 | gate | enemy behaviour and respawn tests and captures | PENDING | | |
 | EVAL-P6-007 | gate + review | nine tilesets and backgrounds, zero placeholder skins | PENDING | | |

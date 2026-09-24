@@ -24,6 +24,7 @@ import { resolvePlayerFeatureFlags } from './player/featureFlags'
 import { summarizeSpriteKinematics } from './tools/debug/StateSnapshot'
 import { getStageContentRetentionReport } from './content/campaign'
 import { ROOM_LOCK_DATA_KEY } from './mechanics/adapters/RoomLockAdapter'
+import { STAGE_MECHANICS_DATA_KEY } from './mechanics/adapters/StageMechanicsAdapter'
 import { stepGameFrames, type StepGameFramesOptions } from './config/frameStepping'
 
 const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
@@ -371,7 +372,11 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     payload.stageIntro = (scene as any).storyDirector?.getDebugState?.().intro ?? { phase: 'idle', active: false, cardRemainingMs: 0 }
     payload.story = (scene as any).storyDirector?.getDebugState?.() ?? null
     payload.ticker = (scene as any).toastLane?.getDebugState?.() ?? null
-    payload.mechanics = { roomLocks: scene.data?.get?.(ROOM_LOCK_DATA_KEY)?.getDebugState?.() ?? [] }
+    payload.mechanics = {
+      roomLocks: scene.data?.get?.(ROOM_LOCK_DATA_KEY)?.getDebugState?.() ?? [],
+      verticalSegments: scene.data?.get?.(ROOM_LOCK_DATA_KEY)?.getSegmentDebugState?.() ?? [],
+      ...(scene.data?.get?.(STAGE_MECHANICS_DATA_KEY)?.getDebugState?.() ?? {})
+    }
     payload.projectiles = {
       playerActive: scene.playerBullets?.getTotalUsed?.() ?? 0,
       bossActive: scene.bossBullets?.getTotalUsed?.() ?? 0

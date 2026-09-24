@@ -12,11 +12,13 @@ import {
   resolveCameraRoomIndex,
   resolveWorldCeiling,
   roomLockKeyHint,
+  verticalSegmentRoom,
   type RoomLockDefinition,
   type RoomLockInput,
   type RoomLockState,
   type RoomLockVerbSample,
-  type RoomRect
+  type RoomRect,
+  type VerticalSegmentDefinition
 } from '../roomLock'
 
 /** The player runtime surface the adapter reads: the typed verb sample and facing. */
@@ -57,10 +59,19 @@ export class RoomLockAdapter {
   private readonly defaultWorld: RoomRect
   private prevSample: RoomLockVerbSample | null = null
   private cameraRoom = -1
+  /** Locks first (their indexes are the coach-line positions), then the gateless vertical segments, always open. */
+  private readonly rooms: { room: RoomRect }[]
+  private readonly segmentPhases: { phase: 'open' }[]
 
-  constructor(private readonly deps: RoomLockAdapterDeps, private readonly locks: readonly RoomLockDefinition[]) {
+  constructor(
+    private readonly deps: RoomLockAdapterDeps,
+    private readonly locks: readonly RoomLockDefinition[],
+    private readonly segments: readonly VerticalSegmentDefinition[] = []
+  ) {
     const { scene } = deps
     this.states = locks.map(createRoomLockState)
+    this.rooms = [...locks, ...segments.map((segment) => ({ room: verticalSegmentRoom(segment, GAME_HEIGHT) }))]
+    this.segmentPhases = segments.map(() => ({ phase: 'open' as const }))
     const bounds = scene.physics.world.bounds
     this.defaultWorld = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
     const player = deps.player()
@@ -88,6 +99,15 @@ export class RoomLockAdapter {
       gateClosed: Boolean((this.gates[index]?.body as Phaser.Physics.Arcade.StaticBody | undefined)?.enable),
       cameraHeld: this.cameraRoom === index,
       room: { ...this.locks[index].room }
+    }))
+  }
+
+  /** `render_game_to_text().mechanics.verticalSegments`: the camera follows vertically while `cameraHeld`. */
+  getSegmentDebugState(): Array<{ id: string; room: RoomRect; cameraHeld: boolean }> {
+    return this.segments.map((segment, index) => ({
+      id: segment.id,
+      room: { ...this.rooms[this.locks.length + index].room },
+      cameraHeld: this.cameraRoom === this.locks.length + index
     }))
   }
 
@@ -135,11 +155,11 @@ export class RoomLockAdapter {
    * then the camera keeps the stage width with the raised top instead of snapping down.
    */
   private syncBounds(player: Phaser.Physics.Arcade.Sprite): void {
-    const index = resolveCameraRoomIndex(this.locks, this.states, player.x, GAME_HEIGHT)
+    const index = resolveCameraRoomIndex(this.rooms, [...this.states, ...this.segmentPhases], player.x, GAME_HEIGHT)
     const world = this.deps.scene.physics.world
     const camera = this.deps.scene.cameras.main
     const base = this.defaultWorld
-    const room = index >= 0 ? this.locks[index].room : null
+    const room = index >= 0 ? this.rooms[index].room : null
     const body = player.body as Phaser.Physics.Arcade.Body | undefined
     const top = resolveWorldCeiling({
       baseTop: base.y,
@@ -172,8 +192,10 @@ export class RoomLockAdapter {
   }
 }
 
-/** Stage build entry: installs the adapter when the stage authors room locks (the tutorial). */
+/** Stage build entry: installs the adapter when the stage authors room locks (the tutorial) or vertical segments. */
 export function installRoomLocks(deps: RoomLockAdapterDeps): RoomLockAdapter | null {
-  const locks = getCampaignStage(deps.stageId).arena.roomLocks ?? []
-  return locks.length > 0 ? new RoomLockAdapter(deps, locks) : null
+  const arena = getCampaignStage(deps.stageId).arena
+  const locks = arena.roomLocks ?? []
+  const segments = (arena.verticalSegments ?? []).filter((segment) => segment.verticalScreens > 1)
+  return locks.length > 0 || segments.length > 0 ? new RoomLockAdapter(deps, locks, segments) : null
 }

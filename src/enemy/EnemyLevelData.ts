@@ -12,6 +12,8 @@ export const ENEMY_LEVEL_MARKERS: Record<string, EnemyLevelMarker[]> = {
   gale_vixen: CAMPAIGN_STAGES.gale_vixen.enemyMarkers,
   glacier_ronin: CAMPAIGN_STAGES.glacier_ronin.enemyMarkers,
   omega_fortress: CAMPAIGN_STAGES.omega_fortress.enemyMarkers,
+  // The developer mechanics lab has no enemies (unknown ids fall back to Heat Works' roster).
+  mechanics_lab: [],
   enemy_test_range: [
     {
       id: 'marker_gunner_1',

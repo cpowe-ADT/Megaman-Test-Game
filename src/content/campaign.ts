@@ -12,7 +12,11 @@ import {
   type StageBossRoomDefinition
 } from './stageArenaLayout'
 import { getStageBackgroundDefinition } from './stageBackgroundCatalog'
-import type { RoomLockDefinition, RoomLockInput } from '../mechanics/roomLock'
+import type { RoomLockDefinition, RoomLockInput, VerticalSegmentDefinition } from '../mechanics/roomLock'
+import type { StageHazardDefinition } from '../mechanics/hazards'
+import type { RisingLiquidDefinition } from '../mechanics/risingLiquid'
+import type { CrumbleGroupDefinition } from '../mechanics/crumbleGroup'
+import type { BreakableWallDefinition } from '../mechanics/breakableWall'
 
 export type CampaignStageKind = 'tutorial' | 'robot_master' | 'final'
 
@@ -45,10 +49,19 @@ export type StageArenaDefinition = {
   bossSpawn: { x: number; y: number }
   bossRoom: StageBossRoomDefinition
   checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
-  hazards: Array<{ id: string; x: number; y: number }>
+  /** Spikes (always on) and timed vents; box and damage from each definition (`src/mechanics/hazards.ts`). */
+  hazards: StageHazardDefinition[]
   midPlatforms: StagePlatformDefinition[]
   /** Teach gates (prompt 05 §5.7): each opens once its verb was performed inside its room. */
   roomLocks?: RoomLockDefinition[]
+  /** Gateless segments taller than a screen: the camera follows vertically inside (06 §6.1 `verticalScreens`). */
+  verticalSegments?: VerticalSegmentDefinition[]
+  /** Kill planes that rise after a trigger x (06 §6.2 `rising_liquid`). */
+  risingLiquids?: RisingLiquidDefinition[]
+  /** Platforms that shake, fall and return (06 §6.2 `crumble_group`). */
+  crumbleGroups?: CrumbleGroupDefinition[]
+  /** Solid blocks a saber or a charged shot breaks (06 §6.2 `breakable_wall`). */
+  breakableWalls?: BreakableWallDefinition[]
 }
 
 export type CampaignStageDefinition = {
@@ -89,6 +102,8 @@ export type StageContentRetentionReport = {
 }
 
 export const GROUNDED_PLAYER_SPAWN_Y = 214
+/** Top of the main ground strip (16px tall, bottom of the 252px frame). */
+const GAME_FLOOR_TOP = 236
 
 const STAGE_CONTENT_RETENTION = new Map<string, StageContentRetentionReport>()
 
@@ -605,7 +620,7 @@ type StageExtensionPatch = {
   width: number
   bossSpawnX: number
   checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
-  hazards?: Array<{ id: string; x: number; y: number }>
+  hazards?: StageHazardDefinition[]
   midPlatforms?: StagePlatformDefinition[]
   enemyMarkers?: EnemyLevelMarker[]
   roomLocks?: RoomLockDefinition[]
@@ -1137,7 +1152,85 @@ for (const stage of Object.values(CAMPAIGN_STAGES)) {
   })
 }
 
+/**
+ * `mechanics_lab` (06 §6.2): a developer-only stage with one of each stage mechanic, for smoke
+ * `42-mechanics-matrix`. Not in `CAMPAIGN_STAGES`, so stage select, saves and the campaign never list it;
+ * it borrows Heat Works' boss, background and colours. Four screens: vents and a wide spike, a crumble
+ * group, a two-screen climb with rising slag between two walls, and two breakable walls.
+ */
+export const MECHANICS_LAB_STAGE_ID = 'mechanics_lab'
+const LAB_ROUTE_WIDTH = 4 * TEACH_SCREEN
+const LAB_FLOOR_TOP = GAME_FLOOR_TOP
+const LAB_STEP = 40
+
+function buildMechanicsLabStage(): CampaignStageDefinition {
+  const base = CAMPAIGN_STAGES.pyro_maw
+  const worldWidth = LAB_ROUTE_WIDTH + BOSS_ROOM_VIEWPORT_WIDTH
+  const bossRoom = buildDefaultBossRoom(worldWidth, { bossSpawnX: LAB_ROUTE_WIDTH + 360 })
+  const lab = (id: string, x: number, triggerX: number) => ({ ...checkpoint(id, x, GROUNDED_PLAYER_SPAWN_Y, triggerX) })
+  // The climb: one-way steps every 40px from the floor to two screens up (24px gaps), ending by the
+  // right wall's top, which is the way out over the slag at full rise.
+  const climbSteps = [1000, 1080, 1160, 1240, 1160, 1080, 1160, 1240, 1300].map((x, index) => ({
+    id: `lab_climb_${index + 1}`,
+    x,
+    y: LAB_FLOOR_TOP - LAB_STEP * (index + 1),
+    width: 56,
+    type: 'oneWay' as const,
+    color: 0x6c3520
+  }))
+  return {
+    ...base,
+    id: MECHANICS_LAB_STAGE_ID,
+    district: 'Mechanics Lab',
+    title: 'Mechanics Lab',
+    selectLabel: 'LAB',
+    introCallout: 'Mechanics lab',
+    description: 'Developer lab: one of each stage mechanic.',
+    arenaLabel: 'Mechanics Lab',
+    rewardEnabled: false,
+    enemyMarkers: [],
+    arena: {
+      ...base.arena,
+      width: worldWidth,
+      bossRoom,
+      bossSpawn: { x: bossRoom.bossSpawnX, y: base.arena.bossSpawn.y },
+      spawn: { x: 44, y: GROUNDED_PLAYER_SPAWN_Y },
+      checkpoints: [lab('lab_start', 44, 0), lab('lab_climb', 904, 896), lab('lab_walls', 1400, 1390), lab('lab_boss_gate', 1760, 1740)],
+      hazards: [
+        { id: 'lab_spike_wide', x: 120, y: 231, width: 40, height: 10, damage: 2 },
+        { id: 'lab_vent_a', kind: 'vent', x: 220, y: LAB_FLOOR_TOP - 24, width: 16, height: 48, damage: 2, timing: { onMs: 1000, offMs: 1600 } },
+        { id: 'lab_vent_b', kind: 'vent', x: 300, y: LAB_FLOOR_TOP - 24, width: 16, height: 48, damage: 2, timing: { onMs: 1000, offMs: 1600 } }
+      ],
+      midPlatforms: [
+        { id: 'lab_climb_wall_left', x: 904, y: -64, width: 16, height: 360, type: 'wall', color: 0x4a2a1c },
+        { id: 'lab_climb_wall_right', x: 1336, y: 58, width: 16, height: 356, type: 'wall', color: 0x4a2a1c },
+        ...climbSteps,
+        { id: 'lab_secret_shelf', x: 1580, y: 196, width: 40, type: 'oneWay', color: 0xc9a14a }
+      ],
+      verticalSegments: [{ id: 'lab_climb', x: 896, width: 448, verticalScreens: 2 }],
+      // Starts 40px under the floor: about 1.6s before it covers the floor, then 14s to the top.
+      risingLiquids: [{ id: 'lab_slag', x: 912, width: 416, floorY: LAB_FLOOR_TOP + 40, topY: LAB_FLOOR_TOP - 336, riseMs: 14000, triggerX: 930 }],
+      crumbleGroups: [
+        {
+          id: 'lab_crumble',
+          platforms: [
+            { id: 'lab_crumble_1', x: 560, y: 196, width: 48 },
+            { id: 'lab_crumble_2', x: 660, y: 172, width: 48 }
+          ]
+        }
+      ],
+      breakableWalls: [
+        { id: 'lab_wall_saber', x: 1500, y: LAB_FLOOR_TOP / 2, width: 16, height: LAB_FLOOR_TOP, hitsRequired: 3 },
+        { id: 'lab_wall_shot', x: 1660, y: LAB_FLOOR_TOP / 2, width: 16, height: LAB_FLOOR_TOP, hitsRequired: 3, minChargeLevel: 1 }
+      ]
+    }
+  }
+}
+
+export const MECHANICS_LAB_STAGE: CampaignStageDefinition = buildMechanicsLabStage()
+
 export function getCampaignStage(id: string): CampaignStageDefinition {
+  if (id === MECHANICS_LAB_STAGE_ID) return MECHANICS_LAB_STAGE
   return CAMPAIGN_STAGES[id as CampaignStageId] ?? CAMPAIGN_STAGES.pyro_maw
 }
 

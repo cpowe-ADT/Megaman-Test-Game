@@ -41,7 +41,7 @@ import {
   getBossRoomMovementBounds
 } from '../content/stageArenaLayout'
 import { buildWeaponEnergySnapshot, buildWeaponOrder, getWeaponConfig, getWeaponDisplayName } from '../content/weapons'
-import { GAMEPLAY_TEXTURE_KEYS, resolveStageHazardTexture } from '../ui/gameplay/GameplayTextures'
+import { GAMEPLAY_TEXTURE_KEYS } from '../ui/gameplay/GameplayTextures'
 import {
   getHolsteredWeaponRechargeTargets,
   PASSIVE_WEAPON_RECHARGE_AMOUNT,
@@ -103,6 +103,7 @@ import {
 import { CombatDebugBus } from '../tools/debug/CombatDebugBus'
 import { PlatformCollisionSystem, PlatformType } from '../physics'
 import { installRoomLocks } from '../mechanics/adapters/RoomLockAdapter'
+import { buildStageHazards, installStageMechanics, stageMechanicPlatforms } from '../mechanics/adapters/StageMechanicsAdapter'
 import {
   createDefaultProjectileRegistry,
   getLatestActiveProjectile,
@@ -466,7 +467,8 @@ export class Game extends Phaser.Scene {
         type: platform.type ?? 'oneWay',
         color: platform.color ?? 0x33404f,
         motion: platform.motion
-      }))
+      })),
+      ...stageMechanicPlatforms(cfg)
     ]
 
     this.platformCollisionSystem.rebuild(platforms, stageId)
@@ -477,6 +479,7 @@ export class Game extends Phaser.Scene {
     this.bossRoomCameraLocked = false
     this.installEntityPlatformCollisions()
     installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (lockIndex, hint) => this.storyDirector?.onRoomLockArmed(lockIndex, hint), restoreCamera: () => (this.bossRoomCameraLocked ? this.applyBossRoomCameraLock() : this.applyStageCameraBounds(stageId)) })
+    installStageMechanics({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, platforms: () => this.platformCollisionSystem, playerBullets: () => this.playerBullets, isDying: () => this.fallingToDeath, damagePlayer: (request) => this.requestPlayerDamage(request) })
   }
 
   private rebuildBossGateBarrier(): void {
@@ -1392,16 +1395,7 @@ export class Game extends Phaser.Scene {
         poolReady: this.bossBullets?.getLength()
       })
     }
-    this.hazards = this.physics.add.staticGroup()
-    stage.arena.hazards.forEach((hazard) => {
-      const sprite = this.hazards.create(hazard.x, hazard.y, resolveStageHazardTexture(hazard.id, stageId, this))
-      sprite.setDataEnabled?.()
-      sprite.data?.set?.('damageSourceType', 'hazard')
-      sprite.data?.set?.('damageSourceId', hazard.id)
-      sprite.data?.set?.('damageAmount', 1)
-      sprite.setSize?.(28, 10)
-      sprite.refreshBody()
-    })
+    this.hazards = buildStageHazards(this, stageId)
 
     this.enemies = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite })
     this.drops = this.physics.add.group({

@@ -56,12 +56,31 @@ export function applyRoomLockInput(state: RoomLockState, input: RoomLockInput): 
   return { ...state, progress, satisfied, phase: satisfied ? 'open' : 'locked' }
 }
 
+/**
+ * A route segment taller than one screen (06 §6.1 `verticalScreens`) without a gate: while the hero
+ * is inside it the camera follows vertically and the world ceiling rises to its top, like the
+ * tutorial's wall-kick shaft. It spans from the floor up `verticalScreens` screens.
+ */
+export type VerticalSegmentDefinition = {
+  id: string
+  /** Left edge and width, world px. */
+  x: number
+  width: number
+  /** Screens tall (2 for the Heat Works climb). */
+  verticalScreens: number
+}
+
+export function verticalSegmentRoom(segment: VerticalSegmentDefinition, screenHeight: number): RoomRect {
+  const screens = Math.max(1, Math.floor(segment.verticalScreens))
+  return { x: segment.x, y: screenHeight - screens * screenHeight, width: segment.width, height: screens * screenHeight }
+}
+
 export function isInsideRoom(room: RoomRect, x: number): boolean {
   return x >= room.x && x < room.x + room.width
 }
 
 /** Index of the room containing `x`, or -1. */
-export function findRoomIndex(definitions: readonly RoomLockDefinition[], x: number): number {
+export function findRoomIndex(definitions: readonly { room: RoomRect }[], x: number): number {
   return definitions.findIndex((definition) => isInsideRoom(definition.room, x))
 }
 
@@ -71,8 +90,8 @@ export function findRoomIndex(definitions: readonly RoomLockDefinition[], x: num
  * hands the camera back to the stage bounds.
  */
 export function resolveCameraRoomIndex(
-  definitions: readonly RoomLockDefinition[],
-  states: readonly RoomLockState[],
+  definitions: readonly { room: RoomRect }[],
+  states: readonly { phase: RoomLockPhase }[],
   x: number,
   screenHeight: number
 ): number {

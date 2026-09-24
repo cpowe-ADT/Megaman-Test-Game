@@ -153,6 +153,11 @@ export class PlatformCollisionSystem {
     return this.oneWayGroup
   }
 
+  /** The drawn platform (rectangle or baked tiles) carrying `platformId`; mechanics shake, drop or break it. */
+  findPlatformVisual(id: string): Phaser.GameObjects.GameObject | undefined {
+    return this.stageVisuals.find((visual) => visual.data?.get('platformId') === id)
+  }
+
   attachActor(actor: Phaser.Types.Physics.Arcade.GameObjectWithBody, options?: PlatformActorOptions): void {
     const target = actor as Phaser.GameObjects.GameObject
     const resolved = this.resolveOptions(options)
