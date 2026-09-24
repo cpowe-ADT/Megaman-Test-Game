@@ -529,6 +529,20 @@
         "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.atlas.json"
       ],
       "notes": "assets/sprites/source/enemies/hf_v1/enemies_hf_v1.prompts.md"
+    },
+    {
+      "id": "ui-portraits-title-hf-v1",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original speaker portraits and title key art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [
+        "assets/ui/portraits/portraits.png",
+        "assets/ui/portraits/portraits.atlas.json",
+        "assets/ui/title/title_keyart.png"
+      ],
+      "notes": "assets/ui/source/ui_v1.prompts.md; scripts/sprites/cut_portraits.py"
     }
   ]
 }
