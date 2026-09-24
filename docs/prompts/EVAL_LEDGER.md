@@ -43,6 +43,8 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 | EVAL-P6-012 | gate | difficulty and death economy | PENDING | | |
 | EVAL-P6-013 | gate | sweep v2 assertions; audit and lint in verify | PENDING | | |
 | EVAL-P6-014 | gate | StageBuilder, PickupSystem and EnemyRuntime extracted; Game.ts at or below 3,000 | PENDING | | |
+| EVAL-P6-015 | gate | hit contract: one resolveHurtbox for sword, shots and overlay; enemy melee vs the body profile; idempotent platform colliders; HitWires.ts; Game.ts at or below 2,700 | PENDING | | |
+| EVAL-P6-016 | gate + review | eight warden base sheets regenerated (idle, move, attack, hurt, death) with a grounding capture per boss | PENDING | | |
 
 ## Prompt 07: Bosses, weapons, and story
 
@@ -57,6 +59,7 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 | EVAL-P7-007 | gate + review | every sequence id consumed; Craig reads the script | PENDING | | |
 | EVAL-P7-008 | gate | boss beats, damage router, weapon runtime and hit wires extracted; Game.ts at or below 2,600 | PENDING | | |
 | EVAL-P7-009 | gate + review | seven new dialogue triggers with fixtures, coverage, consumers and smoke assertions; water margin pilot | PENDING | | |
+| EVAL-P7-010 | gate | bosses split into floor body, hurtbox and per-phase attack hitboxes (roster.ts, BossDamageRouter); projectiles hit platforms by body | PENDING | | |
 
 ## Prompt 08: Audio, presentation, and release
 
