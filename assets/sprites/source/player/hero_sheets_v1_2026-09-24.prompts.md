@@ -34,3 +34,14 @@ The first cut showed dash and jump poses drawn lying flat and wide shooting pose
 
 Cut: `scripts/sprites/cut_hero_v1.sh` (A, B, C, D, then E1 with `--append`). Credits: 12 generations, about 12 credits (balance 2,997.5 before).
 
+## Combo sheet F (2026-09-24, combat lane: Craig asked for a combo slice)
+
+4x3 at 4:3, same reference (C2 job `986ea4a5-dcfd-4cc8-b1f9-7bc5d22e949c`, role `image`), same character block. Rows: rising slash (combo hit 2), overhead finisher (hit 3), mid-air spin slash. F1 and F2 swung the blade behind the back; F3 and F4 add a composition rule ("the amber blade, its hand and every amber slash arc are on the LEFT side of the body, in front ... the cannon arm is pulled back ... nothing swings behind the back").
+
+| Variant | Job | Result URL | Picked |
+| --- | --- | --- | --- |
+| F1 | dbd1abfc-b3de-465f-b721-b692514b114e | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_230219_dbd1abfc-b3de-465f-b721-b692514b114e.png | no: rising slash behind the back |
+| F2 | c5c40621-d3e0-4531-b0e3-1e349e68cc77 | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_230218_c5c40621-d3e0-4531-b0e3-1e349e68cc77.png | no: same |
+| F3 | 4f3145a0-a057-4de2-8a46-dbfef3fe9942 | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_232631_4f3145a0-a057-4de2-8a46-dbfef3fe9942.png | no: cannon arm reads as a backpack |
+| F4 | 8a3ee531-9fe2-4022-ae4d-9732f5a97c38 | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_232631_8a3ee531-9fe2-4022-ae4d-9732f5a97c38.png | yes: `slash_combo2` 0-3, `slash_combo3` 4-7, `slash_air_spin` 8-9 (`scripts/sprites/cut_hero_v1.sh`) |
+

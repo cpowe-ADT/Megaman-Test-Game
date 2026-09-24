@@ -15,3 +15,7 @@ $P --append --in $S/hero_sheet_v1_2026-09-24_d3.png --grid 4x6 --scale-ref-cells
 # Corrective sheet E1 (2026-09-24): upright jump and dash poses, a sitting knockdown, charge recoils without flashes.
 $P --append --in $S/hero_sheet_v1_2026-09-24_e1.png --grid 4x4 --scale-ref-cells 6 --body-height 39 \
   --anims "jump_rise=0-0,jump_apex=1-1,knockdown=3-3,dash_start=4-4,dash_loop=5-5,dash_end=6-6,dash_shoot=7-7,airdash_start=8-8,airdash_loop=9-9,airdash_end=10-10,hurt_light=11-11,charge_release_lv1=12-12,charge_release_lv2=13-13,charge_release_lv3=14-14,charge_release_lv4=15-15"
+# Combo sheet F4 (2026-09-24, combat lane): rising cut and overhead finisher, blade in front; the air spin keeps
+# cells 8-9 only (10-11 lose the body to the ring at the cut; the runtime draws the ring from effects_hero slash_air).
+$P --append --in $S/hero_sheet_v1_2026-09-24_f4.png --grid 4x3 --scale-ref-cells 3 --body-only-cells 0,1,2,3,4,5,6,7,8,9 \
+  --anims "slash_combo2=0-3,slash_combo3=4-7,slash_air_spin=8-9"

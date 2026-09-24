@@ -202,7 +202,7 @@
         "localImagePath": "assets/sprites/player/main/player_main.png",
         "localDataPath": "assets/sprites/player/main/player_main.atlas.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from hero_sheet_v1_2026-09-24_a2_clean.png, hero_sheet_v1_2026-09-24_b2.png, hero_sheet_v1_2026-09-24_c2.png, hero_sheet_v1_2026-09-24_d3.png, hero_sheet_v1_2026-09-24_e1.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from hero_sheet_v1_2026-09-24_a2_clean.png, hero_sheet_v1_2026-09-24_b2.png, hero_sheet_v1_2026-09-24_c2.png, hero_sheet_v1_2026-09-24_d3.png, hero_sheet_v1_2026-09-24_e1.png, hero_sheet_v1_2026-09-24_f4.png."
     },
     {
       "id": "enemies-enemy_rocket_bot",
@@ -397,6 +397,23 @@
       "notes": "Generated from free-source pack inputs (RobotFree objects + OpenGameArt FX sheets)."
     },
     {
+      "id": "projectiles-projectiles_hero",
+      "atlasKey": "atlas_projectiles_hero",
+      "frame": {
+        "width": 32,
+        "height": 28
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/projectiles/projectiles_hero/projectiles_hero.png",
+        "runtimeData": "/assets/sprites/projectiles/projectiles_hero/projectiles_hero.atlas.json",
+        "localImagePath": "assets/sprites/projectiles/projectiles_hero/projectiles_hero.png",
+        "localDataPath": "assets/sprites/projectiles/projectiles_hero/projectiles_hero.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 buster pellet/mid/full, reflected shot, enemy orb/missile, muzzle x3, impact; cut by scripts/sprites/cut_vfx_sheet.py (vfx_hero_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene."
+    },
+    {
       "id": "effects-effects_core",
       "atlasKey": "atlas_effects_core",
       "frame": {
@@ -411,6 +428,23 @@
         "localDataPath": "assets/sprites/effects/effects_core/effects_core.atlas.json"
       },
       "notes": "Generated from free-source pack inputs (RobotFree muzzle frames + OpenGameArt explosion/ring/aura sheets)."
+    },
+    {
+      "id": "effects-effects_hero",
+      "atlasKey": "atlas_effects_hero",
+      "frame": {
+        "width": 48,
+        "height": 50
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/effects/effects_hero/effects_hero.png",
+        "runtimeData": "/assets/sprites/effects/effects_hero/effects_hero.atlas.json",
+        "localImagePath": "assets/sprites/effects/effects_hero/effects_hero.png",
+        "localDataPath": "assets/sprites/effects/effects_hero/effects_hero.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 saber arcs (slash_1/2/3, slash_air), hit_spark, deflect, charge_aura, explode; cut by scripts/sprites/cut_vfx_sheet.py (vfx_hero_effects_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene."
     }
   ]
 }

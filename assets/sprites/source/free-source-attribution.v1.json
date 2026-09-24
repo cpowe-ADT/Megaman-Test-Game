@@ -566,8 +566,11 @@
       "license": "original-generated",
       "attribution": "Original custodian walker mini-boss, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/minibosses/hf_v1/",
-      "runtimeOutputs": [],
-      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; source only until the mini-boss lane cuts it"
+      "runtimeOutputs": [
+        "assets/sprites/enemies/custodian_walker/custodian_walker.png",
+        "assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json"
+      ],
+      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut with scripts/sprites/cut_enemy_sheet.py (64px frames, feet row 62, from a template atlas); not wired to a runtime family yet (EVAL-P6-005)"
     }
   ]
 }

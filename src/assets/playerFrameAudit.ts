@@ -34,7 +34,7 @@ export function alphaBoundingBox(getAlpha: (x: number, y: number) => number, wid
 
 /** Effect frames whose blade or beam reaches the cell edge by design (the cut clips them, it never shrinks the body). */
 /** death: the burst frames scatter fragments to the cell edge. */
-export const EDGE_EXEMPT_FRAMES = /^player_main\/(slash_[a-z_]+|respawn|death)\//
+export const EDGE_EXEMPT_FRAMES = /^player_main\/(slash_[a-z0-9_]+|respawn|death)\//
 /** Frames that are fragments or a beam by design, not a standing body. */
 export const HEIGHT_EXEMPT_FRAMES = /^player_main\/(death|respawn)\//
 
