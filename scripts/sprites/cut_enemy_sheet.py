@@ -28,6 +28,10 @@ CELL_ROLES = {0: ("idle", 0), 1: ("idle", 1), 2: ("idle", 2), 3: ("hurt", 0),
               16: ("death", 0), 17: ("death", 1), 18: ("death", 2), 19: ("death", 3)}
 
 
+# Boss layout (4x3): idle 0-3, move 0-3, shoot 0-3, as the September boss sheets (src/bosses reads these groups).
+BOSS_CELL_ROLES = {i: (("idle", "move", "shoot")[i // 4], i % 4) for i in range(12)}
+
+
 def old_idle_box(atlas: Image.Image, frames: dict, type_key: str) -> tuple[int, int, int]:
     """(content width, content height, lowest row + 1) of the old idle frames (medians)."""
     widths, heights, bottoms = [], [], []
@@ -41,9 +45,12 @@ def old_idle_box(atlas: Image.Image, frames: dict, type_key: str) -> tuple[int, 
     return int(statistics.median(widths)), int(statistics.median(heights)), int(statistics.median(bottoms))
 
 
-def keyed_cell(sheet: Image.Image, index: int, cols: int, cell_w: int, cell_h: int) -> Image.Image:
+def keyed_cell(sheet: Image.Image, index: int, cols: int, cell_w: int, cell_h: int, mirror: bool = False) -> Image.Image:
     x0, y0, x1, y1 = cutter.cell_rect(index, cols, cell_w, cell_h)
-    keyed = cutter.defringe(cutter.key_magenta(sheet.crop((x0, y0, x1, y1)), 60))
+    cell = sheet.crop((x0, y0, x1, y1))
+    if mirror:  # the model drew the figure facing the other way; flip each cell, not the sheet (order stays)
+        cell = cell.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    keyed = cutter.defringe(cutter.key_magenta(cell, 60))
     keyed = cutter.drop_small_components(keyed, 30)
     return cutter.drop_shadows(keyed)
 
@@ -53,19 +60,32 @@ def main() -> None:
     parser.add_argument("--in", dest="input_path", required=True)
     parser.add_argument("--type-key", required=True)
     parser.add_argument("--move-group", default=None, help="run or hover; read from the old atlas when omitted")
+    parser.add_argument("--layout", choices=["enemy", "boss"], default="enemy",
+                        help="enemy: 4x5 sheet into assets/sprites/enemies/<key>/<key>.atlas.json; "
+                             "boss: 4x3 (idle, move, shoot) into assets/sprites/bosses/<key>.json")
+    parser.add_argument("--mirror", action="store_true", help="flip every cell horizontally before cutting")
+    parser.add_argument("--cells", action="append", default=[],
+                        help="group=i,j,...: take this group's frames from these sheet cells (a cell the model drew "
+                             "across a boundary can be skipped, a good one used twice), e.g. shoot=8,10,10,11")
     parser.add_argument("--fill-height", action="store_true",
-                        help="size to the frame height (minus the outline) instead of the old idle content height; "
-                             "for a new design taller than the old flat one (the body sits at the frame bottom)")
+                        help="size to the frame (height to the feet row, full width, minus the outline) instead of the old idle "
+                             "content box; for a new design that should fill a frame the old art under-used")
     args = parser.parse_args()
 
-    out_dir = ROOT / "assets" / "sprites" / "enemies" / args.type_key
-    json_path = out_dir / f"{args.type_key}.atlas.json"
+    if args.layout == "boss":
+        out_dir = ROOT / "assets" / "sprites" / "bosses"
+        json_path = out_dir / f"{args.type_key}.json"
+        cols, rows, roles = 4, 3, BOSS_CELL_ROLES
+    else:
+        out_dir = ROOT / "assets" / "sprites" / "enemies" / args.type_key
+        json_path = out_dir / f"{args.type_key}.atlas.json"
+        cols, rows, roles = 4, 5, CELL_ROLES
     image_path = out_dir / f"{args.type_key}.png"
     old = json.load(json_path.open())
     old_atlas = Image.open(image_path).convert("RGBA")
     names = list(old["frames"].keys())
     fw, fh = old["frames"][names[0]]["frame"]["w"], old["frames"][names[0]]["frame"]["h"]
-    move = args.move_group or next(n.split("/")[1] for n in names if n.split("/")[1] in ("run", "hover", "move"))
+    move = args.move_group or next((n.split("/")[1] for n in names if n.split("/")[1] in ("run", "hover", "move")), "move")
     # The target comes from the atlas this re-skin replaces; it is kept in meta so a rerun (which reads the new
     # atlas) sizes the same way instead of drifting.
     recorded = old.get("meta", {}).get("reskinTarget")
@@ -75,12 +95,13 @@ def main() -> None:
         target_w, target_h, feet = old_idle_box(old_atlas, old["frames"], args.type_key)
     reskin_target = {"idleWidth": target_w, "idleHeight": target_h, "feetRow": feet}
     if args.fill_height:
+        # Use the frame, not the old art's box: the old sprite filled only part of it (mine bot 26x17 in 42x32).
         target_h = feet - 1
+        target_w = fw - 2
 
     sheet = Image.open(args.input_path).convert("RGBA")
-    cols, rows = 4, 5
     cell_w, cell_h = sheet.width // cols, sheet.height // rows
-    idle = [keyed_cell(sheet, i, cols, cell_w, cell_h) for i in (0, 1, 2)]
+    idle = [keyed_cell(sheet, i, cols, cell_w, cell_h, args.mirror) for i in (0, 1, 2)]
     boxes = [im.getchannel("A").getbbox() for im in idle if im.getchannel("A").getbbox()]
     src_h = statistics.median(b[3] - b[1] for b in boxes)
     src_w = statistics.median(b[2] - b[0] for b in boxes)
@@ -88,12 +109,20 @@ def main() -> None:
     scale = min((target_h - 2) / src_h, (target_w - 2) / src_w)
 
     frames: dict[str, Image.Image] = {}
-    for index, (role, i) in CELL_ROLES.items():
+    roles = dict(roles)
+    overrides = {}
+    for spec in args.cells:
+        group, cells = spec.split("=")
+        overrides[group.strip()] = [int(c) for c in cells.split(",")]
+    items = [(index, role, i) for index, (role, i) in roles.items() if role not in overrides]
+    for group, cells in overrides.items():
+        items += [(cell, group, i) for i, cell in enumerate(cells)]
+    for index, role, i in items:
         group = move if role == "move" else role
         name = f"{args.type_key}/{group}/{i:03d}"
         if name not in old["frames"]:
             continue
-        cell = keyed_cell(sheet, index, cols, cell_w, cell_h)
+        cell = keyed_cell(sheet, index, cols, cell_w, cell_h, args.mirror)
         small = cutter.decast_image(cutter.hard_alpha(cutter.mode_downscale(cell, scale)))
         box = small.getchannel("A").getbbox()
         frame = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))

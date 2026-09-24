@@ -4,7 +4,8 @@
  * Kept out of content/campaign.ts: that file is owned by the level lane.
  */
 const STAGE_BIOME: Readonly<Record<string, string>> = {
-  tutorial_sentinel: 'relay'
+  tutorial_sentinel: 'relay',
+  pyro_maw: 'pyro'
 }
 
 export function getStageBiome(stageId: string): string | undefined {

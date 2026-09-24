@@ -16,3 +16,14 @@ Shared template: "16-bit pixel art animation sprite sheet of one original enemy 
 Result URLs: `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_2123NN_<job>.png` (NN 27 to 29; the exact names are the downloaded files' sources: `enemy_<family>_{a,b}.png` here).
 
 Cut (from `scripts/sprites`): `../../.venv/bin/python cut_enemy_sheet.py --in ../../assets/sprites/source/enemies/hf_v1/enemy_<family>_a.png --type-key <atlas>`; the shield drone adds `--fill-height` (its old art was a flat 38x19 box; the new design is taller, the body still sits at the frame bottom). Each atlas keeps its frame names, frame size and feet row; the target box is recorded in the atlas meta (`reskinTarget`) so reruns do not drift.
+
+## Pyro Maw families (finish plan, 2026-09-24)
+
+| Family (atlas) | Design | Variant a job (picked) | Variant b job |
+| --- | --- | --- | --- |
+| enemy_mine_bot | low dome crawler on four legs, two sensor feelers, a mortar tube lobbing glowing mines | 7001853e-8989-4b90-b526-07bfeb51ce82 | b07f1557-5d25-4ef9-9ff5-ef6dcda225f2 |
+| enemy_slicer_bot | lean biped with a circular saw on its front arm | 7f07b2f0-9d4e-473b-b177-b1600574b6bf | bff2fd40-0e27-4063-91f1-2b6079f6de53 |
+| enemy_bouncer | steel wrecking-ball robot on two piston feet, red visor band | d502da56-3bb9-479a-98f8-2750ea7a097e | 33c20330-e483-48b9-b67f-86f3064b10a2 |
+
+Result URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_221258_<job>.png`. The mine bot and bouncer cut with `--fill-height` (their old art used a corner of the frame).
+

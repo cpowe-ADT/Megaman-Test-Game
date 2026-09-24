@@ -22,6 +22,20 @@ export const STAGE_BACKGROUND_ASSETS: StageBackgroundAsset[] = [
     credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
   },
   {
+    key: 'bg_pyro_far',
+    path: 'assets/backgrounds/pyro/pyro_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_pyro_mid',
+    path: 'assets/backgrounds/pyro/pyro_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
     key: 'bg_relay_mid',
     path: 'assets/backgrounds/relay/relay_mid.png',
     license: 'original-generated',
@@ -333,7 +347,14 @@ export function getStageBackgroundDefinition(stageId: string): StageBackgroundDe
         ]
       }
     case 'pyro_maw':
-      return industrialBackground('#22100d', 0xff7f4f, 0xffb066)
+      // Heat Works (finish plan): smokestack skyline and foundry gantries, tinted well below the tiles.
+      return {
+        baseColor: '#180D0B',
+        layers: [
+          { key: 'bg_pyro_far', scrollFactorX: 0.08, y: 60, tint: 0x8a7a72 },
+          { key: 'bg_pyro_mid', scrollFactorX: 0.28, y: 108, tint: 0x6e5c56 }
+        ]
+      }
     case 'tide_reaver':
       return dockBackground('#07192a', 0x76c8ff, 0x9fe3ff)
     case 'volt_hopper':

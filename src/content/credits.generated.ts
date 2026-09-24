@@ -33,5 +33,8 @@ export const ASSET_CREDITS: readonly string[] = [
   "Art: Original Omega Core art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original WREN hero art (design C2), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original Drill Hangar tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
-  "Art: Original rogue enemy robots (gunner, hopper, drone, dozer, shield drone, rocket trooper), generated with Higgsfield (gpt_image_2) for this project (original-generated)"
+  "Art: Original rogue enemy robots (gunner, hopper, drone, dozer, shield drone, rocket trooper), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Heat Works tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original rogue enemy robots (mine bot, slicer, bouncer), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original Pyro Maw art (second design), generated with Higgsfield (gpt_image_2) for this project (original-generated)"
 ]

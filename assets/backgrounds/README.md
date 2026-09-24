@@ -26,6 +26,13 @@ This folder contains stage background layers extracted from permissively license
   - License: `original-generated`
   - Notes: prompts, job ids and result URLs in `source/relay/relay_v1.prompts.md`; cut to one seamless period and a third (far) or a quarter (mid) of the source size by `scripts/sprites/cut_background_layer.py`
 
+- `pyro/*` (Heat Works, finish plan, 2026-09-24)
+  - Source: generated
+  - Title: `Heat Works parallax`
+  - Author: `Original art generated with Higgsfield (gpt_image_2) for this project`
+  - License: `original-generated`
+  - Notes: prompts and jobs in `source/pyro/pyro_v1.prompts.md`
+
 ## Usage
 
 - Runtime loading is defined in `src/content/stageBackgroundCatalog.ts`.

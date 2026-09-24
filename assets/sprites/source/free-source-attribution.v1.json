@@ -219,11 +219,8 @@
       "license": "original-generated",
       "attribution": "Original Pyro Maw art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_pyro_maw_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/pyro_maw.png",
-        "assets/sprites/bosses/pyro_maw.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 17b82743-3547-487c-b71f-2a58e08fd872. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 17b82743-3547-487c-b71f-2a58e08fd872. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Superseded 2026-09-24 by boss-pyro-maw-hf-v2 (source kept)."
     },
     {
       "id": "boss-volt-hopper-hf-v1",
@@ -371,6 +368,49 @@
         "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.atlas.json"
       ],
       "notes": "Prompts, job ids, URLs and picks in assets/sprites/source/enemies/hf_v1/enemies_hf_v1.prompts.md; cut by scripts/sprites/cut_enemy_sheet.py, which keeps each atlas's frame names, frame size and feet row (phase 6.P). The other six enemy families still use the CC0 roster entry."
+    },
+    {
+      "id": "tiles-pyro-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Heat Works tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_pyro_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/pyro/tiles_pyro.png",
+        "assets/sprites/tiles/pyro/tiles_pyro.atlas.json"
+      ],
+      "notes": "Prompt and jobs in assets/sprites/source/tiles/tiles_pyro_v1.prompts.md; cut by scripts/sprites/cut_tileset.py --brighten 1.15 (finish plan, Pyro Maw)."
+    },
+    {
+      "id": "enemies-pyro-rogue-hf-v1",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original rogue enemy robots (mine bot, slicer, bouncer), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/enemies/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.png",
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.atlas.json",
+        "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.png",
+        "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.atlas.json",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.png",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.atlas.json"
+      ],
+      "notes": "Prompts and jobs in assets/sprites/source/enemies/hf_v1/enemies_hf_v1.prompts.md; cut by scripts/sprites/cut_enemy_sheet.py (mine bot and bouncer with --fill-height)."
+    },
+    {
+      "id": "boss-pyro-maw-hf-v2",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Pyro Maw art (second design), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/hf_v2/boss_pyro_maw_v2_b.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/pyro_maw.png",
+        "assets/sprites/bosses/pyro_maw.json"
+      ],
+      "notes": "Replaces boss-pyro-maw-hf-v1 (read as a shapeless blob at 64px). Prompt and jobs in assets/sprites/source/bosses/hf_v2/boss_hf_v2.prompts.md; cut by scripts/sprites/cut_enemy_sheet.py --layout boss --mirror --cells shoot=8,10,10,11."
     }
   ]
 }

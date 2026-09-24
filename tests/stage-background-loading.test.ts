@@ -27,13 +27,13 @@ test('a stage loads a fraction of the catalog', () => {
 })
 
 test('entering a stage evicts other stages layers but keeps the resident set and non-background textures', () => {
-  const loaded = ['atlas_player_main', 'bg_dock_0', 'bg_dock_2', 'bg_industrial_bg', 'bg_snow_1', '__DEFAULT']
+  const loaded = ['atlas_player_main', 'bg_dock_0', 'bg_dock_2', 'bg_industrial_bg', 'bg_pyro_far', 'bg_snow_1', '__DEFAULT']
   const evicted = backgroundKeysToEvict(loaded, 'pyro_maw')
   assert.ok(!evicted.includes('atlas_player_main'), 'atlases are never touched')
   assert.ok(!evicted.includes('__DEFAULT'))
   assert.ok(!evicted.includes('bg_dock_0'), 'the prologue layer stays resident')
-  assert.ok(!evicted.includes('bg_industrial_bg'), 'Pyro Maw keeps its own layers')
-  assert.deepEqual(evicted.sort(), ['bg_dock_2', 'bg_snow_1'])
+  assert.ok(!evicted.includes('bg_pyro_far'), 'Pyro Maw keeps its own layers (the Heat Works art since the finish plan)')
+  assert.deepEqual(evicted.sort(), ['bg_dock_2', 'bg_industrial_bg', 'bg_snow_1'])
 })
 
 test('the stage id follows the same precedence Game.create uses', () => {
