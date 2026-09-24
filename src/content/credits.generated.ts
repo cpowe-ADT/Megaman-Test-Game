@@ -47,5 +47,7 @@ export const ASSET_CREDITS: readonly string[] = [
   "Art: Original omega district tileset, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original warden art (second designs: Sentinel Rook, Tide Reaver, Volt Hopper, Basalt Titan, Ferro Blade, Mire Wraith, Gale Vixen, Glacier Ronin, Omega Core), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original rogue enemy robots (cryo turret, laser eye, snap trap drone), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
-  "Art: Original speaker portraits and title key art, generated with Higgsfield (gpt_image_2) for this project (original-generated)"
+  "Art: Original speaker portraits and title key art, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original buster shots, saber combo arcs and hit effects, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original custodian walker mini-boss, generated with Higgsfield (gpt_image_2) for this project (original-generated)"
 ]

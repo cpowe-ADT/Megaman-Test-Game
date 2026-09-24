@@ -18,9 +18,19 @@ import {
 } from '../ui/menu/menuTheme'
 import { GAME_SIZE } from '../config/renderPolicy'
 
+const TITLE_KEYART_KEY = 'title_keyart'
+const TITLE_KEYART_PATH = 'assets/ui/title/title_keyart.png'
+
 export class Title extends Phaser.Scene {
   constructor() {
     super('Title')
+  }
+
+  /** The key art is only drawn here, so it loads and evicts with this scene, not `Preload`. */
+  preload(): void {
+    if (!this.textures.exists(TITLE_KEYART_KEY)) {
+      this.load.image(TITLE_KEYART_KEY, TITLE_KEYART_PATH)
+    }
   }
 
   create(): void {
@@ -35,10 +45,15 @@ export class Title extends Phaser.Scene {
     }
     AudioService.playMusic(this, 'title')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => AudioService.onSceneShutdown(this))
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.textures.remove(TITLE_KEYART_KEY))
 
     this.cameras.main.setBackgroundColor('#030711')
-    addMenuBackdrop(this)
-    addMenuPanel(this, width / 2, height / 2, width - 20, height - 18)
+    if (this.textures.exists(TITLE_KEYART_KEY)) {
+      this.add.image(width / 2, height / 2, TITLE_KEYART_KEY)
+    }
+    // Dimmed so the key art reads behind the menu rather than under a flat backdrop or an opaque panel.
+    addMenuBackdrop(this, 0.35)
+    addMenuPanel(this, width / 2, height / 2, width - 20, height - 18, 0.8)
     this.add.rectangle(width / 2, 34, width - 42, 48, MENU_COLORS.panelBright, 0.72)
       .setStrokeStyle(1, MENU_COLORS.blue, 0.45)
     this.add.rectangle(width / 2 - 174, 34, 4, 38, MENU_COLORS.cyan, 0.95)

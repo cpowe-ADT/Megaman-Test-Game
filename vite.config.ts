@@ -12,7 +12,7 @@ const buildSourcemap = process.env.BUILD_SOURCEMAP === '1' ? 'hidden' : false
 function copyRuntimeAssetsPlugin(): Plugin {
   const sourceRoot = resolve(__dirname, 'assets')
   const targetRoot = resolve(__dirname, 'dist/assets')
-  const ownedRuntimeDirs = ['audio', 'backgrounds', 'sprites']
+  const ownedRuntimeDirs = ['audio', 'backgrounds', 'sprites', 'ui']
 
   return {
     name: 'copy-runtime-assets',
@@ -35,7 +35,9 @@ function copyRuntimeAssetsPlugin(): Plugin {
           if (fileName === '.DS_Store') {
             return false
           }
-          if (assetPath === 'sprites/source' || assetPath.startsWith('sprites/source/')) {
+          // Generator sheets (Higgsfield sources, prompts, variants) live in a `source` folder beside the
+          // runtime files they were cut into (sprites/source, backgrounds/source, ui/source): never ship them.
+          if (/(^|\/)source(\/|$)/.test(assetPath)) {
             return false
           }
           // The developer-only skin was retired in 05c (5.5); never ship anything left in assets/private.

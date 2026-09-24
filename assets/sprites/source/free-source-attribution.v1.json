@@ -543,6 +543,31 @@
         "assets/ui/title/title_keyart.png"
       ],
       "notes": "assets/ui/source/ui_v1.prompts.md; scripts/sprites/cut_portraits.py"
+    },
+    {
+      "id": "vfx-hero-combat-hf-v1",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original buster shots, saber combo arcs and hit effects, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_hero/projectiles_hero.png",
+        "assets/sprites/projectiles/projectiles_hero/projectiles_hero.atlas.json",
+        "assets/sprites/effects/effects_hero/effects_hero.png",
+        "assets/sprites/effects/effects_hero/effects_hero.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; scripts/sprites/cut_vfx_sheet.py with vfx_hero_v1.json and vfx_hero_effects_v1.json"
+    },
+    {
+      "id": "miniboss-custodian-walker-hf-v1",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original custodian walker mini-boss, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/minibosses/hf_v1/",
+      "runtimeOutputs": [],
+      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; source only until the mini-boss lane cuts it"
     }
   ]
 }

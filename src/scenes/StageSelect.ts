@@ -19,6 +19,8 @@ import { Save, SaveData } from '../systems/Save'
 import { DIALOGUE_REGISTRY, resolveDialogueText } from '../content/dialogue/index'
 import { shouldPlayStory } from '../narrative/storyFlags'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
+import { PORTRAIT_ATLAS_KEY, portraitForSpeaker } from '../ui/dialoguePortraits'
+import { queuePortraitAtlas } from '../ui/portraitAtlasLoader'
 import { currentStoryPolicy, resolvePlaybackLines } from './game/StoryDirector'
 import { DebugOverlay } from '../ui/DebugOverlay'
 import {
@@ -141,6 +143,10 @@ export class StageSelect extends Phaser.Scene {
 
   constructor() {
     super('StageSelect')
+  }
+
+  preload(): void {
+    queuePortraitAtlas(this)
   }
 
   create(): void {
@@ -353,15 +359,14 @@ export class StageSelect extends Phaser.Scene {
       .setOrigin(0.5, 0)
   }
 
-  /** The 32x32 slot shows the boss atlas idle frame until prompt 03 supplies portraits; locked stages show a silhouette. */
+  /** The 32x32 slot shows the boss's 48x48 dialogue portrait, scaled down; locked stages tint it to a silhouette. */
   private bindPortrait(sprite: Phaser.GameObjects.Image, bossId: string, accessible: boolean, cleared: boolean): void {
-    const atlasKey = `atlas_${bossId}`
-    const frame = `${bossId}/idle/000`
-    if (!this.textures.exists(atlasKey) || !this.textures.get(atlasKey).has(frame)) {
+    const frame = portraitForSpeaker(bossId)
+    if (!frame || !this.textures.exists(PORTRAIT_ATLAS_KEY) || !this.textures.get(PORTRAIT_ATLAS_KEY).has(frame)) {
       sprite.setVisible(false)
       return
     }
-    sprite.setTexture(atlasKey, frame)
+    sprite.setTexture(PORTRAIT_ATLAS_KEY, frame)
     const fit = 30 / Math.max(sprite.width, sprite.height, 1)
     sprite.setScale(Math.min(1, fit)).setVisible(true)
     if (!accessible) sprite.setTint(0x1a2a4a)
