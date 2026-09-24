@@ -46,7 +46,7 @@ Sentinel Rook, the drill-hangar gatekeeper, is the tutorial warden. Its record i
 
 **OMEGA CORE.** Want: a city that never has to be afraid, which it defines as a city that never has to choose. Wound: none it will admit; it is lucid and accountable and believes it is right. Voice: measured, declarative, never threatens, always offers certainty; speaks in facts and equations; calls WREN "Unit 09" because it built it. Presence: an intrusion on the recovery channel in every warden stage, so the antagonist is in the room the whole game, not only at the end. In the Core it makes one offer.
 
-**Sentinel Rook.** A gatekeeper doing its job under an override it did not ask for. Two lines and a clean record.
+**Sentinel Rook.** A gatekeeper doing its job under an override it did not ask for. Two lines and a clean record. Its recorded intake prompts during the drill (the `tutorial_coach` trigger, one per teach lock) are the clean voice heard before the held one and do not count as its live lines.
 
 **The wardens.** Custodians, not monsters. Each speaks twice: once for OMEGA's version, once for its own. Their defeat is the moment they get their district back.
 

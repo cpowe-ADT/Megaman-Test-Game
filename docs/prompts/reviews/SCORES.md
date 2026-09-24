@@ -19,3 +19,11 @@ One row per seat review, appended by `npm run agents:reviews`. Mean is the mean 
 | 2026-09-23-5.2-combat | game-director | FIX | 3.5 | 0 | 1 | 2 | yes | 49654 |
 | 2026-09-23-5.2-combat | qa-eval | FIX | 3.3 | 0 | 1 | 3 | yes | 61267 |
 | 2026-09-24-5.4-hero | art-director | FIX | 4.0 | 0 | 1 | 3 | yes | 35087 |
+| 2026-09-24-5.7-tutorial | level-designer | SHIP | 3.5 | 0 | 0 | 2 | yes | 29602 |
+| 2026-09-24-5.7-tutorial | level-designer | FIX | 1.8 | 2 | 2 | 1 | yes | 46927 |
+| 2026-09-24-5.7-tutorial | narrative-designer | SHIP | 4.3 | 0 | 0 | 3 | yes | 35385 |
+| 2026-09-24-5.7-tutorial | principal-engineer | FIX | 3.8 | 0 | 1 | 5 | yes | 77992 |
+| 2026-09-24-5.7-tutorial | principal-engineer | FIX | 3.8 | 0 | 3 | 4 | yes | 79972 |
+| 2026-09-24-5.3-camera | game-director | FIX | 3.8 | 1 | 0 | 2 | yes | 36611 |
+| 2026-09-24-5.3-camera | principal-engineer | FIX | 4.0 | 0 | 3 | 3 | yes | 64252 |
+| 2026-09-24-5.3-camera | principal-engineer | FIX | 3.3 | 2 | 1 | 3 | yes | 51538 |
