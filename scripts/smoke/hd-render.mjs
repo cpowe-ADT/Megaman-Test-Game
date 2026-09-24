@@ -196,6 +196,14 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     // read canvas pixels once a render scale applied. `camera` (render_game_to_text, documented in
     // TESTING.md) is game pixels regardless of scale, so a regression here fails the same way.
     // Runs after the pixel-identity comparison above, which needs `hd` at its just-settled scroll.
+    // Start mid-stage, at least one screen from both bounds, as scenario 18 does: from spawn the
+    // camera sits clamped at the left bound and the lead reads as the clamp, not the look-ahead.
+    const hdSpawn = await readState(hd)
+    const hdBoundsWidth = Number(hdSpawn.camera?.boundsWidth ?? 0)
+    const hdMargin = 448 + 40
+    const hdMidStageX = Math.min(Math.max(hdBoundsWidth / 2, hdMargin), Math.max(hdMargin, hdBoundsWidth - hdMargin))
+    await hd.evaluate((x) => window.stageDebug.setPlayerX(x), hdMidStageX)
+    await advanceFrames(hd, 30)
     const hdRun = await hd.evaluate(() =>
       window.stageDebug.replayInputs([
         { frame: 0, held: ['moveRight'] },

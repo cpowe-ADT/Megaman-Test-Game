@@ -72,6 +72,11 @@ export class CameraDirector {
     const host = this.host
     const camera = host.cameras.main
     camera.stopFollow()
+    // The render policy starts every camera with `roundPixels` on; before 5.3 the hero follow
+    // (`startFollow(player, false, ...)`) switched it off for gameplay, and smoke 40's 1x versus 2x
+    // identity depends on that: with rounding on, sprites at fractional positions land half a pixel
+    // apart between the scales. Keep the pre-5.3 behaviour explicitly now that nothing calls startFollow.
+    camera.roundPixels = false
     this.followTarget = target
     const bounds = camera.getBounds()
     this.followState = initialCameraFollowState(target.x, target.y, host.facing, camera.scrollX, camera.scrollY, {

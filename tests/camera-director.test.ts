@@ -18,6 +18,7 @@ const VIEW = { x: 0, y: 0, width: 4000, height: 252 }
 function makeHost(target: CameraFollowTarget, facing: 1 | -1) {
   const calls: string[] = []
   const camera = {
+    roundPixels: true,
     scrollX: 0,
     scrollY: 0,
     zoom: 1,
@@ -93,4 +94,12 @@ test('5.3c-5 tickHitstop no longer touches the camera; tickCameraFollow does the
   assert.equal(camera.scrollX, 0, 'tickHitstop alone must not step the camera')
   director.tickCameraFollow()
   assert.notEqual(camera.scrollX, 0, 'tickCameraFollow steps the camera from the current hero position')
+})
+
+test('5.3d-1 startFollowingPlayer switches roundPixels off for gameplay (smoke 40 identity, pre-5.3 behaviour)', () => {
+  const target = { x: 600, y: 100 }
+  const { host, camera } = makeHost(target, 1)
+  assert.equal(camera.roundPixels, true)
+  new CameraDirector(host).startFollowingPlayer(target)
+  assert.equal(camera.roundPixels, false)
 })
