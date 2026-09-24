@@ -1,4 +1,6 @@
 import Phaser from 'phaser'
+import { computeTilePlacements } from '../../stage/tileSkin'
+import { stageTileAtlasKey } from '../../stage/stageBiome'
 
 export const GAMEPLAY_TEXTURE_KEYS = {
   spikeBank: 'gameplay_spike_bank',
@@ -74,8 +76,43 @@ function createFlameVent(scene: Phaser.Scene): void {
   graphics.destroy()
 }
 
-export function resolveStageHazardTexture(hazardId: string): string {
-  return hazardId.includes('lava') ? GAMEPLAY_TEXTURE_KEYS.flameVent : GAMEPLAY_TEXTURE_KEYS.spikeBank
+/**
+ * Bakes the biome atlas's `spike` frame, tiled twice, into a 32x16 texture matching the generated
+ * spike bank's footprint so a hazard sprite's physics body (sized from its texture) does not change
+ * when it switches from the flat generated art to the tileset. Cached per atlas key.
+ */
+function createBiomeSpikeBank(scene: Phaser.Scene, atlasKey: string): string {
+  const key = `${atlasKey}_hazard_spike`
+  if (scene.textures.exists(key)) {
+    return key
+  }
+
+  const placements = computeTilePlacements({ x: 0, y: 0, width: 32, height: 16 }, 'spike')
+  const rt = scene.make.renderTexture({ width: 32, height: 16 }, false)
+  // Never added to the scene's display list: it exists only as a source for RenderTexture.draw below.
+  const stamp = new Phaser.GameObjects.Image(scene, 0, 0, atlasKey, placements[0]?.frame)
+  stamp.setOrigin(0, 0)
+  placements.forEach((placement) => {
+    stamp.setFrame(placement.frame)
+    stamp.setCrop(0, 0, placement.width, placement.height)
+    rt.draw(stamp, placement.x, placement.y)
+  })
+  stamp.destroy()
+  rt.saveTexture(key)
+  rt.destroy()
+  return key
+}
+
+/** Lava hazards keep the flame vent art. Everything else uses the stage's biome spike tile when its atlas is loaded. */
+export function resolveStageHazardTexture(hazardId: string, stageId?: string, scene?: Phaser.Scene): string {
+  if (hazardId.includes('lava')) {
+    return GAMEPLAY_TEXTURE_KEYS.flameVent
+  }
+  const biomeAtlasKey = stageId ? stageTileAtlasKey(stageId) : undefined
+  if (biomeAtlasKey && scene && scene.textures.exists(biomeAtlasKey)) {
+    return createBiomeSpikeBank(scene, biomeAtlasKey)
+  }
+  return GAMEPLAY_TEXTURE_KEYS.spikeBank
 }
 
 export function ensureGameplayTextures(scene: Phaser.Scene): void {

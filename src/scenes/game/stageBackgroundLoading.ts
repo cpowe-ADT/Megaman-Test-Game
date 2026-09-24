@@ -1,6 +1,7 @@
 import type Phaser from 'phaser'
 import { getCampaignStage } from '../../content/campaign'
 import { STAGE_BACKGROUND_ASSETS, type StageBackgroundAsset } from '../../content/stageBackgroundCatalog'
+import { queueStageTileAtlas } from './stageTileLoading'
 
 /**
  * Stage backgrounds load per stage, not per game. Each 384x216 layer is 0.33MB decoded whatever its
@@ -49,4 +50,10 @@ export function queueStageBackgrounds(scene: Phaser.Scene, stageId: string): voi
       scene.load.image(asset.key, asset.path)
     }
   })
+}
+
+/** Everything Game.preload() queues for a stage: its background layers and its biome tile atlas. */
+export function queueStageAssets(scene: Phaser.Scene, stageId: string): void {
+  queueStageBackgrounds(scene, stageId)
+  queueStageTileAtlas(scene, stageId)
 }

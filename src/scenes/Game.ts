@@ -63,9 +63,9 @@ import { resolvePlayerFeatureFlags } from '../player/featureFlags'
 import { resolveSwordHitboxOrigin, swordHitboxIntersectsTarget } from '../player/swordCollision'
 import type { PlayerDamageRequest, PlayerDamageResult, ResolvedHitbox } from '../player/types'
 import { ActiveRunSaveData, Save } from '../systems/Save'
-import { queueStageBackgrounds, resolveGameStageId } from './game/stageBackgroundLoading'
+import { queueStageAssets, resolveGameStageId } from './game/stageBackgroundLoading'
 import { GameplayTouchControls } from '../ui/GameplayTouchControls'
-import { HUD } from '../ui/HUD'
+import { HUD, formatDistrictLabel } from '../ui/HUD'
 import { VictoryModal } from '../ui/VictoryModal'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
 import { ensurePickupTextures, PICKUP_TEXTURE_KEYS } from '../ui/pickups/PickupTextures'
@@ -455,7 +455,7 @@ export class Game extends Phaser.Scene {
         width: worldWidth,
         height: 16,
         type: 'solid' as const,
-        color: 0x1a2230
+        color: 0x1a2230, tileKind: 'ground' as const
       },
       ...cfg.midPlatforms.map((platform) => ({
         id: platform.id,
@@ -469,7 +469,7 @@ export class Game extends Phaser.Scene {
       }))
     ]
 
-    this.platformCollisionSystem.rebuild(platforms)
+    this.platformCollisionSystem.rebuild(platforms, stageId)
     this.stagePlatforms = this.platformCollisionSystem.getSolidGroup()
     this.stageOneWayPlatforms = this.platformCollisionSystem.getOneWayGroup()
     this.bossGateLockX = getBossRoomGateX(cfg.bossRoom)
@@ -1103,10 +1103,10 @@ export class Game extends Phaser.Scene {
   }
   // ======================= [AI-UPDATE-END]
 
-  /** Loads only this stage's background layers; see stageBackgroundLoading.ts. */
+  /** Loads only this stage's background layers and biome tile atlas; see stageBackgroundLoading.ts and stageTileLoading.ts. */
   preload(): void {
     const data = this.sys.settings.data as GameData
-    queueStageBackgrounds(this, resolveGameStageId(data, (data as any)?.loadFromSave ? Save.loadActiveRun() : null))
+    queueStageAssets(this, resolveGameStageId(data, (data as any)?.loadFromSave ? Save.loadActiveRun() : null))
   }
 
   create(data: GameData): void {
@@ -1394,7 +1394,7 @@ export class Game extends Phaser.Scene {
     }
     this.hazards = this.physics.add.staticGroup()
     stage.arena.hazards.forEach((hazard) => {
-      const sprite = this.hazards.create(hazard.x, hazard.y, resolveStageHazardTexture(hazard.id))
+      const sprite = this.hazards.create(hazard.x, hazard.y, resolveStageHazardTexture(hazard.id, stageId, this))
       sprite.setDataEnabled?.()
       sprite.data?.set?.('damageSourceType', 'hazard')
       sprite.data?.set?.('damageSourceId', hazard.id)
@@ -1513,7 +1513,7 @@ export class Game extends Phaser.Scene {
     this.flushPendingProgressionItems()
     if (!activeRun) this.autosaveActiveRun()
     this.currentPhaseName = this.bossController.currentPhase.name.toUpperCase()
-    this.phaseLabel.setText('BOSS GATE\nAHEAD')
+    this.phaseLabel.setText(formatDistrictLabel(getCampaignStage(this.activeStageId).district))
     this.bossSceneEvents?.destroy()
     this.bossSceneEvents = new BossSceneEventBindings({
       events: this.events,
@@ -2339,7 +2339,7 @@ export class Game extends Phaser.Scene {
       if (this.bossEncounterActive && this.currentPhaseName) {
         this.updatePhaseHud()
       } else {
-        this.phaseLabel.setText('BOSS GATE\nAHEAD')
+        this.phaseLabel.setText(formatDistrictLabel(getCampaignStage(this.activeStageId).district))
       }
     })
   }

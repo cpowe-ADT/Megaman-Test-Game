@@ -4,6 +4,8 @@ import {
   shouldCollideWithOneWayPlatform,
   type OneWayCollisionProbe
 } from './platformCollisionRules'
+import { computeTilePlacements, type TileSkinKind } from '../stage/tileSkin'
+import { stageTileAtlasKey } from '../stage/stageBiome'
 
 /** `wall`: a solid block joined to the solid group, so its side faces stop actors and take wall slides and kicks. */
 export type PlatformType = 'solid' | 'oneWay' | 'passThrough' | 'wall'
@@ -16,6 +18,8 @@ export type PlatformDefinition = {
   height: number
   type: PlatformType
   color?: number
+  /** The main ground strip reads as `ground` tiles (repeating top/fill); other solid platforms read as a floating ledge. */
+  tileKind?: 'ground'
   motion?: {
     toX: number
     duration: number
@@ -42,6 +46,19 @@ function asStaticBody(target: Phaser.GameObjects.GameObject): Phaser.Physics.Arc
   return body instanceof Phaser.Physics.Arcade.StaticBody ? body : undefined
 }
 
+function tileKindForPlatform(platform: PlatformDefinition): TileSkinKind {
+  if (platform.type === 'wall') {
+    return 'wall'
+  }
+  if (platform.type === 'oneWay') {
+    return 'oneWay'
+  }
+  if (platform.tileKind === 'ground') {
+    return 'ground'
+  }
+  return 'solid'
+}
+
 export class PlatformCollisionSystem {
   private solidGroup?: Phaser.Physics.Arcade.StaticGroup
   private oneWayGroup?: Phaser.Physics.Arcade.StaticGroup
@@ -53,19 +70,24 @@ export class PlatformCollisionSystem {
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  rebuild(platforms: PlatformDefinition[]): void {
+  /** `stageId`: draw platforms from its biome tileset when that atlas is loaded; otherwise keep the flat rectangles. */
+  rebuild(platforms: PlatformDefinition[], stageId?: string): void {
     this.clearStage()
     this.solidGroup = this.scene.physics.add.staticGroup()
     this.oneWayGroup = this.scene.physics.add.staticGroup()
+    const biomeAtlasKey = stageId ? stageTileAtlasKey(stageId) : undefined
+    const hasAtlas = Boolean(biomeAtlasKey && this.scene.textures.exists(biomeAtlasKey))
 
     for (const platform of platforms) {
-      const visual = this.scene.add.rectangle(
-        platform.x,
-        platform.y,
-        platform.width,
-        platform.height,
-        platform.color ?? (platform.type === 'solid' || platform.type === 'wall' ? 0x1a2230 : 0x33404f)
-      )
+      const visual: Phaser.GameObjects.GameObject = hasAtlas
+        ? this.drawTiledPlatform(platform, biomeAtlasKey as string)
+        : this.scene.add.rectangle(
+            platform.x,
+            platform.y,
+            platform.width,
+            platform.height,
+            platform.color ?? (platform.type === 'solid' || platform.type === 'wall' ? 0x1a2230 : 0x33404f)
+          )
       this.stageVisuals.push(visual)
 
       if (platform.type === 'passThrough') {
@@ -98,6 +120,29 @@ export class PlatformCollisionSystem {
         this.stageTweens.push(tween)
       }
     }
+  }
+
+  /**
+   * Bakes this platform's tile placements (tileSkin.ts) into a RenderTexture sized and centred like
+   * the rectangle it replaces, so `physics.add.existing` derives the same body from it.
+   */
+  private drawTiledPlatform(platform: PlatformDefinition, atlasKey: string): Phaser.GameObjects.RenderTexture {
+    const width = Math.max(1, Math.round(platform.width))
+    const height = Math.max(1, Math.round(platform.height))
+    const rt = this.scene.add.renderTexture(platform.x, platform.y, width, height)
+    rt.setOrigin(0.5, 0.5)
+
+    const placements = computeTilePlacements({ x: 0, y: 0, width, height }, tileKindForPlatform(platform))
+    // Never added to the scene's display list: it exists only as a source for RenderTexture.draw below.
+    const stamp = new Phaser.GameObjects.Image(this.scene, 0, 0, atlasKey, placements[0]?.frame)
+    stamp.setOrigin(0, 0)
+    placements.forEach((placement) => {
+      stamp.setFrame(placement.frame)
+      stamp.setCrop(0, 0, placement.width, placement.height)
+      rt.draw(stamp, placement.x, placement.y)
+    })
+    stamp.destroy()
+    return rt
   }
 
   getSolidGroup(): Phaser.Physics.Arcade.StaticGroup | undefined {

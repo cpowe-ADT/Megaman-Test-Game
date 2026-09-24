@@ -2,6 +2,7 @@ import { IDENTITY } from '../content/identity'
 import { GAME_WIDTH } from '../config/renderPolicy'
 import Phaser from 'phaser'
 import { getHudLayout } from './hudLayout'
+export { formatDistrictLabel } from './hudLayout'
 import { BakedGraphics, type BakeBounds } from './BakedGraphics'
 import { getRenderScale } from '../config/hdRender'
 
@@ -13,6 +14,8 @@ export class HUD {
   private gPlayer: BakedGraphics
   private gWeapon: BakedGraphics
   private gBoss: BakedGraphics
+  /** The boss panel background and its red accent, baked apart from gChrome so the whole panel can hide as one unit. */
+  private gBossChrome: BakedGraphics
   private tPlayer: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tWeapon: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tBoss: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
@@ -20,7 +23,8 @@ export class HUD {
   private playerSnapshot = { current: 0, max: 1 }
   private weaponSnapshot = { current: 0, max: 1 }
   private bossSnapshot = { current: 0, max: 1 }
-  private bossBarVisible = true
+  /** Hidden until beginBossCombat calls setBossBarVisible(true): no boss framing before the fight starts. */
+  private bossBarVisible = false
   private playerName = 'PLAYER'
   private weaponName = 'BUSTER'
   private bossName = 'BOSS • ???'
@@ -36,6 +40,12 @@ export class HUD {
     this.gChrome = new BakedGraphics(scene, 'hud-baked-chrome')
     this.drawChrome()
     this.root.add(this.gChrome.image)
+
+    this.gBossChrome = new BakedGraphics(scene, 'hud-baked-boss-chrome')
+    this.drawBossChrome()
+    this.root.add(this.gBossChrome.image)
+    this.gBossChrome.image.setVisible(this.bossBarVisible)
+
     // A lost and restored WebGL context empties every DynamicTexture; bake the panels and bars again.
     const rebake = () => {
       this.drawnBars = new WeakMap()
@@ -95,6 +105,7 @@ export class HUD {
 
     this.gBoss = new BakedGraphics(scene, 'hud-baked-boss-bar')
     this.root.add(this.gBoss.image)
+    this.gBoss.image.setVisible(this.bossBarVisible)
 
     const layout = getHudLayout(GAME_WIDTH)
     this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.HERO_CALLSIGN, 9)
@@ -104,6 +115,7 @@ export class HUD {
     this.root.add(this.tWeapon)
 
     this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', 9, 1, 0)
+    this.tBoss.setVisible(this.bossBarVisible)
     this.root.add(this.tBoss)
 
     // In the HUD band under the boss panel: on the floor it covered the boss spawn point in most rooms.
@@ -201,26 +213,27 @@ export class HUD {
     const bar = getHudLayout(GAME_WIDTH).bossBar
     this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0xff6677)
     this.gBoss.image.setVisible(this.bossBarVisible)
-    this.tBoss.setVisible(true)
+    this.tBoss.setVisible(this.bossBarVisible)
   }
 
+  /** The whole boss panel (background, red accent, bar and name) hides as one unit until the fight starts. */
   setBossBarVisible(visible: boolean): void {
     this.bossBarVisible = visible
+    this.gBossChrome.image.setVisible(visible)
     this.gBoss.image.setVisible(visible)
-    // Keep the mission target named before the arena seals; an empty HUD panel
-    // reads like missing UI and makes the stage goal less clear. Until the fight it reads TARGET, not
-    // BOSS (05c playtest: "BOSS • SENTINEL ROOK" on the first screen read as a boss that failed to appear).
     this.bossName = this.bossLabelText()
     this.tBoss.setText(this.bossName)
-    this.tBoss.setVisible(true)
+    this.tBoss.setVisible(visible)
   }
 
   private bossLabelText(): string {
-    return `${this.bossBarVisible ? 'BOSS' : 'TARGET'} • ${this.bossTarget}`
+    return `BOSS • ${this.bossTarget}`
   }
 
   resize(): void {
     this.drawChrome()
+    this.drawBossChrome()
+    this.gBossChrome.image.setVisible(this.bossBarVisible)
     const layout = getHudLayout(GAME_WIDTH)
     this.tBoss.setPosition(layout.bossLabel.x, layout.bossLabel.y)
     this.tLives.setPosition(layout.livesLabel.x, layout.livesLabel.y)
@@ -251,18 +264,34 @@ export class HUD {
     chrome.fillStyle(0x050d18, 0.88)
     chrome.fillRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
     chrome.fillRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
-    chrome.fillRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
     chrome.lineStyle(1, 0x2b5c88, 0.72)
     chrome.strokeRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
     chrome.strokeRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
-    chrome.strokeRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
     chrome.fillStyle(0x63ff88, 0.9)
     chrome.fillRect(layout.playerPanel.x, 10, 3, 19)
     chrome.fillStyle(this.weaponColor, 0.9)
     chrome.fillRect(layout.playerPanel.x, 34, 3, 17)
-    chrome.fillStyle(0xff6677, 0.9)
-    chrome.fillRect(layout.bossPanel.x + layout.bossPanel.width - 3, 10, 3, 19)
     const bounds: BakeBounds = { x: 0, y: 0, width, height: layout.height }
     this.gChrome.bake(bounds)
+  }
+
+  /** The boss panel background and its red accent: baked apart from drawChrome so setBossBarVisible can hide it as one unit. */
+  private drawBossChrome(): void {
+    const layout = getHudLayout(GAME_WIDTH)
+    const chrome = this.gBossChrome.graphics
+    chrome.clear()
+    chrome.fillStyle(0x050d18, 0.88)
+    chrome.fillRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.lineStyle(1, 0x2b5c88, 0.72)
+    chrome.strokeRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.fillStyle(0xff6677, 0.9)
+    chrome.fillRect(layout.bossPanel.x + layout.bossPanel.width - 3, 10, 3, 19)
+    const bounds: BakeBounds = {
+      x: layout.bossPanel.x - 2,
+      y: layout.bossPanel.y - 2,
+      width: layout.bossPanel.width + 4,
+      height: layout.bossPanel.height + 4
+    }
+    this.gBossChrome.bake(bounds)
   }
 }
