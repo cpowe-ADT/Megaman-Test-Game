@@ -548,6 +548,10 @@ async function captureMission(browser, slot, summary) {
       }
       window.bossDebug?.unlockIntro?.()
       window.stageDebug?.skipDialogue?.()
+      // The sweep measures the boss, not the hero: since 5.2 a hit carries the hero into the room's
+      // hazards and two deaths in the sample window ended the scene (Tide Reaver, 2026-09-24), so the
+      // stationary hero is invulnerable while the boss is sampled.
+      window.__phaserGame?.scene?.getScenes(true)?.[0]?.newPlayerRuntime?.resetForRespawn?.(60000)
     })
 
     const bossRoomState = await waitForState(
