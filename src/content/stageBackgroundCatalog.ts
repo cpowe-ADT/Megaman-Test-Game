@@ -324,12 +324,12 @@ export function getStageBackgroundDefinition(stageId: string): StageBackgroundDe
   switch (stageId) {
     case 'tutorial_sentinel':
       // Drill Hangar (6.P): far skyline 192px tall and drill rigs 144px tall, both bottom-aligned on the 252px
-      // frame and tinted down to the style sheet's shadow and base so the hero reads in front of them.
+      // frame and tinted well below the tiles (STOP 6.P captures: navy on navy hid the ledges and catwalks).
       return {
         baseColor: '#0E1622',
         layers: [
-          { key: 'bg_relay_far', scrollFactorX: 0.08, y: 60, tint: 0x9aa8c4 },
-          { key: 'bg_relay_mid', scrollFactorX: 0.28, y: 108, tint: 0x7a86a6 }
+          { key: 'bg_relay_far', scrollFactorX: 0.08, y: 60, tint: 0x6f7b96 },
+          { key: 'bg_relay_mid', scrollFactorX: 0.28, y: 108, tint: 0x55607c }
         ]
       }
     case 'pyro_maw':

@@ -50,6 +50,8 @@ def main() -> None:
     parser.add_argument("--inset", type=float, default=0.035)
     parser.add_argument("--tolerance", type=int, default=60)
     parser.add_argument("--columns", type=int, default=8)
+    parser.add_argument("--brighten", type=float, default=1.0,
+                        help="multiply non-outline colours (1.15 lifts the tiles off a dark parallax background)")
     args = parser.parse_args()
 
     sheet = Image.open(args.input_path).convert("RGBA")
@@ -61,6 +63,13 @@ def main() -> None:
         if name in ("", "-"):
             continue
         tile = cut_tile(sheet, inset_rect(index, cols, cell_w, cell_h, args.inset), args.tile, args.tolerance)
+        if args.brighten != 1.0:
+            px = tile.load()
+            for ty in range(tile.height):
+                for tx in range(tile.width):
+                    r, g, b, a = px[tx, ty]
+                    if a and r + g + b > 90:
+                        px[tx, ty] = (min(255, round(r * args.brighten)), min(255, round(g * args.brighten)), min(255, round(b * args.brighten)), a)
         for alias in name.split("|"):  # one cell may serve two frame names (a plain fill used for two variants)
             tiles.append((alias, tile))
 
