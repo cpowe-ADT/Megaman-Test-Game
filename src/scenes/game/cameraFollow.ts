@@ -1,5 +1,7 @@
 import { clampScroll } from '../../config/hdRenderMath'
 import {
+  CAMERA_FOLLOW_ANCHOR_FLIP_SPEED_PX_PER_MS,
+  CAMERA_FOLLOW_BOUNDS_EASE_SPEED_PX_PER_MS,
   CAMERA_FOLLOW_LOOK_AHEAD_PX,
   CAMERA_FOLLOW_LOOK_AHEAD_TWEEN_MS,
   CAMERA_FOLLOW_TRAILING_WINDOW_PX,
@@ -7,20 +9,25 @@ import {
 } from '../../config/gameplayLayout'
 
 /**
- * The camera's follow math, pure and Phaser-free (prompt 05 §5.3b, EVAL-P5-004 fix). Phaser's own
- * `startFollow`/`setDeadzone`/`setFollowOffset` compute the deadzone rectangle in canvas pixels
- * once a render scale is applied, which put the hero outside the frame at scale 2 (review BLOCK,
- * commit 610fe2c); `CameraDirector` now calls `stepCameraFollow` every tick and writes
- * `camera.scrollX`/`scrollY` directly, entirely in game pixels, so scale cannot skew it.
+ * The camera's follow math, pure and Phaser-free (prompt 05 §5.3b/c, EVAL-P5-004 fix). Phaser's
+ * own `startFollow`/`setDeadzone`/`setFollowOffset` compute the deadzone rectangle in canvas
+ * pixels once a render scale is applied, which put the hero outside the frame at scale 2 (review
+ * BLOCK, commit 610fe2c); `CameraDirector` now calls `stepCameraFollow` every tick and writes
+ * whole game pixels to `camera.scrollX`/`scrollY`, so scale cannot skew it and sub-pixel scroll
+ * cannot blend the wrong row into the frame at 1x (5.3b/c review, the smoke 40 regression).
  *
  * Horizontal tracking is rigid in the facing direction (the anchor equals the hero exactly while
- * running forward, so a per-frame lerp never eats into the look-ahead) with a trailing window
- * behind it; the look-ahead offset is the only tweened quantity, so a symmetric deadzone can never
- * cancel it out the way the previous design did (measured lead ~8px instead of 24+).
+ * running forward) with a trailing window behind it, and a respawn/back-step snap is intentional
+ * (no long pan back to the hero). Two things must NOT snap, so they ease at a capped px/ms instead
+ * of assigning: the anchor on a facing flip (turning while the hero sits behind it no longer jumps
+ * up to a trailing-window's width in one frame), and the written scroll when `bounds` itself
+ * changes shape (a room lock opening or closing) rather than the hero simply moving.
  */
 
 export const VERTICAL_LERP_PER_FRAME = 0.08
 const FRAME_MS = 1000 / 60
+/** Below this, an eased scroll/anchor is considered caught up (game px); ends the easing mode. */
+const CAUGHT_UP_EPSILON_PX = 0.1
 
 export interface CameraFollowConstants {
   /** Trailing window width: a back-step under this never moves the horizontal anchor (game px). */
@@ -33,6 +40,10 @@ export interface CameraFollowConstants {
   lookAheadTweenMs: number
   /** Per-60Hz-frame lerp factor for the vertical scroll once bounds scroll vertically. */
   verticalLerpPerFrame: number
+  /** Capped anchor speed on a facing flip (game px per ms), so turning never snaps the camera. */
+  anchorFlipSpeedPxPerMs: number
+  /** Capped scroll speed while easing into a new `bounds` shape (game px per ms). */
+  boundsEaseSpeedPxPerMs: number
 }
 
 export const DEFAULT_CAMERA_FOLLOW_CONSTANTS: CameraFollowConstants = {
@@ -40,7 +51,9 @@ export const DEFAULT_CAMERA_FOLLOW_CONSTANTS: CameraFollowConstants = {
   verticalWindowPx: CAMERA_FOLLOW_VERTICAL_WINDOW_PX,
   lookAheadPx: CAMERA_FOLLOW_LOOK_AHEAD_PX,
   lookAheadTweenMs: CAMERA_FOLLOW_LOOK_AHEAD_TWEEN_MS,
-  verticalLerpPerFrame: VERTICAL_LERP_PER_FRAME
+  verticalLerpPerFrame: VERTICAL_LERP_PER_FRAME,
+  anchorFlipSpeedPxPerMs: CAMERA_FOLLOW_ANCHOR_FLIP_SPEED_PX_PER_MS,
+  boundsEaseSpeedPxPerMs: CAMERA_FOLLOW_BOUNDS_EASE_SPEED_PX_PER_MS
 }
 
 export interface CameraFollowBounds {
@@ -54,8 +67,13 @@ export interface CameraFollowState {
   anchorX: number
   anchorY: number
   lookAheadOffset: number
+  /** Fractional game pixels: the adapter rounds only what it writes to the camera. */
   scrollX: number
   scrollY: number
+  facing: 1 | -1
+  bounds: CameraFollowBounds
+  /** True while scrollX/scrollY are still catching up to a `bounds` shape change. */
+  easingBounds: boolean
 }
 
 export interface CameraFollowInput {
@@ -82,24 +100,49 @@ function moveToward(value: number, target: number, maxStep: number): number {
   return value
 }
 
-/** A fresh state centred on the hero, offset already at the resting look-ahead for `facing`. */
+function boundsEqual(a: CameraFollowBounds, b: CameraFollowBounds): boolean {
+  return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+}
+
+/** A fresh state centred on the hero, offset already at the resting look-ahead for `facing`. A
+ *  fresh follow (stage load, respawn re-seed) is a deliberate snap, so `easingBounds` starts false. */
 export function initialCameraFollowState(
   heroX: number,
   heroY: number,
   facing: 1 | -1,
   scrollX: number,
   scrollY: number,
+  bounds: CameraFollowBounds,
   constants: CameraFollowConstants = DEFAULT_CAMERA_FOLLOW_CONSTANTS
 ): CameraFollowState {
-  return { anchorX: heroX, anchorY: heroY, lookAheadOffset: facing * constants.lookAheadPx, scrollX, scrollY }
+  return {
+    anchorX: heroX,
+    anchorY: heroY,
+    lookAheadOffset: facing * constants.lookAheadPx,
+    scrollX,
+    scrollY,
+    facing,
+    bounds,
+    easingBounds: false
+  }
+}
+
+/** Rounds to a whole game pixel and re-clamps, so rounding never pushes the result out of bounds
+ *  (the smoke 40 regression: a fractional scroll blended the wrong row into the 1x frame). */
+export function snapScrollToGamePixel(scroll: number, boundsStart: number, boundsSize: number, viewSize: number): number {
+  // `|| 0` folds a rounded -0 (e.g. Math.round(-0.4)) back to 0, so this never writes a negative
+  // zero to the camera.
+  return clampScroll(Math.round(scroll) || 0, boundsStart, boundsSize, viewSize)
 }
 
 /**
  * One tick of camera follow. Horizontal: the anchor tracks the hero 1:1 while it moves in the
- * facing direction, and only concedes ground within `trailingWindowPx` on a back-step, so running
- * never lags and a small retreat never jitters the camera. Vertical: locked to `bounds.y` while
- * the stage fits in one screen; once bounds are taller, a symmetric window plus a time-based lerp
- * (ready for prompt 06).
+ * facing direction, conceding ground within `trailingWindowPx` on a back-step (a snap, same as a
+ * respawn: no long pan). A facing flip instead eases the anchor toward that same target at a
+ * capped speed, so turning around never jumps the camera. Vertical: locked to `bounds.y` while the
+ * stage fits in one screen; once bounds are taller, a symmetric window plus a time-based lerp
+ * (ready for prompt 06). Whenever `bounds` itself changes shape (not just the hero moving), the
+ * written scroll eases toward the new clamped target at a capped speed instead of snapping.
  */
 export function stepCameraFollow(
   state: CameraFollowState,
@@ -107,30 +150,45 @@ export function stepCameraFollow(
   constants: CameraFollowConstants = DEFAULT_CAMERA_FOLLOW_CONSTANTS
 ): CameraFollowState {
   const { heroX, heroY, facing, dtMs, viewWidth, viewHeight, bounds } = input
+  const dt = Math.max(0, dtMs)
+  const boundsChanged = !boundsEqual(state.bounds, bounds)
+  const easing = state.easingBounds || boundsChanged
 
-  let anchorX = state.anchorX
-  if (facing >= 0) {
-    if (heroX > anchorX) anchorX = heroX
-    else if (heroX < anchorX - constants.trailingWindowPx) anchorX = heroX + constants.trailingWindowPx
-  } else {
-    if (heroX < anchorX) anchorX = heroX
-    else if (heroX > anchorX + constants.trailingWindowPx) anchorX = heroX - constants.trailingWindowPx
-  }
+  const targetAnchorX =
+    facing >= 0
+      ? heroX > state.anchorX
+        ? heroX
+        : heroX < state.anchorX - constants.trailingWindowPx
+          ? heroX + constants.trailingWindowPx
+          : state.anchorX
+      : heroX < state.anchorX
+        ? heroX
+        : heroX > state.anchorX + constants.trailingWindowPx
+          ? heroX - constants.trailingWindowPx
+          : state.anchorX
+  const flipped = facing !== state.facing
+  const anchorX = flipped ? moveToward(state.anchorX, targetAnchorX, constants.anchorFlipSpeedPxPerMs * dt) : targetAnchorX
 
   const targetOffset = facing * constants.lookAheadPx
   const fullRangePx = 2 * constants.lookAheadPx
-  const maxStep = constants.lookAheadTweenMs > 0 ? (fullRangePx / constants.lookAheadTweenMs) * Math.max(0, dtMs) : fullRangePx
-  const lookAheadOffset = moveToward(state.lookAheadOffset, targetOffset, maxStep)
+  const lookAheadMaxStep = constants.lookAheadTweenMs > 0 ? (fullRangePx / constants.lookAheadTweenMs) * dt : fullRangePx
+  const lookAheadOffset = moveToward(state.lookAheadOffset, targetOffset, lookAheadMaxStep)
 
   const centreX = anchorX + lookAheadOffset
-  const scrollX = clampScroll(centreX - viewWidth / 2, bounds.x, bounds.width, viewWidth)
+  const targetScrollX = clampScroll(centreX - viewWidth / 2, bounds.x, bounds.width, viewWidth)
+  const scrollMaxStep = constants.boundsEaseSpeedPxPerMs * dt
+  const scrollX = easing ? moveToward(state.scrollX, targetScrollX, scrollMaxStep) : targetScrollX
 
   let anchorY = state.anchorY
   let scrollY: number
-  if (bounds.height <= viewHeight) {
+  const verticalLocked = bounds.height <= viewHeight
+  if (verticalLocked) {
     anchorY = heroY
-    scrollY = bounds.y
+    scrollY = easing ? moveToward(state.scrollY, bounds.y, scrollMaxStep) : bounds.y
   } else {
+    // This branch's own time-based lerp already eases (untouched by the 5.3c review); it never
+    // fully converges on a moving anchor, so it must not keep `easingBounds` on forever and cap
+    // ordinary horizontal movement once a taller-than-one-screen stage (prompt 06) is scrolling.
     const half = constants.verticalWindowPx / 2
     if (heroY > anchorY + half) anchorY = heroY - half
     else if (heroY < anchorY - half) anchorY = heroY + half
@@ -139,5 +197,9 @@ export function stepCameraFollow(
     scrollY = state.scrollY + (targetScrollY - state.scrollY) * factor
   }
 
-  return { anchorX, anchorY, lookAheadOffset, scrollX, scrollY }
+  const horizontalCaughtUp = Math.abs(targetScrollX - scrollX) <= CAUGHT_UP_EPSILON_PX
+  const verticalCaughtUp = !verticalLocked || Math.abs(bounds.y - scrollY) <= CAUGHT_UP_EPSILON_PX
+  const easingBounds = easing && !(horizontalCaughtUp && verticalCaughtUp)
+
+  return { anchorX, anchorY, lookAheadOffset, scrollX, scrollY, facing, bounds, easingBounds }
 }

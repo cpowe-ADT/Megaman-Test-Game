@@ -12,6 +12,13 @@ export const CAMERA_FOLLOW_VERTICAL_WINDOW_PX = 24
 export const CAMERA_FOLLOW_LOOK_AHEAD_PX = 40
 /** Time to sweep the full look-ahead range (-40 to +40) on a facing flip, ms. */
 export const CAMERA_FOLLOW_LOOK_AHEAD_TWEEN_MS = 250
+/** Capped anchor speed on a facing flip (prompt 05 §5.3c): 40px takes 80ms, well under the
+ *  up-to-64px instant jump the review found, but still much faster than any ordinary movement. */
+export const CAMERA_FOLLOW_ANCHOR_FLIP_SPEED_PX_PER_MS = 0.5
+/** Capped scroll speed while easing into a changed `bounds` shape (a room lock opening or
+ *  closing): a 116px room-to-stage jump takes about 77ms, comfortably faster than steady running
+ *  moves the target per frame, so normal play is never capped by this. */
+export const CAMERA_FOLLOW_BOUNDS_EASE_SPEED_PX_PER_MS = 1.5
 
 export type GameplayWorldBounds = {
   x: number

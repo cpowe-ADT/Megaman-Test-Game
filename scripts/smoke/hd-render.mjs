@@ -166,9 +166,15 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     for (let y = 238; y <= 250; y += 4) for (let x = 2; x < 350; x += 6) points.push([x, y])
     for (let y = 1; y <= 45; y += 4) for (let x = 1; x <= 7; x += 2) points.push([x, y])
     const baseA = await samplePixels(base, points, 1)
+    const cameraAtSampleBase = (await readState(base)).camera
     await advanceFrames(base, 12)
     const baseB = await samplePixels(base, points, 1)
     const hdPixels = await samplePixels(hd, points, 2)
+    const cameraAtSampleHd = (await readState(hd)).camera
+    fs.writeFileSync(
+      path.join(dir, 'camera-at-sample.json'),
+      JSON.stringify({ cameraAtSampleBase, cameraAtSampleHd }, null, 2)
+    )
     const equal = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
     const staticIndices = points.map((_, index) => index).filter((index) => equal(baseA[index], baseB[index]))
     let same = 0
@@ -197,15 +203,21 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
       ])
     )
     const hdCameraState = await readState(hd)
-    const hdHeroScreenX = hdRun.finalPlayer.x - hdCameraState.camera.scrollX
-    const hdLead = hdCameraState.camera.midPointX - hdRun.finalPlayer.x
+    const hdHeroX = hdCameraState.player.x
+    const hdHeroScreenX = hdHeroX - hdCameraState.camera.scrollX
+    const hdLead = hdCameraState.camera.midPointX - hdHeroX
     fs.writeFileSync(
       path.join(dir, 'camera-2x.json'),
-      JSON.stringify({ hdRun, camera: hdCameraState.camera, hdHeroScreenX, hdLead }, null, 2)
+      JSON.stringify({ hdRun, camera: hdCameraState.camera, hdHeroX, hdHeroScreenX, hdLead }, null, 2)
     )
     await hd.locator('canvas').screenshot({ path: path.join(dir, 'shot-2x-lookahead.png') })
     assert.ok(hdHeroScreenX >= 0 && hdHeroScreenX <= 448, `hero left the 2x frame: screen x ${hdHeroScreenX}`)
-    assert.ok(hdLead >= 24, `2x camera lead too small: ${hdLead}`)
+    assert.ok(hdLead >= 24 && hdLead <= 48, `2x camera lead ${hdLead} outside [24,48]`)
+    assert.ok(
+      hdCameraState.camera.scrollX > hdCameraState.camera.boundsX &&
+        hdCameraState.camera.scrollX < hdCameraState.camera.boundsX + hdCameraState.camera.boundsWidth - 448,
+      `2x scroll not strictly inside bounds: ${hdCameraState.camera.scrollX}`
+    )
 
     // Resizing the 2x window down to 1x must shrink the canvas and cameras back.
     await hd.setViewportSize({ width: 448, height: 252 })

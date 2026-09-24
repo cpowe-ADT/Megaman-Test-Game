@@ -2874,8 +2874,8 @@ async function runExtendedStageScenario(name) {
     const afterRight = await readState(page)
     await page.screenshot({ path: path.join(scenarioDir, 'shot-lookahead.png') })
 
-    const heroScreenXRight = rightReplay.finalPlayer.x - afterRight.camera.scrollX
-    const leadRight = afterRight.camera.midPointX - rightReplay.finalPlayer.x
+    const heroScreenXRight = afterRight.player.x - afterRight.camera.scrollX
+    const leadRight = afterRight.camera.midPointX - afterRight.player.x
     const verticalDriftPx = Math.abs(afterRight.camera.midPointY - before.camera.midPointY)
 
     const leftReplay = await page.evaluate(() =>
@@ -2885,7 +2885,7 @@ async function runExtendedStageScenario(name) {
       ])
     )
     const afterLeft = await readState(page)
-    const leadLeft = afterLeft.camera.midPointX - leftReplay.finalPlayer.x
+    const leadLeft = afterLeft.camera.midPointX - afterLeft.player.x
 
     fs.writeFileSync(
       path.join(scenarioDir, 'state-lookahead.json'),

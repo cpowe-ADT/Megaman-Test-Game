@@ -1555,7 +1555,7 @@ export class Game extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.sessionStats.tick(delta, Boolean(this.player?.active && !this.paused && !this.victoryTriggered && !this.dialogueOverlay?.isActive() && !this.victoryModal?.isOpen() && !this.storyDirector?.isBlocking()))
-    if (this.cameraDirector.tickHitstop()) return
+    if (this.cameraDirector.tickHitstop()) { this.cameraDirector.tickCameraFollow(); return }
 
     if (!this.player || !this.actions) {
       const now = this.time.now
@@ -1618,7 +1618,7 @@ export class Game extends Phaser.Scene {
       return
     }
     this.checkStageKillPlane()
-    this.facing = this.newPlayerRuntime.getFacing()
+    this.facing = this.newPlayerRuntime.getFacing(); this.cameraDirector.tickCameraFollow()
     this.bossUpdate(now)
     this.bossProjectileController?.update(now, delta)
     this.enemySpawner?.update(now, delta)

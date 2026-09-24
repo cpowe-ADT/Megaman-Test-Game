@@ -1,13 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { CameraDirector, type CameraDirectorHost, type CameraFollowTarget } from '../src/scenes/game/CameraDirector'
-import { stepCameraFollow, initialCameraFollowState } from '../src/scenes/game/cameraFollow'
+import { stepCameraFollow, initialCameraFollowState, snapScrollToGamePixel } from '../src/scenes/game/cameraFollow'
 
 /**
- * `CameraDirector` wiring around the pure `stepCameraFollow` (prompt 05 §5.3b, EVAL-P5-004 fix):
+ * `CameraDirector` wiring around the pure `stepCameraFollow` (prompt 05 §5.3b/c, EVAL-P5-004 fix):
  * it must stop any Phaser follow (never `startFollow`/`setDeadzone`/`setFollowOffset` again, the
- * source of the commit 610fe2c review BLOCKs) and write `scrollX`/`scrollY` from the pure step's
- * own bounds/view size every tick. The step's scenarios themselves live in camera-follow.test.ts.
+ * source of the commit 610fe2c review BLOCKs), and `tickCameraFollow` (called after the runtime
+ * update, per the 5.3c review MINOR, not `tickHitstop`) writes whole game pixels to
+ * `scrollX`/`scrollY` from the pure step's own bounds/view size every tick (the 5.3c review found
+ * a fractional 1x scroll blending the wrong ground row into smoke 40). The step's own scenarios
+ * live in camera-follow.test.ts.
  */
 
 const VIEW = { x: 0, y: 0, width: 4000, height: 252 }
@@ -45,20 +48,20 @@ test('5.3b-9 startFollowingPlayer stops any Phaser follow and never calls startF
   const { host, calls } = makeHost(target, 1)
   const director = new CameraDirector(host)
   director.startFollowingPlayer(target)
-  director.tickHitstop()
+  director.tickCameraFollow()
   assert.ok(calls.includes('stopFollow'))
   assert.equal(calls.includes('startFollow'), false)
   assert.equal(calls.includes('setDeadzone'), false)
   assert.equal(calls.includes('setFollowOffset'), false)
 })
 
-test('5.3b-10 tickHitstop writes scrollX/scrollY from the same math as stepCameraFollow, given the live bounds and view size', () => {
+test('5.3c-4 tickCameraFollow writes whole game pixels matching stepCameraFollow, rounded and re-clamped', () => {
   const target = { x: 600, y: 100 }
   const { host, camera } = makeHost(target, 1)
   const director = new CameraDirector(host)
   director.startFollowingPlayer(target)
 
-  let expected = initialCameraFollowState(600, 100, 1, 0, 0)
+  let expected = initialCameraFollowState(600, 100, 1, 0, 0, VIEW)
   for (let i = 0; i < 5; i += 1) {
     target.x += 4
     expected = stepCameraFollow(expected, {
@@ -70,9 +73,24 @@ test('5.3b-10 tickHitstop writes scrollX/scrollY from the same math as stepCamer
       viewHeight: 252,
       bounds: VIEW
     })
-    director.tickHitstop()
+    director.tickCameraFollow()
+    // Written every tick, not just the last: a fractional scroll must never reach the camera.
+    assert.equal(camera.scrollX, snapScrollToGamePixel(expected.scrollX, VIEW.x, VIEW.width, 448))
+    assert.equal(Number.isInteger(camera.scrollX), true, `scrollX must be a whole game pixel, got ${camera.scrollX}`)
   }
 
-  assert.equal(camera.scrollX, expected.scrollX)
-  assert.equal(camera.scrollY, expected.scrollY)
+  assert.equal(camera.scrollX, snapScrollToGamePixel(expected.scrollX, VIEW.x, VIEW.width, 448))
+  assert.equal(camera.scrollY, snapScrollToGamePixel(expected.scrollY, VIEW.y, VIEW.height, 252))
+})
+
+test('5.3c-5 tickHitstop no longer touches the camera; tickCameraFollow does the whole step', () => {
+  const target = { x: 600, y: 100 }
+  const { host, camera } = makeHost(target, 1)
+  const director = new CameraDirector(host)
+  director.startFollowingPlayer(target)
+  target.x = 900
+  director.tickHitstop()
+  assert.equal(camera.scrollX, 0, 'tickHitstop alone must not step the camera')
+  director.tickCameraFollow()
+  assert.notEqual(camera.scrollX, 0, 'tickCameraFollow steps the camera from the current hero position')
 })

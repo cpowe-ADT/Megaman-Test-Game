@@ -3,14 +3,10 @@ import { getCampaignStage } from '../../content/campaign'
 import { getBossRoomCameraBounds } from '../../content/stageArenaLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { Settings } from '../../systems/Settings'
+import { clampScroll } from '../../config/hdRenderMath'
 import { tickHitstopFrames } from '../../player/config'
 import { CONTACT_HIT_FEEL, isWeaknessContact, resolveShakeRequest, type ContactHitKind, type ShakeConfig } from '../../player/hitFeel'
-import { initialCameraFollowState, stepCameraFollow, type CameraFollowState } from './cameraFollow'
-
-/** Plain-value clamp so this module has no runtime dependency on Phaser (`Phaser.Math.Clamp`). */
-function clampNumber(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
-}
+import { initialCameraFollowState, snapScrollToGamePixel, stepCameraFollow, type CameraFollowState } from './cameraFollow'
 
 /** Recent hit-stops and the contact hits that caused them, newest last (smoke 24 reads both). */
 export interface HitFeelTraceEntry {
@@ -62,26 +58,54 @@ export class CameraDirector {
   readonly hitstops: HitFeelTraceEntry[] = []
   private activeShakeIntensity = 0
   private followTarget?: CameraFollowTarget
-  private followState: CameraFollowState = { anchorX: 0, anchorY: 0, lookAheadOffset: 0, scrollX: 0, scrollY: 0 }
+  private followState?: CameraFollowState
 
   constructor(private readonly host: CameraDirectorHost) {}
 
   /**
    * Cancels any Phaser follow left over (defensive: nothing on the hero path calls `startFollow`
-   * any more) and seeds the pure follow state from the hero's current position and facing.
-   * `tickHitstop` below steps and writes `scrollX`/`scrollY` every frame from here on.
+   * any more) and seeds the pure follow state from the hero's current position, facing and the
+   * live bounds. `tickCameraFollow` below steps and writes `scrollX`/`scrollY` every frame from
+   * here on; this reset is a deliberate snap (a fresh stage, not an eased transition).
    */
   startFollowingPlayer(target: CameraFollowTarget): void {
     const host = this.host
-    host.cameras.main.stopFollow()
+    const camera = host.cameras.main
+    camera.stopFollow()
     this.followTarget = target
-    this.followState = initialCameraFollowState(
-      target.x,
-      target.y,
-      host.facing,
-      host.cameras.main.scrollX,
-      host.cameras.main.scrollY
-    )
+    const bounds = camera.getBounds()
+    this.followState = initialCameraFollowState(target.x, target.y, host.facing, camera.scrollX, camera.scrollY, {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height
+    })
+  }
+
+  /**
+   * One camera-follow tick (prompt 05 §5.3c MINOR: called after the player's runtime update, not
+   * before, so the camera never trails the hero by a frame). Rounds to whole game pixels only at
+   * the write site; `followState` keeps the fractional value for the next tick's easing (the smoke
+   * 40 regression: a fractional scroll blended the wrong ground row into the 1x frame).
+   */
+  tickCameraFollow(): void {
+    const host = this.host
+    if (!this.followTarget || !this.followState) return
+    const camera = host.cameras.main
+    const bounds = camera.getBounds()
+    const viewWidth = camera.displayWidth
+    const viewHeight = camera.displayHeight
+    this.followState = stepCameraFollow(this.followState, {
+      heroX: this.followTarget.x,
+      heroY: this.followTarget.y,
+      facing: host.facing,
+      dtMs: host.game.loop.delta,
+      viewWidth,
+      viewHeight,
+      bounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+    })
+    camera.scrollX = snapScrollToGamePixel(this.followState.scrollX, bounds.x, bounds.width, viewWidth)
+    camera.scrollY = snapScrollToGamePixel(this.followState.scrollY, bounds.y, bounds.height, viewHeight)
   }
 
   /**
@@ -156,39 +180,27 @@ export class CameraDirector {
     }
     const bounds = getBossRoomCameraBounds(host.activeBossRoom, GAME_HEIGHT)
     host.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
-    host.cameras.main.scrollX = clampNumber(
+    // `displayWidth` is game pixels regardless of render scale; `camera.width` is canvas pixels and
+    // over-clamped a scaled room one screen too far left (5.3c review MINOR).
+    host.cameras.main.scrollX = clampScroll(
       host.cameras.main.scrollX,
       bounds.x,
-      bounds.x + bounds.width - host.cameras.main.width
+      bounds.width,
+      host.cameras.main.displayWidth
     )
     host.bossRoomCameraLocked = true
   }
 
   /**
-   * Runs once per `Game.update`. Hit-stop frames are authored at 60Hz and counted by real time, so
-   * they last and converge the same at 30, 60 and 144fps; the camera step runs first (and every
-   * frame, hit-stop or not: facing is just frozen while paused) so the hero never stalls out of
-   * frame while everything else is stopped.
+   * Runs once per `Game.update`, before the player's runtime update: only hit-stop bookkeeping.
+   * Hit-stop frames are authored at 60Hz and counted by real time, so they last and converge the
+   * same at 30, 60 and 144fps. The camera itself steps in `tickCameraFollow` (called after the
+   * runtime update on a normal frame, or from here while hit-stop holds everything else still, so
+   * the hero never stalls out of frame during a freeze).
    */
   tickHitstop(): boolean {
     const host = this.host
     const deltaMs = host.game.loop.delta
-
-    if (this.followTarget) {
-      const camera = host.cameras.main
-      const bounds = camera.getBounds()
-      this.followState = stepCameraFollow(this.followState, {
-        heroX: this.followTarget.x,
-        heroY: this.followTarget.y,
-        facing: host.facing,
-        dtMs: deltaMs,
-        viewWidth: camera.displayWidth,
-        viewHeight: camera.displayHeight,
-        bounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
-      })
-      camera.scrollX = this.followState.scrollX
-      camera.scrollY = this.followState.scrollY
-    }
 
     if (host.hitstopRemainingFrames > 0) {
       host.hitstopRemainingFrames = tickHitstopFrames(host.hitstopRemainingFrames, deltaMs)
