@@ -1513,7 +1513,7 @@ export class Game extends Phaser.Scene {
     this.flushPendingProgressionItems()
     if (!activeRun) this.autosaveActiveRun()
     this.currentPhaseName = this.bossController.currentPhase.name.toUpperCase()
-    this.phaseLabel.setText('BOSS GATE\nADVANCE')
+    this.phaseLabel.setText('BOSS GATE\nAHEAD')
     this.bossSceneEvents?.destroy()
     this.bossSceneEvents = new BossSceneEventBindings({
       events: this.events,
@@ -2339,7 +2339,7 @@ export class Game extends Phaser.Scene {
       if (this.bossEncounterActive && this.currentPhaseName) {
         this.updatePhaseHud()
       } else {
-        this.phaseLabel.setText('BOSS GATE\nADVANCE')
+        this.phaseLabel.setText('BOSS GATE\nAHEAD')
       }
     })
   }

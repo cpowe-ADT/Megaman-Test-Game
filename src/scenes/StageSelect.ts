@@ -702,7 +702,7 @@ export class StageSelect extends Phaser.Scene {
       clearedCount,
       remainingCount: Math.max(0, 8 - clearedCount)
     })
-    this.dialogueOverlay = new DialogueOverlayController(this)
+    this.dialogueOverlay = new DialogueOverlayController(this, 'bottom')
     this.dialogueOverlay.play(lines, () => {})
   }
 

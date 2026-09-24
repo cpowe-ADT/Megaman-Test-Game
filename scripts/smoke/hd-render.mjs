@@ -191,6 +191,28 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     assert.ok(staticIndices.length >= points.length * 0.6, `too few static sample points (${staticIndices.length}/${points.length})`)
     assert.ok(ratio >= 0.98, `only ${(ratio * 100).toFixed(1)}% of static world/HUD pixels match between 1x and 2x: ${JSON.stringify(diffs)}`)
 
+    // HUD chrome at 2x (05c playtest fix): the points above sit left of the panels, so they passed while
+    // every baked panel and bar was missing under WebGL (Phaser 3.90's DynamicTexture.setSize leaves its
+    // render target at 1x1). Sample inside the player bar (hudLayout playerBar: x 19..177, y 20..30):
+    // at 2x it must not be the bare HUD band, and most points must match the 1x Canvas page (cell edges are
+    // anti-aliased at 1x and solid at 2x, so about 8 of 38 legitimately differ).
+    const barPoints = []
+    for (const y of [23, 27]) for (let x = 24; x <= 168; x += 8) barPoints.push([x, y])
+    const bandPoint = [[4, 26]]
+    const [baseBar, hdBar, hdBand] = [
+      await samplePixels(base, barPoints, 1),
+      await samplePixels(hd, barPoints, 2),
+      (await samplePixels(hd, bandPoint, 2))[0]
+    ]
+    const barSame = barPoints.filter((_, index) => equal(baseBar[index], hdBar[index])).length
+    const barDrawn = hdBar.filter((pixel) => !equal(pixel, hdBand)).length
+    fs.writeFileSync(
+      path.join(dir, 'hud-bar-compare.json'),
+      JSON.stringify({ points: barPoints.length, barSame, barDrawn, hdBand, baseBar: baseBar.slice(0, 6), hdBar: hdBar.slice(0, 6) }, null, 2)
+    )
+    assert.ok(barDrawn >= barPoints.length * 0.5, `2x HUD player bar not drawn: ${barDrawn}/${barPoints.length} points differ from the band`)
+    assert.ok(barSame >= barPoints.length * 0.7, `2x HUD player bar differs from 1x: ${barSame}/${barPoints.length} points match`)
+
     // Hero-in-frame at 2x (prompt 05 §5.3b, EVAL-P5-004 fix): this is where the review found the
     // hero outside the frame (commit 610fe2c, shot-0.png at scale 2), because the old deadzone math
     // read canvas pixels once a render scale applied. `camera` (render_game_to_text, documented in
@@ -201,16 +223,24 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     const hdSpawn = await readState(hd)
     const hdBoundsWidth = Number(hdSpawn.camera?.boundsWidth ?? 0)
     const hdMargin = 448 + 40
-    const hdMidStageX = Math.min(Math.max(hdBoundsWidth / 2, hdMargin), Math.max(hdMargin, hdBoundsWidth - hdMargin))
+    // Leave room for the 60-frame run (about 260px at 220px/s): from mid-stage an unhurt hero reaches Pyro's
+    // boss room at x 928 and the camera locks to it.
+    const hdMidStageX = Math.max(hdMargin, Math.min(hdBoundsWidth / 2, hdBoundsWidth - hdMargin) - 260)
     await hd.evaluate((x) => window.stageDebug.setPlayerX(x), hdMidStageX)
     await advanceFrames(hd, 30)
-    const hdRun = await hd.evaluate(() =>
-      window.stageDebug.replayInputs([
+    // Read the state in the same evaluate as the replay (05c): a separate read let the live loop run a
+    // few frames after the release, the hero decelerated (vx 17 to 37 against 174) and the eased lead
+    // shrank to 18, which failed the check under load at df941b3's code.
+    // The run crosses Pyro's flame vent and a drone at x 700 to 790: a contact hit's knockback (5.2) cut the
+    // run to 62px in one sample. The hero is invulnerable for the measurement, as in the sweep's boss sample.
+    const { hdRun, hdCameraState } = await hd.evaluate(async () => {
+      window.__phaserGame.scene.getScene('Game').newPlayerRuntime?.resetForRespawn?.(60000)
+      const run = await window.stageDebug.replayInputs([
         { frame: 0, held: ['moveRight'] },
         { frame: 60, held: [] }
       ])
-    )
-    const hdCameraState = await readState(hd)
+      return { hdRun: run, hdCameraState: JSON.parse(window.render_game_to_text()) }
+    })
     const hdHeroX = hdCameraState.player.x
     const hdHeroScreenX = hdHeroX - hdCameraState.camera.scrollX
     const hdLead = hdCameraState.camera.midPointX - hdHeroX

@@ -21,6 +21,8 @@ function assertLaneInBounds(state, label) {
   assert.ok(bounds, `${label}: lane bounds reported`)
   assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 448, `${label}: lane inside the frame horizontally`)
   assert.ok(bounds.y >= 58 && bounds.y + bounds.height <= 252, `${label}: lane below the HUD band`)
+  // 05c playtest: the lane hangs from the HUD band; at the frame bottom it covered the hero's feet.
+  assert.ok(bounds.y + bounds.height <= 160, `${label}: lane ends at ${bounds.y + bounds.height}, over the floor row`)
 }
 
 export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, readState, waitForState, advanceFrames }) {
@@ -55,15 +57,26 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     await waitForState(page, (state) => state.scene === 'StageSelect', 15000)
     await page.evaluate(() => window.__phaserGame.scene.getScene('StageSelect').scene.start('Game', { stageId: 'tutorial_sentinel', bossId: 'sentinel_rook', runtimeBossConfigId: 'sentinel_rook' }))
     await waitForState(page, (state) => state.scene === 'Game' && state.stageRuntime?.stageId === 'tutorial_sentinel', 15000)
+    let briefingChecked = false
+    // The stage card ends on its own and the briefing follows; wait for it so the check below cannot be skipped.
+    await waitForState(page, (state) => state.dialogue?.active === true, 15000)
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const state = await readState(page)
       if (!state.stageIntro?.active) break
+      // 05c playtest: the briefing panel covered the hero standing at the spawn. It now ends above them.
+      if (state.dialogue?.active && !briefingChecked) {
+        briefingChecked = true
+        fs.writeFileSync(path.join(dir, 'briefing-panel.json'), JSON.stringify({ panel: state.dialogue.panel, player: state.player }, null, 2))
+        await page.locator('canvas').screenshot({ path: path.join(dir, 'shot-briefing.png') })
+        assert.ok(state.dialogue.panel && state.dialogue.panel.bottom <= state.player.y - 24, `briefing panel bottom ${state.dialogue.panel?.bottom} covers the hero at y ${state.player.y}`)
+      }
       await page.evaluate(() => {
         if (window.__phaserGame?.scene?.getScene?.('Game')?.dialogueOverlay?.isActive?.()) window.stageDebug?.skipDialogue?.()
         else window.stageDebug?.skipStageIntro?.()
       })
       await advanceFrames(page, 4)
     }
+    assert.ok(briefingChecked, 'the tutorial briefing was never seen, so the hero-visibility check did not run')
     await waitForState(page, (state) => state.newPlayer?.locomotion?.grounded === true && locksOf(state)[0]?.phase === 'locked', 15000)
     // Record every item the lane shows for the rest of the run. Replays step many frames inside one
     // evaluate, so a timer would miss short items: wrap the lane's own advance instead (test-side only).

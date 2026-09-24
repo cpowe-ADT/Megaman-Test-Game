@@ -120,7 +120,7 @@ The gameplay trace payload should keep decision-useful feel fields available for
 
 Automation mode also exposes `stageDebug.playerViewport()`, `stageDebug.setWeaponEnergy()`, and `stageDebug.spawnPickup()` for deterministic viewport, energy-economy, and pickup-style checks. `render_game_to_text().weaponRecharge` reports the current inventory and recharge cadence; `bossState.runtime` reports body velocity/grounding, lifecycle phase, typed motion intent, locked facing, animation/frame, room dynamics, active hazards, and a bounded trace tail in addition to visible child counts.
 
-Blocking dialogue is also part of the automation contract. `render_game_to_text().dialogue` exposes the active line and progress, while automation mode provides `stageDebug.advanceDialogue()` and `stageDebug.skipDialogue()` so browser tests converge through the same callbacks as player input. The automation-only `stageDebug.freezeLatestPlayerProjectile()` hook supports deterministic lifecycle quarantine regression coverage.
+Blocking dialogue is also part of the automation contract. `render_game_to_text().dialogue` exposes the active line and progress and `panel` (`top`, `bottom` in game pixels: in play the panel hangs from the HUD band, 05c; smoke 49 asserts it ends above the hero at the spawn), while automation mode provides `stageDebug.advanceDialogue()` and `stageDebug.skipDialogue()` so browser tests converge through the same callbacks as player input. The automation-only `stageDebug.freezeLatestPlayerProjectile()` hook supports deterministic lifecycle quarantine regression coverage.
 
 ### Automation-only gameplay hooks
 

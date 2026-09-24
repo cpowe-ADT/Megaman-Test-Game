@@ -6,6 +6,7 @@ import {
   type DialoguePlaybackSnapshot
 } from '../narrative/DialoguePlayback'
 import { GAME_SIZE } from '../config/renderPolicy'
+import { dialoguePanelLayout, type DialoguePlacement } from './overlayLayout'
 
 export class DialogueOverlayController {
   private readonly playback = new DialoguePlayback()
@@ -16,37 +17,39 @@ export class DialogueOverlayController {
   private onComplete: (() => void) | null = null
   private completing = false
   private nextAdvanceAtMs = 0
+  private readonly panelRows: { top: number; bottom: number }
 
-  constructor(private readonly scene: Phaser.Scene) {
+  /** `top` in play (the floor row, where the hero and the boss stand, stays visible); `bottom` on Stage Select. */
+  constructor(private readonly scene: Phaser.Scene, placement: DialoguePlacement = 'top') {
     const { width, height } = GAME_SIZE
-    const panelHeight = 112
-    const panelY = height - panelHeight / 2 - 7
+    const layout = dialoguePanelLayout(placement)
+    this.panelRows = { top: layout.top, bottom: layout.bottom }
     const dim = scene.add.rectangle(width / 2, height / 2, width, height, 0x02050c, 0.22)
     const panel = scene.add
-      .rectangle(width / 2, panelY, width - 18, panelHeight, 0x07142a, 0.97)
+      .rectangle(layout.centerX, layout.centerY, layout.width, layout.height, 0x07142a, 0.97)
       .setStrokeStyle(2, 0x62b6ff, 0.9)
-    const accent = scene.add.rectangle(16, panelY, 4, panelHeight - 12, 0x7de8ff, 0.9)
-    this.speakerText = scene.add.text(27, panelY - 45, '', {
+    const accent = scene.add.rectangle(16, layout.centerY, 4, layout.height - 12, 0x7de8ff, 0.9)
+    this.speakerText = scene.add.text(27, layout.speakerY, '', {
       fontFamily: 'monospace',
       fontSize: '11px',
       color: '#7de8ff',
       fontStyle: 'bold'
     })
-    this.bodyText = scene.add.text(27, panelY - 25, '', {
+    this.bodyText = scene.add.text(27, layout.bodyY, '', {
       fontFamily: 'monospace',
       fontSize: '11px',
       color: '#f4f8ff',
       lineSpacing: 2,
       wordWrap: { width: width - 54, useAdvancedWrap: true },
-      fixedHeight: 62
+      fixedHeight: layout.bodyHeight
     })
     this.progressText = scene.add
-      .text(width - 27, panelY + 47, '', {
+      .text(width - 27, layout.progressY, '', {
         fontFamily: 'monospace',
         fontSize: '8px',
         color: '#9ec2ff'
       })
-      .setOrigin(1, 1)
+      .setOrigin(1, layout.progressOriginY)
 
     this.container = scene.add.container(0, 0, [dim, panel, accent, this.speakerText, this.bodyText, this.progressText])
     this.container.setScrollFactor(0).setDepth(20000).setVisible(false)
@@ -98,8 +101,9 @@ export class DialogueOverlayController {
     this.renderOrComplete()
   }
 
-  getDebugState(): DialoguePlaybackSnapshot {
-    return this.playback.snapshot()
+  /** Playback plus the panel's rows in game pixels (automation: smoke 49 checks the hero stays visible under it). */
+  getDebugState(): DialoguePlaybackSnapshot & { panel: { top: number; bottom: number } } {
+    return { ...this.playback.snapshot(), panel: { top: this.panelRows.top, bottom: this.panelRows.bottom } }
   }
 
   destroy(): void {

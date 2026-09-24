@@ -24,6 +24,7 @@ export class HUD {
   private playerName = 'PLAYER'
   private weaponName = 'BUSTER'
   private bossName = 'BOSS • ???'
+  private bossTarget = '???'
   private weaponColor = 0x58d8ff
   /** What each bar last baked (values and render scale); the boss bar was rebuilt every frame with an unchanged value. */
   private drawnBars = new WeakMap<BakedGraphics, string>()
@@ -112,7 +113,8 @@ export class HUD {
 
   setNames(playerName: string, bossName: string): void {
     this.playerName = this.truncateLabel(playerName.toUpperCase(), 16)
-    this.bossName = `BOSS • ${this.truncateLabel(bossName.toUpperCase(), 16)}`
+    this.bossTarget = this.truncateLabel(bossName.toUpperCase(), 16)
+    this.bossName = this.bossLabelText()
     this.tPlayer.setText(this.playerName)
     this.tBoss.setText(this.bossName)
   }
@@ -206,8 +208,15 @@ export class HUD {
     this.bossBarVisible = visible
     this.gBoss.image.setVisible(visible)
     // Keep the mission target named before the arena seals; an empty HUD panel
-    // reads like missing UI and makes the stage goal less clear.
+    // reads like missing UI and makes the stage goal less clear. Until the fight it reads TARGET, not
+    // BOSS (05c playtest: "BOSS • SENTINEL ROOK" on the first screen read as a boss that failed to appear).
+    this.bossName = this.bossLabelText()
+    this.tBoss.setText(this.bossName)
     this.tBoss.setVisible(true)
+  }
+
+  private bossLabelText(): string {
+    return `${this.bossBarVisible ? 'BOSS' : 'TARGET'} • ${this.bossTarget}`
   }
 
   resize(): void {
