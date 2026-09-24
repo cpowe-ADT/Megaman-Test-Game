@@ -1537,7 +1537,7 @@ export class Game extends Phaser.Scene {
     this.bossSceneEvents.bind()
 
     this.applyProgressionMovementModifiers()
-    this.cameras.main.startFollow(this.player, false, 0.1, 0.1)
+    this.cameraDirector.startFollowingPlayer(this.player)
     this.storyDirector = new StoryDirector({
       scene: this,
       stageId: stage.id as any,

@@ -5,6 +5,19 @@ import { GAMEPLAY_TEXTURE_KEYS } from '../ui/gameplay/GameplayTextures'
 import { resolveSwordTrailPose } from './SwordTrailProfile'
 import { SHAKES } from './hitFeel'
 import { FEEL_FRAME_MS, LANDING_SQUASH_FRAMES } from './config'
+import { Settings } from '../systems/Settings'
+
+/**
+ * The charge ring's particle burst rate (prompt 05 §5.3 item 3, the first consumer of
+ * `reducedFlashing`): `Settings.reducedFlashing` triples the gap between emits so the aura stops
+ * strobing for players sensitive to rapid flashing, without touching `screenShake` (gated
+ * separately in `CameraDirector.onCameraShake`).
+ */
+const CHARGE_AURA_FREQUENCY_MS = 42
+const CHARGE_AURA_REDUCED_FREQUENCY_MS = 126
+export function resolveChargeAuraFrequencyMs(reducedFlashing: boolean): number {
+  return reducedFlashing ? CHARGE_AURA_REDUCED_FREQUENCY_MS : CHARGE_AURA_FREQUENCY_MS
+}
 
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
 
@@ -113,7 +126,7 @@ export class VfxSfxRouter {
           follow: this.player,
           lifespan: 360 + level * 45,
           quantity: 3 + level,
-          frequency: 42,
+          frequency: resolveChargeAuraFrequencyMs(Settings.get().reducedFlashing),
           speed: { min: 22 + level * 5, max: 52 + level * 8 },
           radial: true,
           tint: color,

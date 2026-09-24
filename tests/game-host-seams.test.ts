@@ -44,9 +44,22 @@ function makeCameraHost() {
         resume: () => calls.push('resume')
       }
     },
-    cameras: { main: { setLerp: () => {}, shake: () => {}, setBounds: () => {}, scrollX: 0, zoom: 1, width: 100 } },
+    cameras: {
+      main: {
+        setLerp: () => {},
+        shake: () => {},
+        setBounds: () => {},
+        setDeadzone: () => {},
+        setFollowOffset: () => {},
+        startFollow: () => {},
+        scrollX: 0,
+        zoom: 1,
+        width: 100
+      }
+    },
     hitstopRemainingFrames: 0,
-    bossRoomCameraLocked: false
+    bossRoomCameraLocked: false,
+    facing: 1
   } as unknown as CameraDirectorHost
   return { host, calls }
 }

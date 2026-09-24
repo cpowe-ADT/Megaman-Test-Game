@@ -2845,6 +2845,45 @@ async function runExtendedStageScenario(name) {
     await tapKey(page, 'Enter')
     await waitForState(page, (state) => state.scene === 'Game')
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.crossNextCheckpoint))
+
+    // Camera look-ahead trace (prompt 05 §5.3 item 5): a frame-exact 60-frame moveRight replay on
+    // flat ground at the spawn, read through `cameras.main.midPoint` directly (the pattern already
+    // used elsewhere in this file) rather than the render_game_to_text payload, so this scenario
+    // does not touch the automation contract.
+    await waitForState(
+      page,
+      (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true,
+      8000,
+      'grounded player before the camera look-ahead trace'
+    )
+    const beforeLookAhead = await page.evaluate(() => {
+      const scene = window.__phaserGame.scene.getScene('Game')
+      return { playerY: scene.player.y, midPointX: scene.cameras.main.midPoint.x }
+    })
+    const lookAheadReplay = await page.evaluate(() =>
+      window.stageDebug.replayInputs([
+        { frame: 0, held: ['moveRight'] },
+        { frame: 60, held: [] }
+      ])
+    )
+    const afterLookAhead = await page.evaluate(() => {
+      const scene = window.__phaserGame.scene.getScene('Game')
+      return { midPointX: scene.cameras.main.midPoint.x }
+    })
+    const lookAheadLeadPx = afterLookAhead.midPointX - lookAheadReplay.finalPlayer.x
+    const lookAheadVerticalDriftPx = Math.abs(lookAheadReplay.finalPlayer.y - beforeLookAhead.playerY)
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-lookahead.png') })
+    fs.writeFileSync(
+      path.join(scenarioDir, 'state-lookahead.json'),
+      JSON.stringify({ beforeLookAhead, lookAheadReplay, afterLookAhead, lookAheadLeadPx, lookAheadVerticalDriftPx }, null, 2)
+    )
+    if (lookAheadLeadPx < 24) {
+      throw new Error(`Camera look-ahead too small after one second running right: midPoint.x - player.x = ${lookAheadLeadPx}`)
+    }
+    if (lookAheadVerticalDriftPx > 4) {
+      throw new Error(`Camera vertical drift on flat ground exceeded 4px: ${lookAheadVerticalDriftPx}`)
+    }
+
     await page.evaluate(() => {
       window.stageDebug?.crossNextCheckpoint?.()
     })
