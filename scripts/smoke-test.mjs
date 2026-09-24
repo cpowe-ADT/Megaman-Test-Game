@@ -2527,8 +2527,19 @@ async function runPickupRecoveryScenario(name) {
     await page.evaluate(() => {
       window.stageDebug?.damagePlayer?.(3)
     })
-    // The hurt lock now carries the knockback (5.2), so let the hero settle before the pickups drop at his feet.
-    await advanceFrames(page, 24)
+    // The hurt lock carries the knockback (5.2) and the page also runs in real time between polls, so a
+    // fixed frame count spawned the capsules mid-flight (05b: the hero landed 30px away and never
+    // collected them). Wait until the hero is grounded and still, then drop them at his feet.
+    await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.newPlayer?.locomotion?.grounded === true &&
+        Math.abs(Number(state.player?.vx ?? 1)) < 1 &&
+        Number(state.newPlayer?.combat?.hitstunMs ?? 1) === 0,
+      8000,
+      'hero settled after the debug hit'
+    )
     await page.evaluate(() => {
       window.stageDebug?.spawnPickup?.('health')
       window.stageDebug?.spawnPickup?.('ammo')
