@@ -40,3 +40,14 @@ export function resolveProjectileStall(input: ProjectileStallInput): ProjectileS
     shouldRecycle: input.now - stalledSince >= PROJECTILE_STALL_WATCHDOG_MS
   }
 }
+
+/**
+ * Centre y for a shot that must start clear of the floor its shooter stands on: the shot's bounds
+ * (half height `halfHeight`) end at least `gapPx` above `floorY`. Bosses and grounded enemies stand
+ * with their origin on their feet, and a shot spawned overlapping the floor is recycled by the
+ * bullet-vs-platform collider on its first step (the "boss bullets do not work" bug, 2026-09-24).
+ */
+export function liftShotAboveFloor(centerY: number, halfHeight: number, floorY: number, gapPx = 1): number {
+  const maxCenter = floorY - Math.max(0, halfHeight) - gapPx
+  return centerY > maxCenter ? maxCenter : centerY
+}

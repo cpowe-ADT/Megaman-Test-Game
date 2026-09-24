@@ -3,17 +3,41 @@ import { resolveUpgradeModifiers, type UpgradeModifiers } from '../progression/u
 import type { PlayerDamageRequest } from './types'
 import { shouldFlipPlayerSpriteForFacing } from './config'
 import type { PlayerFeatureFlags } from './featureFlags'
-import type { BlasterConfig, SwordConfig, DamageConfig, Direction8 } from './config'
+import type { BlasterConfig, SwordConfig, DamageConfig, Direction8, HitboxShape, SwordHitConfig } from './config'
 import type {
   CombatSnapshot,
   HitTier,
   PlayerIntent,
   PlayerRuntimeEvent,
   ResolvedHitbox,
+  SlashMove,
   SpawnProjectileRequest
 } from './types'
 
 const FRAME_MS = 1000 / 60
+/** Phase clocks are float ms; anything this close to zero has run out. */
+const PHASE_EPSILON_MS = 1e-6
+const COMBO_MOVES: readonly SlashMove[] = ['combo1', 'combo2', 'combo3']
+/** Legacy single slash (comboEnabled false): the adapter's old flat numbers. */
+const LEGACY_SWORD_DAMAGE = 2
+const LEGACY_SWORD_KNOCKBACK = { x: 100, y: -60 }
+
+/** Motor facts the slash reads: a jump started this tick cancels recovery. */
+export type CombatMotionFacts = { justJumped?: boolean }
+
+function isHorizontal(direction: Direction8): boolean {
+  return direction === 'e' || direction === 'w'
+}
+
+function directionSign(direction: Direction8, facing: 1 | -1): 1 | -1 {
+  if (direction === 'e' || direction === 'ne' || direction === 'se') return 1
+  if (direction === 'w' || direction === 'nw' || direction === 'sw') return -1
+  return facing
+}
+
+function mirrorShape(shape: HitboxShape, sign: 1 | -1): HitboxShape {
+  return sign === 1 ? { ...shape } : { ...shape, offsetX: -shape.offsetX }
+}
 
 export function resolveEightDirection(
   aim: { x: number; y: number },
@@ -63,6 +87,18 @@ export class PlayerCombat {
   private slashPhaseRemainingMs = 0
   private slashGrounded = true
   private slashHitboxFired = false
+  private slashMove: SlashMove = 'combo1'
+  private slashSign: 1 | -1 = 1
+  private slashHit: SwordHitConfig | null = null
+  /** Ground chain: index of the next hit, a press buffered during active/recovery, and the link window after it. */
+  private comboNextIndex = 0
+  private comboBuffered = false
+  private comboLinkRemainingMs = 0
+  private airSlashUsed = false
+  private slashStartedThisTick = false
+  private wasDashing = false
+  private swingId = 0
+  private readonly swingTargets = new Set<unknown>()
 
   private iFramesRemainingMs = 0
   private hitstunRemainingMs = 0
@@ -91,7 +127,8 @@ export class PlayerCombat {
     facing: 1 | -1,
     grounded: boolean,
     dashing: boolean,
-    canChargeShot = this.flags.enableChargeShot
+    canChargeShot = this.flags.enableChargeShot,
+    motion: CombatMotionFacts = {}
   ): { snapshot: CombatSnapshot; events: PlayerRuntimeEvent[] } {
     const events: PlayerRuntimeEvent[] = []
     this.transientShotFired = false
@@ -164,20 +201,23 @@ export class PlayerCombat {
         }
       }
 
+      if (grounded) {
+        this.airSlashUsed = false
+      }
+      // Dash and jump cancel recovery (never startup or active) and drop the chain.
+      const dashStarted = dashing && !this.wasDashing
+      if (this.slashPhase === 'recovery' && (dashStarted || motion.justJumped)) {
+        this.endSlash()
+        this.resetCombo()
+      }
+
       const canSlash = this.flags.enableSword && !dashing
-      if (canSlash && intent.slashPressed && this.slashPhase == null) {
-        if (this.flags.enableChargeShot && this.blaster.chargeCancelOnSlash) {
-          this.clearCharge()
+      if (canSlash && intent.slashPressed) {
+        if (this.slashPhase == null) {
+          this.startSlash(intent, facing, grounded, events)
+        } else if (this.sword.comboEnabled && this.slashPhase !== 'startup' && this.slashMove !== 'air_spin') {
+          this.comboBuffered = true
         }
-        this.saberReleaseArmed = true
-        this.slashDirection = resolveEightDirection(intent.aim, facing, this.sword.aimDeadzone)
-        this.slashGrounded = grounded
-        this.slashPhase = 'startup'
-        this.slashPhaseRemainingMs = this.framesToMs(
-          this.getSwordWindow(grounded, this.slashDirection).startupFrames
-        )
-        this.slashHitboxFired = false
-        events.push({ type: 'sfx', key: 'sword_swing' })
       }
       if (intent.slashReleased) {
         if (this.saberReleaseArmed && this.modifiers.arcSlash) events.push({ type: 'projectile', request: { type: 'pellet', weaponId: 'ArcSlash', chargeLevel: 0, facing } })
@@ -186,7 +226,8 @@ export class PlayerCombat {
 
     }
 
-    this.updateSlashPhase(deltaMs, events)
+    this.wasDashing = dashing
+    this.updateSlashPhase(deltaMs, intent, facing, grounded, events)
 
     return {
       snapshot: this.createSnapshot(),
@@ -265,6 +306,12 @@ export class PlayerCombat {
     this.slashPhaseRemainingMs = 0
     this.slashGrounded = true
     this.slashHitboxFired = false
+    this.slashHit = null
+    this.slashStartedThisTick = false
+    this.airSlashUsed = false
+    this.wasDashing = false
+    this.swingTargets.clear()
+    this.resetCombo()
     this.iFramesRemainingMs = 0
     this.hitstunRemainingMs = 0
     this.hitstopRemainingFrames = 0
@@ -294,6 +341,8 @@ export class PlayerCombat {
       slashGrounded: this.slashPhase != null ? this.slashGrounded : undefined,
       slashDirection: this.slashPhase != null ? this.slashDirection : undefined,
       slashPhase: this.slashPhase ?? undefined,
+      slashMove: this.slashPhase != null ? this.slashMove : undefined,
+      swordHitbox: this.slashPhase === 'active' ? this.resolveHitbox() : undefined,
       hitstunRemainingMs: this.hitstunRemainingMs,
       iFramesRemainingMs: this.iFramesRemainingMs,
       hitstopRemainingFrames: this.hitstopRemainingFrames,
@@ -301,50 +350,163 @@ export class PlayerCombat {
     }
   }
 
-  private updateSlashPhase(deltaMs: number, events: PlayerRuntimeEvent[]): void {
+  /**
+   * The current swing's box on an active frame, else null. The sword-hit path tests it every active
+   * frame (a target that walks in on the last active frame still gets hit) and uses `claimSwordHit`
+   * so each target takes one hit per combo hit.
+   */
+  getActiveSwordHitbox(): ResolvedHitbox | null {
+    return this.slashPhase === 'active' ? this.resolveHitbox() : null
+  }
+
+  /** True the first time `target` is claimed during this swing's active frames; false after that or outside them. */
+  claimSwordHit(target: unknown): boolean {
+    if (this.slashPhase !== 'active' || this.swingTargets.has(target)) {
+      return false
+    }
+    this.swingTargets.add(target)
+    return true
+  }
+
+  private startSlash(
+    intent: PlayerIntent,
+    facing: 1 | -1,
+    grounded: boolean,
+    events: PlayerRuntimeEvent[],
+    chained = false
+  ): boolean {
+    if (!grounded && this.sword.comboEnabled && this.airSlashUsed) {
+      return false
+    }
+    if (this.flags.enableChargeShot && this.blaster.chargeCancelOnSlash) {
+      this.clearCharge()
+    }
+    this.saberReleaseArmed = true
+    this.slashDirection = resolveEightDirection(intent.aim, facing, this.sword.aimDeadzone)
+    this.slashSign = directionSign(this.slashDirection, facing)
+    this.slashGrounded = grounded
+    if (!grounded) {
+      this.slashMove = 'air_spin'
+      this.airSlashUsed = true
+      this.resetCombo()
+    } else {
+      const linked = chained || this.comboLinkRemainingMs > 0
+      const index = this.sword.comboEnabled && linked ? this.comboNextIndex : 0
+      this.slashMove = COMBO_MOVES[index]
+      this.comboNextIndex = (index + 1) % COMBO_MOVES.length
+      this.comboLinkRemainingMs = 0
+    }
+    this.comboBuffered = false
+    this.slashHit = this.resolveHitConfig()
+    this.slashPhase = 'startup'
+    this.slashPhaseRemainingMs = this.framesToMs(this.slashHit.startupFrames)
+    this.slashHitboxFired = false
+    this.slashStartedThisTick = true
+    this.swingId += 1
+    this.swingTargets.clear()
+    events.push({ type: 'sfx', key: 'sword_swing' })
+    return true
+  }
+
+  /**
+   * Phases carry leftover time across transitions, so a long frame never drops an active window, and
+   * the press tick itself is startup frame 1 (startup N shows N frames, then the box is live).
+   */
+  private updateSlashPhase(
+    deltaMs: number,
+    intent: PlayerIntent,
+    facing: 1 | -1,
+    grounded: boolean,
+    events: PlayerRuntimeEvent[]
+  ): void {
     if (this.slashPhase == null) {
-      return
-    }
-
-    this.slashPhaseRemainingMs -= deltaMs
-    if (this.slashPhaseRemainingMs > 0) {
-      return
-    }
-
-    if (this.slashPhase === 'startup') {
-      this.slashPhase = 'active'
-      this.slashPhaseRemainingMs = this.framesToMs(
-        this.getSwordWindow(this.slashGrounded, this.slashDirection).activeFrames
-      )
-      events.push({ type: 'vfx', key: `fx_sword_trail_dir_${this.slashDirection}` })
-      if (!this.slashHitboxFired) {
-        const window = this.getSwordWindow(this.slashGrounded, this.slashDirection)
-        // No hit-stop or shake here: the sword-hit path emits them only when a target is hit.
-        events.push({
-          type: 'hitbox',
-          request: {
-            shape: window.hitbox,
-            direction: this.slashDirection,
-            grounded: this.slashGrounded,
-            hitstopFrames: this.flags.enableHitstop ? window.hitstopFrames : 0
-          }
-        })
-        this.slashHitboxFired = true
+      if (this.comboLinkRemainingMs > 0) {
+        this.comboLinkRemainingMs -= deltaMs
+        if (this.comboLinkRemainingMs <= PHASE_EPSILON_MS) {
+          this.resetCombo()
+        }
       }
       return
     }
-
-    if (this.slashPhase === 'active') {
-      this.slashPhase = 'recovery'
-      this.slashPhaseRemainingMs = this.framesToMs(
-        this.getSwordWindow(this.slashGrounded, this.slashDirection).recoveryFrames
-      )
-      return
+    if (this.slashStartedThisTick) {
+      // The press tick is startup frame 1: its time is not spent.
+      this.slashStartedThisTick = false
+    } else {
+      this.slashPhaseRemainingMs -= deltaMs
     }
 
+    while (this.slashPhase != null && this.slashPhaseRemainingMs <= PHASE_EPSILON_MS) {
+      const carry = this.slashPhaseRemainingMs
+      const hit = this.slashHit ?? this.resolveHitConfig()
+      if (this.slashPhase === 'startup') {
+        this.slashPhase = 'active'
+        this.slashPhaseRemainingMs = this.framesToMs(hit.activeFrames) + carry
+        events.push({ type: 'vfx', key: `fx_sword_trail_dir_${this.slashDirection}` })
+        if (!this.slashHitboxFired) {
+          // One-shot event for the current adapter (Game.ts applySwordHitboxFromRuntime); the per-frame
+          // box is snapshot.swordHitbox. No hit-stop or shake here: the hit path emits them on contact.
+          events.push({ type: 'hitbox', request: this.resolveHitbox() })
+          this.slashHitboxFired = true
+        }
+      } else if (this.slashPhase === 'active') {
+        this.slashPhase = 'recovery'
+        this.slashPhaseRemainingMs = this.framesToMs(hit.recoveryFrames) + carry
+      } else {
+        // Recovery over: a buffered press starts the next hit now (hit 1 after the finisher);
+        // otherwise the link window opens, and the chain resets when it runs out.
+        const buffered = this.comboBuffered
+        const move = this.slashMove
+        this.endSlash()
+        if (move === 'combo3') {
+          this.resetCombo()
+        }
+        if (buffered && move !== 'air_spin' && this.startSlash(intent, facing, grounded, events, move !== 'combo3')) {
+          this.slashStartedThisTick = false
+          this.slashPhaseRemainingMs += carry
+        } else if (move === 'combo1' || move === 'combo2') {
+          this.comboLinkRemainingMs = this.sword.comboEnabled ? this.framesToMs(this.sword.combo.linkFrames) + carry : 0
+        }
+      }
+    }
+  }
+
+  private endSlash(): void {
     this.slashPhase = null
     this.slashPhaseRemainingMs = 0
     this.slashHitboxFired = false
+    this.comboBuffered = false
+  }
+
+  private resetCombo(): void {
+    this.comboNextIndex = 0
+    this.comboBuffered = false
+    this.comboLinkRemainingMs = 0
+  }
+
+  private resolveHitConfig(): SwordHitConfig {
+    const window = this.getSwordWindow(this.slashGrounded, this.slashDirection)
+    if (!this.sword.comboEnabled) {
+      return { ...window, damage: LEGACY_SWORD_DAMAGE, knockback: { ...LEGACY_SWORD_KNOCKBACK } }
+    }
+    const hit = this.slashMove === 'air_spin' ? this.sword.combo.air : this.sword.combo.ground[COMBO_MOVES.indexOf(this.slashMove)]
+    return {
+      ...hit,
+      hitbox: isHorizontal(this.slashDirection) ? mirrorShape(hit.hitbox, this.slashSign) : window.hitbox
+    }
+  }
+
+  private resolveHitbox(): ResolvedHitbox {
+    const hit = this.slashHit ?? this.resolveHitConfig()
+    return {
+      shape: hit.hitbox,
+      direction: this.slashDirection,
+      grounded: this.slashGrounded,
+      hitstopFrames: this.flags.enableHitstop ? hit.hitstopFrames : 0,
+      swingId: this.swingId,
+      move: this.slashMove,
+      damage: hit.damage,
+      knockback: { x: hit.knockback.x * this.slashSign, y: hit.knockback.y }
+    }
   }
 
   private fireProjectile(events: PlayerRuntimeEvent[], chargeLevel: 0 | 1 | 2 | 3 | 4, facing: 1 | -1, now: number): void {

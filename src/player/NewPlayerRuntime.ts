@@ -154,7 +154,8 @@ export class NewPlayerRuntime {
       motorSnapshot.facing,
       motorSnapshot.grounded,
       motorSnapshot.dashing,
-      this.hooks.canChargeProjectile()
+      this.hooks.canChargeProjectile(),
+      { justJumped: motorSnapshot.justJumped }
     )
 
     this.consumeCombatEvents(combatResult.events)

@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { ProjectileRegistry } from './ProjectileRegistry'
-import { resolveProjectileStall } from './projectileLifecycle'
+import { liftShotAboveFloor, resolveProjectileStall } from './projectileLifecycle'
 import type { ProjectileDefinition, ProjectilePoolKey, ProjectileSpawnRequest } from './types'
 
 type ProjectileSystemOptions = {
@@ -76,6 +76,7 @@ export class ProjectileSystem {
       ;(bullet as any).setBlendMode(definition.visual.blendMode)
     }
 
+    let spawnY = request.y
     const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
     if (body) {
       body.enable = true
@@ -85,6 +86,15 @@ export class ProjectileSystem {
         body.setSize(hitbox.width, hitbox.height, true)
       } else {
         body.setSize(bullet.frame.width, bullet.frame.height, true)
+      }
+      if (request.clearFloorY != null) {
+        const scaleY = Math.abs(request.scale ?? definition.visual.scale)
+        const halfHeight = Math.max(bullet.frame.height * scaleY, (hitbox?.height ?? bullet.frame.height) * scaleY) / 2
+        spawnY = liftShotAboveFloor(request.y, halfHeight, request.clearFloorY)
+        if (spawnY !== request.y) {
+          bullet.setPosition(request.x, spawnY)
+          body.reset(request.x, spawnY)
+        }
       }
       body.allowGravity = false
       body.onWorldBounds = definition.hitPolicy.collidesWithWorldBounds
@@ -103,7 +113,7 @@ export class ProjectileSystem {
     bullet.data?.set('damage', damage)
     bullet.data?.set('spawnedAt', this.scene.time.now)
     bullet.data?.set('originX', request.x)
-    bullet.data?.set('originY', request.y)
+    bullet.data?.set('originY', spawnY)
     bullet.data?.set('direction', request.direction)
     bullet.data?.set('lifetimeMs', definition.lifetimeMs)
     bullet.data?.set('pierceRemaining', definition.hitPolicy.pierce)
@@ -117,7 +127,7 @@ export class ProjectileSystem {
     if (definition.behavior.kind === 'wave') {
       bullet.data?.set('waveAmplitude', definition.behavior.amplitude)
       bullet.data?.set('wavePeriodMs', definition.behavior.periodMs)
-      bullet.data?.set('waveOriginY', request.y)
+      bullet.data?.set('waveOriginY', spawnY)
     }
 
     if (definition.behavior.kind === 'lob') {
@@ -245,11 +255,18 @@ export class ProjectileSystem {
         }
 
         const baseScale = Number(bullet.data?.get?.('baseScale') ?? definition.visual.scale)
+        const animationFrames = definition.visual.animationFrames
+        if (animationFrames && animationFrames.length > 1) {
+          const frameMs = Math.max(16, definition.visual.animationFrameMs ?? 66)
+          const frame = animationFrames[Math.floor((now - spawnedAt) / frameMs) % animationFrames.length]
+          if (bullet.frame?.name !== frame) bullet.setFrame(frame)
+        }
         if (projectileId.startsWith('player_buster_charge_lv')) {
+          // Directional art: pulse, never spin.
           const elapsed = now - spawnedAt
-          const pulse = 1 + Math.sin(elapsed * 0.026) * 0.08
+          const pulse = 1 + Math.sin(elapsed * 0.026) * 0.06
           bullet.setScale(baseScale * pulse)
-          bullet.setAngle((elapsed * 0.16) % 360)
+          bullet.setAngle(0)
         } else if (projectileId === 'player_weapon_MagcutDisc' || projectileId === 'player_weapon_ThunderSpike') {
           bullet.setAngle((now * 0.42 * Math.sign(body.velocity.x || 1)) % 360)
         } else {

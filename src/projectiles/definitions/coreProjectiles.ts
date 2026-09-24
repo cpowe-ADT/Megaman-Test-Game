@@ -1,4 +1,5 @@
 import { BOSS_ROSTER } from '../../bosses/roster'
+import { BUSTER_SHOT_VISUALS, HERO_PROJECTILES_ATLAS, type ChargeLevel } from '../../combat/heroCombatVisuals'
 import { getWeaponConfig } from '../../content/weapons'
 import { PLAYER_GAMEPLAY_CONFIG } from '../../player/config'
 import type { ProjectileDefinition } from '../types'
@@ -44,12 +45,15 @@ function createEnemyDefinition(config: {
   gravityY?: number
   scale?: number
   tint?: number
+  /** The saber can send it back: orbs, pellets and missiles yes; beams, lasers and flames no. */
+  reflectable: boolean
 }): ProjectileDefinition {
   const isLob = (config.gravityY ?? 0) > 0
   return {
     id: config.id,
     owner: 'enemy',
     pool: 'enemy',
+    reflectable: config.reflectable,
     speed: config.speed,
     damage: config.damage,
     lifetimeMs: config.lifetimeMs,
@@ -85,6 +89,8 @@ function createEnemyBoomerangDefinition(): ProjectileDefinition {
     id: 'boss_mag_disc',
     owner: 'enemy',
     pool: 'enemy',
+    // A boomerang steers itself home; a reflect would fight its behaviour.
+    reflectable: false,
     speed: 250,
     damage: 2,
     lifetimeMs: 3200,
@@ -104,6 +110,38 @@ function createEnemyBoomerangDefinition(): ProjectileDefinition {
   }
 }
 
+/**
+ * Buster art from projectiles_hero (pellet lv0, mid lv1-2, full lv3-4; heroCombatVisuals.ts). The body
+ * is as wide as the drawing (frame width x scale); its height stays the tall combat sensor, in game px,
+ * that the old 20x20 circles had (so short ground enemies are still met at muzzle height).
+ */
+const BUSTER_SENSOR_HEIGHT: Record<ChargeLevel, number> = {
+  0: 54,
+  1: (54 + 2) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[1].size,
+  2: (54 + 4) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[2].size,
+  3: (54 + 6) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[3].size,
+  4: (54 + 8) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[4].size
+}
+
+function busterVisual(level: ChargeLevel, depth: number): ProjectileDefinition['visual'] {
+  const art = BUSTER_SHOT_VISUALS[level]
+  return {
+    textureKey: HERO_PROJECTILES_ATLAS.key,
+    frame: art.frames[0],
+    animationFrames: art.frames,
+    animationFrameMs: Math.round(1000 / art.frameRate),
+    depth,
+    scale: art.scale,
+    flipXWithDirection: true
+  }
+}
+
+/** Body in source px (Arcade scales it by the sprite scale): drawn width, and the sensor height in game px. */
+function busterHitbox(level: ChargeLevel, sensorHeightPx: number): { width: number; height: number } {
+  const art = BUSTER_SHOT_VISUALS[level]
+  return { width: art.width, height: Math.ceil(sensorHeightPx / art.scale) }
+}
+
 function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
   const weapon = getWeaponConfig(weaponId)
   const style = weapon.projectile.style
@@ -117,17 +155,20 @@ function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
     lifetimeMs: weapon.projectile.lifetimeMs,
     maxVelocityX: 640,
     maxVelocityY: 640,
-    visual: {
-      textureKey: PROJECTILES_ATLAS_KEY,
-      frame: resolvePlayerWeaponFrame(weapon.id),
-      depth: 2,
-      scale: weapon.scale,
-      tint: weapon.tint,
-      flipXWithDirection: true
-    },
+    visual:
+      weapon.id === 'Buster'
+        ? busterVisual(0, 2)
+        : {
+            textureKey: PROJECTILES_ATLAS_KEY,
+            frame: resolvePlayerWeaponFrame(weapon.id),
+            depth: 2,
+            scale: weapon.scale,
+            tint: weapon.tint,
+            flipXWithDirection: true
+          },
     // Enemy movement colliders hug their feet. Keep a generous, centered combat
     // sensor so a muzzle-height pellet cannot pass over short ground enemies.
-    hitbox: weapon.id === 'Buster' ? { width: 14, height: 54 } : { width: 16, height: 46 },
+    hitbox: weapon.id === 'Buster' ? busterHitbox(0, BUSTER_SENSOR_HEIGHT[0]) : { width: 16, height: 46 },
     behavior:
       style === 'wave'
         ? {
@@ -169,17 +210,8 @@ function createChargeDefinition(level: 1 | 2 | 3 | 4): ProjectileDefinition {
     lifetimeMs: 840,
     maxVelocityX: 640,
     maxVelocityY: 640,
-    visual: {
-      textureKey: PROJECTILES_ATLAS_KEY,
-      frame: resolvePlayerChargeFrame(level),
-      depth: 2,
-      scale: charge.size,
-      flipXWithDirection: true
-    },
-    hitbox: {
-      width: 14 + level * 4,
-      height: 54 + level * 2
-    },
+    visual: busterVisual(level, 2),
+    hitbox: busterHitbox(level, BUSTER_SENSOR_HEIGHT[level]),
     behavior: { kind: 'standard' },
     hitPolicy: {
       hitsEnvironment: true,
@@ -220,6 +252,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     createChargeDefinition(4),
     createEnemyDefinition({
       id: 'enemy_basic_shot',
+      reflectable: true,
       frame: ENEMY_BULLET_FRAME,
       speed: 220,
       damage: 1,
@@ -228,6 +261,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_fire_orb',
+      reflectable: true,
       frame: 'projectiles_core/core/003',
       speed: 170,
       damage: 2,
@@ -238,6 +272,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_water_lance',
+      reflectable: false,
       frame: 'projectiles_core/core/001',
       speed: 285,
       damage: 1,
@@ -247,6 +282,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_arc_shard',
+      reflectable: true,
       frame: 'projectiles_core/core/004',
       speed: 245,
       damage: 1,
@@ -256,6 +292,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_acid_glob',
+      reflectable: true,
       frame: 'projectiles_core/core/012',
       speed: 165,
       damage: 2,
@@ -266,6 +303,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_static_orb',
+      reflectable: true,
       frame: 'projectiles_core/core/015',
       speed: 205,
       damage: 1,
@@ -276,6 +314,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     createEnemyBoomerangDefinition(),
     createEnemyDefinition({
       id: 'enemy_shot_basic',
+      reflectable: true,
       frame: 'projectiles_core/core/009',
       speed: 200,
       damage: 1,
@@ -283,6 +322,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_shot_frost',
+      reflectable: true,
       frame: 'projectiles_core/core/014',
       speed: 180,
       damage: 1,
@@ -291,6 +331,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_shot_shield',
+      reflectable: true,
       frame: 'projectiles_core/core/015',
       speed: 220,
       damage: 1,
@@ -299,6 +340,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_rocket_lob',
+      reflectable: true,
       frame: 'projectiles_core/core/003',
       speed: 160,
       damage: 2,
@@ -309,6 +351,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_mine_drop',
+      reflectable: true,
       frame: 'projectiles_core/core/019',
       speed: 90,
       damage: 2,
@@ -319,6 +362,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_beam_pulse',
+      reflectable: false,
       frame: 'projectiles_core/core/021',
       speed: 280,
       damage: 2,

@@ -61,6 +61,22 @@ export function buildBossSpreadAngles(count: number, spread: number): number[] {
   })
 }
 
+/** Boss shots leave this far above the boss's feet: the hero's chest height when both stand on one floor. */
+export const BOSS_MUZZLE_ABOVE_FEET_PX = 16
+
+/**
+ * Muzzle height for a boss shot. Boss containers stand on their feet (origin y = feet), so the old
+ * `origin.y - 6` put a 22px shot across the floor and the bullet-vs-platform collider recycled every
+ * boss bullet on its first step. With a movement body the muzzle sits BOSS_MUZZLE_ABOVE_FEET_PX above
+ * its bottom (never above its top); without one, that far above the origin.
+ */
+export function resolveBossMuzzleY(originY: number, body?: { top: number; bottom: number } | null): number {
+  if (!body || !(body.bottom > body.top)) {
+    return originY - BOSS_MUZZLE_ABOVE_FEET_PX
+  }
+  return Math.max(body.top + 6, body.bottom - BOSS_MUZZLE_ABOVE_FEET_PX)
+}
+
 function isOriginActive(origin: BossProjectileOrigin | null): origin is BossProjectileOrigin {
   if (!origin) {
     return false
@@ -432,7 +448,8 @@ export class BossProjectileController {
 
     const direction = config.direction ?? this.lockedAttackDirection ?? (playerPosition.x < origin.x ? -1 : 1)
     const spawnX = origin.x + 12 * direction
-    const spawnY = origin.y - 6
+    const bossBody = this.options.getBossMovementBody()
+    const spawnY = resolveBossMuzzleY(origin.y, bossBody)
     const attackName = attack?.name ?? config.label ?? 'unknown'
     const baseAngle = direction === -1 ? Math.PI : 0
     const travelAngle = baseAngle + (config.angle ?? 0)
@@ -449,6 +466,7 @@ export class BossProjectileController {
       scale: config.scale,
       tint: config.tint ?? this.options.getTrailTint(),
       velocity: { x: velocityX, y: velocityY },
+      clearFloorY: bossBody && bossBody.bottom > bossBody.top ? bossBody.bottom : origin.y,
       metadata: {
         attack: attackName,
         sourceType: 'boss_projectile',

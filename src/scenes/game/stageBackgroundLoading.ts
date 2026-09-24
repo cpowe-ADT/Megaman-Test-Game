@@ -1,4 +1,5 @@
 import type Phaser from 'phaser'
+import { HERO_COMBAT_ATLASES } from '../../combat/heroCombatVisuals'
 import { getCampaignStage } from '../../content/campaign'
 import { STAGE_BACKGROUND_ASSETS, type StageBackgroundAsset } from '../../content/stageBackgroundCatalog'
 import { queueStageTileAtlas } from './stageTileLoading'
@@ -52,8 +53,23 @@ export function queueStageBackgrounds(scene: Phaser.Scene, stageId: string): voi
   })
 }
 
-/** Everything Game.preload() queues for a stage: its background layers and its biome tile atlas. */
+/**
+ * Atlases only the Game scene draws: the hero's buster, saber and hit art (recorded in the sprite
+ * manifest with loadScope 'game', so Preload skips them; tests/hero-combat-visuals.test.ts keeps the
+ * two in step). Rule: loaded on the first Game.preload and kept resident across stages, never
+ * evicted, because every stage draws them and together they are about 0.3MB decoded.
+ */
+export function queueGameSceneAtlases(scene: Phaser.Scene): void {
+  HERO_COMBAT_ATLASES.forEach((atlas) => {
+    if (!scene.textures.exists(atlas.key)) {
+      scene.load.atlas(atlas.key, atlas.image, atlas.data)
+    }
+  })
+}
+
+/** Everything Game.preload() queues for a stage: its background layers, its biome tile atlas and the resident Game-scene atlases. */
 export function queueStageAssets(scene: Phaser.Scene, stageId: string): void {
   queueStageBackgrounds(scene, stageId)
   queueStageTileAtlas(scene, stageId)
+  queueGameSceneAtlases(scene)
 }

@@ -67,8 +67,10 @@ test('every Buster charge tier has a muzzle-height combat sensor', () => {
   ]
 
   for (const id of ids) {
-    const hitbox = registry.get(id)?.hitbox
+    const definition = registry.get(id)
+    const hitbox = definition?.hitbox
     assert.ok(hitbox, `${id} should define a combat hitbox`)
-    assert.ok(hitbox.height >= 54, `${id} should reach short ground-enemy hurtboxes`)
+    // Arcade scales the body by the sprite scale, so the reach is source height x visual scale.
+    assert.ok(hitbox.height * definition!.visual.scale >= 54, `${id} should reach short ground-enemy hurtboxes`)
   }
 })

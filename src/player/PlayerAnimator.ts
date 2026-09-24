@@ -78,6 +78,11 @@ export class PlayerAnimator {
     }
     if (state.action === 'slash') {
       const dir = state.slashDirection ?? 'e'
+      // Horizontal swings play the combo and spin bodies; aimed swings keep their directional frames.
+      const horizontal = dir === 'e' || dir === 'w'
+      if (horizontal && combat.slashMove === 'combo2') return 'player_slash_combo2'
+      if (horizontal && combat.slashMove === 'combo3') return 'player_slash_combo3'
+      if (horizontal && combat.slashMove === 'air_spin') return 'player_slash_air_spin'
       return `${combat.slashGrounded ?? motor.grounded ? 'player_slash_ground' : 'player_slash_air'}_${dir}`
     }
     if (state.action === 'charge_release') {

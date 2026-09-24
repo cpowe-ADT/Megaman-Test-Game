@@ -81,6 +81,10 @@ const animationEntries: AnimationManifestEntry[] = [
 
   ...swordEntries('player_slash_ground', 'player_shoot'),
   ...swordEntries('player_slash_air', 'player_shoot_air'),
+  // Combo hits 2 and 3 and the air spin (horizontal swings): 4 frames each, bound in PlayerAtlasBindings.
+  base('player_slash_combo2', 'player_shoot', undefined, { frameRate: 18, frameEnd: 3 }),
+  base('player_slash_combo3', 'player_shoot', undefined, { frameRate: 16, frameEnd: 3 }),
+  base('player_slash_air_spin', 'player_shoot_air', undefined, { frameRate: 16, frameEnd: 1, repeat: -1 }),
 
   base('player_hurt_light', 'player_hurt', undefined, { frameRate: 10 }),
   base('player_hurt_heavy', 'player_hurt', undefined, { frameRate: 10 }),
@@ -103,6 +107,8 @@ export const AnimationManifest = {
     fx_charge_aura_lv4: { fallbackTexture: 'px' },
     fx_sword_trail_dir_any: { fallbackTexture: 'slash' },
     fx_hit_spark: { fallbackTexture: 'px' },
+    fx_deflect: { fallbackTexture: 'px' },
+    fx_slash_arc: { fallbackTexture: 'slash' },
     fx_wall_slide_dust: { fallbackTexture: 'px' },
     fx_dash_afterimage: { fallbackTexture: 'px' },
     fx_impact_small: { fallbackTexture: 'px' },

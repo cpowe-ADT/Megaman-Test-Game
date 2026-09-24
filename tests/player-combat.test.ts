@@ -123,14 +123,16 @@ test('PlayerCombat advances slash startup, active, recovery, and clear windows',
   const started = combat.update(createIntent({ slashPressed: true }), 0, 0, 1, true, false)
   assert.equal(started.snapshot.slashPhase, 'startup')
 
-  const active = combat.update(createIntent(), 100, PLAYER_GAMEPLAY_CONFIG.sword.windows.ground.e.startupFrames * frameMs, 1, true, false)
+  // Combo hit 1 owns the timing now (config.ts sword.combo.ground[0]).
+  const hit1 = PLAYER_GAMEPLAY_CONFIG.sword.combo.ground[0]
+  const active = combat.update(createIntent(), 100, hit1.startupFrames * frameMs, 1, true, false)
   assert.equal(active.snapshot.slashPhase, 'active')
   assert.equal(active.events.some((event) => event.type === 'hitbox'), true)
 
-  const recovery = combat.update(createIntent(), 170, PLAYER_GAMEPLAY_CONFIG.sword.windows.ground.e.activeFrames * frameMs, 1, true, false)
+  const recovery = combat.update(createIntent(), 170, hit1.activeFrames * frameMs, 1, true, false)
   assert.equal(recovery.snapshot.slashPhase, 'recovery')
 
-  const cleared = combat.update(createIntent(), 240, PLAYER_GAMEPLAY_CONFIG.sword.windows.ground.e.recoveryFrames * frameMs, 1, true, false)
+  const cleared = combat.update(createIntent(), 240, hit1.recoveryFrames * frameMs, 1, true, false)
   assert.equal(cleared.snapshot.slashPhase, undefined)
   assert.equal(cleared.snapshot.slashActive, false)
 })
@@ -202,15 +204,15 @@ function slashThroughWindow(combat: PlayerCombat, grounded: boolean): PlayerRunt
   return all
 }
 
-test('5.2-1 a whiffed slash emits no hit-stop or shake; the hitbox carries 5 (ground) / 4 (air) frames for the hit path', () => {
+test('5.2-1 a whiffed slash emits no hit-stop or shake; the hitbox carries hit 1 (ground) / air spin hit-stop for the hit path', () => {
   const ground = slashThroughWindow(createCombat().combat, true)
   assert.equal(ground.filter((event) => event.type === 'hitstop').length, 0)
   assert.equal(ground.filter((event) => event.type === 'vfx' && event.key.startsWith('fx_shake_camera')).length, 0)
   const groundHitbox = ground.find((event) => event.type === 'hitbox')
-  assert.equal(groundHitbox?.type === 'hitbox' ? groundHitbox.request.hitstopFrames : -1, 5)
+  assert.equal(groundHitbox?.type === 'hitbox' ? groundHitbox.request.hitstopFrames : -1, PLAYER_GAMEPLAY_CONFIG.sword.combo.ground[0].hitstopFrames)
   const air = slashThroughWindow(createCombat().combat, false)
   const airHitbox = air.find((event) => event.type === 'hitbox')
-  assert.equal(airHitbox?.type === 'hitbox' ? airHitbox.request.hitstopFrames : -1, 4)
+  assert.equal(airHitbox?.type === 'hitbox' ? airHitbox.request.hitstopFrames : -1, PLAYER_GAMEPLAY_CONFIG.sword.combo.air.hitstopFrames)
 })
 
 test('5.2-2 hitstun is exposed for the motor hurt lock and counts down by frame time', () => {

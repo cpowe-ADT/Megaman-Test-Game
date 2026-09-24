@@ -81,9 +81,36 @@ export type SwordWindowConfig = {
   hitstopFrames: number
 }
 
+/**
+ * One hit of the ground combo (or the air spin). Frames are 60Hz; `hitbox` is authored facing east and
+ * mirrored for west. Aimed swings (n, ne, se, s and their mirrors) keep their directional `windows` hitbox
+ * but take the hit's timing, damage, knockback and hit-stop.
+ */
+export type SwordHitConfig = {
+  startupFrames: number
+  activeFrames: number
+  recoveryFrames: number
+  damage: number
+  /** Hit-stop (60Hz frames) the sword-hit path applies when this hit connects. */
+  hitstopFrames: number
+  /** Knockback given to the target, x signed by the swing's facing. */
+  knockback: Vec2
+  hitbox: HitboxShape
+}
+
+export type SwordComboConfig = {
+  /** Ground chain, hit 1 to hit 3. */
+  ground: [SwordHitConfig, SwordHitConfig, SwordHitConfig]
+  /** The one air slash per airborne phase (the spin slash). */
+  air: SwordHitConfig
+  /** A press from the start of active until this many frames after recovery ends advances the chain. */
+  linkFrames: number
+}
+
 export type SwordConfig = {
   comboEnabled: boolean
   aimDeadzone: number
+  combo: SwordComboConfig
   windows: {
     ground: Record<Direction8, SwordWindowConfig>
     air: Record<Direction8, SwordWindowConfig>
@@ -258,8 +285,35 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     chargeCancelOnSlash: true
   },
   sword: {
-    comboEnabled: false,
+    comboEnabled: true,
     aimDeadzone: 0.2,
+    // Horizontal boxes cover the drawn arcs (effects_hero slash_1 44x26, slash_2 44x50, slash_3 38x42,
+    // slash_air 44x40) whose centres sit on the box centre: see SLASH_ARC_OVERLAYS in src/combat/heroCombatVisuals.ts.
+    combo: {
+      ground: [
+        {
+          startupFrames: 5, activeFrames: 4, recoveryFrames: 6, damage: 2, hitstopFrames: 4,
+          knockback: { x: 100, y: -60 },
+          hitbox: { kind: 'rect', offsetX: 22, offsetY: -6, width: 42, height: 24 }
+        },
+        {
+          startupFrames: 4, activeFrames: 4, recoveryFrames: 7, damage: 2, hitstopFrames: 5,
+          knockback: { x: 120, y: -80 },
+          hitbox: { kind: 'rect', offsetX: 20, offsetY: -8, width: 42, height: 46 }
+        },
+        {
+          startupFrames: 6, activeFrames: 5, recoveryFrames: 12, damage: 4, hitstopFrames: 8,
+          knockback: { x: 240, y: -150 },
+          hitbox: { kind: 'rect', offsetX: 22, offsetY: -8, width: 38, height: 40 }
+        }
+      ],
+      air: {
+        startupFrames: 5, activeFrames: 4, recoveryFrames: 4, damage: 2, hitstopFrames: 4,
+        knockback: { x: 110, y: -70 },
+        hitbox: { kind: 'rect', offsetX: 18, offsetY: -4, width: 42, height: 38 }
+      },
+      linkFrames: 10
+    },
     windows: {
       ground: {
         n: baseSwordWindow({ kind: 'rect', offsetX: 0, offsetY: -26, width: 18, height: 22 }),

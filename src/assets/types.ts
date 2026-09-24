@@ -31,6 +31,11 @@ export interface SpriteSheetManifestEntry {
   status: SpriteAssetStatus
   source: SpriteSheetSource
   animations?: SpriteAnimationMapping[]
+  /**
+   * Who loads it: absent or 'preload' is Preload (every scene); 'game' is the Game scene's stage queue
+   * (src/scenes/game/stageBackgroundLoading.ts), resident once loaded.
+   */
+  loadScope?: 'preload' | 'game'
   notes?: string
 }
 

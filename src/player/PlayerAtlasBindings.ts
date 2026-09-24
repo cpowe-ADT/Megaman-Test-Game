@@ -44,7 +44,11 @@ const DIRECT_BINDINGS: Record<string, PlayerAtlasBinding> = {
   player_knockdown: { prefixes: ['player_main/knockdown/'], start: 0, end: 0 },
   player_getup: { prefixes: ['player_main/getup/'], start: 0, end: 0 },
   player_death: { prefixes: ['player_main/death/'], start: 0, end: 1 },
-  player_respawn: { prefixes: ['player_main/respawn/'], start: 0, end: 2 }
+  player_respawn: { prefixes: ['player_main/respawn/'], start: 0, end: 2 },
+  // Combo hits 2 and 3 (rising cut, overhead finisher) and the air spin's two curled frames; hit 1 keeps slash_ground_*.
+  player_slash_combo2: { prefixes: ['player_main/slash_combo2/'], start: 0, end: SLASH_FRAME_END },
+  player_slash_combo3: { prefixes: ['player_main/slash_combo3/'], start: 0, end: SLASH_FRAME_END },
+  player_slash_air_spin: { prefixes: ['player_main/slash_air_spin/'], start: 0, end: 1 }
 }
 
 const GROUND_SLASH_GROUPS: Record<string, string> = {
