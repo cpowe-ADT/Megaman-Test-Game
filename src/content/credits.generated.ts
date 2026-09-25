@@ -53,5 +53,6 @@ export const ASSET_CREDITS: readonly string[] = [
   "Art: Original stage mechanic art (flame vents, slag, breakable walls, crumbling catwalks, room gates), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original stage mechanic art v2 (conveyors, ice, icicles, rockfall, power rails, wind, currents, magnet lifts), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original boss attack tells (reticle, floor marker, warning flash, charge glow), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
-  "Art: Original mini-bosses (relay turret nest, sentry twin, drill serpent), generated with Higgsfield (gpt_image_2) for this project (original-generated)"
+  "Art: Original mini-bosses (relay turret nest, sentry twin, drill serpent), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: Original warden weapon shots and the boss energy orb, generated with Higgsfield (gpt_image_2) for this project (original-generated)"
 ]

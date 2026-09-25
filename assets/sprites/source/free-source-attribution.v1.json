@@ -627,6 +627,19 @@
         "assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json"
       ],
       "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut_enemy_sheet.py from template atlases; not wired yet"
+    },
+    {
+      "id": "weapons-v1-hf",
+      "family": "projectiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original warden weapon shots and the boss energy orb, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/weapons_v1/weapons_v1.png",
+        "assets/sprites/projectiles/weapons_v1/weapons_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with weapons_v1.json; wired by prompt 12 part 12f"
     }
   ]
 }

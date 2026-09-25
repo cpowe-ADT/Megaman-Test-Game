@@ -23,3 +23,15 @@ Prompts (shared frame: "16-bit pixel art sprite sheet of ... for an original SNE
 | telegraphs_a.png | 759dfff1-2109-4195-b1a8-68c94581a96c | red #E23A3A, orange #FF8A2A, yellow #FFD27A, white: four frames each of a reticle locking on, a floor danger marker, a warning flash starburst, a charging energy glow |
 
 URL `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_012017_759dfff1-2109-4195-b1a8-68c94581a96c.png`. Cut with `scripts/sprites/cut_vfx_sheet.py --spec scripts/sprites/telegraphs_v1.json` into `assets/sprites/effects/telegraphs_v1/` (`reticle` 28x28, `floor_marker` 54x40, `warning_flash` 34x40, `charge_glow` 32x32).
+
+## Warden weapon shots and the boss orb (2026-09-25, prompt 07 phase 7.3, EVAL-P7-004; every weapon was a tinted `projectiles_core` pellet)
+
+Same frame and settings (4x4 cells on magenta, shots travel right). Cut with `scripts/sprites/cut_vfx_sheet.py --spec scripts/sprites/weapons_v1.json` into `assets/sprites/projectiles/weapons_v1/` (four frames per group).
+
+| File | Job | Rows |
+| --- | --- | --- |
+| weapons_a.png | 7f7abd64-89fe-4a3c-b5f6-1f6660c9533a | arc slash (cyan crescent), flame serpent (fire snake), hydro lance (water spear), thunder spike (lightning spike) |
+| weapons_b.png | bc320899-0115-4535-a61c-0ab130fe67e3 | quake knuckle (basalt fist), magnet cutter disc (saw with a red-blue rim), acid glob, aero darts (three wind darts) |
+| weapons_c.png | d3bb92da-8b23-494b-a043-8459059b0a29 | frost shatter (ice shards), a large boss energy orb; a small violet boss bullet and a ground shockwave, not cut (the violet keys against magenta; the wave crosses its cell border) |
+
+URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_013341_<job>.png`.
