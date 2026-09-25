@@ -54,6 +54,7 @@ import { HazardMechanicsAdapter } from './HazardMechanicsAdapter'
 import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, playMechanicSfx, setMechanicsFrame, type MechanicsFrame } from './mechanicsArt'
 import { breakableWallHitSfx, crumblePhaseSfx, risingLiquidPhaseSfx, ventPhaseSfx } from '../../audio/mechanicsSfx'
 import { MotionMechanicsAdapter } from './MotionMechanicsAdapter'
+import { createFilterSwitchVisual, createPitLiquid, pitLiquidColors, type FilterSwitchVisual } from './filterSwitch'
 import type { PlayerEnvironment } from '../../player/environment'
 
 export { stageMechanicPlatforms } from '../stageMechanics'
@@ -86,7 +87,7 @@ type HazardEntry = { hazard: ResolvedHazard; body: Phaser.GameObjects.GameObject
 /** The flame body stays a Rectangle (the damage box); `jet` is the drawn flame when the mechanics atlas is loaded. */
 type VentEntry = HazardEntry & { flame: Phaser.GameObjects.Rectangle; nozzle: Phaser.GameObjects.GameObject; jet?: Phaser.GameObjects.Image; phase: VentPhase; untilFireMs: number }
 type SlagStrip = { surface: Phaser.GameObjects.TileSprite; fill: Phaser.GameObjects.TileSprite }
-type LiquidEntry = { def: RisingLiquidDefinition; state: RisingLiquidState; fill: Phaser.GameObjects.Rectangle; surface: Phaser.GameObjects.Rectangle; art?: SlagStrip }
+type LiquidEntry = { def: RisingLiquidDefinition; state: RisingLiquidState; fill: Phaser.GameObjects.Rectangle; surface: Phaser.GameObjects.Rectangle; art?: SlagStrip; filterSwitch?: FilterSwitchVisual }
 /** `art` replaces the platform's drawing (hidden, its body kept) and follows its shake, drop and fade. */
 type CrumbleEntry = { state: CrumbleState; box: Box; timing: { shakeMs: number; respawnMs: number }; visual?: Visual; baseX: number; baseY: number; art?: Phaser.GameObjects.Image }
 type WallEntry = { def: BreakableWallDefinition; state: BreakableWallState; box: Box; visual?: Visual; cracks: Phaser.GameObjects.Graphics; art?: Phaser.GameObjects.TileSprite }
@@ -143,7 +144,9 @@ export class StageMechanicsAdapter {
     this.art = mechanicsArtReady(scene)
     const arena = getCampaignStage(deps.stageId).arena
     for (const def of arena.risingLiquids ?? []) this.liquids.push(this.createLiquid(def))
-    if (this.art) {
+    const pitColors = pitLiquidColors(arena.risingLiquids)
+    if (pitColors) for (const gap of arena.floorGaps ?? []) createPitLiquid(scene, gap, GAME_HEIGHT, PIT_SLAG_DEPTH_PX, pitColors)
+    else if (this.art) {
       for (const gap of arena.floorGaps ?? []) this.pitSlag.push(this.createSlagStrip(gap.x, gap.width, GAME_HEIGHT - PIT_SLAG_DEPTH_PX, PIT_SLAG_DEPTH_PX, true))
     }
     for (const group of arena.crumbleGroups ?? []) {
@@ -260,10 +263,11 @@ export class StageMechanicsAdapter {
     const { scene } = this.deps
     const height = Math.max(GAME_HEIGHT, def.floorY) - def.topY + 32
     const fill = scene.add.rectangle(def.x, def.floorY, def.width, height, def.color ?? SLAG_COLOR, 0.82).setOrigin(0, 0).setDepth(3).setVisible(false)
-    const surface = scene.add.rectangle(def.x, def.floorY, def.width, 2, SLAG_SURFACE_COLOR, 1).setOrigin(0, 0).setDepth(3).setVisible(false)
-    const art = this.art ? this.createSlagStrip(def.x, def.width, def.floorY, height, false) : undefined
-    if (art && typeof def.color === 'number') [art.surface, art.fill].forEach((strip) => strip.setTint(def.color as number))
-    return { def, state: createRisingLiquidState(def), fill, surface, art }
+    const surface = scene.add.rectangle(def.x, def.floorY, def.width, 2, def.surfaceColor ?? SLAG_SURFACE_COLOR, 1).setOrigin(0, 0).setDepth(3).setVisible(false)
+    // A coloured liquid (Mire's acid) draws as its fill and surface line: the tinted slag art still drew orange.
+    const art = this.art && typeof def.color !== 'number' ? this.createSlagStrip(def.x, def.width, def.floorY, height, false) : undefined
+    const filterSwitch = def.switchBox ? createFilterSwitchVisual(scene, def.switchBox) : undefined
+    return { def, state: createRisingLiquidState(def), fill, surface, art, filterSwitch }
   }
 
   /**
@@ -408,7 +412,7 @@ export class StageMechanicsAdapter {
     for (const liquid of this.liquids) {
       if (dying) continue
       const before = liquid.state.phase
-      liquid.state = stepRisingLiquid(liquid.def, liquid.state, { heroX, prevHeroX, deltaMs: delta })
+      liquid.state = stepRisingLiquid(liquid.def, liquid.state, { heroX, prevHeroX, deltaMs: delta, hero })
       playMechanicSfx(this.deps.scene, null, risingLiquidPhaseSfx(before, liquid.state.phase))
       this.drawLiquid(liquid)
       if (liquid.state.phase !== 'dormant' && isInsideLiquid(liquid.def, liquid.state.surfaceY, hero)) {
@@ -418,6 +422,7 @@ export class StageMechanicsAdapter {
   }
 
   private drawLiquid(liquid: LiquidEntry): void {
+    liquid.filterSwitch?.sync(liquid.state.phase, this.clockMs)
     const visible = liquid.state.phase !== 'dormant'
     const y = Math.round(liquid.state.surfaceY)
     if (liquid.art) {
