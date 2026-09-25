@@ -10,6 +10,10 @@
 //     still closed, then the gate opens.
 // The fight steps with the game loop asleep (`stageDebug.replayInputs` steps one frame per call), so the
 // timings are game frames, not wall time; captures read the last rendered frame.
+// Part 2 (12c, the mini-boss matrix) loads `miniboss_lab`, one defeat-locked room per archetype and skin,
+// and per room: the lock arms (camera held, gate closed), the mini-boss wakes with its bar, its tell and
+// both attacks show in its brain snapshot (`lab-<room>-*.png`), a real buster pellet hurts it, debug
+// damage plays its death frames, a health pickup drops where it fell and the gate opens.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -225,6 +229,9 @@ export async function runMinibossCustodianScenario(name, { outputDir, storyUrl, 
     state = await waitForState(page, (next) => mech(next).roomLocks?.[0]?.phase === 'open' && !mech(next).roomLocks[0].gateClosed, 4000, 'gate opens after the mini-boss')
     evidence.open = mech(state).roomLocks[0]
     await capture('open')
+
+    // Part 2 (12c): the mini-boss lab matrix, a row per defeat-locked room.
+    evidence.lab = await runMinibossLabMatrix(page, { storyUrl, readState, waitForState, capture, shield, setLoop, mech })
     assert.deepEqual(errors, [], `no page errors (${errors.join(' | ')})`)
     fs.writeFileSync(path.join(dir, 'evidence.json'), JSON.stringify(evidence, null, 2))
     return { name, evidence }
@@ -236,4 +243,293 @@ export async function runMinibossCustodianScenario(name, { outputDir, storyUrl, 
   } finally {
     await browser.close()
   }
+}
+
+/**
+ * In-page, loop asleep: optional hero placement (absolute `x`, or `dx` from the mini-boss on a `side`),
+ * an input script, then one frame per step until `until(snapshot, ctx)` is truthy (its object, if any,
+ * comes back as `extra`) or `maxFrames` pass. Phases are logged per mini-boss for the tell timings.
+ */
+function inPageLabDrive(plan, until) {
+  const game = window.__phaserGame.scene.getScene('Game')
+  const entity = game.enemySpawner?.getEntities().find((entry) => entry.id === plan.id)
+  if (!entity?.brain) return { missing: true, met: false }
+  const hero = game.player
+  const logs = (window.__smoke43lab ??= {})
+  const log = (logs[plan.id] ??= { frame: 0, phases: [] })
+  const snap = () => (entity.sprite.active ? entity.brain.snapshot() : null)
+  const step = (held) => {
+    window.stageDebug.replayInputs([{ frame: 0, held }, { frame: 1, held }])
+    log.frame += 1
+    const s = snap()
+    const last = log.phases[log.phases.length - 1]
+    if (s && (!last || last.phase !== s.phase)) log.phases.push({ frame: log.frame, phase: s.phase })
+  }
+  if (plan.place) {
+    const base = snap()
+    let x = plan.place.x
+    if (x === undefined && base) {
+      const side = plan.place.side
+      const dir = side === 'front' ? base.facing : side === 'behind' ? -base.facing : side === 'left' ? -1 : 1
+      x = base.x + dir * plan.place.dx
+    }
+    const [lo, hi] = plan.place.bounds ?? [-Infinity, Infinity]
+    hero.setPosition(Math.max(lo, Math.min(hi, x)), 214)
+    hero.body?.setVelocity?.(0, 0)
+  }
+  const before = snap()
+  for (const row of plan.script ?? []) for (let i = 0; i < row.frames; i += 1) step(row.held)
+  const ctx = { game, hero, entity, before, start: snap(), hp0: game.playerHp }
+  let met = false
+  let extra = null
+  let flashed = false
+  let frames = 0
+  for (;; frames += 1) {
+    const result = until(snap(), ctx)
+    if (result) {
+      met = true
+      extra = typeof result === 'object' ? result : null
+      flashed = Boolean(entity.sprite.isTinted)
+      break
+    }
+    if (frames >= plan.maxFrames) break
+    step(plan.held ?? [])
+  }
+  const drops = (game.drops?.getChildren?.() ?? [])
+    .filter((drop) => drop.active)
+    .map((drop) => ({ x: Math.round(drop.x), y: Math.round(drop.y), type: drop.data?.get?.('dropType') ?? null }))
+  return {
+    met,
+    frames,
+    frame: log.frame,
+    hp0: ctx.hp0,
+    hp1: game.playerHp,
+    before,
+    snap: snap(),
+    anim: entity.sprite.anims?.currentAnim?.key ?? null,
+    visible: entity.sprite.visible,
+    flashed,
+    extra,
+    drops,
+    hero: { x: Math.round(hero.x), y: Math.round(hero.y) },
+    phases: log.phases
+  }
+}
+
+/** Frames from entering `from` to entering `to` (the last such pair in the log). */
+function phaseGap(phases, from, to) {
+  for (let i = phases.length - 1; i >= 0; i -= 1) {
+    if (phases[i].phase !== from) continue
+    const next = phases.slice(i + 1).find((entry) => entry.phase === to)
+    return next ? next.frame - phases[i].frame : null
+  }
+  return null
+}
+
+const within = (value, target, slack = 2) => value !== null && Math.abs(value - target) <= slack
+
+async function runMinibossLabMatrix(page, { storyUrl, readState, waitForState, capture, shield, setLoop, mech }) {
+  const labDrive = (plan, until = '() => false') => page.evaluate(`(${inPageLabDrive.toString()})(${JSON.stringify(plan)}, ${until})`)
+  const place = async (x) => {
+    await page.evaluate((x) => { const hero = window.__phaserGame.scene.getScene('Game').player; hero.setPosition(x, 214); hero.body?.setVelocity?.(0, 0) }, x)
+    await page.evaluate(async () => { for (let i = 0; i < 3; i += 1) await window.advanceTime(1000 / 60) })
+  }
+  const wake = (id) => page.evaluate(async (id) => {
+    const game = window.__phaserGame.scene.getScene('Game')
+    for (let i = 0; i < 300; i += 1) {
+      const entity = game.enemySpawner?.getEntities().find((entry) => entry.id === id)
+      const snap = entity?.brain?.snapshot?.()
+      if (snap && snap.phase !== 'dormant') return { snap, typeKey: entity.typeKey, texture: entity.sprite.texture.key, body: [entity.sprite.body.width, entity.sprite.body.height] }
+      await window.advanceTime(1000 / 60)
+    }
+    return null
+  }, id)
+
+  await setLoop(true)
+  await page.goto(`${storyUrl.replace('storyIntro=on', 'storyIntro=off')}&startScene=StageSelect`)
+  await waitForState(page, (state) => state.scene === 'StageSelect', 15000)
+  await page.evaluate(() => window.__phaserGame.scene.getScene('StageSelect').scene.start('Game', { stageId: 'miniboss_lab' }))
+  await waitForState(page, (state) => state.scene === 'Game' && state.stageRuntime?.stageId === 'miniboss_lab', 15000, 'mini-boss lab loaded')
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const state = await readState(page)
+    if (state.stageIntro?.active !== true && !state.dialogue?.active && state.newPlayer?.locomotion?.grounded) break
+    await page.evaluate(() => { window.stageDebug?.skipStageIntro?.(); window.stageDebug?.skipDialogue?.() })
+    await page.evaluate(async () => { for (let i = 0; i < 6; i += 1) await window.advanceTime(1000 / 60) })
+  }
+  const locks = mech(await readState(page)).roomLocks ?? []
+  assert.equal(locks.length, 8, `eight locked rooms (${locks.map((lock) => lock.id)})`)
+
+  const rows = []
+  for (const [index, lock] of locks.entries()) {
+    const id = lock.remainingMarkers?.[0]
+    assert.ok(id, `${lock.id} names its mini-boss`)
+    const tag = id.replace(/^mb_lab_/, '')
+    const bounds = [lock.room.x + 16, lock.gateX - 16]
+    const shot = (label) => capture(`lab-${tag}-${label}`)
+    const row = { tag, lock: lock.id }
+
+    // The lock arms, the mini-boss wakes with its bar. Each row starts at full health (the hero has 8 HP
+    // and three rows land a hit on purpose), so no row is fought through a death and respawn.
+    await setLoop(true)
+    await shield(600000)
+    await page.evaluate(() => { const game = window.__phaserGame.scene.getScene('Game'); game.playerHp = game.playerMaxHp })
+    await place(lock.room.x - 180)
+    await place(lock.room.x + 40)
+    let state = await waitForState(page, (next) => mech(next).roomLocks?.[index]?.phase === 'locked', 4000, `${tag}: the room locks`)
+    assert.deepEqual([mech(state).roomLocks[index].cameraHeld, mech(state).roomLocks[index].gateClosed], [true, true], `${tag}: camera held, gate closed`)
+    const woke = await wake(id)
+    assert.ok(woke, `${tag}: the mini-boss spawned and woke`)
+    const typeKey = woke.typeKey
+    assert.equal(woke.texture, `atlas_${typeKey}`, `${tag}: its own atlas`)
+    assert.equal(woke.snap.barVisible ?? woke.snap.barsVisible?.every(Boolean), true, `${tag}: its health bar shows`)
+    Object.assign(row, { typeKey, maxHp: woke.snap.maxHp, body: woke.body })
+    const kind = typeKey.startsWith('custodian_walker') ? 'walker' : typeKey.startsWith('relay_turret_nest') ? 'nest' : typeKey.startsWith('sentry_twin') ? 'twins' : 'serpent'
+    await setLoop(false)
+
+    if (kind === 'walker') {
+      const tell = await labDrive({ id, place: { dx: 80, side: 'front', bounds }, maxFrames: 300 }, `(s) => s && s.phase === 'windup' && s.phaseMs >= 250`)
+      assert.ok(tell.met, `${tag}: the leg-raise tell (${JSON.stringify(tell.snap)})`)
+      assert.equal(tell.anim, `${typeKey}_attack_windup`)
+      await shot('tell')
+      const stomp = await labDrive({ id, maxFrames: 90 }, `(s, c) => s && s.waves.some((w) => w.alive && Math.abs(w.x - s.x) >= 48) && { frames: c.entity.brain.waves.map((w) => w.image.frame.name) }`)
+      assert.ok(stomp.met && stomp.snap.stomps >= 1, `${tag}: the stomp's shockwave runs along the floor`)
+      assert.ok(stomp.extra.frames.every((name) => name.startsWith(`${typeKey}/wave/`)), `${tag}: waves from its own atlas (${stomp.extra.frames})`)
+      await shot('stomp')
+      row.windupFrames = phaseGap(stomp.phases, 'windup', 'stomp')
+      assert.ok(within(row.windupFrames, 30), `${tag}: a 500 ms tell (${row.windupFrames} frames)`)
+    } else if (kind === 'nest') {
+      const tell = await labDrive({ id, place: { dx: 150, side: 'front', bounds }, maxFrames: 300 }, `(s) => s && s.phase === 'burst_windup' && s.phaseMs >= 300`)
+      assert.ok(tell.met, `${tag}: the barrel-glow tell (${JSON.stringify(tell.snap)})`)
+      assert.equal(tell.anim, `${typeKey}_attack_windup`)
+      await shot('tell')
+      const burst = await labDrive({ id, maxFrames: 60 }, `(s) => s && s.shots >= 3`)
+      assert.ok(burst.met, `${tag}: the three-shot burst`)
+      await shot('burst')
+      row.burstTellFrames = phaseGap(burst.phases, 'burst_windup', 'burst')
+      assert.ok(within(row.burstTellFrames, 36), `${tag}: a 600 ms tell (${row.burstTellFrames} frames)`)
+      const mortar = await labDrive({ id, maxFrames: 240 }, `(s) => s && s.shells.some((shell) => shell.stage === 'flight' && shell.markerVisible && Math.abs(shell.x - shell.targetX) <= 40)`)
+      assert.ok(mortar.met, `${tag}: the mortar in flight over its floor marker`)
+      const shell = mortar.snap.shells[0]
+      assert.ok(Math.abs(shell.targetX - mortar.hero.x) <= 2, `${tag}: it lands where the hero stands (${shell.targetX} vs ${mortar.hero.x})`)
+      await shot('mortar')
+      await shield(0)
+      const blast = await labDrive({ id, maxFrames: 60 }, `(s) => s && s.shellHits >= 1`)
+      assert.ok(blast.met && blast.hp0 - blast.hp1 === 2 && blast.hp1 > 0, `${tag}: the blast on the marker takes 2 HP (${blast.hp0} -> ${blast.hp1})`)
+      await shot('blast')
+      await shield(600000)
+      row.mortar = { targetX: shell.targetX, heroX: mortar.hero.x, hp: [blast.hp0, blast.hp1] }
+    } else if (kind === 'twins') {
+      const center = lock.room.x + 224
+      const tell = await labDrive({ id, place: { x: center, bounds }, maxFrames: 200 }, `(s) => s && s.phase === 'bolt_windup' && s.phaseMs >= 300`)
+      assert.ok(tell.met, `${tag}: the lens crackle`)
+      const shooter = tell.snap.twins[tell.snap.shooter]
+      assert.deepEqual([shooter.pose, shooter.anim], ['windup', `${typeKey}_attack_windup`])
+      assert.deepEqual(tell.snap.barsVisible, [true, true], `${tag}: the pool's bar over both`)
+      await shot('tell')
+      const bolt = await labDrive({ id, maxFrames: 60 }, `(s) => s && s.bolts >= 1 && s.phase === 'bolt'`)
+      assert.ok(bolt.met, `${tag}: the bolt`)
+      await shot('bolt')
+      row.boltTellFrames = phaseGap(bolt.phases, 'bolt_windup', 'bolt')
+      assert.ok(within(row.boltTellFrames, 36), `${tag}: a 600 ms crackle (${row.boltTellFrames} frames)`)
+      const flash = await labDrive({ id, maxFrames: 60 }, `(s) => s && s.phase === 'flash' && s.flashVisible && s.phaseMs >= 150`)
+      assert.ok(flash.met, `${tag}: the warning flash over the swooper`)
+      const swooper = flash.snap.twins[flash.snap.swooper]
+      assert.ok(Math.abs(swooper.y - flash.hero.y) <= 8, `${tag}: the swooper lines up at the hero's height (${swooper.y} vs ${flash.hero.y})`)
+      await shot('flash')
+      await shield(0)
+      const swoop = await labDrive({ id, maxFrames: 90 }, `(s, c) => s && s.phase === 'swoop' && c.game.playerHp < c.hp0`)
+      assert.ok(swoop.met && swoop.hp0 - swoop.hp1 === 2 && swoop.hp1 > 0, `${tag}: the swoop takes 2 HP (${swoop.hp0} -> ${swoop.hp1})`)
+      row.swoopHp = [swoop.hp0, swoop.hp1]
+      await shot('swoop')
+      await shield(600000)
+      row.flashFrames = phaseGap(swoop.phases, 'flash', 'swoop')
+      assert.ok(within(row.flashFrames, 27), `${tag}: a 450 ms flash (${row.flashFrames} frames)`)
+      const swap = await labDrive({ id, maxFrames: 240 }, `(s) => s && s.rounds >= 1`)
+      assert.ok(swap.met && swap.snap.shooter === 1, `${tag}: the roles swap`)
+      await labDrive({ id, place: { x: center, bounds }, maxFrames: 240 }, `(s) => s && s.phase === 'flash'`)
+    } else {
+      const burrow = await labDrive({ id, place: { dx: 150, side: 'front', bounds }, maxFrames: 200 }, `(s) => s && s.phase === 'burrow' && s.phaseMs >= 120`)
+      assert.ok(burrow.met, `${tag}: it burrows`)
+      assert.equal(burrow.anim, `${typeKey}_burrow`)
+      await shot('burrow')
+      const tunnel = await labDrive({ id, maxFrames: 60 }, `(s) => s && s.phase === 'tunnel'`)
+      assert.deepEqual([tunnel.snap.underground, tunnel.snap.bodyEnabled, tunnel.snap.visible], [true, false, false], `${tag}: under the floor, no body, not drawn`)
+      const immune = await page.evaluate((id) => {
+        const game = window.__phaserGame.scene.getScene('Game')
+        const entity = game.enemySpawner.getEntities().find((entry) => entry.id === id)
+        const before = entity.combat.currentHp
+        game.enemySpawner.applyDamageToSprite(entity.sprite, { amount: 2, type: 'bullet', sourceId: 'smoke_43_burrowed' })
+        return [before, entity.combat.currentHp]
+      }, id)
+      assert.equal(immune[1], immune[0], `${tag}: it cannot be hurt while burrowed (${immune})`)
+      const mound = await labDrive({ id, maxFrames: 150 }, `(s) => s && s.phase === 'mound' && s.phaseMs >= 200`)
+      assert.ok(mound.met, `${tag}: the mound tell`)
+      assert.equal(mound.anim, `${typeKey}_mound`)
+      assert.ok(Math.abs(mound.snap.moundX - mound.hero.x) <= 2, `${tag}: the mound is under the hero (${mound.snap.moundX} vs ${mound.hero.x})`)
+      await shot('mound')
+      await shield(0)
+      const burst = await labDrive({ id, maxFrames: 60 }, `(s, c) => s && s.phase === 'burst' && c.game.playerHp < c.hp0`)
+      assert.ok(burst.met && burst.hp0 - burst.hp1 === 3 && burst.hp1 > 0, `${tag}: bursting up under the hero takes 3 HP (${burst.hp0} -> ${burst.hp1})`)
+      row.burstHp = [burst.hp0, burst.hp1]
+      await shot('burst')
+      await shield(600000)
+      row.moundFrames = phaseGap(burst.phases, 'mound', 'burst')
+      assert.ok(within(row.moundFrames, 30), `${tag}: a 500 ms mound (${row.moundFrames} frames)`)
+      const coil = await labDrive({ id, maxFrames: 200 }, `(s) => s && s.phase === 'coil' && s.phaseMs >= 250`)
+      assert.ok(coil.met, `${tag}: the coil`)
+      assert.equal(coil.anim, `${typeKey}_attack_windup`)
+      await shot('coil')
+      const lunge = await labDrive({ id, maxFrames: 60 }, `(s, c) => s && s.phase === 'lunge' && Math.abs(s.x - c.start.x) >= 24`)
+      assert.ok(lunge.met, `${tag}: the lunge along the floor`)
+      assert.equal(lunge.anim, `${typeKey}_attack_active`)
+      await shot('lunge')
+      row.coilFrames = phaseGap(lunge.phases, 'coil', 'lunge')
+      assert.ok(within(row.coilFrames, 30), `${tag}: a 500 ms coil (${row.coilFrames} frames)`)
+      await labDrive({ id, maxFrames: 120 }, `(s) => s && s.phase === 'recover'`)
+    }
+
+    // A real buster pellet hurts it (both twins flash: one pool).
+    const facing = await labDrive({ id, maxFrames: 0 })
+    const selfX = facing.snap.x ?? facing.snap.twins[facing.snap.swooper].x
+    const heroX = kind === 'twins' ? lock.room.x + 224 : selfX + (facing.snap.facing ?? 1) * 70
+    const toward = heroX > selfX ? 'moveLeft' : 'moveRight'
+    const hitPlace = kind === 'twins' ? { x: heroX, bounds } : { dx: 70, side: 'front', bounds }
+    const hit = await labDrive(
+      { id, place: hitPlace, script: [{ frames: 1, held: [toward] }, { frames: 1, held: ['shoot'] }, { frames: 1, held: [] }], maxFrames: 45 },
+      `(s, c) => s && s.hp < c.before.hp && { tinted: s.twins ? s.twins.map((twin) => twin.tinted) : null }`
+    )
+    assert.ok(hit.met, `${tag}: a real pellet hurts it (${JSON.stringify(hit.snap)})`)
+    assert.equal(hit.flashed, true, `${tag}: the hurt flash`)
+    if (kind === 'twins') assert.deepEqual(hit.extra.tinted, [true, true], `${tag}: both twins flash, one pool`)
+    row.hit = { hp: [hit.before.hp, hit.snap.hp] }
+
+    // Debug damage: the death frames, the defeat, a health pickup where it fell, the gate.
+    await labDrive({ id, maxFrames: 6 })
+    const killAt = await page.evaluate(({ id, bounds }) => {
+      const game = window.__phaserGame.scene.getScene('Game')
+      const entity = game.enemySpawner.getEntities().find((entry) => entry.id === id)
+      const s = entity.brain.snapshot()
+      const x = s.x ?? s.twins[0].x
+      game.player.setPosition(x - bounds[0] > bounds[1] - x ? bounds[0] : bounds[1], 214)
+      game.player.body?.setVelocity?.(0, 0)
+      game.enemySpawner.applyDamageToSprite(entity.sprite, { amount: 999, type: 'bullet', knockback: game.cameras.main.midPoint.clone().set(0, 0), sourceId: 'smoke_43' })
+      return { x }
+    }, { id, bounds })
+    const dying = await labDrive({ id, maxFrames: 9 }, `(s, c) => !c.entity.sprite.active`)
+    assert.equal(dying.snap?.phase, 'dying', `${tag}: dying`)
+    assert.deepEqual([dying.anim, dying.visible], [`${typeKey}_death`, true], `${tag}: the death frames play`)
+    if (kind === 'twins') assert.deepEqual(dying.snap.twins.map((twin) => [twin.pose, twin.visible]), [['dead', true], ['dead', true]], `${tag}: both twins die`)
+    await shot('death')
+    const gone = await labDrive({ id, maxFrames: 60 }, `(s, c) => !c.entity.sprite.active && { otherActive: Boolean(c.entity.brain.other?.active) }`)
+    assert.ok(gone.met, `${tag}: gone after its death frames`)
+    if (kind === 'twins') assert.equal(gone.extra.otherActive, false, `${tag}: twin 1 goes with the pool`)
+    const drop = gone.drops.find((entry) => entry.type === 'health' && Math.abs(entry.x - killAt.x) <= 24)
+    assert.ok(drop, `${tag}: a health pickup dropped where it fell (${JSON.stringify(gone.drops)} vs x ${killAt.x})`)
+    row.drop = drop
+    await setLoop(true)
+    state = await waitForState(page, (next) => mech(next).roomLocks?.[index]?.phase === 'open' && !mech(next).roomLocks[index].gateClosed, 4000, `${tag}: the gate opens`)
+    await shot('open')
+    rows.push(row)
+  }
+  return rows
 }
