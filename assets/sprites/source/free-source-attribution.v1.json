@@ -584,6 +584,49 @@
         "assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json"
       ],
       "notes": "assets/sprites/source/mechanics/hf_v1/mechanics_hf_v1.prompts.md; scripts/sprites/cut_vfx_sheet.py with mechanics_v1.json"
+    },
+    {
+      "id": "mechanics-v2-hf",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original stage mechanic art v2 (conveyors, ice, icicles, rockfall, power rails, wind, currents, magnet lifts), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/mechanics/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/mechanics/mechanics_v2/mechanics_v2.png",
+        "assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json"
+      ],
+      "notes": "assets/sprites/source/mechanics/hf_v1/mechanics_hf_v1.prompts.md; cut_vfx_sheet.py with mechanics_v2.json; not drawn yet"
+    },
+    {
+      "id": "telegraphs-v1-hf",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original boss attack tells (reticle, floor marker, warning flash, charge glow), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/effects/telegraphs_v1/telegraphs_v1.png",
+        "assets/sprites/effects/telegraphs_v1/telegraphs_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with telegraphs_v1.json; not drawn yet"
+    },
+    {
+      "id": "minibosses-v1-hf",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original mini-bosses (relay turret nest, sentry twin, drill serpent), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/minibosses/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.png",
+        "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.atlas.json",
+        "assets/sprites/enemies/sentry_twin/sentry_twin.png",
+        "assets/sprites/enemies/sentry_twin/sentry_twin.atlas.json",
+        "assets/sprites/enemies/drill_serpent/drill_serpent.png",
+        "assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json"
+      ],
+      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut_enemy_sheet.py from template atlases; not wired yet"
     }
   ]
 }

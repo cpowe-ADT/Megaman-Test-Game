@@ -55,6 +55,33 @@ def keyed_cell(sheet: Image.Image, index: int, cols: int, cell_w: int, cell_h: i
     return cutter.drop_shadows(keyed)
 
 
+def clear_top_strays(frame: Image.Image, rows: int, max_area: int = 120) -> Image.Image:
+    """Clear connected pieces (8-neighbour) that lie wholly in the frame's top `rows` rows and are small."""
+    out = frame.copy()
+    px = out.load()
+    w, h = out.size
+    seen: set[tuple[int, int]] = set()
+    for y in range(h):
+        for x in range(w):
+            if (x, y) in seen or px[x, y][3] == 0:
+                continue
+            stack, comp = [(x, y)], []
+            seen.add((x, y))
+            while stack:
+                cx, cy = stack.pop()
+                comp.append((cx, cy))
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        nx, ny = cx + dx, cy + dy
+                        if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in seen and px[nx, ny][3] > 0:
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+            if max(cy for _, cy in comp) < rows and len(comp) < max_area:
+                for cx, cy in comp:
+                    px[cx, cy] = (0, 0, 0, 0)
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--in", dest="input_path", required=True)
@@ -67,6 +94,9 @@ def main() -> None:
     parser.add_argument("--cells", action="append", default=[],
                         help="group=i,j,...: take this group's frames from these sheet cells (a cell the model drew "
                              "across a boundary can be skipped, a good one used twice), e.g. shoot=8,10,10,11")
+    parser.add_argument("--clear-top-rows", type=int, default=0,
+                        help="drop small pieces that sit wholly in the top N rows of a frame (a row boundary the model drew "
+                             "bleeds into the cell below as a thin line), e.g. 10")
     parser.add_argument("--fill-height", action="store_true",
                         help="size to the frame (height to the feet row, full width, minus the outline) instead of the old idle "
                              "content box; for a new design that should fill a frame the old art under-used")
@@ -133,6 +163,9 @@ def main() -> None:
             x = round(fw / 2 - cutter.body_anchor_x(content))
             frame.paste(content, (x, feet - content.height), content)
         frames[name] = frame
+    if args.clear_top_rows:
+        for name in frames:
+            frames[name] = clear_top_strays(frames[name], args.clear_top_rows)
     missing = [n for n in names if n not in frames]
     if missing:
         raise SystemExit(f"sheet does not cover {missing}")

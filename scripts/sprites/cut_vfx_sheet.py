@@ -45,6 +45,8 @@ def main() -> None:
             sheets[path] = Image.open(ROOT / path).convert("RGBA")
         cols, rows = cutter.parse_grid(group.get("grid", "4x4"))
         cuts = [cut_cell(sheets[path], i, cols, rows, group["scale"], group.get("inset", 0.02)) for i in group["cells"]]
+        if "size" in group:  # a tile that must repeat exactly (for example 16x16): resize the cut content to it
+            cuts = [c.resize(tuple(group["size"]), Image.Resampling.NEAREST) for c in cuts]
         pad = group.get("pad", 1)  # 0 for tiles that repeat edge to edge (slag surface and fill)
         w = max(c.width for c in cuts) + 2 * pad
         h = max(c.height for c in cuts) + 2 * pad

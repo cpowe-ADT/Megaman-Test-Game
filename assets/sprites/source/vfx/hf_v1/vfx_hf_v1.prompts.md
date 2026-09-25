@@ -15,3 +15,11 @@ Prompts (shared frame: "16-bit pixel art sprite sheet of ... for an original SNE
 - projectiles: row 1 two small lemon-shaped arm-cannon pellets (pale yellow-white core, amber rim), two medium charged shots (amber-gold oval, short swept tail); row 2 two full charged plasma blasts (gold-white crescent head, layered amber and cyan-white tail), two reflected enemy bullets (orb turned gold, white star spark ring); row 3 two red enemy orbs, two grey enemy missiles (red tip, orange exhaust); row 4 small, medium and large muzzle flashes and a small impact burst.
 - slashes: row 1 a quick horizontal forward crescent, streak to full arc to fade; row 2 a rising diagonal crescent; row 3 a large overhead finisher down to the ground in front; row 4 a round spinning air slash. Every slash swings to the right; no character.
 - hits: row 1 a sword hit spark (white and gold X flash breaking into sparks); row 2 a parry and deflect spark (white star, gold ring); row 3 a charge-up aura (pale gold and cyan particles, pulsing larger); row 4 a small explosion (flash, fireball, debris, smoke).
+
+## Boss attack tells (2026-09-25, prompt 07 phase 7.1; the finish audit found telegraphs defined but never drawn)
+
+| File | Job | Content |
+| --- | --- | --- |
+| telegraphs_a.png | 759dfff1-2109-4195-b1a8-68c94581a96c | red #E23A3A, orange #FF8A2A, yellow #FFD27A, white: four frames each of a reticle locking on, a floor danger marker, a warning flash starburst, a charging energy glow |
+
+URL `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_012017_759dfff1-2109-4195-b1a8-68c94581a96c.png`. Cut with `scripts/sprites/cut_vfx_sheet.py --spec scripts/sprites/telegraphs_v1.json` into `assets/sprites/effects/telegraphs_v1/` (`reticle` 28x28, `floor_marker` 54x40, `warning_flash` 34x40, `charge_glow` 32x32).
