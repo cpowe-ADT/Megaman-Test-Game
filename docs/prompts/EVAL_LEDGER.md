@@ -56,14 +56,14 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 
 | Id | Kind | What passes | Status | Evidence | Commit |
 | --- | --- | --- | --- | --- | --- |
-| EVAL-P7-001 | gate | twelve hazard spawners; telegraphs drawn; watchdog gone | PENDING | | |
+| EVAL-P7-001 | gate | twelve hazard spawners; telegraphs drawn; watchdog gone | PENDING | telegraphs drawn for all 31 roster attacks and the watchdog retired (a02ac2c; `output/evidence/a02ac2c/52-boss-telegraphs/`, `tests/boss-telegraphs.test.ts`); left: the hazard spawners |  |
 | EVAL-P7-002 | gate | phase kits, desperation, weakness stagger on Pyro and Tide | PENDING | | |
 | EVAL-P7-003 | gate + review | intro and death presentation; smoke 44 | PENDING | | |
 | EVAL-P7-004 | gate | weapon identities; weakness ring; no BLOCKED in Classic | PENDING | | |
 | EVAL-P7-005 | gate + review | all ten fights; 44 across the sweep | PENDING | | |
 | EVAL-P7-006 | gate | portraits and dialogue presentation | PENDING | | |
 | EVAL-P7-007 | gate + review | every sequence id consumed; Craig reads the script | PENDING | text pass A1-A6 and the panel text conditions done (verb stems 24/24, Central Core, Iona contractions; `tests/story-text-pass.test.ts`); left: item 12 needs a validator change, Craig reads the script, the new triggers (P7-009) |  |
-| EVAL-P7-008 | gate | boss beats, damage router, weapon runtime and hit wires extracted; Game.ts at or below 2,600 | PENDING | | |
+| EVAL-P7-008 | gate | boss beats, damage router, weapon runtime and hit wires extracted; Game.ts at or below 2,600 | PASS | `wc -l src/scenes/Game.ts` -> 1930 (from 2763); BossBeats, BossDamageRouter, HitWires, WeaponRuntime, BossTelegraphs, combatRules in `src/scenes/game/`; `output/evidence/a02ac2c/full-smoke-summary.json`: 56 of 57 pass (33 flakes on the parent too) | a02ac2c |
 | EVAL-P7-009 | gate + review | seven new dialogue triggers with fixtures, coverage, consumers and smoke assertions; water margin pilot | PENDING | | |
 | EVAL-P7-010 | gate | bosses split into floor body, hurtbox and per-phase attack hitboxes (roster.ts, BossDamageRouter); projectiles hit platforms by body | PENDING | | |
 
