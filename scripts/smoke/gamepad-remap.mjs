@@ -170,7 +170,7 @@ async function integerScaling(browser, { titleUrl, readState, waitForState, tapK
     await tapKey(page, 'o')
     await waitForState(page, (state) => state.scene === 'Options' || state.activeScenes?.includes('Options'), 5000, 'Options opens')
     const rows = (await readState(page)).options.rows.map((row) => row.id)
-    assert.deepEqual(rows.slice(4, 9), ['difficulty', 'fullscreen', 'pixelScaling', 'reducedFlashing', 'controls'])
+    assert.deepEqual(rows.slice(4, 10), ['difficulty', 'fullscreen', 'pixelScaling', 'reducedFlashing', 'touchControls', 'controls'])
     for (let step = 0; step < 6; step += 1) await tapKey(page, 'ArrowDown')
     await capture('options-smooth', true)
     await tapKey(page, 'ArrowRight')

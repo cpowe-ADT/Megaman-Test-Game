@@ -224,6 +224,10 @@ export class GameplayTouchControls {
     }
 
     container.add([shape, glow, label])
+    // Phaser's hit test applies each object's own scroll factor, not its container's: without this, every tap
+    // missed by the camera's scrollX once the stage scrolled (smoke 4c taps pause after the hero has moved).
+    ;[shape, glow, label].forEach((part) => part.setScrollFactor(0))
+    container.setScrollFactor(0)
     // Smoke 13f finds a button by `getData('layout').key`, as it did before part 12i.
     container.setDataEnabled()
     container.data?.set('layout', { ...spec, key: spec.id })
