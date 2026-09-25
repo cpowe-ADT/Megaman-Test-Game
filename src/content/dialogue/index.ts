@@ -24,12 +24,12 @@ function loadDialogueContent(json: unknown) {
 
 /**
  * A production build leaves the lines out of the JavaScript (prompt 09 `jsGzipKB`): `vite build` defines
- * `__FETCH_DIALOGUE__`, `Preload` fetches `dialogue.v2.json` and calls `installDialogueContent`, and Rollup drops the
+ * `__FETCH_CONTENT__`, `Preload` fetches `dialogue.v2.json` and calls `installDialogueContent`, and Rollup drops the
  * bundled import below. Development, smoke and unit tests read the bundled file here (no `import.meta`, so
  * `tests/identity-strings.test.ts` can run this module as CommonJS). Every reader runs after `Preload`; these are
  * live bindings.
  */
-const fetchDialogue = typeof __FETCH_DIALOGUE__ !== 'undefined' && __FETCH_DIALOGUE__
+const fetchDialogue = typeof __FETCH_CONTENT__ !== 'undefined' && __FETCH_CONTENT__
 const bundledContent = fetchDialogue ? null : loadDialogueContent(bundledDialogueJson)
 export let DIALOGUE_CONTENT = bundledContent as ReturnType<typeof loadDialogueContent>
 export let DIALOGUE_REGISTRY = (bundledContent ? createDialogueRegistry(bundledContent) : null) as DialogueContentRegistry
