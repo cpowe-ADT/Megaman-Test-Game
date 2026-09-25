@@ -14,6 +14,7 @@ import os from 'node:os'
 import { chromium } from 'playwright'
 import { assertPelletHitEvidence } from './smoke/assert-pellet-hit.mjs'
 import { runInputLifecycleScenario } from './smoke/input-lifecycle.mjs'
+import { runWeaponIdentityMatrix } from './smoke/weapon-identities.mjs'
 
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT ?? 4173)
@@ -1489,7 +1490,7 @@ async function runWeaponSwitchAndEnergyScenario(name) {
     window.localStorage.setItem(
       'save.v1',
       JSON.stringify({
-        weaponsUnlocked: ['FlameSerpent'],
+        weaponsUnlocked: ['FlameSerpent', 'HydroLance', 'ThunderSpike', 'QuakeKnuckle', 'MagcutDisc', 'AcidGlob', 'AeroDarts', 'FrostShatter'],
         gameOverCounts: {},
         clearedBosses: [],
         tutorialCleared: false,
@@ -1558,6 +1559,8 @@ async function runWeaponSwitchAndEnergyScenario(name) {
     const arcState = await waitForState(page, state => state.combatDebug?.player?.lastProjectile?.weaponId === 'ArcSlash')
     if (arcState.combatDebug.player.shotsFiredTotal !== beforeArc.combatDebug.player.shotsFiredTotal + 1 || arcState.playerState.weapon !== 'FlameSerpent' || arcState.combatDebug.player.lastProjectile.energyCost !== 0) throw new Error('Arc release identity/count/energy contract failed.')
     fs.writeFileSync(path.join(scenarioDir,'arc-evidence.json'),JSON.stringify({beforeArc,heldArc,arcState},null,2))
+    // Prompt 07 phase 7.3 (EVAL-P7-004): one shot per warden weapon, its art, HUD icon and on-hit tag (weapons-evidence.json).
+    await runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames })
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
