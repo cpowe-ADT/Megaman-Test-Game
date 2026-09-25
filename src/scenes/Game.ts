@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { IDENTITY } from '../content/identity'
-import { firePlayerShot } from '../projectiles/firePlayerShot'
+import { firePlayerShot, shotPlatformProcess } from '../projectiles/firePlayerShot'
 import { resolveUpgradeModifiers, upgradeEffectLabel } from '../progression/upgrades'
 import { CampaignSessionStatistics } from '../progression/statistics'
 import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
@@ -650,8 +650,8 @@ export class Game extends Phaser.Scene {
     }
 
     // Shots hit platforms by their physics body, not their drawn bounds (prompt 07 phase 7.0 note, EVAL-P7-010).
-    this.physics.add.collider(this.playerBullets, this.stagePlatforms, this.recycleBullet, undefined, this)
-    this.physics.add.collider(this.bossBullets, this.stagePlatforms, this.recycleBullet, undefined, this)
+    this.physics.add.collider(this.playerBullets, this.stagePlatforms, this.recycleBullet, shotPlatformProcess, this)
+    this.physics.add.collider(this.bossBullets, this.stagePlatforms, this.recycleBullet, shotPlatformProcess, this)
   }
 
   private handleDropThroughInput(now: number): void {

@@ -26,3 +26,6 @@ export function firePlayerShot<T>(options: {
   const projectile = projectiles[0]
   return projectile ? { projectile, projectiles, shot, remainingEnergy: energyAfterPlayerShot(options.availableEnergy, shot.energyCost, true) } : null
 }
+
+// Game's shot-versus-platform colliders read this rule (one import line in the scene).
+export { shotPlatformProcess } from './platformContact'
