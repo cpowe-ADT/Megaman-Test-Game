@@ -12,10 +12,11 @@ import { ControlsScene } from './scenes/ControlsScene'
 import { ProgressionSummaryScene } from './scenes/ProgressionSummaryScene'
 import GameOverScene from './scenes/GameOverScene'
 import { OptionsScene } from './scenes/OptionsScene'
+import { ProfileScene } from './scenes/ProfileScene'
 import { EndingScene } from './scenes/EndingScene'
 import { PrologueScene } from './scenes/PrologueScene'
 import { Settings } from './systems/Settings'
-import { Save } from './systems/Save'
+import { Profiles, Save } from './systems/Save'
 import { AUTOMATION } from './config/automation'
 import { GAME_HEIGHT, GAME_WIDTH, STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
 import { describeRenderView, installHdRendering, resolveRenderScale } from './config/hdRender'
@@ -65,7 +66,7 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   pixelArt: STRICT_PIXEL_RENDER_POLICY.pixelArt,
-  scene: [Boot, Preload, Title, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, GameOverScene, PrologueScene, EndingScene, OptionsScene]
+  scene: [Boot, Preload, Title, ProfileScene, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, GameOverScene, PrologueScene, EndingScene, OptionsScene]
 }
 
 ;(config as any).resolution = runtimeResolution
@@ -261,6 +262,7 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     gameCompleted: saveState.gameCompleted,
     hasActiveRun: Boolean(saveState.activeRun)
   }
+  payload.profiles = { ...Profiles.debugState(), screen: (activeScenes.find((active) => active.scene.key === 'Profiles') as any)?.getDebugState?.() ?? null }
   if (scene.scene.key === 'Prologue') payload.prologue = (scene as any).getDebugState?.() ?? null
   const systemMenu = activeScenes.find((active) => active.scene.key === 'SystemMenu') as any
   if (systemMenu) payload.systemMenu = systemMenu.getDebugState?.() ?? null

@@ -15,7 +15,8 @@ import {
 import { DEBUG_UI } from '../config/debug'
 import { showToast } from '../core/navigation'
 import InputActions from '../input/InputActions'
-import { Save, SaveData } from '../systems/Save'
+import { Profiles, Save, SaveData } from '../systems/Save'
+import { formatBestTime } from '../progression/profiles'
 import { DIALOGUE_REGISTRY, resolveDialogueText } from '../content/dialogue/index'
 import { shouldPlayStory } from '../narrative/storyFlags'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
@@ -404,7 +405,7 @@ export class StageSelect extends Phaser.Scene {
       const checkProgress = this.getStageCheckProgress(stage.id)
       slot.name.setText(stage.selectLabel)
       slot.name.setColor(cleared ? COLOR.textCleared : COLOR.text)
-      slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
+      slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? formatBestTime(Profiles.active()?.stageBests[stageId]) ?? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
       slot.weakness.setText(stage.id === FINAL_STAGE_ID ? `${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(this.saveData)}/8` : `WEAK: ${getBossWeaknessLabel(this.saveData, stage.bossId)}`)
       slot.meta.setColor(cleared ? '#8793ad' : '#9ec2ff')
       slot.badge.setVisible(false)

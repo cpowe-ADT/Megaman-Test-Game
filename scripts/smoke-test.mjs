@@ -3905,6 +3905,7 @@ async function main() {
     await executeSmokeScenario(summary, '38-options-persist', () => runOptionsPersistScenario('38-options-persist', pauseDeps))
     await executeSmokeScenario(summary, '38b-pause-weapon-select', () => runPauseWeaponSelectScenario('38b-pause-weapon-select', pauseDeps))
     await executeSmokeScenario(summary, '38c-title-continue-autosave', () => runTitleContinueScenario('38c-title-continue-autosave', pauseDeps))
+    await executeSmokeScenario(summary, '41-profiles', async () => (await import('./smoke/profiles.mjs')).runProfilesScenario('41-profiles', storyDeps))
     await executeSmokeScenario(summary, '13f-input-focus-loss', () => runInputFocusLossScenario('13f-input-focus-loss', { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }))
 
     await executeSmokeScenario(summary, '14-completion-return-flow', () =>

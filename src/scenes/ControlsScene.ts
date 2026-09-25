@@ -1,5 +1,7 @@
 import Phaser from 'phaser'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
+import InputActions from '../input/InputActions'
+import { Profiles } from '../systems/Save'
 import { CONTROL_NOTES, CONTROL_SECTIONS } from '../ui/controls/controlMap'
 import {
   addMenuBackdrop,
@@ -14,10 +16,22 @@ import { GAME_SIZE } from '../config/renderPolicy'
 
 type ControlsSceneData = {
   returnSceneKey?: string
+  /** The first-run page (prompt 05 5.6): eight keys, once per profile before the tutorial briefing. */
+  firstRun?: boolean
+  /** Where the first-run page goes next; absent when it is replayed from the control map. */
+  next?: { key: string; data: object }
+}
+
+/** The eight keys of the first-run page, from the control map's gameplay rows (both weapon rows as one). */
+export function firstRunRows(): Array<{ action: string; input: string }> {
+  return CONTROL_SECTIONS[0]!.rows
+    .filter((row) => row.action !== 'Cycle weapon back')
+    .map((row) => (row.action === 'Cycle weapon' ? { action: 'Switch weapon', input: 'Q back, D or E forward' } : row))
 }
 
 export class ControlsScene extends Phaser.Scene {
   private returnSceneKey = 'Title'
+  firstRun = false
 
   constructor() {
     super('Controls')
@@ -25,6 +39,11 @@ export class ControlsScene extends Phaser.Scene {
 
   create(data?: ControlsSceneData): void {
     this.returnSceneKey = data?.returnSceneKey || 'Title'
+    this.firstRun = Boolean(data?.firstRun)
+    if (this.firstRun) {
+      this.renderFirstRun(data?.next)
+      return
+    }
 
     const { width, height } = GAME_SIZE
     const panelWidth = Math.min(width - 20, 408)
@@ -82,10 +101,43 @@ export class ControlsScene extends Phaser.Scene {
     backLabel.setInteractive({ useHandCursor: true })
     backLabel.on('pointerdown', () => this.close())
 
+    const replay = () => this.scene.restart({ returnSceneKey: this.returnSceneKey, firstRun: true })
+    this.add.text(panelX + panelWidth / 2 - 14, panelY + panelHeight / 2 - 11, 'T  FIRST-RUN PAGE', {
+      fontFamily: MENU_FONT_CODE,
+      fontSize: '7px',
+      color: '#9fd8ff'
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true }).on('pointerdown', replay)
+    InputActions.forScene(this).onPressed('tutorial', replay)
+
     bindMenuConfirmCancel(this, {
       onConfirm: () => this.close(),
       onCancel: () => this.close()
     })
+  }
+
+  private renderFirstRun(next?: { key: string; data: object }): void {
+    const { width, height } = GAME_SIZE
+    const panelX = Math.round(width / 2)
+    this.add.rectangle(panelX, height / 2, width, height, 0x000000, 0.72)
+    addMenuBackdrop(this, 0.38)
+    addMenuPanel(this, panelX, height / 2, 320, 228)
+    styleMenuHeading(this.add.text(panelX, 22, 'EIGHT KEYS', { fontFamily: MENU_FONT_DISPLAY, fontSize: '16px', color: '#f5f8ff' }).setOrigin(0.5).setName('first-run-heading'))
+    this.add.text(panelX, 40, 'FIRST FLIGHT  ·  REPLAY IT FROM THE CONTROL MAP (T)', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#5de1ff', letterSpacing: 1 }).setOrigin(0.5)
+    firstRunRows().forEach((row, index) => {
+      const y = 60 + index * 18
+      this.add.rectangle(panelX, y, 288, 15, index % 2 === 0 ? 0x123259 : MENU_COLORS.panelBright, 0.3)
+      this.add.text(panelX - 136, y, row.action.toUpperCase(), { fontFamily: MENU_FONT_BODY, fontSize: '9px', fontStyle: 'bold', color: '#e8f3ff' }).setOrigin(0, 0.5)
+      this.add.text(panelX + 136, y, row.input, { fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#9fd8ff' }).setOrigin(1, 0.5)
+    })
+    this.add.text(panelX, 220, next ? 'ENTER  CONTINUE' : 'ENTER / ESC  BACK', {
+      fontFamily: MENU_FONT_BODY, fontSize: '9px', fontStyle: 'bold', color: '#f5f8ff', backgroundColor: '#164b7c', padding: { x: 12, y: 4 }
+    }).setOrigin(0.5)
+    const done = () => {
+      if (!next) { this.scene.restart({ returnSceneKey: this.returnSceneKey }); return }
+      Profiles.markControlsSeen()
+      this.scene.start(next.key, next.data)
+    }
+    bindMenuConfirmCancel(this, { onConfirm: done, onCancel: done })
   }
 
   private renderSection(

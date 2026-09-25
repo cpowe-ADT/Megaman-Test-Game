@@ -1,12 +1,12 @@
 import { IDENTITY } from '../content/identity'
-import { openNewCampaign } from './NewCampaignScene'
+import { openNewCampaign, profileScreensEnabled, startWithFirstRunControls } from './NewCampaignScene'
 import Phaser from 'phaser'
 import AudioService from '../audio'
 import InputActions from '../input/InputActions'
 import { countClearedRobotMasters, getCampaignStage, TUTORIAL_STAGE_ID } from '../content/campaign'
 import { AUTOMATION } from '../config/automation'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
-import { Save } from '../systems/Save'
+import { Profiles, Save } from '../systems/Save'
 import {
   addMenuBackdrop,
   addMenuPanel,
@@ -22,6 +22,9 @@ const TITLE_KEYART_KEY = 'title_keyart'
 const TITLE_KEYART_PATH = 'assets/ui/title/title_keyart.png'
 
 export class Title extends Phaser.Scene {
+  /** Set by the ESC restart so the key art survives it (a reload raced the next Enter: smoke 33 lost it). */
+  private keepKeyArt = false
+
   constructor() {
     super('Title')
   }
@@ -45,7 +48,8 @@ export class Title extends Phaser.Scene {
     }
     AudioService.playMusic(this, 'title')
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => AudioService.onSceneShutdown(this))
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.textures.remove(TITLE_KEYART_KEY))
+    this.keepKeyArt = false
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { if (!this.keepKeyArt) this.textures.remove(TITLE_KEYART_KEY) })
 
     this.cameras.main.setBackgroundColor('#030711')
     if (this.textures.exists(TITLE_KEYART_KEY)) {
@@ -80,7 +84,10 @@ export class Title extends Phaser.Scene {
 
     const minutes = Math.floor((saveData.stats?.playTimeMs ?? 0) / 60000)
     const playTime = `${Math.floor(minutes / 60)}H ${String(minutes % 60).padStart(2, '0')}M`
-    const primaryLabel = !Save.exists()
+    // New-versus-continue reads the profile's `campaignStarted`, not `Save.exists()`: an Options visit writes a save.
+    const pilot = Profiles.active()
+    const started = Boolean(pilot?.campaignStarted)
+    const primaryLabel = !started
       ? 'Begin a new campaign'
       : `Continue  ${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(saveData)}/8  ${playTime}`
 
@@ -88,7 +95,7 @@ export class Title extends Phaser.Scene {
       .setStrokeStyle(1, MENU_COLORS.cyan, 0.75)
     this.add.rectangle(width / 2, 92, width - 96, 3, MENU_COLORS.blue, 0.7)
 
-    this.add.text(width / 2, 103, 'MISSION CONTROL', {
+    this.add.text(width / 2, 103, started && pilot ? `MISSION CONTROL  ·  PILOT ${pilot.pilotName}  ·  SLOT ${pilot.slot}` : 'MISSION CONTROL', {
       fontFamily: MENU_FONT_CODE,
       fontSize: '7px',
       color: '#5de1ff',
@@ -102,7 +109,7 @@ export class Title extends Phaser.Scene {
       fontStyle: 'bold',
       align: 'center',
       wordWrap: { width: width - 118 }
-    }).setOrigin(0.5)
+    }).setOrigin(0.5).setName('title-primary')
     startButton.setShadow(0, 1, '#000000', 2)
     startButton.setInteractive({ useHandCursor: true })
     startButton.on('pointerdown', () => {
@@ -153,6 +160,7 @@ export class Title extends Phaser.Scene {
       onConfirm: () => this.handlePrimaryAction(),
       onCancel: () => {
         Save.clearActiveRun()
+        this.keepKeyArt = true
         this.scene.restart()
       }
     })
@@ -160,7 +168,7 @@ export class Title extends Phaser.Scene {
     const newCampaignHandler = () => {
       AudioService.unlock()
       AudioService.playSfx('ui_confirm')
-      openNewCampaign(this)
+      this.startNewGame()
     }
     const controlsHandler = () => this.openControls()
     InputActions.forScene(this).onPressed('newCampaign', newCampaignHandler)
@@ -181,36 +189,31 @@ export class Title extends Phaser.Scene {
   }
 
   private handlePrimaryAction(): void {
-    if (!Save.exists()) { openNewCampaign(this); return }
-    if (Save.hasActiveRun()) {
-      const run = Save.loadActiveRun()
-      if (run) {
-        this.scene.start('Game', {
-          stageId: run.stageId,
-          bossId: run.bossId,
-          loadFromSave: true
-        })
-        return
-      }
-    }
-
-    const saveData = Save.load()
-    if (!saveData.tutorialCleared) {
-      this.startTutorial()
-      return
-    }
-
-    this.scene.start('StageSelect')
+    if (!Profiles.active()?.campaignStarted) { this.startNewGame(); return }
+    resumeActiveSlot(this)
   }
 
-  private startTutorial(): void {
+  /** NEW GAME: the slot picker and name entry (always in play; `?profiles=on` under automation), then NEW CAMPAIGN. */
+  private startNewGame(): void {
+    if (profileScreensEnabled()) this.scene.start('Profiles')
+    else openNewCampaign(this)
+  }
+}
+
+/** CONTINUE for the active slot: the saved mission, else the tutorial (first-run page once), else Stage Select. */
+export function resumeActiveSlot(scene: Phaser.Scene): void {
+  Profiles.touch()
+  const run = Save.hasActiveRun() ? Save.loadActiveRun() : null
+  if (run) {
+    scene.scene.start('Game', { stageId: run.stageId, bossId: run.bossId, loadFromSave: true })
+    return
+  }
+  if (!Save.load().tutorialCleared) {
     const stage = getCampaignStage(TUTORIAL_STAGE_ID)
-    this.scene.start('Game', {
-      stageId: stage.id,
-      bossId: stage.bossId,
-      runtimeBossConfigId: stage.runtimeBossConfigId
-    })
+    startWithFirstRunControls(scene, 'Game', { stageId: stage.id, bossId: stage.bossId, runtimeBossConfigId: stage.runtimeBossConfigId })
+    return
   }
+  scene.scene.start('StageSelect')
 }
 
 export default Title
