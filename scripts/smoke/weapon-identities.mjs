@@ -140,9 +140,10 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
         const frozen = await page.evaluate(() => {
           const s = window.__w12.scene()
           const d = window.__w12.dummies[0]
-          return { frozenFor: Math.round((d.data.get('frozenUntil') ?? 0) - s.time.now), tinted: Boolean(d.isTinted) }
+          // The canvas renderer (CI's headless Linux falls back to it) draws no tint; the ice block is the freeze there.
+          return { frozenFor: Math.round((d.data.get('frozenUntil') ?? 0) - s.time.now), tinted: Boolean(d.isTinted), webgl: s.sys.game.renderer.type === 2 }
         })
-        assert.ok(frozen.frozenFor > 1000 && frozen.tinted, `FrostShatter freezes (${JSON.stringify(frozen)})`)
+        assert.ok(frozen.frozenFor > 1000 && (frozen.tinted || !frozen.webgl), `FrostShatter freezes (${JSON.stringify(frozen)})`)
         applied.frozen = frozen
       }
       if (tag === 'corrode') {
