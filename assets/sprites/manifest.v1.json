@@ -489,6 +489,40 @@
       },
       "loadScope": "game",
       "notes": "Higgsfield gpt_image_2 stage mechanics: vent_nozzle, vent_flame, breakable_wall, crumble, slag_surface, slag_fill, energy_gate, scrap_gate (four frames each); cut by scripts/sprites/cut_vfx_sheet.py (mechanics_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by src/mechanics/adapters."
+    },
+    {
+      "id": "mechanics-mechanics_v2",
+      "atlasKey": "atlas_mechanics_v2",
+      "frame": {
+        "width": 56,
+        "height": 46
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/mechanics/mechanics_v2/mechanics_v2.png",
+        "runtimeData": "/assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json",
+        "localImagePath": "assets/sprites/mechanics/mechanics_v2/mechanics_v2.png",
+        "localDataPath": "assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 stage mechanics v2: conveyor, ice_tile (16x16), icicle, rockfall, power_rail, wind_gust, wind_lift, current, magnet_lift; cut by scripts/sprites/cut_vfx_sheet.py (mechanics_v2.json). Variable frame sizes, largest listed. Loaded by the Game scene."
+    },
+    {
+      "id": "effects-telegraphs_v1",
+      "atlasKey": "atlas_telegraphs_v1",
+      "frame": {
+        "width": 54,
+        "height": 40
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/effects/telegraphs_v1/telegraphs_v1.png",
+        "runtimeData": "/assets/sprites/effects/telegraphs_v1/telegraphs_v1.atlas.json",
+        "localImagePath": "assets/sprites/effects/telegraphs_v1/telegraphs_v1.png",
+        "localDataPath": "assets/sprites/effects/telegraphs_v1/telegraphs_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 boss attack tells: reticle, floor_marker, warning_flash, charge_glow (four frames each); cut by scripts/sprites/cut_vfx_sheet.py (telegraphs_v1.json). Loaded by the Game scene; drawn by the boss telegraph renderer (prompt 12 part 12f)."
     }
   ]
 }

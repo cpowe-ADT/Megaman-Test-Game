@@ -16,6 +16,7 @@ import {
   muzzleFrameForLevel
 } from '../src/combat/heroCombatVisuals'
 import { MECHANICS_ATLAS } from '../src/mechanics/mechanicsVisuals'
+import { GAME_SCENE_ATLASES } from '../src/scenes/game/stageBackgroundLoading'
 import { PLAYER_GAMEPLAY_CONFIG } from '../src/player/config'
 import { createDefaultProjectileRegistry } from '../src/projectiles/defaultRegistry'
 
@@ -70,8 +71,8 @@ test('hero combat atlases are manifest entries the Game scene loads, not Preload
   const result = validateSpriteManifest(manifest as SpriteSheetManifestV1)
   assert.equal(result.valid, true, result.errors.join('; '))
   const gameKeys = getGameSceneAtlasEntries(result.manifest!).map((entry) => entry.atlasKey).sort()
-  // The Game scene's resident atlases: the hero combat art and the stage mechanics art (tests/mechanics-visuals.test.ts).
-  const gameAtlases = [...HERO_COMBAT_ATLASES, MECHANICS_ATLAS]
+  // The Game scene's resident atlases (one list in stageBackgroundLoading.ts): hero combat art, mechanics art, boss tells.
+  const gameAtlases: ReadonlyArray<{ key: string; image: string; data: string }> = GAME_SCENE_ATLASES
   assert.deepEqual(gameKeys, gameAtlases.map((atlas) => atlas.key).sort())
   const preloadKeys = new Set(getLoadableAtlasEntries(result.manifest!).map((entry) => entry.atlasKey))
   gameKeys.forEach((key) => assert.equal(preloadKeys.has(key), false, `${key} is not preloaded`))

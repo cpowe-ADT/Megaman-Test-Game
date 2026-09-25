@@ -17,6 +17,13 @@ export const MECHANICS_ATLAS = {
   data: 'assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json'
 } as const
 
+/** Art for the seven mechanics prompt 12 part 12b builds (conveyor, ice_tile, icicle, rockfall, power_rail, wind_gust, wind_lift, current, magnet_lift; cbdac1e). */
+export const MECHANICS_V2_ATLAS = {
+  key: 'atlas_mechanics_v2',
+  image: 'assets/sprites/mechanics/mechanics_v2/mechanics_v2.png',
+  data: 'assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json'
+} as const
+
 export type MechanicsGroup = 'vent_nozzle' | 'vent_flame' | 'breakable_wall' | 'crumble' | 'slag_surface' | 'slag_fill' | 'energy_gate' | 'scrap_gate'
 export type FrameIndex = 0 | 1 | 2 | 3
 
