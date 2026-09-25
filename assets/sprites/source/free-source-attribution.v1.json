@@ -660,7 +660,7 @@
         "assets/sprites/pickups/pickups_v1/pickups_v1.png",
         "assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json"
       ],
-      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with pickups_v1.json; not wired yet"
+      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with pickups_v1.json; drawn by src/ui/pickups/pickupArt.ts since part 12h"
     },
     {
       "id": "hud-icons-v1-hf",
