@@ -80,7 +80,7 @@ export async function runClassicCampaignScenario(name, { outputDir, titleUrl, re
     }
     const panel=state.stageSelect.panels
     assert.ok(pyro.nameBounds.y>=panel.selectionOutline.y+1,'selection outline crosses title')
-    assert.ok(pyro.weaknessBounds.y+pyro.weaknessBounds.height<=panel.selectionOutline.y+panel.selectionOutline.height-1,'selection outline crosses weakness')
+    assert.ok(pyro.weaknessBounds.y+pyro.weaknessBounds.height<=panel.selectionOutline.y+panel.selectionOutline.height-1,`selection outline crosses weakness (weakness bottom ${pyro.weaknessBounds.y+pyro.weaknessBounds.height}, outline inner bottom ${panel.selectionOutline.y+panel.selectionOutline.height-1}; font metrics differ by OS)`)
     assert.ok(panel.description.y+panel.description.height<=panel.details.y)
     assert.ok(panel.details.y+panel.details.height<=panel.preview.y+panel.preview.height)
     assert.ok(panel.footerStatus.y>=panel.footerControls.y+panel.footerControls.height)

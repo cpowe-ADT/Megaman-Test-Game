@@ -905,7 +905,7 @@ async function runTitleControlsScenario(name) {
     })
     assert.equal(stageHeader.title.text,'WARDEN SELECT');assert.equal(stageHeader.caption.text,'8 WARDENS + OMEGA')
     assert.ok(stageHeader.title.x+stageHeader.title.width<stageHeader.caption.x,'stage title and descriptor must not overlap')
-    for(const text of [stageHeader.title,stageHeader.caption]) assert.ok(text.y+text.height<=stageHeader.progress.y,'stage descriptor must fit above progress')
+    for(const text of [stageHeader.title,stageHeader.caption]) assert.ok(text.y+text.height<=stageHeader.progress.y,`stage descriptor must fit above progress ('${text.text}' bottom ${text.y+text.height}, progress top ${stageHeader.progress.y}; font metrics differ by OS)`)
     await page.locator('canvas').screenshot({ path:path.join(scenarioDir,'shot-2-stage-select.png') })
     await tapKey(page,'Enter')
     await waitForState(page,state=>state.scene==='Game'&&state.newPlayer?.locomotion?.grounded===true)
