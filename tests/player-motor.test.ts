@@ -3,6 +3,14 @@ import assert from 'node:assert/strict'
 import { PlayerMotor } from '../src/player/PlayerMotor'
 import * as playerConfig from '../src/player/config'
 import type { PlayerIntent } from '../src/player/types'
+import {
+  ENVIRONMENT_PUSH_CAP,
+  GROUNDED_PUSH_SCALE,
+  ICE_DASH_DISTANCE_SCALE,
+  applyVerticalForce,
+  normalizePlayerEnvironment,
+  stepPushVelocity
+} from '../src/player/environment'
 
 const { PLAYER_GAMEPLAY_CONFIG, resolvePlayerPhysicsLimits } = playerConfig
 
@@ -716,4 +724,185 @@ test('5.2-7 one world-gravity constant feeds the hero body offset and the enemy 
   const enemyMotor = readFileSync('src/enemy/EnemyMotor.ts', 'utf8')
   assert.match(enemyMotor, /WORLD_GRAVITY_Y \* definition\.stats\.gravityScale/)
   assert.doesNotMatch(enemyMotor, /\b800 \*/)
+})
+
+// ------------------------------------------------------------------ 12b: the motor environment input
+
+const near = (actual: number, expected: number, label: string, tolerance = 1e-6) =>
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected}`)
+
+function traceMotor(setup?: (motor: PlayerMotor) => void): number[][] {
+  const { motor, state } = createMotor(groundedBody())
+  setup?.(motor)
+  const script: Array<Partial<PlayerIntent>> = [
+    ...Array(10).fill({ moveAxis: 1 }),
+    { moveAxis: 1, dashPressed: true, dashHeld: true },
+    ...Array(4).fill({ moveAxis: 1, dashHeld: true }),
+    { moveAxis: 1, dashHeld: true, jumpPressed: true, jumpHeld: true },
+    ...Array(20).fill({ moveAxis: 1, jumpHeld: true }),
+    ...Array(10).fill({ moveAxis: -1 })
+  ]
+  return script.map((intent, index) => {
+    const snapshot = motor.update(createIntent(intent), FRAME_60, false)
+    if (index === 15) {
+      state.onFloor = false
+      state.blocked.down = false
+    }
+    if (index >= 15) stepBody(state, FRAME_60 / 1000)
+    return [state.velocity.x, state.velocity.y, snapshot.velocityX, snapshot.dashRemainingMs, Number(snapshot.turnRequested)]
+  })
+}
+
+test('12b a neutral or cleared environment leaves the run, dash, dash-jump and turn trace exactly as before', () => {
+  const plain = traceMotor()
+  assert.deepEqual(traceMotor((motor) => motor.setEnvironment({ surface: 'ground', carryVelocityX: 0, forceX: 0, forceY: 0 })), plain)
+  assert.deepEqual(
+    traceMotor((motor) => {
+      motor.setEnvironment({ surface: 'ice', carryVelocityX: 90, forceX: 500, forceY: -900 })
+      motor.setEnvironment(null)
+    }),
+    plain
+  )
+  assert.deepEqual(normalizePlayerEnvironment({ forceX: Number.NaN, surface: 'lava' as never }), { surface: 'ground', carryVelocityX: 0, forceX: 0, forceY: 0, pushCap: ENVIRONMENT_PUSH_CAP })
+})
+
+test('12b conveyor: an idle hero rides the belt at its speed and reads idle; running against it the body moves at run minus belt', () => {
+  const { motor, state } = createMotor(groundedBody())
+  motor.setEnvironment({ surface: 'ground', carryVelocityX: 60, forceX: 0, forceY: 0 })
+  let snapshot = motor.update(createIntent(), FRAME_60, false)
+  for (let frame = 0; frame < 20; frame += 1) snapshot = motor.update(createIntent(), FRAME_60, false)
+  near(state.velocity.x, 60, 'body rides the belt')
+  near(snapshot.velocityX, 0, 'own speed (idle, not run)')
+  for (let frame = 0; frame < 30; frame += 1) snapshot = motor.update(createIntent({ moveAxis: -1 }), FRAME_60, false)
+  near(state.velocity.x, -MOVE.runSpeed + 60, 'body against the belt')
+  near(snapshot.velocityX, -MOVE.runSpeed, 'own speed is the run speed')
+  assert.equal(snapshot.turnRequested, false)
+})
+
+function dashJumpOffBelt(carry: number, dash: boolean) {
+  const { motor, state } = createMotor(groundedBody())
+  motor.setEnvironment({ surface: 'ground', carryVelocityX: carry, forceX: 0, forceY: 0 })
+  for (let frame = 0; frame < 10; frame += 1) motor.update(createIntent(), FRAME_60, false)
+  if (dash) {
+    motor.update(createIntent({ moveAxis: 1, dashPressed: true, dashHeld: true }), FRAME_60, false)
+    motor.update(createIntent({ moveAxis: 1, dashHeld: true }), FRAME_60, false)
+  }
+  const held = dash ? { moveAxis: 1, dashHeld: true } : {}
+  const jump = motor.update(createIntent({ ...held, jumpPressed: true, jumpHeld: true }), FRAME_60, false)
+  assert.equal(jump.justJumped, true)
+  state.onFloor = false
+  state.blocked.down = false
+  const speeds: number[] = []
+  for (let frame = 0; frame < 10; frame += 1) {
+    stepBody(state, FRAME_60 / 1000)
+    motor.update(createIntent({ ...held, jumpHeld: true }), FRAME_60, false)
+    speeds.push(state.velocity.x)
+  }
+  return { speeds, bonus: motor.getEnvironmentState().dashJumpBonusX }
+}
+
+test('12b conveyor: a dash-jump off a belt adds the belt speed (380 with it, 260 against it); a plain jump lets it go', () => {
+  const withBelt = dashJumpOffBelt(60, true)
+  assert.deepEqual(withBelt.speeds, Array(10).fill(DASH.dashSpeed + 60))
+  assert.equal(withBelt.bonus, 60)
+  assert.deepEqual(dashJumpOffBelt(-60, true).speeds, Array(10).fill(DASH.dashSpeed - 60))
+  const plainJump = dashJumpOffBelt(60, false)
+  assert.equal(plainJump.speeds[plainJump.speeds.length - 1], 0, 'air control settles a plain jump off the belt')
+})
+
+function dashOn(surface: 'ground' | 'ice') {
+  const { motor, state } = createMotor(groundedBody())
+  motor.setEnvironment({ surface, carryVelocityX: 0, forceX: 0, forceY: 0 })
+  let snapshot = motor.update(createIntent({ dashPressed: true, dashHeld: true }), FRAME_60, false)
+  let distance = 0
+  let peak = 0
+  let frames = 0
+  while (snapshot.dashing && frames < 60) {
+    distance += (state.velocity.x * FRAME_60) / 1000
+    peak = Math.max(peak, state.velocity.x)
+    frames += 1
+    snapshot = motor.update(createIntent({ dashHeld: true }), FRAME_60, false)
+  }
+  return { distance, peak }
+}
+
+function framesToStop(surface: 'ground' | 'ice'): number {
+  const { motor, state } = createMotor({ ...groundedBody(), velocity: { x: MOVE.runSpeed, y: 0 } })
+  motor.setEnvironment({ surface, carryVelocityX: 0, forceX: 0, forceY: 0 })
+  let frames = 0
+  while (state.velocity.x > 0 && frames < 200) {
+    motor.update(createIntent(), FRAME_60, false)
+    frames += 1
+  }
+  return frames
+}
+
+test('12b ice: a grounded dash on ice runs 1.4x as long at the same speed (+40% distance) and stopping takes ~1/0.35 as long', () => {
+  const ground = dashOn('ground')
+  const ice = dashOn('ice')
+  assert.equal(ice.peak, ground.peak, 'same dash speed')
+  const ratio = ice.distance / ground.distance
+  assert.ok(Math.abs(ratio - ICE_DASH_DISTANCE_SCALE) < 0.08, `ice/ground dash distance ${ratio.toFixed(3)}`)
+  const groundStop = framesToStop('ground')
+  const iceStop = framesToStop('ice')
+  assert.ok(iceStop >= 2.4 * groundStop, `stop frames ground ${groundStop}, ice ${iceStop}`)
+})
+
+test('12b push: a force builds the push to its cap (half on the ground) and it fades once the force stops', () => {
+  assert.equal(stepPushVelocity(0, 600, 100, 0.1), 60)
+  assert.equal(stepPushVelocity(90, 600, 100, 0.1), 100)
+  assert.equal(stepPushVelocity(-100, 600, 100, 0.1), -40)
+  assert.equal(stepPushVelocity(100, 0, 100, 0.1), 10)
+  assert.equal(stepPushVelocity(50, 0, 100, 0.1), 0)
+  const air = createMotor()
+  air.motor.setEnvironment({ surface: 'ground', carryVelocityX: 0, forceX: 600, forceY: 0, pushCap: 100 })
+  let snapshot = air.motor.update(createIntent(), FRAME_60, false)
+  for (let frame = 0; frame < 60; frame += 1) snapshot = air.motor.update(createIntent(), FRAME_60, false)
+  near(air.state.velocity.x, 100, 'airborne drift at the cap')
+  near(snapshot.velocityX, 0, 'own speed while drifting')
+  const ground = createMotor(groundedBody())
+  ground.motor.setEnvironment({ surface: 'ground', carryVelocityX: 0, forceX: 600, forceY: 0, pushCap: 100 })
+  for (let frame = 0; frame < 60; frame += 1) ground.motor.update(createIntent(), FRAME_60, false)
+  near(ground.state.velocity.x, 100 * GROUNDED_PUSH_SCALE, 'grounded drift is halved')
+  ground.motor.setEnvironment(null)
+  for (let frame = 0; frame < 12; frame += 1) ground.motor.update(createIntent(), FRAME_60, false)
+  assert.equal(ground.motor.getEnvironmentState().pushVelocityX, 0, 'the push fades out')
+  assert.equal(ground.state.velocity.x, 0)
+})
+
+test('12b lift: an upward force lifts to its cap, never slows a faster jump, and the air dash stays flat', () => {
+  assert.equal(applyVerticalForce(0, -2000, 170, 0.05), -100)
+  assert.equal(applyVerticalForce(-150, -2000, 170, 0.05), -170)
+  assert.equal(applyVerticalForce(-400, -2000, 170, 0.05), -400)
+  assert.equal(applyVerticalForce(300, 500, 170, 0.05), 300)
+  const { motor, state } = createMotor()
+  motor.setEnvironment({ surface: 'ground', carryVelocityX: 0, forceX: 0, forceY: -2100, pushCap: 170 })
+  const startY = state.y
+  for (let frame = 0; frame < 40; frame += 1) {
+    motor.update(createIntent(), FRAME_60, false)
+    stepBody(state, FRAME_60 / 1000)
+  }
+  motor.update(createIntent(), FRAME_60, false)
+  near(state.velocity.y, -170, 'rise at the cap')
+  assert.ok(state.y < startY - 60, `rose ${(startY - state.y).toFixed(1)}px`)
+  motor.update(createIntent({ dashPressed: true, dashHeld: true }), FRAME_60, true)
+  assert.equal(state.velocity.y, 0, 'the air dash ignores the lift')
+})
+
+test('12b headroom: a belt raises the body cap by its drift while it applies, restores it once neutral, and plain ground never writes it', () => {
+  const { state, body } = createMockBody(groundedBody())
+  const maxVelocity = { x: DASH.dashSpeed, y: MOVE.terminalVelocity }
+  const motor = new PlayerMotor({ body: { ...body, maxVelocity, velocity: state.velocity, blocked: state.blocked, touching: state.touching, onFloor: body.onFloor, setVelocityX: body.setVelocityX, setVelocityY: body.setVelocityY, setVelocity: body.setVelocity } } as any, MOVE, DASH)
+  for (let frame = 0; frame < 5; frame += 1) motor.update(createIntent({ moveAxis: 1 }), FRAME_60, false)
+  assert.equal(maxVelocity.x, DASH.dashSpeed, 'plain ground leaves the cap alone')
+  motor.setEnvironment({ surface: 'ground', carryVelocityX: 60, forceX: 0, forceY: 0 })
+  motor.update(createIntent({ moveAxis: 1, dashPressed: true, dashHeld: true }), FRAME_60, false)
+  assert.equal(state.velocity.x, DASH.dashSpeed + 60, 'a dash on the belt')
+  assert.equal(maxVelocity.x, DASH.dashSpeed + 60, 'cap raised by the belt speed')
+  maxVelocity.x = 400
+  motor.update(createIntent({ moveAxis: 1, dashHeld: true }), FRAME_60, false)
+  assert.equal(maxVelocity.x, 460, 'a cap set elsewhere while raised becomes the base')
+  motor.setEnvironment(null)
+  motor.update(createIntent({ moveAxis: 1, dashHeld: true }), FRAME_60, false)
+  assert.equal(maxVelocity.x, 400, 'restored once neutral')
 })

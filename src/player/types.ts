@@ -57,6 +57,7 @@ export type MotorSnapshot = {
   wallJumping: boolean
   facing: 1 | -1
   turnRequested: boolean
+  /** The hero's own horizontal speed, px/s: the body's vx less the environment's drift (belt carry, push); equal to vx on plain ground. */
   velocityX: number
   velocityY: number
   coyoteRemainingMs: number

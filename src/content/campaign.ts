@@ -17,6 +17,13 @@ import type { StageHazardDefinition } from '../mechanics/hazards'
 import type { RisingLiquidDefinition } from '../mechanics/risingLiquid'
 import type { CrumbleGroupDefinition } from '../mechanics/crumbleGroup'
 import type { BreakableWallDefinition } from '../mechanics/breakableWall'
+import type { ConveyorDefinition } from '../mechanics/conveyor'
+import type { IceFloorDefinition } from '../mechanics/iceFloor'
+import type { CurrentZoneDefinition } from '../mechanics/currentZone'
+import type { WindZoneDefinition } from '../mechanics/windZone'
+import type { TimedRailGroupDefinition } from '../mechanics/timedRailGroup'
+import type { RockfallDefinition } from '../mechanics/rockfall'
+import type { IcicleDefinition } from '../mechanics/icicle'
 import type { FloorGap } from '../stage/stageGeometry'
 import * as HEAT_WORKS from './stages/heatWorks'
 
@@ -68,6 +75,20 @@ export type StageArenaDefinition = {
   crumbleGroups?: CrumbleGroupDefinition[]
   /** Solid blocks a saber or a charged shot breaks (06 §6.2 `breakable_wall`). */
   breakableWalls?: BreakableWallDefinition[]
+  /** Belt platforms that carry the hero and enemies; a dash-jump off one keeps its speed (12b `conveyor`). */
+  conveyors?: ConveyorDefinition[]
+  /** Ice-tile platforms: ground friction x0.35, a grounded dash +40% distance (12b `ice_floor`). */
+  iceFloors?: IceFloorDefinition[]
+  /** Water currents that push the hero with a capped force (12b `current_zone`). */
+  currentZones?: CurrentZoneDefinition[]
+  /** Sideways gusts on a cycle and upward lifts, Ferro's magnet lift included (12b `wind_zone`). */
+  windZones?: WindZoneDefinition[]
+  /** Electrified floor rails on one shared timer, for Volt (12b `timed_rail_group`). */
+  timedRailGroups?: TimedRailGroupDefinition[]
+  /** Ceiling spawners: dust puff, boulder, rubble (12b `rockfall`). */
+  rockfalls?: RockfallDefinition[]
+  /** Icicles that shake when the hero passes under, fall and shatter; back on the checkpoint respawn (12b `icicle`). */
+  icicles?: IcicleDefinition[]
   /** Pits (x is the left edge): the main ground is split around them (`src/stage/stageGeometry.ts`); needs `allowFallOff`. */
   floorGaps?: FloorGap[]
   /** Hand-placed pickups; a category left out keeps its checkpoint-derived default. */
@@ -1129,11 +1150,13 @@ for (const stage of Object.values(CAMPAIGN_STAGES)) {
 /**
  * `mechanics_lab` (06 §6.2): a developer-only stage with one of each stage mechanic, for smoke
  * `42-mechanics-matrix`. Not in `CAMPAIGN_STAGES`, so stage select, saves and the campaign never list it;
- * it borrows Heat Works' boss, background and colours. Four screens: vents and a wide spike, a crumble
- * group, a two-screen climb with rising slag between two walls, and two breakable walls.
+ * it borrows Heat Works' boss, background and colours. Nine screens: vents and a wide spike, a crumble
+ * group, a two-screen climb with rising slag between two walls, two breakable walls; then the 12b
+ * mechanics: an ice floor (plain floor before it for the reference dash), two belts, a current and a gust,
+ * a wind lift and a magnet lift with ledges, and a rail pair, a rockfall and an icicle under a ceiling.
  */
 export const MECHANICS_LAB_STAGE_ID = 'mechanics_lab'
-const LAB_ROUTE_WIDTH = 4 * TEACH_SCREEN
+const LAB_ROUTE_WIDTH = 9 * TEACH_SCREEN
 const LAB_FLOOR_TOP = GAME_FLOOR_TOP
 const LAB_STEP = 40
 
@@ -1174,7 +1197,14 @@ function buildMechanicsLabStage(): CampaignStageDefinition {
       bossRoom,
       bossSpawn: { x: bossRoom.bossSpawnX, y: base.arena.bossSpawn.y },
       spawn: { x: 44, y: GROUNDED_PLAYER_SPAWN_Y },
-      checkpoints: [lab('lab_start', 44, 0), lab('lab_climb', 904, 896), lab('lab_walls', 1400, 1390), lab('lab_boss_gate', 1760, 1740)],
+      checkpoints: [
+        lab('lab_start', 44, 0),
+        lab('lab_climb', 904, 896),
+        lab('lab_walls', 1400, 1390),
+        lab('lab_motion', 1800, 1792),
+        lab('lab_drops', 3600, 3592),
+        lab('lab_boss_gate', LAB_ROUTE_WIDTH - 32, LAB_ROUTE_WIDTH - 52)
+      ],
       hazards: [
         { id: 'lab_spike_wide', x: 120, y: 231, width: 40, height: 10, damage: 2 },
         { id: 'lab_vent_a', kind: 'vent', x: 220, y: LAB_FLOOR_TOP - 24, width: 16, height: 48, damage: 2, timing: { onMs: 1000, offMs: 1600 } },
@@ -1184,7 +1214,11 @@ function buildMechanicsLabStage(): CampaignStageDefinition {
         { id: 'lab_climb_wall_left', x: 904, y: -64, width: 16, height: 360, type: 'wall', color: 0x4a2a1c },
         { id: 'lab_climb_wall_right', x: 1336, y: 58, width: 16, height: 356, type: 'wall', color: 0x4a2a1c },
         ...climbSteps,
-        { id: 'lab_secret_shelf', x: 1580, y: 196, width: 40, type: 'oneWay', color: 0xc9a14a }
+        { id: 'lab_secret_shelf', x: 1580, y: 196, width: 40, type: 'oneWay', color: 0xc9a14a },
+        // 12b: ledges beside the two lifts, and the ceiling the rockfall and the icicle hang from.
+        { id: 'lab_lift_ledge', x: 3252, y: 84, width: 56, type: 'oneWay', color: 0x6c3520 },
+        { id: 'lab_magnet_ledge', x: 3460, y: 84, width: 56, type: 'oneWay', color: 0x6c3520 },
+        { id: 'lab_ceiling', x: 3870, y: 96, width: 220, height: 16, type: 'solid', color: 0x4a2a1c }
       ],
       verticalSegments: [{ id: 'lab_climb', x: 896, width: 448, verticalScreens: 2 }],
       // Starts 40px under the floor: about 1.6s before it covers the floor, then 14s to the top.
@@ -1201,7 +1235,23 @@ function buildMechanicsLabStage(): CampaignStageDefinition {
       breakableWalls: [
         { id: 'lab_wall_saber', x: 1500, y: LAB_FLOOR_TOP / 2, width: 16, height: LAB_FLOOR_TOP, hitsRequired: 3 },
         { id: 'lab_wall_shot', x: 1660, y: LAB_FLOOR_TOP / 2, width: 16, height: LAB_FLOOR_TOP, hitsRequired: 3, minChargeLevel: 1 }
-      ]
+      ],
+      // 12b. Belts and ice lie flush with the floor (their tops on it), so walking on and off has no lip. The
+      // ceiling (bottom at y 104) sits below the HUD band so the dust puff and the icicle mount show.
+      iceFloors: [{ id: 'lab_ice', x: 2096, y: LAB_FLOOR_TOP + 8, width: 288 }],
+      conveyors: [
+        { id: 'lab_belt_right', x: 2352, y: LAB_FLOOR_TOP + 6, width: 168, speed: 60 },
+        { id: 'lab_belt_left', x: 2576, y: LAB_FLOOR_TOP + 6, width: 112, speed: -60 }
+      ],
+      currentZones: [{ id: 'lab_current', x: 2704, y: LAB_FLOOR_TOP - 120, width: 176, height: 120, forceX: 420, maxSpeed: 80 }],
+      windZones: [
+        { id: 'lab_gust', kind: 'gust', direction: -1, x: 2912, y: LAB_FLOOR_TOP - 140, width: 208, height: 140 },
+        { id: 'lab_lift', kind: 'lift', x: 3184, y: 44, width: 40, height: LAB_FLOOR_TOP - 44 },
+        { id: 'lab_magnet', kind: 'lift', style: 'magnet', x: 3392, y: 44, width: 40, height: LAB_FLOOR_TOP - 44 }
+      ],
+      timedRailGroups: [{ id: 'lab_rails', rails: [{ id: 'lab_rail_1', x: 3640, y: LAB_FLOOR_TOP }, { id: 'lab_rail_2', x: 3712, y: LAB_FLOOR_TOP }] }],
+      rockfalls: [{ id: 'lab_rock', x: 3820, topY: 115, floorY: LAB_FLOOR_TOP - 11, triggerX: 3790 }],
+      icicles: [{ id: 'lab_icicle', x: 3920, y: 104, floorY: LAB_FLOOR_TOP }]
     }
   }
 }

@@ -21,6 +21,7 @@ import { VfxSfxRouter } from './VfxSfxRouter'
 import { PLAYER_GAMEPLAY_CONFIG, resolveSwordVisualFacing, shouldFlipPlayerSpriteForFacing } from './config'
 import type { PlayerFeatureFlags } from './featureFlags'
 import type { RoomLockVerbSample } from '../mechanics/roomLock'
+import type { PlayerEnvironment } from './environment'
 import type {
   CombatSnapshot,
   HitTier,
@@ -287,6 +288,11 @@ export class NewPlayerRuntime {
     return this.motor.getFacing()
   }
 
+  /** Stage mechanics under and around the hero (12b: belt carry, ice, wind, current); the motor applies it from its next update. */
+  setEnvironment(environment: Partial<PlayerEnvironment> | null): void {
+    this.motor.setEnvironment(environment)
+  }
+
   /** Death beat 1 (`DeathSequence`): the hero stops updating and plays `player_death` with its sfx. */
   playDeath(): void {
     this.deathActive = true
@@ -380,7 +386,8 @@ export class NewPlayerRuntime {
         lastJumpSource: this.lastJumpSource,
         lastLandingSpeed: this.lastLandingSpeed,
         dashMs: Math.round(this.lastMotorSnapshot.dashRemainingMs),
-        dashCooldownMs: Math.round(this.lastMotorSnapshot.dashCooldownRemainingMs)
+        dashCooldownMs: Math.round(this.lastMotorSnapshot.dashCooldownRemainingMs),
+        environment: this.motor.getEnvironmentState()
       },
       combat: {
         shotFired: this.lastCombatSnapshot.shotFired,

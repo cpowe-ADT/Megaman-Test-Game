@@ -50,11 +50,14 @@ import {
   ventNozzleFrameIndex,
   wallTileLayout
 } from '../mechanicsVisuals'
-import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, setMechanicsFrame } from './mechanicsArt'
+import { HazardMechanicsAdapter } from './HazardMechanicsAdapter'
+import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, setMechanicsFrame, type MechanicsFrame } from './mechanicsArt'
+import { MotionMechanicsAdapter } from './MotionMechanicsAdapter'
+import type { PlayerEnvironment } from '../../player/environment'
 
 export { stageMechanicPlatforms } from '../stageMechanics'
 
-/** Scene data key `render_game_to_text` reads for `mechanics` (vents, hazards, liquids, crumbles, walls). */
+/** Scene data key `render_game_to_text` reads for `mechanics` (vents, hazards, liquids, crumbles, walls, and the 12b belts, ice, zones, rails, rockfalls, icicles). */
 export const STAGE_MECHANICS_DATA_KEY = 'stageMechanics'
 
 type Visual = Phaser.GameObjects.GameObject & {
@@ -69,7 +72,8 @@ export type StageMechanicsDeps = {
   scene: Phaser.Scene
   stageId: string
   player: () => Phaser.Physics.Arcade.Sprite | undefined
-  runtime: () => { getVerbSample(): RoomLockVerbSample | null; getFacing(): 1 | -1 } | undefined
+  /** `setEnvironment` (12b): the belt, ice and push zones reach the hero's motor through it. */
+  runtime: () => { getVerbSample(): RoomLockVerbSample | null; getFacing(): 1 | -1; setEnvironment?(environment: Partial<PlayerEnvironment> | null): void } | undefined
   platforms: () => { findPlatformVisual(id: string): Phaser.GameObjects.GameObject | undefined } | undefined
   playerBullets: () => Phaser.Physics.Arcade.Group | undefined
   /** The death sequence runs (liquids hold); its end is the checkpoint respawn (liquids restart). */
@@ -113,7 +117,8 @@ function heroBox(player: Phaser.Physics.Arcade.Sprite): Box | null {
 /**
  * Phaser edge of the stage mechanics library (06 §6.2; Heat Works first): timed vents on one stage
  * clock, rising liquid, crumble groups and breakable walls. Pure rules live in `src/mechanics/*.ts`;
- * this class draws the tells, toggles bodies and reads the hero once per frame (POST_UPDATE).
+ * this class draws the tells, toggles bodies and reads the hero once per frame (POST_UPDATE). The 12b
+ * mechanics run in `MotionMechanicsAdapter` and `HazardMechanicsAdapter` on the same clock and frame.
  */
 export class StageMechanicsAdapter {
   private clockMs = 0
@@ -128,6 +133,9 @@ export class StageMechanicsAdapter {
   /** Slag at the bottom of each floor gap (drawn over the backdrop's flat strip, same rectangle). */
   private readonly pitSlag: SlagStrip[] = []
   private readonly art: boolean
+  /** The 12b mechanics: belts, ice and push zones (motor environment); rails, rockfalls and icicles (damage). */
+  private readonly motion: MotionMechanicsAdapter
+  private readonly drops: HazardMechanicsAdapter
 
   constructor(private readonly deps: StageMechanicsDeps) {
     const { scene } = deps
@@ -151,6 +159,8 @@ export class StageMechanicsAdapter {
       const box = wallBox(def)
       this.walls.push({ def, state: createBreakableWallState(def), box, visual, cracks, art: this.createWallArt(box, visual) })
     }
+    this.motion = new MotionMechanicsAdapter({ scene, player: deps.player, runtime: deps.runtime, platforms: deps.platforms }, arena)
+    this.drops = new HazardMechanicsAdapter({ scene, damagePlayer: deps.damagePlayer }, arena)
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.update, this)
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this)
     scene.data.set(STAGE_MECHANICS_DATA_KEY, this)
@@ -171,6 +181,7 @@ export class StageMechanicsAdapter {
       staticBodyOf(sprite)?.setSize(hazard.width, hazard.height, true)
       this.hazards.push({ hazard, body: sprite as HazardEntry['body'] })
     }
+    this.drops.addToHazardGroup(group)
     this.syncVents(true)
   }
 
@@ -199,7 +210,9 @@ export class StageMechanicsAdapter {
       risingLiquids: this.liquids.map(({ def, state, art }) => ({ ...state, surfaceY: Math.round(state.surfaceY), floorY: def.floorY, topY: def.topY, held: this.wasDying, surfaceFrame: frameName(art?.surface), surfaceArtTop: art?.surface.visible ? art.surface.y : null })),
       crumbles: this.crumbles.map(({ state, visual, art }) => ({ ...state, timerMs: Math.round(state.timerMs), bodyEnabled: Boolean(visual && staticBodyOf(visual)?.enable), frame: frameName(art) })),
       breakableWalls: this.walls.map(({ state, visual, art }) => ({ ...state, bodyEnabled: Boolean(visual && staticBodyOf(visual)?.enable), frame: frameName(art) })),
-      pitSlag: { strips: this.pitSlag.length, surfaceFrame: frameName(this.pitSlag[0]?.surface) }
+      pitSlag: { strips: this.pitSlag.length, surfaceFrame: frameName(this.pitSlag[0]?.surface) },
+      ...this.motion.getDebugState(),
+      ...this.drops.getDebugState()
     }
   }
 
@@ -316,18 +329,27 @@ export class StageMechanicsAdapter {
     const stepMs = this.clockMs - before
     this.syncVents(false)
     this.pitSlag.forEach((strip) => this.syncSlagFrames(strip))
-    if (paused) return
+    const frame = paused ? null : this.stepHero(delta, stepMs)
+    this.motion.update(frame, this.clockMs)
+    this.drops.update(frame, this.clockMs)
+  }
+
+  /** The v1 mechanics' hero step; returns the frame the 12b adapters read (null with no hero). */
+  private stepHero(delta: number, stepMs: number): MechanicsFrame | null {
     const player = this.deps.player()
     const dying = this.deps.isDying()
     if (this.wasDying && !dying) this.onRespawn()
     this.wasDying = dying
-    if (!player?.active) return
+    if (!player?.active) return null
     const hero = heroBox(player)
-    if (!hero) return
+    if (!hero) return null
     const body = player.body as Phaser.Physics.Arcade.Body
+    const grounded = Boolean(body.blocked.down || body.touching.down)
+    const prevHeroX = this.prevHeroX ?? player.x
     this.updateLiquids(player.x, hero, dying, stepMs)
-    this.updateCrumbles(hero, Boolean(body.blocked.down || body.touching.down), stepMs)
+    this.updateCrumbles(hero, grounded, stepMs)
     this.updateWalls(player, hero, delta)
+    return { clockMs: this.clockMs, stepMs, hero, heroX: player.x, prevHeroX, grounded, dying }
   }
 
   private syncVents(force: boolean): void {
@@ -361,6 +383,9 @@ export class StageMechanicsAdapter {
   }
 
   private onRespawn(): void {
+    // The respawn is a teleport, not a walk: it crosses no trigger (a rockfall would drop on the way back).
+    this.prevHeroX = null
+    this.drops.onRespawn()
     for (const liquid of this.liquids) {
       liquid.state = resetRisingLiquid(liquid.def)
       this.drawLiquid(liquid)
@@ -507,6 +532,8 @@ export class StageMechanicsAdapter {
     this.pitSlag.forEach(destroyStrip)
     this.crumbles.forEach((crumble) => crumble.art?.destroy())
     this.walls.forEach((wall) => { wall.cracks.destroy(); wall.art?.destroy() })
+    this.motion.destroy()
+    this.drops.destroy()
     scene.data?.remove(STAGE_MECHANICS_DATA_KEY)
   }
 }

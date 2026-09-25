@@ -6,6 +6,11 @@
 // damage path, the death holds the slag, the respawn resets it). Placement is test-side (`place`); the
 // verbs are real key presses. The mechanics_v1 art: each drawn frame is read back through the `frame`
 // fields (nozzleFrame/flameFrame, surfaceFrame, crumble and wall `frame`) and must follow the state.
+// Section 6 (prompt 12 part 12b) walks screens 4 to 8: ice (dash window ~1.4x, longer slide), belts (an idle
+// rider moves at belt speed and reads idle, a dash-jump keeps the belt speed, a loose test crate rides too,
+// the leftward belt draws flipped), a current and a gust (pushes, the gust's building tell), the wind and
+// magnet lifts, the rail pair (arming before arcing, live only while arcing, 2 HP), the rockfall (dust puff
+// and shadow, boulder, rubble, 2 HP) and the icicle (shake, fall, shards, 2 HP; back on the checkpoint respawn).
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -144,11 +149,15 @@ export async function runMechanicsMatrixScenario(name, { outputDir, url, readSta
     assert.ok(state.camera.scrollY < -60, `camera followed up (scrollY ${state.camera.scrollY})`)
     const surfaceA = byId(mech(state).risingLiquids, 'lab_slag').surfaceY
     const slagFrames = new Set()
-    for (let sample = 0; sample < 6; sample += 1) {
+    // Sample by stage-clock time, not frame count: a loaded machine can run 30 frames in under one 280ms slag frame.
+    const slagClockStart = mech(state).clockMs
+    for (let sample = 0; sample < 24; sample += 1) {
       await advanceFrames(page, 5)
-      const slag = byId(mech(await readState(page)).risingLiquids, 'lab_slag')
+      const next = await readState(page)
+      const slag = byId(mech(next).risingLiquids, 'lab_slag')
       assert.equal(slag.surfaceArtTop, slag.surfaceY - 8, 'the surface strip\'s liquid edge sits on the kill line')
       slagFrames.add(slag.surfaceFrame)
+      if (sample >= 5 && mech(next).clockMs - slagClockStart >= 700) break
     }
     const surfaceB = byId(mech((await readState(page))).risingLiquids, 'lab_slag').surfaceY
     assert.ok(surfaceB < surfaceA, `slag keeps rising (${surfaceA} -> ${surfaceB})`)
@@ -206,6 +215,211 @@ export async function runMechanicsMatrixScenario(name, { outputDir, url, readSta
     await page.keyboard.up('x')
     state = await waitForState(page, (next) => byId(mech(next).breakableWalls, 'lab_wall_shot')?.phase === 'broken', 4000, 'charged shot breaks the wall')
     evidence.walls = mech(state).breakableWalls
+
+    // 6. The 12b mechanics, left to right. Movement reaches the motor as mechanics.heroEnvironment (what the
+    // adapter sends) and newPlayer.locomotion.environment (what the motor holds).
+    const env = (next) => mech(next).heroEnvironment ?? {}
+    const loco = (next) => next.newPlayer?.locomotion ?? {}
+    const v2 = (group, index) => `mechanics_v2/${group}/00${index}`
+    // Movement is measured over stage-clock time: frame counts cover very different game time on a loaded machine.
+    const advanceClock = async (ms) => {
+      const start = mech(await readState(page)).clockMs
+      let next = null
+      for (let step = 0; step < 300; step += 1) {
+        await advanceFrames(page, 3)
+        next = await readState(page)
+        if (mech(next).clockMs - start >= ms) break
+      }
+      return next
+    }
+    await shield(600000)
+
+    // 6a. Ice: a grounded dash on the ice lasts ~1.4x the plain-floor dash at the same speed, and slides further.
+    const dashFrom = async (x) => {
+      await place(x, 214)
+      await tapKey(page, 'ArrowRight', 2)
+      const before = await advanceClock(300)
+      await page.keyboard.down('z')
+      await advanceFrames(page, 3)
+      const during = await readState(page)
+      await advanceClock(600)
+      await page.keyboard.up('z')
+      const after = await advanceClock(900)
+      const ice = byId(mech(during).iceFloors, 'lab_ice')
+      return {
+        distance: after.player.x - before.player.x,
+        dashWindowMs: loco(after).environment?.lastDashDurationMs ?? null,
+        measuredDashMs: loco(after).lastDashEndedAtMs - loco(after).lastDashStartedAtMs,
+        surface: env(during).surface,
+        iceOn: ice?.heroOn ?? false,
+        iceFrame: ice?.frame ?? null
+      }
+    }
+    const plainDash = await dashFrom(1816)
+    const iceDash = await dashFrom(1976)
+    // The capture rides a separate ice dash: a held world stops the body while the dash window runs on.
+    await place(1976, 214)
+    await page.keyboard.down('z')
+    await advanceFrames(page, 4)
+    await captureHeld('ice-dash')
+    await page.keyboard.up('z')
+    evidence.ice = { plainDash, iceDash, windowRatio: iceDash.dashWindowMs / plainDash.dashWindowMs, distanceRatio: iceDash.distance / plainDash.distance }
+    assert.deepEqual([plainDash.surface, iceDash.surface, iceDash.iceOn], ['ground', 'ice', true], 'the ice sets the motor surface')
+    assert.match(String(iceDash.iceFrame), /^mechanics_v2\/ice_tile\/00[01]$/)
+    // The motor's dash window (deterministic); the game-time stamps (measuredDashMs) are frame-quantized and kept as evidence only.
+    assert.ok(Math.abs(evidence.ice.windowRatio - 1.4) < 0.01, `the ice dash window is 1.4x (${JSON.stringify(evidence.ice)})`)
+    assert.ok(evidence.ice.distanceRatio > 1.3, `the ice dash goes further (${evidence.ice.distanceRatio.toFixed(2)})`)
+
+    // 6b. Belts: an idle rider moves at the belt speed and reads idle; a dash-jump keeps the belt speed; a loose crate rides too.
+    await place(2296, 214)
+    const rideA = await advanceClock(150)
+    await advanceClock(500)
+    const rideB = await captureHeld('belt-ride')
+    const ride = byId(mech(rideB).conveyors, 'lab_belt_right')
+    const leftBelt = byId(mech(rideB).conveyors, 'lab_belt_left')
+    const rideSpeed = (rideB.player.x - rideA.player.x) / ((mech(rideB).clockMs - mech(rideA).clockMs) / 1000)
+    evidence.belt = { ride, leftBelt, rideSpeed, animation: rideB.playerVisual?.animationKey ?? null, environment: env(rideB) }
+    assert.deepEqual([ride.heroOn, env(rideB).carryVelocityX, env(rideB).beltId], [true, 60, 'lab_belt_right'], 'the belt carries the hero')
+    assert.ok(rideSpeed > 45 && rideSpeed < 75, `rides at the belt speed (${rideSpeed.toFixed(1)} px/s)`)
+    assert.ok(!/run/.test(String(evidence.belt.animation)), `an idle rider does not run (${evidence.belt.animation})`)
+    assert.match(String(ride.frame), /^mechanics_v2\/conveyor\/00[0-3]$/)
+    assert.deepEqual([leftBelt.speed, leftBelt.flipX], [-60, true], 'the leftward belt draws flipped')
+    await place(2290, 214)
+    await tapKey(page, 'ArrowRight', 2)
+    await advanceFrames(page, 10)
+    await page.keyboard.down('z')
+    await advanceFrames(page, 2)
+    await page.keyboard.down('Space')
+    await advanceFrames(page, 3)
+    const jumpA = await readState(page)
+    await advanceFrames(page, 10)
+    const jumpB = await readState(page)
+    await page.keyboard.up('Space')
+    await page.keyboard.up('z')
+    const airSpeed = (jumpB.player.x - jumpA.player.x) / ((mech(jumpB).clockMs - mech(jumpA).clockMs) / 1000)
+    evidence.beltDashJump = { airSpeed, vx: [jumpA.player.vx, jumpB.player.vx], bonus: loco(jumpA).environment?.dashJumpBonusX ?? null, groundedA: loco(jumpA).grounded, groundedB: loco(jumpB).grounded }
+    assert.equal(evidence.beltDashJump.bonus, 60, 'the dash-jump keeps the belt speed')
+    assert.ok(Math.min(jumpA.player.vx, jumpB.player.vx) >= 375, `airborne vx is dash speed plus the belt (${evidence.beltDashJump.vx})`)
+    // Displacement over stage-clock time reads a little under the body speed; 330 still separates 380 from a plain 320.
+    assert.ok(airSpeed > 330, `airborne displacement beats a plain dash-jump (${airSpeed.toFixed(0)} px/s)`)
+    await advanceClock(700)
+    await page.evaluate(() => {
+      const scene = window.__phaserGame.scene.getScene('Game')
+      const crate = scene.add.rectangle(2340, 200, 12, 12, 0xffaa33).setDepth(6)
+      scene.physics.add.existing(crate)
+      scene.platformCollisionSystem.attachActor(crate)
+      window.__smokeCrate = crate
+    })
+    await advanceClock(500)
+    const crateA = await page.evaluate(() => ({ x: window.__smokeCrate.x, grounded: Boolean(window.__smokeCrate.body.blocked.down || window.__smokeCrate.body.touching.down) }))
+    const carried = byId(mech(await readState(page)).conveyors, 'lab_belt_right').carried
+    await advanceClock(500)
+    const crateB = await page.evaluate(() => { const crate = window.__smokeCrate; const x = crate.x; crate.destroy(); delete window.__smokeCrate; return { x } })
+    evidence.beltCrate = { crateA, crateB, carried }
+    assert.ok(crateA.grounded && carried >= 1, `the crate stands on the belt and is counted (${carried})`)
+    assert.ok(crateB.x - crateA.x > 12, `a loose body rides the belt (${(crateB.x - crateA.x).toFixed(1)}px)`)
+
+    // 6c. Current: pushes an idle hero with the flow (half as much on the ground).
+    await place(2760, 214)
+    const currentA = await advanceClock(100)
+    await advanceClock(600)
+    const currentB = await captureHeld('current')
+    const current = byId(mech(currentB).currentZones, 'lab_current')
+    evidence.current = { current, dx: currentB.player.x - currentA.player.x, environment: env(currentB) }
+    assert.deepEqual([current.heroInside, env(currentB).forceX, env(currentB).pushCap], [true, 420, 80], 'the current pushes the hero')
+    assert.ok(evidence.current.dx > 8, `the current carries the hero with the flow (${evidence.current.dx}px)`)
+    assert.match(String(current.frame), /^mechanics_v2\/current\/00[0-3]$/)
+
+    // 6d. Gust: calm, faint streaks while it builds (the tell), then it blows the hero left.
+    await waitForState(page, (next) => byId(mech(next).windZones, 'lab_gust')?.phase === 'building', 8000, 'gust builds')
+    const building = byId(mech(await captureHeld('gust-building')).windZones, 'lab_gust')
+    assert.ok(building.phase !== 'building' || (building.alpha === 0.45 && building.untilBlowMs <= 500), `building tell (${JSON.stringify(building)})`)
+    await waitForState(page, (next) => byId(mech(next).windZones, 'lab_gust')?.phase === 'blowing', 4000, 'gust blows')
+    await place(3040, 214)
+    const gustA = await readState(page)
+    await advanceClock(400)
+    const gustB = await captureHeld('gust-blowing')
+    const gust = byId(mech(gustB).windZones, 'lab_gust')
+    evidence.gust = { building, gust, dx: gustB.player.x - gustA.player.x, environment: env(gustB) }
+    assert.deepEqual([gust.phase, gust.alpha, env(gustB).forceX], ['blowing', 0.9, -900], 'the gust blows left')
+    assert.ok(evidence.gust.dx < -6, `the gust pushes the hero back (${evidence.gust.dx}px)`)
+
+    // 6e. Lifts: the wind lift and Ferro's magnet lift raise a hero standing at their base.
+    for (const [id, x, label] of [['lab_lift', 3204, 'wind-lift'], ['lab_magnet', 3412, 'magnet-lift']]) {
+      await place(x, 214)
+      await advanceClock(500)
+      const lifted = await captureHeld(label)
+      const zone = byId(mech(lifted).windZones, id)
+      evidence[id] = { y: lifted.player.y, zone, environment: env(lifted) }
+      assert.ok(zone.heroInside && env(lifted).forceY < 0, `${id} pulls the hero up`)
+      assert.ok(lifted.player.y < 170, `${id} raised the hero (y ${lifted.player.y})`)
+    }
+    assert.match(String(evidence.lab_magnet.zone.plateFrame), /^mechanics_v2\/magnet_lift\/00[0-3]$/)
+
+    // 6f. Rails: one timer; arming sparks before arcing; the arc boxes are live only while arcing and take 2 HP.
+    await place(3596, 214)
+    await waitForState(page, (next) => byId(mech(next).railGroups, 'lab_rails')?.phase === 'arming', 8000, 'rails arm')
+    const railsArming = byId(mech(await captureHeld('rails-arming')).railGroups, 'lab_rails')
+    assert.ok(railsArming.untilArcMs <= 300 && railsArming.rails.every((rail) => !rail.live), 'arming: sparks, no live box')
+    assert.ok(railsArming.rails.every((rail) => /^mechanics_v2\/power_rail\/00[13]$/.test(String(rail.frame))), `arming frames ${railsArming.rails.map((rail) => rail.frame)}`)
+    await waitForState(page, (next) => byId(mech(next).railGroups, 'lab_rails')?.phase === 'arcing', 4000, 'rails arc')
+    const railsArcing = byId(mech(await captureHeld('rails-arcing')).railGroups, 'lab_rails')
+    assert.ok(railsArcing.rails.every((rail) => rail.live && rail.frame === v2('power_rail', 2) && rail.box?.height === 26), 'arcing: live arc boxes')
+    await waitForState(page, (next) => { const group = byId(mech(next).railGroups, 'lab_rails'); return group?.phase === 'off' && group.untilArcMs > 900 }, 6000, 'rails off')
+    await shield(0)
+    await place(3640, 214)
+    const hpRail = (await readState(page)).playerState.hp
+    await advanceFrames(page, 8)
+    state = await readState(page)
+    if (byId(mech(state).railGroups, 'lab_rails').phase === 'off') assert.equal(state.playerState.hp, hpRail, 'an off rail does not hurt')
+    state = await waitForState(page, (next) => next.playerState?.hp < hpRail, 8000, 'the arc hurts')
+    evidence.rails = { arming: railsArming, arcing: railsArcing, hpBefore: hpRail, hpAfter: state.playerState.hp, lastHit: state.combatDebug?.lastPlayerHit ?? null }
+    assert.equal(hpRail - state.playerState.hp, 2, 'rail damage from its group')
+
+    // 6g. Rockfall: crossing its trigger puffs dust under the ceiling with a floor shadow; the boulder falls, hits the hero under it and breaks into rubble.
+    // advanceClock waits out the last hit's hit-stop (the world, and so the stage clock, is paused through it).
+    await shield(0)
+    await place(3760, 214)
+    await advanceClock(300)
+    const hpRock = (await readState(page)).playerState.hp
+    await place(3820, 214)
+    await advanceClock(40)
+    const warning = byId(mech(await captureHeld('rockfall-warning')).rockfalls, 'lab_rock')
+    assert.deepEqual([warning.phase, warning.frame, warning.shadow], ['warning', v2('rockfall', 0), true], 'the dust puff and the shadow warn first')
+    await waitForState(page, (next) => byId(mech(next).rockfalls, 'lab_rock')?.phase === 'falling', 3000, 'the boulder falls')
+    const falling = byId(mech(await captureHeld('rockfall-falling')).rockfalls, 'lab_rock')
+    if (falling.phase === 'falling') assert.match(String(falling.frame), /^mechanics_v2\/rockfall\/00[12]$/)
+    state = await waitForState(page, (next) => byId(mech(next).rockfalls, 'lab_rock')?.phase === 'rubble', 3000, 'the boulder breaks')
+    const rubble = byId(mech(await captureHeld('rockfall-rubble')).rockfalls, 'lab_rock')
+    state = await readState(page)
+    evidence.rockfall = { warning, falling, rubble, hpBefore: hpRock, hpAfter: state.playerState.hp }
+    assert.deepEqual([rubble.frame, rubble.hits], [v2('rockfall', 3), 1], 'rubble, and it broke on the hero')
+    assert.equal(hpRock - state.playerState.hp, 2, 'boulder damage')
+
+    // 6h. Icicle: hangs, shakes when the hero passes under, falls, hits, shatters; the checkpoint respawn hangs it again.
+    await shield(0)
+    await place(3880, 214)
+    await advanceClock(300)
+    assert.equal(byId(mech(await readState(page)).icicles, 'lab_icicle').phase, 'hanging', 'not under it yet')
+    const hpIce = (await readState(page)).playerState.hp
+    await place(3916, 214)
+    await advanceClock(40)
+    const icicleShaking = byId(mech(await captureHeld('icicle-shaking')).icicles, 'lab_icicle')
+    assert.deepEqual([icicleShaking.phase, icicleShaking.frame], ['shaking', v2('icicle', 0)], 'it shakes over the hero')
+    await waitForState(page, (next) => byId(mech(next).icicles, 'lab_icicle')?.phase === 'shattered', 4000, 'the icicle shatters')
+    const shattered = byId(mech(await captureHeld('icicle-shattered')).icicles, 'lab_icicle')
+    state = await readState(page)
+    assert.equal(shattered.hits, 1, 'it shattered on the hero')
+    assert.ok(shattered.frame === v2('icicle', 1) || shattered.timerMs >= 450, `shards show after the shatter (${shattered.frame})`)
+    assert.equal(hpIce - state.playerState.hp, 2, 'icicle damage')
+    await advanceClock(300)
+    await page.evaluate(() => window.__phaserGame.scene.getScene('Game').requestPlayerDamage({ amount: 99, tier: 'heavy', sourceType: 'hazard', sourceId: 'smoke_12b_respawn', bypassIFrames: true }))
+    await waitForState(page, (next) => next.playerState?.hp === 0, 6000, 'the test kill lands')
+    state = await waitForState(page, (next) => next.playerState?.hp > 0 && byId(mech(next).icicles, 'lab_icicle')?.phase === 'hanging', 12000, 'the respawn hangs the icicle again')
+    evidence.icicle = { shaking: icicleShaking, shattered, hpBefore: hpIce, afterRespawn: byId(mech(state).icicles, 'lab_icicle'), rockAfterRespawn: byId(mech(state).rockfalls, 'lab_rock'), respawnX: state.player.x }
+    assert.ok(Math.abs(state.player.x - 3600) < 40, `respawned at lab_drops (x ${state.player.x})`)
+    assert.equal(evidence.icicle.rockAfterRespawn.phase, 'waiting', 'the respawn resets the rockfall and crosses no trigger')
+    await capture('icicle-respawn')
 
     assert.deepEqual(errors, [], 'no page errors')
     fs.writeFileSync(path.join(dir, 'evidence.json'), JSON.stringify(evidence, null, 2))

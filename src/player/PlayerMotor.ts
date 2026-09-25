@@ -9,6 +9,16 @@ import {
   type DashConfig
 } from './config'
 import type { PlayerIntent, MotorSnapshot } from './types'
+import {
+  ICE_DASH_DISTANCE_SCALE,
+  ICE_FRICTION_SCALE,
+  NEUTRAL_PLAYER_ENVIRONMENT,
+  applyVerticalForce,
+  environmentDriftX,
+  normalizePlayerEnvironment,
+  stepPushVelocity,
+  type PlayerEnvironment
+} from './environment'
 
 /**
  * Solid-terrain query for ledge forgiveness (ceiling corner nudge, lip step-up, dash headroom).
@@ -57,6 +67,17 @@ export class PlayerMotor {
   private lastAirborneVelocityY = 0
   private terrainProbe?: MotorTerrainProbe
   private standBodyHeight = 0
+  /** Stage mechanics under and around the hero (`setEnvironment`); neutral changes nothing. */
+  private environment: Required<PlayerEnvironment> = normalizePlayerEnvironment(NEUTRAL_PLAYER_ENVIRONMENT)
+  /** The sideways push the environment's forces have built, px/s (capped; fades with no force). */
+  private pushVelocityX = 0
+  /** A dash-jump off a belt keeps the belt's speed on top of the dash speed until the carry ends. */
+  private dashJumpBonusX = 0
+  /** The body's maxVelocity.x before the environment's headroom, and the value it was raised to (null: untouched). */
+  private envCapBase: number | null = null
+  private envCapRaisedTo: number | null = null
+  /** The window the last dash started with, ms (1.4x on ice); debug and smoke evidence. */
+  private lastDashDurationMs = 0
 
   constructor(
     private readonly player: Phaser.Physics.Arcade.Sprite,
@@ -107,6 +128,13 @@ export class PlayerMotor {
     const grounded = rawGrounded && !this.launchPending
     const touchingLeftWall = Boolean(body.blocked.left || body.touching.left)
     const touchingRightWall = Boolean(body.blocked.right || body.touching.right)
+    // Environment (12b): the belt carry and the halved push count only on the ground; neutral adds 0 and scales by 1.
+    const environment = this.environment
+    const onIce = grounded && environment.surface === 'ice'
+    this.pushVelocityX = stepPushVelocity(this.pushVelocityX, environment.forceX, environment.pushCap, dtSeconds)
+    const driftX = environmentDriftX(environment, this.pushVelocityX, grounded)
+    const beltCarryX = grounded ? environment.carryVelocityX : 0
+    let appliedDriftX = 0
 
     this.coyoteRemainingMs = grounded
       ? this.movement.coyoteTimeMs
@@ -218,7 +246,7 @@ export class PlayerMotor {
     const dashBlocksJump = this.dashRemainingMs > 0 && (this.isAirDashing || !this.hasStandHeadroom(body))
     if (!controlLocked && !justJumped && this.jumpBufferRemainingMs > 0 && canUseJump && !dashBlocksJump) {
       if (groundDashing) {
-        this.startDashJumpCarry(this.facing)
+        this.startDashJumpCarry(this.facing, beltCarryX)
       }
       body.setVelocityY(this.movement.jumpVelocity)
       this.jumpBufferRemainingMs = 0
@@ -236,11 +264,12 @@ export class PlayerMotor {
       const dashDir: 1 | -1 = intent.moveAxis === -1 ? -1 : intent.moveAxis === 1 ? 1 : this.facing
       if (justJumped && jumpSource !== 'wall') {
         // Jump and dash on the same frame is a dash-jump from its first frame.
-        this.startDashJumpCarry(dashDir)
+        this.startDashJumpCarry(dashDir, beltCarryX)
         this.dashCooldownRemainingMs = this.dash.dashCooldownMs
       } else if (grounded || (allowAirDash && !this.airDashConsumed)) {
         this.facing = dashDir
-        this.dashRemainingMs = this.dash.dashDurationMs
+        this.dashRemainingMs = this.dash.dashDurationMs * (onIce ? ICE_DASH_DISTANCE_SCALE : 1)
+        this.lastDashDurationMs = this.dashRemainingMs
         this.isAirDashing = !grounded
         if (!grounded) {
           this.airDashConsumed = true
@@ -280,10 +309,13 @@ export class PlayerMotor {
       if (dashHeldByCeiling && intent.moveAxis !== 0) {
         this.facing = intent.moveAxis
       }
-      body.setVelocityX(this.dash.dashSpeed * this.movementSpeedMultiplier * this.facing)
+      appliedDriftX = driftX
+      body.setVelocityX(this.dash.dashSpeed * this.movementSpeedMultiplier * this.facing + driftX)
       body.setAccelerationX(0)
     } else if (this.dashJumpCarry) {
-      body.setVelocityX(this.dash.dashSpeed * this.movementSpeedMultiplier * this.dashJumpDirection)
+      // Airborne from the launch frame on: the belt's speed rides in the bonus, the push counts in full.
+      appliedDriftX = this.dashJumpBonusX + this.pushVelocityX
+      body.setVelocityX(this.dash.dashSpeed * this.movementSpeedMultiplier * this.dashJumpDirection + appliedDriftX)
       body.setAccelerationX(0)
     } else if (!grounded && !wallSliding && pressingAwayFromWall && this.wallStickRemainingMs > 0) {
       // Wall stick: pressing away holds the hero on the wall briefly so a kick can still land.
@@ -292,12 +324,11 @@ export class PlayerMotor {
       body.setAccelerationX(0)
     } else {
       const moveAxis = grounded && intent.crouchHeld ? 0 : intent.moveAxis
-      const targetSpeed = moveAxis * this.movement.runSpeed * this.movementSpeedMultiplier
+      appliedDriftX = driftX
+      const targetSpeed = moveAxis * this.movement.runSpeed * this.movementSpeedMultiplier + driftX
       const speedDiff = targetSpeed - body.velocity.x
       const accel = grounded
-        ? moveAxis === 0
-          ? this.movement.decel
-          : this.movement.accel
+        ? (moveAxis === 0 ? this.movement.decel : this.movement.accel) * (onIce ? ICE_FRICTION_SCALE : 1)
         : this.movement.airAccel
       const step = clamp(speedDiff, -accel * dtSeconds, accel * dtSeconds)
       body.setVelocityX(body.velocity.x + step)
@@ -311,6 +342,13 @@ export class PlayerMotor {
     if (!justJumped && body.velocity.y < 0 && (intent.jumpHeld || minHoldActive)) {
       const correction = this.movement.gravity * (1 - this.movement.jumpHoldGravityScale) * dtSeconds
       body.setVelocityY(body.velocity.y - correction)
+    }
+
+    this.fitEnvironmentHeadroom(body, Math.abs(appliedDriftX))
+
+    // A lift or a vertical current (12b); the flat air dash keeps its promise and ignores it.
+    if (environment.forceY !== 0 && !airDashActive) {
+      body.setVelocityY(applyVerticalForce(body.velocity.y, environment.forceY, environment.pushCap, dtSeconds))
     }
 
     if (body.velocity.y > this.movement.terminalVelocity) {
@@ -337,12 +375,14 @@ export class PlayerMotor {
       this.landingLagRemainingMs = HARD_LANDING_LAG_MS
     }
     this.lastAirborneVelocityY = nowGrounded ? 0 : body.velocity.y
+    // The hero's own speed: a belt or a push moving an idle hero is not a run (equal to vx when neutral).
+    const ownVelocityX = body.velocity.x - appliedDriftX
     const turnRequested =
       nowGrounded &&
       !wallSliding &&
       intent.moveAxis !== 0 &&
-      Math.sign(body.velocity.x) !== 0 &&
-      Math.sign(body.velocity.x) !== intent.moveAxis
+      Math.sign(ownVelocityX) !== 0 &&
+      Math.sign(ownVelocityX) !== intent.moveAxis
 
     this.wasGrounded = nowGrounded
     const isDashingNow = this.dashRemainingMs > 0
@@ -361,7 +401,7 @@ export class PlayerMotor {
       wallJumping: this.wallJumpRemainingMs > 0,
       facing: this.facing,
       turnRequested,
-      velocityX: body.velocity.x,
+      velocityX: ownVelocityX,
       velocityY: body.velocity.y,
       coyoteRemainingMs: this.coyoteRemainingMs,
       jumpBufferRemainingMs: this.jumpBufferRemainingMs,
@@ -380,11 +420,22 @@ export class PlayerMotor {
     this.dashRemainingMs = 0
     this.isAirDashing = false
     this.dashJumpCarry = false
+    this.dashJumpBonusX = 0
     this.jumpCutArmed = false
     this.jumpMinHoldRemainingMs = 0
     this.landingLagRemainingMs = 0
     this.launchPending = y < 0
     this.setGravitySuspended(body, false)
+  }
+
+  /** Stage mechanics under and around the hero (12b); read from the next update. Null or partial fills with neutral. */
+  setEnvironment(environment: Partial<PlayerEnvironment> | null | undefined): void {
+    this.environment = normalizePlayerEnvironment(environment)
+  }
+
+  /** The environment in force and the push it has built (debug and tests). */
+  getEnvironmentState(): Required<PlayerEnvironment> & { pushVelocityX: number; dashJumpBonusX: number; lastDashDurationMs: number } {
+    return { ...this.environment, pushVelocityX: this.pushVelocityX, dashJumpBonusX: this.dashJumpBonusX, lastDashDurationMs: this.lastDashDurationMs }
   }
 
   resetForRespawn(): void {
@@ -409,6 +460,10 @@ export class PlayerMotor {
     this.jumpMinHoldRemainingMs = 0
     this.landingLagRemainingMs = 0
     this.lastAirborneVelocityY = 0
+    this.environment = normalizePlayerEnvironment(NEUTRAL_PLAYER_ENVIRONMENT)
+    this.pushVelocityX = 0
+    this.dashJumpBonusX = 0
+    this.fitEnvironmentHeadroom(body, 0)
   }
 
   setFacing(facing: 1 | -1): void {
@@ -445,9 +500,32 @@ export class PlayerMotor {
     body.setAllowGravity?.(!suspended)
   }
 
-  private startDashJumpCarry(direction: 1 | -1): void {
+  /**
+   * Arcade's maxVelocity.x holds the hero to its fastest authored speed (`resolvePlayerPhysicsLimits`); the
+   * environment's drift (a belt under a dash, a dash-jump's belt bonus, a push) gets that much headroom on
+   * top while it applies, and the cap returns once it is gone. With no drift and nothing raised it writes nothing.
+   */
+  private fitEnvironmentHeadroom(body: Phaser.Physics.Arcade.Body, headroom: number): void {
+    const maxVelocity = body.maxVelocity as { x: number } | undefined
+    if (!maxVelocity) return
+    // A cap set elsewhere while it was raised (an upgrade) is the new base.
+    if (this.envCapRaisedTo !== null && maxVelocity.x !== this.envCapRaisedTo) this.envCapBase = maxVelocity.x
+    if (headroom > 0) {
+      this.envCapBase ??= maxVelocity.x
+      this.envCapRaisedTo = this.envCapBase + headroom
+      maxVelocity.x = this.envCapRaisedTo
+      return
+    }
+    if (this.envCapBase !== null) maxVelocity.x = this.envCapBase
+    this.envCapBase = null
+    this.envCapRaisedTo = null
+  }
+
+  /** `bonusX`: the belt speed under the feet at launch (12b: a dash-jump off a belt adds the belt's speed). */
+  private startDashJumpCarry(direction: 1 | -1, bonusX = 0): void {
     this.dashJumpCarry = true
     this.dashJumpDirection = direction
+    this.dashJumpBonusX = bonusX
     this.facing = direction
     this.dashRemainingMs = 0
     this.isAirDashing = false

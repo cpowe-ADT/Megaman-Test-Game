@@ -1,20 +1,27 @@
 import type { PlatformDefinition } from '../physics/PlatformCollisionSystem'
 import type { BreakableWallDefinition } from './breakableWall'
+import { CONVEYOR_DEFAULT_HEIGHT, type ConveyorDefinition } from './conveyor'
 import { CRUMBLE_DEFAULT_HEIGHT, type CrumbleGroupDefinition } from './crumbleGroup'
+import { ICE_FLOOR_DEFAULT_HEIGHT, type IceFloorDefinition } from './iceFloor'
 
 /** The stage mechanics that stand in the platform list (so every actor and shot collides with them). */
 export type StageMechanicPlatformSource = {
   crumbleGroups?: readonly CrumbleGroupDefinition[]
   breakableWalls?: readonly BreakableWallDefinition[]
+  conveyors?: readonly ConveyorDefinition[]
+  iceFloors?: readonly IceFloorDefinition[]
 }
 
 export const CRUMBLE_COLOR = 0x7a4a2c
 export const BREAKABLE_WALL_COLOR = 0x6b5a48
+export const CONVEYOR_COLOR = 0x3a3f4a
+export const ICE_FLOOR_COLOR = 0x9fd8ff
 
 /**
  * Crumble platforms and breakable walls as platform definitions for `PlatformCollisionSystem.rebuild`:
- * crumbles keep their group's type (one-way by default), walls are `wall` blocks (solid, kickable).
- * The mechanics adapter finds them again by id to shake, drop, restore or break them.
+ * crumbles keep their group's type (one-way by default), walls are `wall` blocks (solid, kickable),
+ * belts and ice floors are solid unless they say one-way (12b). The mechanics adapters find them again by
+ * id to shake, drop, restore, break or draw them.
  */
 export function stageMechanicPlatforms(source: StageMechanicPlatformSource): PlatformDefinition[] {
   const crumbles = (source.crumbleGroups ?? []).flatMap((group) =>
@@ -37,5 +44,16 @@ export function stageMechanicPlatforms(source: StageMechanicPlatformSource): Pla
     type: 'wall' as const,
     color: wall.color ?? BREAKABLE_WALL_COLOR
   }))
-  return [...crumbles, ...walls]
+  const surface = (kind: 'belt' | 'ice') => (definition: ConveyorDefinition | IceFloorDefinition) => ({
+    id: definition.id,
+    x: definition.x,
+    y: definition.y,
+    width: definition.width,
+    height: definition.height ?? (kind === 'belt' ? CONVEYOR_DEFAULT_HEIGHT : ICE_FLOOR_DEFAULT_HEIGHT),
+    type: definition.type ?? ('solid' as const),
+    color: definition.color ?? (kind === 'belt' ? CONVEYOR_COLOR : ICE_FLOOR_COLOR)
+  })
+  const belts = (source.conveyors ?? []).map(surface('belt'))
+  const ice = (source.iceFloors ?? []).map(surface('ice'))
+  return [...crumbles, ...walls, ...belts, ...ice]
 }

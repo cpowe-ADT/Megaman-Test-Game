@@ -2,11 +2,17 @@ import type Phaser from 'phaser'
 import AudioService from '../../audio'
 import { HERO_EFFECTS_ATLAS, HERO_HIT_FX } from '../../combat/heroCombatVisuals'
 import type { SfxAssetKey } from '../../audio/sfxLibrary'
-import { MECHANICS_ATLAS, mechanicsFrame, type FrameIndex, type MechanicsGroup } from '../mechanicsVisuals'
+import { MECHANICS_ATLAS, MECHANICS_V2_ATLAS, mechanicsFrame, type FrameIndex, type MechanicsGroup } from '../mechanicsVisuals'
+import { mechanicsV2Frame, type MechanicsV2Group } from '../mechanicsV2Visuals'
 
 /** Shared Phaser helpers for the mechanics adapters: the atlas check, frame keys and the counted-hit tell. */
 export function mechanicsArtReady(scene: Phaser.Scene): boolean {
   return scene.textures.exists(MECHANICS_ATLAS.key)
+}
+
+/** The 12b mechanics art (`mechanics_v2`); without it the 12b adapters draw plain shapes. */
+export function mechanicsV2ArtReady(scene: Phaser.Scene): boolean {
+  return scene.textures.exists(MECHANICS_V2_ATLAS.key)
 }
 
 type FramedObject = { frame: Phaser.Textures.Frame; texture: Phaser.Textures.Texture | Phaser.Textures.CanvasTexture; setFrame(frame: string): unknown }
@@ -22,12 +28,17 @@ export function setMechanicsFrame(object: FramedObject, group: MechanicsGroup, i
   if (drawnFrame(object).name !== name) object.setFrame(name)
 }
 
+export function setMechanicsV2Frame(object: FramedObject, group: MechanicsV2Group, index: FrameIndex): void {
+  const name = mechanicsV2Frame(group, index)
+  if (drawnFrame(object).name !== name) object.setFrame(name)
+}
+
 /** The mechanics frame an Image or TileSprite shows, or null when it is hidden or draws something else. */
 export function mechanicsFrameName(object: Phaser.GameObjects.GameObject | undefined): string | null {
   const drawn = object as (Phaser.GameObjects.GameObject & FramedObject & { visible?: boolean }) | undefined
   if (!drawn?.visible || !drawn.frame) return null
   const frame = drawnFrame(drawn)
-  return frame.texture === MECHANICS_ATLAS.key ? frame.name : null
+  return frame.texture === MECHANICS_ATLAS.key || frame.texture === MECHANICS_V2_ATLAS.key ? frame.name : null
 }
 
 /**
@@ -49,4 +60,18 @@ export function playMechanicHit(scene: Phaser.Scene, x: number, y: number, sfx: 
     },
     onComplete: () => spark.destroy()
   })
+}
+
+/**
+ * One frame of the stage mechanics as `StageMechanicsAdapter` hands it to the 12b adapters: the stage
+ * clock (it holds while paused), its advance this frame, and the hero's body. Null while paused or with no hero.
+ */
+export type MechanicsFrame = {
+  clockMs: number
+  stepMs: number
+  hero: { left: number; right: number; top: number; bottom: number }
+  heroX: number
+  prevHeroX: number
+  grounded: boolean
+  dying: boolean
 }
