@@ -225,7 +225,7 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
 
-- **Director Iona Vale:** Thunder Spike. Power District logs it as a grounding spike for live substations. I've moved the registration to you.
+- **Director Iona Vale:** Thunder Spike. Power District logs it as a grounding spike for live substations, permit 2208. I've moved the registration to you.
 
 ### District restored (Stage Select tile)
 
@@ -357,7 +357,7 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
 
-- **Director Iona Vale:** Acid Glob. The Medicine District registry files it as a waste-line solvent. It's signed out to you.
+- **Director Iona Vale:** Acid Glob. The Medicine District registry files it as a waste-line solvent, lot 3317. It's signed out to you.
 
 ### District restored (Stage Select tile)
 
@@ -401,7 +401,7 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
 
-- **Director Iona Vale:** Aero Darts. Weather District launched them as survey probes. The registry transfers the set to you.
+- **Director Iona Vale:** Aero Darts. Weather District launched them as survey probes. The registry now lists the set as yours.
 
 ### District restored (Stage Select tile)
 
@@ -445,7 +445,7 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
 
-- **Director Iona Vale:** Frost Shatter. Public Archives registered it to clear ice from the cold store. It's in your name now.
+- **Director Iona Vale:** Frost Shatter. Public Archives registered it to clear ice from the cold store, accession 0907. It's in your name now.
 
 ### District restored (Stage Select tile)
 

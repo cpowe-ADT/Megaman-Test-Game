@@ -342,7 +342,7 @@
       { "speakerId": "director_iona", "text": "Hydro Lance. Water District's lock cutter, on the books since the reservoir was built. The entry reads {hero} now." }
     ] },
     { "id": "volt_hopper_weapon_get", "trigger": "weapon_get", "stageId": "volt_hopper", "lines": [
-      { "speakerId": "director_iona", "text": "Thunder Spike. Power District logs it as a grounding spike for live substations. I've moved the registration to you." }
+      { "speakerId": "director_iona", "text": "Thunder Spike. Power District logs it as a grounding spike for live substations, permit 2208. I've moved the registration to you." }
     ] },
     { "id": "basalt_titan_weapon_get", "trigger": "weapon_get", "stageId": "basalt_titan", "lines": [
       { "speakerId": "director_iona", "text": "Quake Knuckle. Structural Works registered it for breaking seized supports loose. It's on your record now." }
@@ -351,13 +351,13 @@
       { "speakerId": "director_iona", "text": "Magcut Disc. Transit Security's rail cutter, registry entry 4471. Your serial is on it now, the real one." }
     ] },
     { "id": "mire_wraith_weapon_get", "trigger": "weapon_get", "stageId": "mire_wraith", "lines": [
-      { "speakerId": "director_iona", "text": "Acid Glob. The Medicine District registry files it as a waste-line solvent. It's signed out to you." }
+      { "speakerId": "director_iona", "text": "Acid Glob. The Medicine District registry files it as a waste-line solvent, lot 3317. It's signed out to you." }
     ] },
     { "id": "gale_vixen_weapon_get", "trigger": "weapon_get", "stageId": "gale_vixen", "lines": [
-      { "speakerId": "director_iona", "text": "Aero Darts. Weather District launched them as survey probes. The registry transfers the set to you." }
+      { "speakerId": "director_iona", "text": "Aero Darts. Weather District launched them as survey probes. The registry now lists the set as yours." }
     ] },
     { "id": "glacier_ronin_weapon_get", "trigger": "weapon_get", "stageId": "glacier_ronin", "lines": [
-      { "speakerId": "director_iona", "text": "Frost Shatter. Public Archives registered it to clear ice from the cold store. It's in your name now." }
+      { "speakerId": "director_iona", "text": "Frost Shatter. Public Archives registered it to clear ice from the cold store, accession 0907. It's in your name now." }
     ] },
 
     { "id": "game_over", "trigger": "game_over", "staging": "Over the Continue row on the game-over screen, rotated by the save's game-over count: OMEGA, Iona, OMEGA, OMEGA.", "lines": [
