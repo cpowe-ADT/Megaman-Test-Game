@@ -11,8 +11,10 @@ import { Save } from '../../systems/Save'
 import type { HUD } from '../../ui/HUD'
 import { GAMEPLAY_TEXTURE_KEYS } from '../../ui/gameplay/GameplayTextures'
 import { VictoryModal } from '../../ui/VictoryModal'
+import { BossPresentation } from './BossPresentation'
 import { BossTelegraphs } from './BossTelegraphs'
 import { bossHazardRingCount } from './combatRules'
+import type { CameraDirector } from './CameraDirector'
 import { pendingMilestoneId, type StoryDirector } from './StoryDirector'
 
 /** The legacy boss body (no controller) walks at this speed and turns at walls. */
@@ -38,7 +40,10 @@ export interface BossBeatsState {
   stageId?: string
   currentPhaseName: string
   phaseLabel?: Phaser.GameObjects.Text
-  hud?: Pick<HUD, 'setBossBarVisible' | 'updateBossHp'>
+  hud?: Pick<HUD, 'setBossBarVisible' | 'updateBossHp' | 'setBossBarFill'>
+  activeBossRoom?: { x: number; width: number }
+  hitstopRemainingFrames: number
+  readonly cameraDirector: Pick<CameraDirector, 'onHitstop'>
   bossUiBinder?: Pick<BossUIBinder, 'onFightStart' | 'onBossDeath'>
   storyDirector?: Pick<StoryDirector, 'playBossIntro' | 'playBossDefeat'>
   victoryModal?: VictoryModal
@@ -71,13 +76,37 @@ export type BossBeatsHost = Phaser.Scene & BossBeatsState
  */
 export class BossBeats {
   readonly telegraphs: BossTelegraphs
+  /** WARNING band, name card, bar fill, desperation pulses and the death chain (prompt 07 phase 7.2). */
+  readonly presentation: BossPresentation
+  private listening = false
 
   constructor(private readonly host: BossBeatsHost) {
     this.telegraphs = new BossTelegraphs(host)
+    this.presentation = new BossPresentation(host)
+  }
+
+  /** Once per scene run: a weakness interrupt cancels the pending spawn and tell; the desperation phase starts the arena pulses. */
+  private listen(): void {
+    const host = this.host
+    if (this.listening) return
+    this.listening = true
+    const onInterrupted = (event: { attackId?: string }) => host.bossProjectileController?.cancelPendingAttack(String(event?.attackId ?? ''))
+    const onPhase = (event: { phaseData?: { desperation?: boolean } }) => {
+      if (event?.phaseData?.desperation) this.presentation.beginDesperation()
+    }
+    host.events.on('boss-attack-interrupted', onInterrupted)
+    host.events.on('boss-phase-change', onPhase)
+    host.events.once('shutdown', () => {
+      host.events.off('boss-attack-interrupted', onInterrupted)
+      host.events.off('boss-phase-change', onPhase)
+      this.presentation.resetFight()
+      this.listening = false
+    })
   }
 
   initializeProjectileController(): void {
     const host = this.host
+    this.listen()
     if (!host.projectileSystem || !host.bossBullets) {
       return
     }
@@ -258,12 +287,32 @@ export class BossBeats {
     } else {
       host.phaseLabel?.setText('BOSS\nACTIVE')
     }
-    if (!host.storyDirector) {
-      host.showStageToast('Boss room sealed', 800)
-      this.beginBossCombat()
-      return
+    // WARNING and the name-and-element card, then the intro dialogue, then the bar fills and the fight starts.
+    const blueprint = host.bossController?.blueprint
+    const card = {
+      name: String(host.bossName ?? blueprint?.codename ?? 'BOSS').toUpperCase(),
+      element: `${String(blueprint?.element ?? 'Normal').toUpperCase()} TYPE`,
+      color: blueprint?.theme.accent ?? 0xffffff
     }
-    host.storyDirector.playBossIntro(() => this.beginBossCombat())
+    this.presentation.playIntro(card, () => {
+      if (!host.storyDirector) {
+        host.showStageToast('Boss room sealed', 800)
+        this.fillBarThenFight()
+        return
+      }
+      host.storyDirector.playBossIntro(() => this.fillBarThenFight())
+    })
+  }
+
+  private fillBarThenFight(): void {
+    const host = this.host
+    this.presentation.fillBar(
+      () => {
+        host.bossUiBinder?.onFightStart()
+        host.hud?.setBossBarVisible(Boolean(host.bossHp))
+      },
+      () => this.beginBossCombat()
+    )
   }
 
   /** The first frame of the fight: the boss acts and the HP bar shows the boss's full, current HP. */
@@ -285,13 +334,11 @@ export class BossBeats {
     this.telegraphs.clear()
     host.bossUiBinder?.onBossDeath()
     AudioService.stopMusic()
-    AudioService.playSfx('stage_clear')
     if (host.bossHp) {
       host.bossHp = { current: 0, max: host.bossHp.max }
       host.hud?.updateBossHp(host.bossHp.current, host.bossHp.max)
     }
     host.unlockBossGate()
-    host.disableBossCombatActors()
     host.disableProjectileGroups()
     host.freezeCombatWorld()
     const stageId = host.stageId ?? 'unknown'
@@ -306,11 +353,18 @@ export class BossBeats {
     const milestoneCount = clearedCount !== previousClearedCount ? clearedCount : null
     host.registry.set('ui.stageSelect.milestoneCount', milestoneCount !== null && pendingMilestoneId(milestoneCount) ? milestoneCount : null)
     const showVictory = () => this.showBossVictory(stage, bossName, gate.unlocked)
-    if (host.storyDirector) {
-      host.storyDirector.playBossDefeat(showVictory)
-    } else {
-      showVictory()
-    }
+    // The boss stays for its defeat frames and chained explosion; the defeat dialogue follows the freeze.
+    this.presentation.playDeath(
+      () => host.disableBossCombatActors(),
+      () => {
+        AudioService.playSfx('stage_clear')
+        if (host.storyDirector) {
+          host.storyDirector.playBossDefeat(showVictory)
+        } else {
+          showVictory()
+        }
+      }
+    )
   }
 
   private showBossVictory(stage: ReturnType<typeof getCampaignStage>, bossName: string, finalRouteUnlocked: boolean): void {

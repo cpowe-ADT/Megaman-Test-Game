@@ -16,6 +16,7 @@ import {
   getBossAttackCombatProfile
 } from './bossCombatProfiles'
 import { BossMotionController } from './BossMotionController'
+import { bossDeathTimeline, paletteFlashColor, resolveDesperationArena, type DesperationArenaChange } from '../boss/fightBeats'
 
 export interface BossControllerConfig {
   spawn: Phaser.Math.Vector2
@@ -35,7 +36,7 @@ interface BossPhaseView {
 interface BossRuntimeTrace {
   sequence: number
   atMs: number
-  event: 'attack_started' | 'phase_changed' | 'motion_started' | 'landed' | 'attack_resolved'
+  event: 'attack_started' | 'phase_changed' | 'motion_started' | 'landed' | 'attack_resolved' | 'attack_interrupted'
   attackId: string | null
   lifecycle: BossAttackLifecyclePhase
   motion: BossMotionIntentKind
@@ -93,6 +94,14 @@ export class BossController extends Phaser.GameObjects.Container {
   private readonly runtimeTraces: BossRuntimeTrace[] = []
   private awaitingActionLanding = false
   private landingPresentationUntilMs = 0
+  /** Prompt 07 phase 7.2: attacks started per phase index (the phase-kit trace), intro, desperation and defeat. */
+  private readonly startedByPhase: Record<string, Record<string, number>> = {}
+  private introPresenting = false
+  private defeatStartedAtMs: number | null = null
+  private whiteFlashUntilMs = 0
+  private paletteFlashStartedAtMs: number | null = null
+  private desperationArena: DesperationArenaChange | null = null
+  private interrupts = { count: 0, lastAttackId: null as string | null }
 
   private readonly enforceRoomBoundsAfterPhysics = (): void => {
     const clampedX = clampBossXToBounds(this.x, this.getSafeMovementBounds())
@@ -135,8 +144,9 @@ export class BossController extends Phaser.GameObjects.Container {
       throw new Error(`[BossController] Boss atlas '${this.atlasKey}' has no frames`)
     }
     this.groupedAtlasFrames = this.buildGroupedAtlasFrames()
+    const idleFrame = this.groupedAtlasFrames.idle?.[0] ?? this.atlasFrames[0]
 
-    this.sprite = scene.add.sprite(0, 0, this.atlasKey, this.atlasFrames[0])
+    this.sprite = scene.add.sprite(0, 0, this.atlasKey, idleFrame)
     this.sprite.setOrigin(blueprint.spritePlan.origin.x, blueprint.spritePlan.origin.y)
     this.add(this.sprite)
     scene.add.existing(this)
@@ -156,7 +166,7 @@ export class BossController extends Phaser.GameObjects.Container {
     const body = this.body
     // The body bottom must sit on the drawn feet, otherwise the art floats above the floor the
     // body is standing on. See bossBodyAlignment.ts for the container/offset math.
-    this.contactOffsetY = measureContactOffset(scene.textures, this.atlasKey, this.atlasFrames[0], this.sprite.originY)
+    this.contactOffsetY = measureContactOffset(scene.textures, this.atlasKey, idleFrame, this.sprite.originY)
     const bodyOffset = computeBossBodyOffset({
       bodyWidth: blueprint.spritePlan.frame.x,
       bodyHeight: blueprint.spritePlan.frame.y,
@@ -182,6 +192,8 @@ export class BossController extends Phaser.GameObjects.Container {
 
     this.bossBrain = new BossBase(this.runtimeDefinition, {
       onAttackStarted: (attack) => {
+        const phaseLog = (this.startedByPhase[String(this.bossBrain.currentPhaseIndex)] ??= {})
+        phaseLog[attack.id] = (phaseLog[attack.id] ?? 0) + 1
         this.lastFiredAttackId = attack.id
         this.lastFiredAttackAtMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
         const playerX = (this.scene.registry.get('player_x') as number | undefined) ?? this.x
@@ -228,9 +240,10 @@ export class BossController extends Phaser.GameObjects.Container {
       },
       onPhaseChanged: (phaseIndex, phase) => {
         this.phaseView = {
-          name: this.blueprint.phases[phaseIndex]?.name ?? makePhaseName(phaseIndex),
+          name: this.blueprint.phases[phaseIndex]?.name ?? phase.name ?? makePhaseName(phaseIndex),
           threshold: phase.threshold
         }
+        if (phase.desperation) this.enterDesperation()
         this.scene.events.emit('boss-phase-change', {
           id: this.runtimeDefinition.boss_id,
           phase: this.phaseView,
@@ -246,13 +259,27 @@ export class BossController extends Phaser.GameObjects.Container {
           hp: this.bossBrain.hpSnapshot
         })
       },
+      onAttackInterrupted: (attack) => {
+        this.interrupts = { count: this.interrupts.count + 1, lastAttackId: attack.id }
+        this.motionController?.finishAttack()
+        this.awaitingActionLanding = false
+        this.lastLifecyclePhase = 'done'
+        this.lastMotionIntent = 'hold'
+        this.pushRuntimeTrace('attack_interrupted')
+        this.scene.events.emit('boss-attack-interrupted', {
+          id: this.runtimeDefinition.boss_id,
+          attackId: attack.id,
+          attackName: attack.displayName ?? attack.id
+        })
+      },
       onDied: () => {
         this.arenaController.onBossDeath()
+        // destroy() waits for the defeat frames and the chained explosion (prompt 07 phase 7.2 item 5).
+        this.beginDefeat()
         this.scene.events.emit('boss-defeated', {
           id: this.runtimeDefinition.boss_id,
           reward: this.blueprint.weaponReward
         })
-        this.destroy()
       }
     })
 
@@ -271,6 +298,38 @@ export class BossController extends Phaser.GameObjects.Container {
 
   get hp(): { current: number; max: number } {
     return this.bossBrain.hpSnapshot
+  }
+
+  /** The encounter began: the INTRO state plays the intro frames once and holds the last. */
+  beginIntroPresentation(): void {
+    this.introPresenting = true
+  }
+
+  /**
+   * The death presentation: the body stops colliding, the defeat frames play once, and the container is
+   * destroyed when the chained explosion ends (`bossDeathTimeline().explosionEndMs`). Safe to call twice.
+   */
+  beginDefeat(): void {
+    if (this.defeatStartedAtMs !== null) return
+    this.defeatStartedAtMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
+    this.motionController?.finishAttack()
+    if (this.body) {
+      this.body.setVelocity(0, 0)
+      this.body.setAllowGravity(false)
+      this.body.enable = false
+    }
+    this.sprite.clearTint()
+    this.sprite.setScale(1).setAngle(0).setAlpha(1)
+    this.playFrameGroup('defeat', 0)
+    this.scene.time.delayedCall(bossDeathTimeline().explosionEndMs, () => {
+      if (this.active) this.destroy()
+    })
+  }
+
+  /** A weakness hit's white flash: the sprite fills white until `durationMs` has passed. */
+  flashWhite(durationMs: number): void {
+    this.whiteFlashUntilMs = this.scene.time.now + durationMs
+    this.sprite.setTintFill(0xffffff)
   }
 
   get isInvulnerable(): boolean {
@@ -298,6 +357,11 @@ export class BossController extends Phaser.GameObjects.Container {
       combatIdentity: this.combatProfile?.identity ?? null,
       roomDynamics: this.combatProfile?.room ?? null,
       activeHazardCount: this.getActiveHazardCount(),
+      phaseKit: this.getPhaseKitDebug(),
+      intro: { presenting: this.introPresenting },
+      defeat: { startedAtMs: this.defeatStartedAtMs, destroyAtMs: this.defeatStartedAtMs === null ? null : this.defeatStartedAtMs + bossDeathTimeline().explosionEndMs },
+      interrupts: { ...this.interrupts },
+      activeAttackLifecycle: this.bossBrain.activeAttackLifecycle ?? null,
       traceCount: this.runtimeTraces.length,
       traceTail: this.runtimeTraces.slice(-8),
       grounded: this.body?.onFloor?.() || this.body?.blocked?.down || false,
@@ -541,7 +605,53 @@ export class BossController extends Phaser.GameObjects.Container {
     }
   }
 
+  private getPhaseKitDebug(): Record<string, unknown> {
+    const phase = this.runtimeDefinition.phases[this.bossBrain.currentPhaseIndex]
+    return {
+      phaseIndex: this.bossBrain.currentPhaseIndex,
+      desperation: Boolean(phase?.desperation),
+      retired: Object.entries(phase?.attackEnabled ?? {}).filter(([, enabled]) => !enabled).map(([id]) => id),
+      timing: { ...(phase?.attackTiming ?? {}) },
+      startedByPhase: JSON.parse(JSON.stringify(this.startedByPhase)),
+      arena: this.desperationArena,
+      paletteFlashActive: this.paletteFlashStartedAtMs !== null && this.currentPaletteColor() !== null
+    }
+  }
+
+  /** Desperation (prompt 07 phase 7.2 item 2): the palette flash, and anchor rooms shift their anchors. */
+  private enterDesperation(): void {
+    this.paletteFlashStartedAtMs = this.scene.time.now
+    this.desperationArena = this.combatProfile ? resolveDesperationArena(this.combatProfile.room) : null
+    if (this.desperationArena?.kind === 'anchors_shifting') {
+      this.motionController?.setAnchorFractions(this.desperationArena.anchorFractions)
+    }
+  }
+
+  private currentPaletteColor(): number | null {
+    if (this.paletteFlashStartedAtMs === null) return null
+    return paletteFlashColor(this.scene.time.now - this.paletteFlashStartedAtMs, this.blueprint.desperation?.flashPalette ?? [0xffffff])
+  }
+
+  /**
+   * Boss animations are global but the boss atlas is stage-scoped (evicted and reloaded on a revisit): an animation
+   * still bound to the old texture's frames is rebuilt, or `play` reads a destroyed frame.
+   */
+  private ensureAnimation(key: string, config: () => Phaser.Types.Animations.Animation): void {
+    const existing = this.scene.anims.get(key)
+    const texture = this.scene.textures.get(this.atlasKey)
+    if (existing && existing.frames.every((entry) => entry.frame?.texture === texture)) return
+    if (existing) this.scene.anims.remove(key)
+    this.scene.anims.create(config())
+  }
+
+  private playFrameGroup(group: 'intro' | 'phase' | 'defeat', repeat: number): void {
+    const animKey = `${this.blueprint.id}_${group}`
+    this.ensureAnimation(animKey, () => ({ key: animKey, frames: this.resolveGroupedFrames(group), frameRate: 8, repeat }))
+    if (this.sprite.anims.currentAnim?.key !== animKey) this.sprite.play(animKey)
+  }
+
   private playAnimationForState(): void {
+    if (this.defeatStartedAtMs !== null) return
     const runtimeState = this.bossBrain.state
     const attackProfile = this.lastFiredAttackId
       ? getBossAttackCombatProfile(this.blueprint.id as BossId, this.lastFiredAttackId)
@@ -565,28 +675,27 @@ export class BossController extends Phaser.GameObjects.Container {
           : runtimeState === 'HURT_INVULN'
             ? 'idle'
             : runtimeState === 'PHASE_TRANSITION'
-              ? 'special'
-              : 'idle'
+              ? 'phase'
+              : runtimeState === 'INTRO' && this.introPresenting
+                ? 'intro'
+                : 'idle'
 
     const animKey = `${this.blueprint.id}_${stateKey}`
     const frameRate = this.resolveFrameRate(stateKey)
-    const repeat = runtimeState === 'ATTACKING' || landingPresentation ? 0 : -1
-    if (!this.scene.anims.exists(animKey)) {
-      const frames = this.resolveGroupedFrames(stateKey)
-      this.scene.anims.create({
-        key: animKey,
-        frames,
-        frameRate,
-        repeat
-      })
-    }
+    const repeat = runtimeState === 'ATTACKING' || landingPresentation || stateKey === 'intro' || stateKey === 'phase' ? 0 : -1
+    this.ensureAnimation(animKey, () => ({ key: animKey, frames: this.resolveGroupedFrames(stateKey), frameRate, repeat }))
 
-    this.sprite.play(animKey, true)
+    // Intro and phase poses play once and hold their last frame (a finished anim would otherwise restart).
+    const holdsLastFrame = (stateKey === 'intro' || stateKey === 'phase') && this.sprite.anims.currentAnim?.key === animKey
+    if (!holdsLastFrame) this.sprite.play(animKey, true)
     this.applyActionPresentation(
       landingPresentation ? 'ATTACKING' : runtimeState,
       this.lastLifecyclePhase,
       attackProfile?.motion.kind
     )
+    const paletteColor = this.currentPaletteColor()
+    if (paletteColor !== null) this.sprite.setTint(paletteColor)
+    if (this.scene.time.now < this.whiteFlashUntilMs) this.sprite.setTintFill(0xffffff)
   }
 
   private buildGroupedAtlasFrames(): Record<string, string[]> {
@@ -626,6 +735,9 @@ export class BossController extends Phaser.GameObjects.Container {
         ? 'idle'
         : 'shoot'
     const groupMap: Record<string, string[]> = {
+      intro: this.groupedAtlasFrames.intro ?? this.groupedAtlasFrames.idle ?? [],
+      phase: this.groupedAtlasFrames.phase ?? this.groupedAtlasFrames.special ?? [],
+      defeat: this.groupedAtlasFrames.defeat ?? this.groupedAtlasFrames.idle ?? [],
       idle: this.groupedAtlasFrames.idle ?? [],
       move: this.groupedAtlasFrames.move ?? this.groupedAtlasFrames.run ?? [],
       shoot: this.groupedAtlasFrames.shoot ?? this.groupedAtlasFrames.attack ?? [],

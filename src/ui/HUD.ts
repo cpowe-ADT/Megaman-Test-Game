@@ -211,9 +211,18 @@ export class HUD {
   updateBossHp(cur: number, max: number): void {
     this.bossSnapshot = { current: cur, max }
     const bar = getHudLayout(GAME_WIDTH).bossBar
-    this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0xff6677)
+    const ratio = max > 0 ? cur / max : 0
+    this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, this.bossBarFill === null ? ratio : Math.min(ratio, this.bossBarFill), 0xff6677)
     this.gBoss.image.setVisible(this.bossBarVisible)
     this.tBoss.setVisible(this.bossBarVisible)
+  }
+
+  /** The intro's bar fill (prompt 07 phase 7.2 item 4): a fraction caps the drawn bar; null draws the HP. `bossSnapshot` stays the HP. */
+  private bossBarFill: number | null = null
+
+  setBossBarFill(fraction: number | null): void {
+    this.bossBarFill = fraction === null ? null : Math.max(0, Math.min(1, fraction))
+    this.updateBossHp(this.bossSnapshot.current, this.bossSnapshot.max)
   }
 
   /** The whole boss panel (background, red accent, bar and name) hides as one unit until the fight starts. */

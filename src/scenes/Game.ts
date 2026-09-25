@@ -11,7 +11,7 @@ import AudioService from '../audio'
 import { BossController } from '../bosses/BossController'
 import { BossId } from '../bosses/types'
 import { getBossById } from '../bosses/roster'
-import { bossHudLabel } from '../bosses/types'
+import { bossPhaseHudText } from './game/combatRules'
 import { CameraDirector } from './game/CameraDirector'
 import { DeathSequence } from './game/DeathSequence'
 import { DevUx } from './game/DevUx'
@@ -1811,21 +1811,7 @@ export class Game extends Phaser.Scene {
   }
 
   private updatePhaseHud(action?: string): void {
-    if (!this.phaseLabel) {
-      return
-    }
-    const blueprint = this.bossController?.blueprint
-    const phaseName = (this.currentPhaseName || '').toUpperCase()
-    const phaseEntry = blueprint?.phases?.find((entry) => entry.name.toUpperCase() === phaseName)
-    const phase = phaseEntry
-      ? bossHudLabel(phaseEntry)
-      : (this.currentPhaseName || 'PHASE --').replace(/^PHASE\s*•?\s*/i, 'PHASE ').toUpperCase()
-    const cleaned = action?.replace(/^ACTION\s*•?\s*/i, '').trim()
-    const attackEntry = cleaned
-      ? blueprint?.attacks?.find((entry) => entry.name.toUpperCase() === cleaned.toUpperCase())
-      : undefined
-    const actionLabel = cleaned ? (attackEntry ? bossHudLabel(attackEntry) : cleaned.toUpperCase().slice(0, 12)) : undefined
-    this.phaseLabel.setText(actionLabel ? `${phase}\n${actionLabel}` : phase)
+    this.phaseLabel?.setText(bossPhaseHudText(this.bossController?.blueprint, this.currentPhaseName, action))
   }
 
   private playAnimationSafe(

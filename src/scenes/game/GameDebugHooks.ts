@@ -72,6 +72,7 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
         damage: (amount = 1) => host.applyDamageToBoss(amount),
         forceVictory: () => {
           host.onBossDefeated()
+          host.bossBeats?.presentation.finishDeathNow()
           host.dialogueOverlay?.skip()
         },
         unlockIntro: () => {
@@ -136,7 +137,7 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
           }),
         activateBossRoom: () => host.activateBossEncounter(),
         advanceDialogue: () => host.dialogueOverlay?.advance(),
-        skipDialogue: () => host.dialogueOverlay?.skip(),
+        skipDialogue: () => { host.bossBeats?.presentation.finishDeathNow(); host.dialogueOverlay?.skip() },
         spawnProjectileClash: (options?: { strong?: boolean } | boolean) => {
         if (!host.player || !host.playerBullets || !host.bossBullets) {
           return null

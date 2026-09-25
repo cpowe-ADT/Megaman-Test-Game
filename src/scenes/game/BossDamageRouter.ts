@@ -14,7 +14,7 @@ import { resolveUpgradeModifiers } from '../../progression/upgrades'
 import type { Save } from '../../systems/Save'
 import { formatDistrictLabel, type HUD } from '../../ui/HUD'
 import type { CameraDirector } from './CameraDirector'
-import { bossHitFeedbackLabel, scaleBossHitDamage, type CombatHitSource, type CombatHitTarget } from './combatRules'
+import { bossHitFeedbackLabel, bossHitReaction, scaleBossHitDamage, type BossHitReaction, type CombatHitSource, type CombatHitTarget } from './combatRules'
 import type { StoryDirector } from './StoryDirector'
 
 export interface BossHitContext {
@@ -59,6 +59,9 @@ export interface BossDamageRouterHost {
  * stays as a one-line delegation for the debug hooks and the classic-campaign smoke.
  */
 export class BossDamageRouter {
+  /** The last player hit on the boss and how it reacted (prompt 07 phase 7.2 item 3; smoke 44 reads the weakness stagger). */
+  lastReaction: (BossHitReaction & { atMs: number; multiplier: number; accepted: boolean; interruptedAttackId: string | null }) | null = null
+
   constructor(private readonly host: BossDamageRouterHost) {}
 
   applyDamageToBoss(dmg: number, hitContext: BossHitContext = {}): void {
@@ -83,7 +86,18 @@ export class BossDamageRouter {
     const scaledDamage = scaleBossHitDamage(dmg, damageBonus, multiplier)
     const controller = host.bossController
     if (controller) {
-      const hit = controller.applyDamage({ amount: scaledDamage, type: 'normal', source: 'player', hitstopFrames: 2, iFrameMs: 240 })
+      const reaction = bossHitReaction(multiplier)
+      const hit = controller.applyDamage({
+        amount: scaledDamage,
+        type: 'normal',
+        source: 'player',
+        hitstopFrames: 2,
+        iFrameMs: reaction.iFrameMs,
+        stunMs: reaction.stunMs,
+        stunLockoutMs: reaction.stunLockoutMs,
+        interruptWindup: reaction.interruptWindup
+      })
+      this.lastReaction = { ...reaction, atMs: host.time.now, multiplier, accepted: hit.accepted, interruptedAttackId: hit.interruptedAttackId ?? null }
       const hp = controller.hp
       host.bossHp = { current: hp.current, max: hp.max }
       if (host.bossTarget) {
@@ -102,8 +116,9 @@ export class BossDamageRouter {
       if (host.bossDeathHandled || host.victoryTriggered) {
         return
       }
-      host.tweens?.add({ targets: host.bossTarget ?? host.bossArt, alpha: 0.25, yoyo: true, duration: 70 })
-      AudioService.playSfx('boss_hit')
+      host.tweens?.add({ targets: host.bossTarget ?? host.bossArt, alpha: 0.25, yoyo: true, duration: reaction.flashMs })
+      if (reaction.whiteFlashMs > 0) controller.flashWhite(reaction.whiteFlashMs)
+      AudioService.playSfx(reaction.sfx)
       host.cameraDirector.onBossHit(multiplier, hit.amountApplied)
       this.showHitFeedback(weaponId, multiplier)
       if (hit.defeated || hp.current <= 0) {
