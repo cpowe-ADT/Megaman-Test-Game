@@ -16,7 +16,8 @@ import { resolveUpgradeModifiers } from '../../progression/upgrades'
 import type { Save } from '../../systems/Save'
 import { formatDistrictLabel, type HUD } from '../../ui/HUD'
 import type { CameraDirector } from './CameraDirector'
-import { bossHitFeedbackLabel, bossHitReaction, scaleBossHitDamage, type BossHitReaction, type CombatHitSource, type CombatHitTarget } from './combatRules'
+import { blinkBossHit, type BlinkTarget, type BlinkTweens } from '../../boss/hitFlash'
+import { bossDamageScale, bossHitFeedbackLabel, bossHitReaction, scaleBossHitDamage, type BossHitReaction, type CombatHitSource, type CombatHitTarget } from './combatRules'
 import type { StoryDirector } from './StoryDirector'
 
 export interface BossHitContext {
@@ -73,7 +74,7 @@ export class BossDamageRouter {
     const weaponId = hitContext.weaponId ?? host.getCurrentWeaponConfig().id
     const hitKind = hitContext.kind ?? 'direct'
     const save = host.progressionSave
-    // Classic reads the authored ring and the boss's profile (prompt 07 phase 7.3): weakness 1.75, neutral 1,
+    // Classic reads the authored ring and the boss's profile (prompt 07 phase 7.3): weakness 2.5, neutral 1,
     // resist 0.75, and no BLOCKED. The Randomizer keeps its seeded weakness profiles and strictness.
     const classic = save.progressionWorld?.progressionMode === 'classic'
     const weapon = getWeaponConfig(weaponId)
@@ -108,7 +109,7 @@ export class BossDamageRouter {
     }
     const damageBonus =
       save.progressionWorld?.progressionMode === 'classic' ? 0 : weaponId === 'Buster' ? getBusterDamageBonus(save) : getWeaponDamageBonus(save)
-    const scaledDamage = scaleBossHitDamage(dmg, damageBonus, multiplier)
+    const scaledDamage = scaleBossHitDamage(dmg * bossDamageScale(weaponId, hitContext.chargeLevel ?? 0), damageBonus, multiplier)
     const controller = host.bossController
     if (controller) {
       const reaction = bossHitReaction(multiplier)
@@ -134,7 +135,7 @@ export class BossDamageRouter {
       if (hit.immune) {
         host.recordCombatHit('player', 'boss', scaledDamage, hitKind, false, hit.reason ?? 'immune')
         this.showHitFeedback(weaponId, multiplier, 'IMMUNE')
-        host.tweens?.add({ targets: host.bossTarget ?? host.bossArt, alpha: 0.6, yoyo: true, duration: 45, repeat: 1 })
+        blinkBossHit(host.tweens as unknown as BlinkTweens | undefined, (host.bossTarget ?? host.bossArt) as unknown as BlinkTarget | undefined, 0.6, 45, 1)
         return
       }
       host.recordCombatHit('player', 'boss', hit.amountApplied, hitKind, true)
@@ -142,7 +143,7 @@ export class BossDamageRouter {
       if (host.bossDeathHandled || host.victoryTriggered) {
         return
       }
-      host.tweens?.add({ targets: host.bossTarget ?? host.bossArt, alpha: 0.25, yoyo: true, duration: reaction.flashMs })
+      blinkBossHit(host.tweens as unknown as BlinkTweens | undefined, (host.bossTarget ?? host.bossArt) as unknown as BlinkTarget | undefined, 0.25, reaction.flashMs)
       if (reaction.whiteFlashMs > 0) controller.flashWhite(reaction.whiteFlashMs)
       AudioService.playSfx(reaction.sfx)
       host.cameraDirector.onBossHit(multiplier, hit.amountApplied)

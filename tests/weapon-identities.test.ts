@@ -245,11 +245,11 @@ test('collision router: HydroLance pierces; a flame marks its hit for the burn p
   assert.equal(router.lastOnHit?.tag, 'burn')
 })
 
-test('weakness ring: 1.75 weakness, 1 neutral, 0.75 resist; Normal outside the ring', () => {
+test('weakness ring: 2.5 weakness, 1 neutral, 0.75 resist; Normal outside the ring', () => {
   const elements = Object.keys(WeaknessTable).filter((element) => element !== 'Normal') as Element[]
   for (const boss of elements) {
     for (const weapon of elements) {
-      const expected = WeaknessTable[boss] === weapon ? 1.75 : WeaknessTable[weapon] === boss ? 0.75 : 1
+      const expected = WeaknessTable[boss] === weapon ? 2.5 : WeaknessTable[weapon] === boss ? 0.75 : 1
       assert.equal(damageMultiplier(weapon, boss), expected, `${weapon} vs ${boss}`)
     }
     assert.equal(damageMultiplier('Normal', boss), 1)
@@ -257,7 +257,7 @@ test('weakness ring: 1.75 weakness, 1 neutral, 0.75 resist; Normal outside the r
   }
 })
 
-test('Classic weakness table: every warden takes its classic weakness at 1.75 and no weapon is blocked', () => {
+test('Classic weakness table: every warden takes its classic weakness at 2.5 and no weapon is blocked', () => {
   const world = generateClassicWorld()
   for (const [bossId, profile] of Object.entries(world.weaknessProfiles)) {
     const boss = BOSS_ROSTER[bossId as BossId]
@@ -283,11 +283,11 @@ test('Rook takes the Buster only; Omega rotates its weakness by phase', () => {
   const omegaHit = (weaponId: string, phaseName: string) =>
     resolveBossElementHit({ bossElement: omega.element, weaponId, weaponElement: getWeaponConfig(weaponId).element, profile: omega.damageProfile, phaseIndex: bossPhaseIndex(omega, phaseName) }).multiplier
   const [first, second, third] = omega.phases.map((phase) => phase.name)
-  assert.equal(omegaHit('ThunderSpike', first), 1.75)
+  assert.equal(omegaHit('ThunderSpike', first), 2.5)
   assert.equal(omegaHit('ThunderSpike', second), 1)
-  assert.equal(omegaHit('MagcutDisc', second), 1.75)
-  assert.equal(omegaHit('FrostShatter', third), 1.75)
-  assert.equal(omegaHit('FrostShatter', omega.desperation!.name), 1.75, 'desperation keeps the last weakness')
+  assert.equal(omegaHit('MagcutDisc', second), 2.5)
+  assert.equal(omegaHit('FrostShatter', third), 2.5)
+  assert.equal(omegaHit('FrostShatter', omega.desperation!.name), 2.5, 'desperation keeps the last weakness')
   assert.equal(omegaHit('Buster', first), 1)
 })
 

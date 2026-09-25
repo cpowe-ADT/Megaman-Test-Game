@@ -31,6 +31,16 @@ export function passiveRechargeTicks(accumulatorMs: number, intervalMs = PASSIVE
 }
 
 /** Damage a boss hit deals after the weakness multiplier and the progression bonus; never below 1. */
+/**
+ * Boss HP runs about four times the classic 28 (prompt 07 phase 7.2 item 3), so special weapons and charged Buster
+ * shots hit bosses twice as hard as they hit enemies (Craig, 2026-09-25: "special moves should hurt the boss more").
+ * Buster pellets and the saber (which counts as the Buster) keep their damage, so a Buster-only fight keeps its length.
+ */
+export function bossDamageScale(weaponId: string, chargeLevel = 0): number {
+  if (weaponId !== 'Buster') return 2
+  return chargeLevel > 0 ? 2 : 1
+}
+
 export function scaleBossHitDamage(baseDamage: number, damageBonus: number, multiplier: number): number {
   return Math.max(1, Math.round((baseDamage + damageBonus) * multiplier))
 }

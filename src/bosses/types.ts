@@ -36,11 +36,11 @@ export const WeaknessTable: Record<Element, Element> = {
 }
 
 /** The authored ring's multipliers (prompt 07 phase 7.3, EVAL-P7-004). */
-export const WEAKNESS_MULTIPLIER = 1.75
+export const WEAKNESS_MULTIPLIER = 2.5
 export const RESIST_MULTIPLIER = 0.75
 
 /**
- * The authored ring: a boss takes 1.75x from the element it is weak to (`WeaknessTable[boss]`) and 0.75x from an
+ * The authored ring: a boss takes 2.5x from the element it is weak to (1.75 until Craig asked for special moves to hurt more, 2026-09-25) (`WeaknessTable[boss]`) and 0.75x from an
  * element its own beats (`WeaknessTable[weapon] === boss`); everything else is neutral. Normal (the Buster, the
  * saber, ArcSlash, Rook and Omega) sits outside the ring.
  */

@@ -115,7 +115,7 @@ export class SwordHitRouter {
         const took = before == null || after == null || after < before || !boss.active
         if (took) {
           this.bossLandedSwingId = swingId
-          this.host.scene.tweens?.add({ targets: boss, alpha: 0.25, yoyo: true, duration: 70 })
+          // The boss blinks in its damage path (BossDamageRouter, one blink at a time): a second tween here dimmed it for good.
           this.spark('fx_hit_spark', boss.x + facing * 10, boss.y - 6, 1.4)
           this.record({ swingId, move: hitbox.move ?? 'combo1', target: 'boss', damage, knockbackX: knockback.x, bossHpBefore: before, bossHpAfter: after })
           bossLanded = true
