@@ -515,19 +515,18 @@ export class Game extends Phaser.Scene {
     this.flushStatistics()
     const previous = this.progressionSave
     const claim = claimLocationCheck(previous, locationId as any)
-    if (claim.duplicate) {
-      return
-    }
+    if (claim.duplicate) return
     const next = this.sessionStats.claim(claim.nextSave, locationId, claim.duplicate)
     Save.save(next)
     this.progressionSave = Save.load()
-    this.applyProgressionStateToRuntime(previous, this.progressionSave, claim.itemId)
+    this.applyProgressionStateToRuntime(previous, this.progressionSave, claim.itemId, locationId)
   }
 
-  private applyProgressionStateToRuntime(previous: any, next: any, itemId: string | null): void {
+  private applyProgressionStateToRuntime(previous: any, next: any, itemId: string | null, locationId = ''): void {
     if (itemId) {
       const effect = upgradeEffectLabel(itemId, next.progressionWorld?.progressionMode === 'classic')
-      this.showStageToast(effect ? `${getProgressionItemLabel(itemId).toUpperCase()} · ${effect}` : `CHECK SECURED • ${getProgressionItemLabel(itemId).toUpperCase()}`, effect ? 1800 : 1100)
+      const label = effect ? `${getProgressionItemLabel(itemId).toUpperCase()} · ${effect}` : `CHECK SECURED • ${getProgressionItemLabel(itemId).toUpperCase()}`
+      if (!this.storyDirector?.showCapsuleCard(locationId, label, effect ? 1800 : 1100)) this.showStageToast(label, effect ? 1800 : 1100)
     }
 
     if (previous.weaponsUnlocked.join(',') !== next.weaponsUnlocked.join(',')) {

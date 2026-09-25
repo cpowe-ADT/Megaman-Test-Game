@@ -51,7 +51,8 @@ test('dialogue v2 covers the required trigger table exactly once per stage', () 
   assert.ok(DIALOGUE_REGISTRY.getGlobalSequence('epilogue'))
   assert.ok(DIALOGUE_REGISTRY.getGlobalSequence('credits'))
   for (const phase of [1, 2, 3] as const) assert.ok(DIALOGUE_REGISTRY.getFinalePhase(phase), `finale phase ${phase}`)
-  assert.equal(DIALOGUE_REGISTRY.getSequences().length, 10 * 4 + 8 * 2 + 3 + 3 + 1)
+  // 7.6 B (12g) adds three warden-stage triggers (capsule log, phase two, weapon registry) and two globals.
+  assert.equal(DIALOGUE_REGISTRY.getSequences().length, 10 * 4 + 8 * 5 + 3 + 3 + 1 + 2)
   for (const stageId of ROBOT_MASTER_STAGE_IDS) {
     const defeat = DIALOGUE_REGISTRY.getStageSequence(stageId, 'boss_defeat')
     assert.ok(defeat?.lines.some((line) => line.text.includes('{rewardLabel}')), `${stageId} defeat acknowledges the reward`)

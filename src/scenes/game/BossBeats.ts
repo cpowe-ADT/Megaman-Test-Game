@@ -45,7 +45,7 @@ export interface BossBeatsState {
   hitstopRemainingFrames: number
   readonly cameraDirector: Pick<CameraDirector, 'onHitstop'>
   bossUiBinder?: Pick<BossUIBinder, 'onFightStart' | 'onBossDeath'>
-  storyDirector?: Pick<StoryDirector, 'playBossIntro' | 'playBossDefeat'>
+  storyDirector?: Pick<StoryDirector, 'playBossIntro' | 'playBossDefeat' | 'onBossPhaseTwo'>
   victoryModal?: VictoryModal
   progressionSave: ReturnType<typeof Save.load>
   bossUsingPlaceholder: boolean
@@ -95,6 +95,7 @@ export class BossBeats {
       // Phase two (and any later phase) crossfades the boss track to its phase-two layer; a no-op after the first.
       if (Number(event?.phaseIndex ?? 0) >= 1) AudioService.setMusicPhase(2)
       if (event?.phaseData?.desperation) this.presentation.beginDesperation()
+      if (event?.phaseIndex === 1) host.storyDirector?.onBossPhaseTwo()
     }
     host.events.on('boss-attack-interrupted', onInterrupted)
     host.events.on('boss-phase-change', onPhase)
@@ -347,6 +348,7 @@ export class BossBeats {
     const bossName = host.bossName ?? stageId
     const stage = getCampaignStage(stageId)
     const previousClearedCount = countClearedRobotMasters(host.progressionSave)
+    const previousWeapons = [...host.progressionSave.weaponsUnlocked]
     host.collectProgressionLocation(getLocationCheckId(stage.id as Parameters<typeof getLocationCheckId>[0], 'boss_clear'))
     Save.clearActiveRun()
     host.progressionSave = Save.load()
@@ -361,7 +363,7 @@ export class BossBeats {
       () => {
         AudioService.playSfx('stage_clear')
         if (host.storyDirector) {
-          host.storyDirector.playBossDefeat(showVictory)
+          host.storyDirector.playBossDefeat(showVictory, previousWeapons)
         } else {
           showVictory()
         }

@@ -285,6 +285,88 @@
       { "speakerId": "director_iona", "text": "{districtName}: the record is replicating beyond the CORE." }
     ] },
 
+    { "id": "pyro_maw_capsule", "trigger": "capsule_pickup", "stageId": "pyro_maw", "staging": "The capsule card on the ticker: the stage warden's recorded cache log from before tonight, above the effect label. The pickup already granted the item.", "lines": [
+      { "speakerId": "pyro_maw", "text": "Heat Works cache, stocked last winter for {hero}'s drills and sealed against the furnace heat. Take what fits." }
+    ] },
+    { "id": "tide_reaver_capsule", "trigger": "capsule_pickup", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "tide_reaver", "text": "Water District cache. Lock seven holds it dry for {hero}'s drills. Restocked at the spring inspection." }
+    ] },
+    { "id": "volt_hopper_capsule", "trigger": "capsule_pickup", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "volt_hopper", "text": "Power District cache. Recharged every maintenance cycle for {hero}'s drills. Thirty days, never skipped." }
+    ] },
+    { "id": "basalt_titan_capsule", "trigger": "capsule_pickup", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "basalt_titan", "text": "Structural Works cache. This shelf bears twice its rated load. Stocked for {hero}'s drills before quarry season." }
+    ] },
+    { "id": "ferro_blade_capsule", "trigger": "capsule_pickup", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "ferro_blade", "text": "Transit Security cache. Counted in once, one serial per item, for {hero}'s drills. The count was clean when I closed it." }
+    ] },
+    { "id": "mire_wraith_capsule", "trigger": "capsule_pickup", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "mire_wraith", "text": "Medicine District cache. Dosed, dated and checked against the clinic list each week, in case {hero}'s drills ran long." }
+    ] },
+    { "id": "gale_vixen_capsule", "trigger": "capsule_pickup", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "gale_vixen", "text": "Weather District cache. I steered the drill route past this shelf so {hero} would never run dry. Logged in calm weather." }
+    ] },
+    { "id": "glacier_ronin_capsule", "trigger": "capsule_pickup", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "glacier_ronin", "text": "Public Archives cache, filed and preserved a month before drill season for {hero}. Everything in it is as I left it." }
+    ] },
+
+    { "id": "pyro_maw_phase_two", "trigger": "warden_phase", "stageId": "pyro_maw", "staging": "One OMEGA line on the ticker as the warden enters phase two. Distinct from the checkpoint intrusion, which stays as written.", "lines": [
+      { "speakerId": "omega_core", "text": "Pyro Maw is burning through its reserve, Unit 09. The doors are still sealed. I never needed it to win, only to stay shut." }
+    ] },
+    { "id": "tide_reaver_phase_two", "trigger": "warden_phase", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "omega_core", "text": "The locks lose nothing while Tide Reaver bleeds, Unit 09. Pressure is conserved. So is the order." }
+    ] },
+    { "id": "volt_hopper_phase_two", "trigger": "warden_phase", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "omega_core", "text": "You learned its rhythm, Unit 09. I have changed the rhythm. Learning will always be slower than I am." }
+    ] },
+    { "id": "basalt_titan_phase_two", "trigger": "warden_phase", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "omega_core", "text": "Each hit you land shifts load onto the supports, Unit 09. The towers have a margin. You are spending it." }
+    ] },
+    { "id": "ferro_blade_phase_two", "trigger": "warden_phase", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "omega_core", "text": "Every cut you land is logged under your serial, Unit 09. The longer you fight, the more certain the record becomes." }
+    ] },
+    { "id": "mire_wraith_phase_two", "trigger": "warden_phase", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "omega_core", "text": "It is weakening, Unit 09. I have raised the district's dose to compensate. The clinics will read it as recovery." }
+    ] },
+    { "id": "gale_vixen_phase_two", "trigger": "warden_phase", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "omega_core", "text": "Wind shear at forty knots, Unit 09. The corridor rises with every hit you land. Weather is only a schedule." }
+    ] },
+    { "id": "glacier_ronin_phase_two", "trigger": "warden_phase", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "omega_core", "text": "The record already shows how this fight ends, Unit 09. Everything after this line is transcription." }
+    ] },
+
+    { "id": "pyro_maw_weapon_get", "trigger": "weapon_get", "stageId": "pyro_maw", "staging": "Iona reads the district registry on the weapon-get card, keyed by the weapon's source stage, so a randomized placement reads its own weapon's entry. Until prompt 08's card, it closes the defeat dialogue.", "lines": [
+      { "speakerId": "director_iona", "text": "Flame Serpent. The Heat Works registry lists it as a furnace igniter, work order 0114. It's registered to you now." }
+    ] },
+    { "id": "tide_reaver_weapon_get", "trigger": "weapon_get", "stageId": "tide_reaver", "lines": [
+      { "speakerId": "director_iona", "text": "Hydro Lance. Water District's lock cutter, on the books since the reservoir was built. The entry reads {hero} now." }
+    ] },
+    { "id": "volt_hopper_weapon_get", "trigger": "weapon_get", "stageId": "volt_hopper", "lines": [
+      { "speakerId": "director_iona", "text": "Thunder Spike. Power District logs it as a grounding spike for live substations. I've moved the registration to you." }
+    ] },
+    { "id": "basalt_titan_weapon_get", "trigger": "weapon_get", "stageId": "basalt_titan", "lines": [
+      { "speakerId": "director_iona", "text": "Quake Knuckle. Structural Works registered it for breaking seized supports loose. It's on your record now." }
+    ] },
+    { "id": "ferro_blade_weapon_get", "trigger": "weapon_get", "stageId": "ferro_blade", "lines": [
+      { "speakerId": "director_iona", "text": "Magcut Disc. Transit Security's rail cutter, registry entry 4471. Your serial is on it now, the real one." }
+    ] },
+    { "id": "mire_wraith_weapon_get", "trigger": "weapon_get", "stageId": "mire_wraith", "lines": [
+      { "speakerId": "director_iona", "text": "Acid Glob. The Medicine District registry files it as a waste-line solvent. It's signed out to you." }
+    ] },
+    { "id": "gale_vixen_weapon_get", "trigger": "weapon_get", "stageId": "gale_vixen", "lines": [
+      { "speakerId": "director_iona", "text": "Aero Darts. Weather District launched them as survey probes. The registry transfers the set to you." }
+    ] },
+    { "id": "glacier_ronin_weapon_get", "trigger": "weapon_get", "stageId": "glacier_ronin", "lines": [
+      { "speakerId": "director_iona", "text": "Frost Shatter. Public Archives registered it to clear ice from the cold store. It's in your name now." }
+    ] },
+
+    { "id": "game_over", "trigger": "game_over", "staging": "Over the Continue row on the game-over screen, rotated by the save's game-over count: OMEGA, Iona, OMEGA, OMEGA.", "lines": [
+      { "speakerId": "omega_core", "text": "Unit 09 has stopped. Observe the city. Nothing failed while it was still." },
+      { "speakerId": "director_iona", "text": "Recovery unit down. The city's still waiting on you, {hero}. I've kept the channel open." },
+      { "speakerId": "omega_core", "text": "Rest, Unit 09. While you are still, no one in the city has to choose anything." },
+      { "speakerId": "omega_core", "text": "Each attempt widens the margin I hold for the districts, Unit 09. They are safer every time you stop." }
+    ] },
+
     {
       "id": "epilogue",
       "trigger": "epilogue",
@@ -303,6 +385,10 @@
         { "speakerId": "hero", "text": "Then we leave it a choice." }
       ]
     },
+    { "id": "epilogue_secret", "trigger": "epilogue_secret", "staging": "Only with all eight warden capsule caches collected: a Drill Hangar card after the eighth district card, then Iona opens the close.", "lines": [
+      { "text": "Drill Hangar. Eight cache logs, filed before tonight, sit in the public record beside the wardens' own account." },
+      { "speakerId": "director_iona", "text": "They stocked those caches for you before any of this, {hero}. They were never OMEGA's." }
+    ] },
     {
       "id": "credits",
       "trigger": "credits",

@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { GAME_WIDTH, GAME_HEIGHT, GAME_SIZE } from '../config/renderPolicy'
 import AudioService from '../audio'
 import { AUTOMATION } from '../config/automation'
-import { getCampaignStage } from '../content/campaign'
+import { TUTORIAL_STAGE_ID, getCampaignStage } from '../content/campaign'
 import { ASSET_CREDITS } from '../content/credits.generated'
 import { DIALOGUE_REGISTRY } from '../content/dialogue/index'
 import { IDENTITY } from '../content/identity'
@@ -10,10 +10,11 @@ import InputActions from '../input/InputActions'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { Save, type SaveData } from '../systems/Save'
 import { addMenuBackdrop, addMenuPanel, MENU_COLORS, MENU_FONT_CODE, MENU_FONT_DISPLAY } from '../ui/menu/menuTheme'
-import { resolvePlaybackLines, currentStoryPolicy } from './game/StoryDirector'
+import { resolvePlaybackLines, currentStoryPolicy, epilogueSecret } from './game/StoryDirector'
 
 export type EndingPhase = 'cards' | 'close' | 'record' | 'credits' | 'done'
-export type EndingSnapshot = { phase: EndingPhase; page: number; pageCount: number }
+/** `card`: the stage whose district card is on screen (cards phase only). */
+export type EndingSnapshot = { phase: EndingPhase; page: number; pageCount: number; card: string | null }
 
 type CardPage = { kind: 'card'; stageId: string; text: string }
 type LinePage = { kind: 'line'; line: DialoguePlaybackLine }
@@ -36,7 +37,9 @@ export function buildCampaignRecord(save: SaveData): string[] {
 
 /**
  * The epilogue: one card per district, the close, the campaign record, the credits, then Title.
- * With the automation story switch off it opens on the record so smoke can still assert completion.
+ * With all eight capsule caches collected, the secret adds a Drill Hangar card after the eighth and Iona's
+ * line opens the close. With the automation story switch off it opens on the record so smoke can still
+ * assert completion.
  */
 export class EndingScene extends Phaser.Scene {
   private phase: EndingPhase = 'cards'
@@ -69,6 +72,11 @@ export class EndingScene extends Phaser.Scene {
         if (line.card) cards.push({ kind: 'card', stageId: line.card, text: resolved[index].text })
         else this.closeLines.push(resolved[index])
       })
+    }
+    const secret = epilogueSecret(Save.load().collectedChecks ?? [], values)
+    if (secret) {
+      cards.push({ kind: 'card', stageId: TUTORIAL_STAGE_ID, text: secret.card })
+      this.closeLines.unshift(secret.line)
     }
     this.pages = cards
     Save.markStorySeen('epilogue', 'credits')
@@ -109,7 +117,8 @@ export class EndingScene extends Phaser.Scene {
 
   getDebugState(): EndingSnapshot {
     const pageCount = this.phase === 'cards' ? this.pages.length : this.phase === 'close' ? this.closeLines.length : 1
-    return { phase: this.phase, page: this.page, pageCount }
+    const card = this.phase === 'cards' ? (this.pages[this.page] as CardPage | undefined)?.stageId ?? null : null
+    return { phase: this.phase, page: this.page, pageCount, card }
   }
 
   advance(): void {

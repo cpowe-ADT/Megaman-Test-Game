@@ -56,17 +56,18 @@ Sentinel Rook, the Drill Hangar's gatekeeper, runs the Sentinel Drill and is the
 
 1. **Prologue** (skippable, once): the eight wardens, OMEGA's purpose, the night everything failed, Unit 09 outside the lattice, Iona's first call.
 2. **Tutorial**: briefing, the course, Rook's live override, the first evidence.
-3. **Eight warden arcs, any order**: briefing (district, failure, civilian stake, one hint), a mid-stage radio pair (Iona's evidence, then OMEGA's intrusion), a mini-boss callout, the boss intro, the boss defeat, and a district-restored line on the map.
-4. **Milestones**: at one warden (the shape of the evidence), at the first weakness hit (the wheel is the map), at four wardens (Iona's turn), at eight (the Central Core exposed).
+3. **Eight warden arcs, any order**: briefing (district, failure, civilian stake, one hint), a mid-stage radio pair (Iona's evidence, then OMEGA's intrusion), the warden's recorded cache log on the capsule card (every district kept a recovery cache for Unit 09's drills: evidence from before the danger), a mini-boss callout, the boss intro, one OMEGA line at the boss's phase two, the boss defeat, Iona reading the district registry for the weapon (keyed by the weapon's source stage), and a district-restored line on the map.
+4. **Milestones**: at one warden (the shape of the evidence), at the first weakness hit (the wheel is the map), at four wardens (Iona's turn, and OMEGA's one answer: "You wrote it to ask, Director. I taught it to hold."), at eight (the Central Core exposed). A game over shows one of four lines over the Continue row (three OMEGA, one Iona), rotated by the game-over count.
 5. **Central Core, three acts**: the Relay Spire (OMEGA broadcasts the crisis live), the Warden Archive (OMEGA replays corrupted copies of the freed wardens; the rematch gauntlet), the Core (three phases, one OMEGA line per transition; the third is the offer and WREN's refusal).
-6. **Epilogue**: one card per district, Iona's report that the network is holding, WREN's last line.
+6. **Epilogue**: one card per district; with all eight capsule caches, a Drill Hangar card (the eight cache logs sit in the public record) and Iona's line about them; Iona's reckoning, her report that the network is holding, WREN's last line.
 7. **Credits.**
 
 ## Rules for order independence
 
 - A warden's lines may reference only local evidence, OMEGA's override, the current reward, and count-based milestones.
 - No warden line names another warden. The validator enforces this on every stage-bound sequence except the Central Core.
-- Milestones depend only on the count of freed wardens; they are spoken by Iona and WREN only.
+- Milestones depend only on the count of freed wardens; they are spoken by Iona and WREN, with OMEGA's one answer at four.
+- The game-over lines play in any stage and name no warden.
 - OMEGA's intrusions each stand alone. It never refers to which wardens are already free.
 
 ## Tokens
