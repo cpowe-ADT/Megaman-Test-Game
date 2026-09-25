@@ -141,9 +141,12 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
           const s = window.__w12.scene()
           const d = window.__w12.dummies[0]
           // The canvas renderer (CI's headless Linux falls back to it) draws no tint; the ice block is the freeze there.
-          return { frozenFor: Math.round((d.data.get('frozenUntil') ?? 0) - s.time.now), tinted: Boolean(d.isTinted), webgl: s.sys.game.renderer.type === 2 }
+          return { frozenUntilSet: typeof d.data.get('frozenUntil') === 'number', frozenFor: Math.round((d.data.get('frozenUntil') ?? 0) - s.time.now), tinted: Boolean(d.isTinted), webgl: s.sys.game.renderer.type === 2 }
         })
-        assert.ok(frozen.frozenFor > 1000 && (frozen.tinted || !frozen.webgl), `FrostShatter freezes (${JSON.stringify(frozen)})`)
+        // The duration comes from the hit's own record (`freeze:1500`): the time left when this read lands depends on
+        // the machine (CI read 133 ms left of 1500 in run 36106414492).
+        const freezeMs = Number(String(applied.lastOnHit?.applied ?? '').match(/^freeze:(\d+)$/)?.[1] ?? 0)
+        assert.ok(freezeMs >= 1000 && frozen.frozenUntilSet && (frozen.tinted || !frozen.webgl), `FrostShatter freezes (${JSON.stringify({ freezeMs, ...frozen })})`)
         applied.frozen = frozen
       }
       if (tag === 'corrode') {
