@@ -1881,7 +1881,7 @@ export class Game extends Phaser.Scene {
         applyDamageToPlayer: (request) => this.requestPlayerDamage(request),
         onEnemyDefeated: (sprite: Phaser.Physics.Arcade.Sprite) => {
           if (this.enemyFeatureFlags.enableEnemyDrops) {
-            this.spawnEnemyDrop(sprite.x, sprite.y - 8)
+            this.spawnEnemyDrop(sprite.x, sprite.y - 8, this.enemySpawner?.defeatDropFor(sprite))
           }
           this.onTargetDefeated(sprite)
         },
