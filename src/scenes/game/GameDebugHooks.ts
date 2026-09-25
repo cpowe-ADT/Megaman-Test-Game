@@ -4,7 +4,8 @@ import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP } from '../../config/game
 import type { StepGameFramesOptions } from '../../config/frameStepping'
 import { getCampaignStage } from '../../content/campaign'
 import { getWeaponConfig } from '../../content/weapons'
-import { INPUT_ACTIONS, type InputAction } from '../../input/ActionState'
+import { INPUT_ACTIONS, padSampleFromNames, type InputAction } from '../../input/ActionState'
+import InputActions from '../../input/InputActions'
 import { getLatestActiveProjectile, spawnDebugProjectileClash, summarizeProjectilePool } from '../../projectiles/diagnostics/ProjectileDevTools'
 import { Save } from '../../systems/Save'
 
@@ -278,6 +279,13 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
       host.progressionSave = Save.load()
       return { subTanks: host.progressionSave.subTanks, subTankFill: host.progressionSave.subTankFill }
     },
+    /**
+     * Automation-only pad (prompt 04 §4.3, smoke 46): `{ buttons: ['A', 'DpadLeft'], axes: [x, y] }` replaces the
+     * physical pads in the hub's pad poll, the path a real pad takes (pad bindings, deadzone, latch); `null`
+     * restores the real pads. Throws on an unknown button name; returns the pad inputs now held.
+     */
+    injectPadState: (state: { buttons?: string[]; axes?: number[] } | null): string[] =>
+      [...InputActions.injectPadState(host.game, state ? padSampleFromNames(state) : null)],
     /**
      * Frame-exact input replay (prompt 05 §5.1 item 9, hardened in 5.1c): `script` is a sparse
      * list of `{ frame, held }` rows, each held-action set applying from its frame until the next
