@@ -348,7 +348,9 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.footerRect.centerX, layout.footerRect.y + 1, 'ARROWS MOVE · L/R CHECKPOINT · ENTER DEPLOY · ESC MENU', {
         font: FONT.footer,
         color: COLOR.textMuted,
-        align: 'center'
+        align: 'center',
+        // A fixed box: Linux's monospace fallback measures taller and crossed the footer (CI run 36103408364).
+        fixedHeight: 8
       })
       .setOrigin(0.5, 0)
 
@@ -356,7 +358,9 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.footerRect.centerX, layout.footerRect.y + 10, '', {
         font: FONT.footer,
         color: COLOR.textAccent,
-        align: 'center'
+        align: 'center',
+        // A fixed box: Linux's monospace fallback measures taller and crossed the footer (CI run 36103408364).
+        fixedHeight: 8
       })
       .setOrigin(0.5, 0)
   }
