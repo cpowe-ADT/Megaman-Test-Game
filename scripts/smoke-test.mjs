@@ -3103,6 +3103,9 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
         if (state.scene === 'Game' && validSlash && state.newPlayer?.visuals?.activeHitbox?.direction === 'e') window.__eastSlashSeen = state
       }
       game?.events.on('postupdate', window.__eastSlashProbe)
+      // Sampled for the blade, not for survival: without i-frames the gunner 28px ahead can touch the hero first
+      // on a loaded machine, and the hurt lock swallows the press.
+      game?.newPlayerRuntime?.resetForRespawn?.(600000)
     })
     await tapKey(page, 'c', 2)
     const isEastSlashState = (state) => {
@@ -3131,9 +3134,14 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
     } else {
       const immediateSlashState = await readState(page)
       let slashState = isEastSlashState(immediateSlashState) ? immediateSlashState : null
-      if (!slashState) {
-        await waitForPageCheck(page, () => Boolean(window.__eastSlashSeen), 5000, 'an east slash on any frame after the press')
-        slashState = await page.evaluate(() => window.__eastSlashSeen)
+      for (let attempt = 0; !slashState && attempt < 3; attempt += 1) {
+        try {
+          await waitForPageCheck(page, () => Boolean(window.__eastSlashSeen), 5000, 'an east slash on any frame after the press')
+          slashState = await page.evaluate(() => window.__eastSlashSeen)
+        } catch (error) {
+          if (attempt === 2) throw error
+          await tapKey(page, 'c', 2)
+        }
       }
       if (!isEastSlashState(slashState)) throw new Error(`Expected the recorded east slash state; saw ${JSON.stringify(slashState?.newPlayer?.visuals ?? null)}.`)
       await captureScenarioState(page, scenarioDir, 0, slashState)
@@ -4016,7 +4024,14 @@ async function main() {
 
   const ran = summary.scenarios.filter((scenario) => scenario.status !== 'skipped').length
   console.log(`Smoke test complete: ${ran} ran, ${summary.scenarios.length - ran} skipped. Artifacts: ${outputDir}`)
-  if (summary.scenarios.some((scenario) => scenario.status === 'fail')) {
+  // Name every failure in the log itself: CI keeps the summary only inside an artifact.
+  const failed = summary.scenarios.filter((scenario) => scenario.status === 'fail')
+  failed.forEach((scenario) => {
+    const error = scenario.error ?? {}
+    const where = String(error.stack ?? '').split('\n').find((line) => line.includes('/scripts/smoke')) ?? ''
+    console.log(`Smoke FAILED ${scenario.name}: ${String(error.message ?? error).split('\n')[0].slice(0, 300)} ${where.trim()}`)
+  })
+  if (failed.length > 0) {
     process.exitCode = 1
   }
 }
