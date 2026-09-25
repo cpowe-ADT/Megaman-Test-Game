@@ -1,4 +1,5 @@
 import { EnemyDefinition } from './types'
+import { MINIBOSS_CATALOG } from './minibossCatalog'
 
 const defaultHitbox = {
   width: 18,
@@ -452,49 +453,8 @@ export const EnemyCatalog: Record<string, EnemyDefinition> = {
       death: 'enemy_fly_trap_death'
     }
   }),
-  // Heat Works mini-boss (EVAL-P6-005): 64px frames with the feet on row 62, so the 44x50 body sits 2px
-  // up from the frame bottom. 20 HP is 20 buster pellets or two and a half 2/2/4 saber combos.
-  custodian_walker: makeDefinition({
-    typeKey: 'custodian_walker',
-    movementType: 'walker',
-    collider: { width: 44, height: 50, offsetX: 0, offsetY: -2 },
-    hurtbox: { width: 44, height: 50, offsetX: 0, offsetY: -2 },
-    hitboxes: { melee: { width: 1, height: 1, offsetX: 0, offsetY: 0 } },
-    stats: {
-      hp: 20,
-      damage: 3,
-      speed: 36,
-      gravityScale: 1,
-      knockbackResist: 1,
-      contactDamage: 3,
-      hitstunLightMs: 0,
-      hitstunHeavyMs: 0,
-      invulnerabilityMs: 40,
-      heavy: { pushMinDamage: 4, pushSpeed: 60, pushMs: 120 }
-    },
-    ai: { sightRange: 360, aggroRange: 360, leashRange: 448, reactionTime: 0 },
-    attack: {
-      type: 'melee',
-      cooldownMs: 800,
-      windupMs: 500,
-      activeMs: 250,
-      recoveryMs: 700,
-      range: 96
-    },
-    drops: { healthChance: 1, ammoChance: 0, scoreChance: 1, scoreValue: 1000 },
-    deathBehavior: 'explode',
-    deathSequenceMs: 500,
-    brain: 'custodian_walker',
-    animations: {
-      idle: 'custodian_walker_idle',
-      move: 'custodian_walker_move',
-      attackWindup: 'custodian_walker_attack_windup',
-      attackActive: 'custodian_walker_attack_active',
-      attackRecover: 'custodian_walker_idle',
-      hurt: 'custodian_walker_hurt',
-      death: 'custodian_walker_death'
-    }
-  })
+  // The mini-bosses and their stage skins (EVAL-P6-005, 12c): src/enemy/minibossCatalog.ts.
+  ...MINIBOSS_CATALOG
 }
 
 export const EnemyTypeKeys = Object.keys(EnemyCatalog)

@@ -18,10 +18,13 @@ import {
 import type { EnemyBrain } from './types'
 import type { EnemyEntity } from './EnemyEntity'
 
-/** Two frames cut from the stomp art's flat fire (the right tip of attack_active/001 and /002). */
+/**
+ * Two frames cut from the stomp art's flat fire (the right tip of attack_active/001 and /002), from the
+ * walker's own atlas: `<typeKey>/wave/000`, so each skin (basalt, glacier) burns in its own palette.
+ */
 const WAVE_FRAMES = [
-  { name: 'custodian_walker/wave/000', from: 'custodian_walker/attack_active/001', x: 47, y: 48, w: 16, h: 16 },
-  { name: 'custodian_walker/wave/001', from: 'custodian_walker/attack_active/002', x: 47, y: 48, w: 16, h: 16 }
+  { name: 'wave/000', from: 'attack_active/001', x: 47, y: 48, w: 16, h: 16 },
+  { name: 'wave/001', from: 'attack_active/002', x: 47, y: 48, w: 16, h: 16 }
 ] as const
 const WAVE_FRAME_MS = 80
 const BAR_WIDTH = 36
@@ -67,7 +70,7 @@ export class CustodianWalkerBrain implements EnemyBrain {
     const player = entity.context.player
     this.state = createCustodianState(player && player.x >= entity.sprite.x ? 1 : -1)
     entity.facing = this.state.facing
-    ensureWaveFrames(entity.context.scene)
+    ensureWaveFrames(entity.context.scene, entity.typeKey)
     this.bar = entity.context.scene.add.graphics().setDepth(4).setVisible(false)
   }
 
@@ -192,7 +195,7 @@ export class CustodianWalkerBrain implements EnemyBrain {
         continue
       }
       const image = scene.add
-        .image(wave.x, floorTop, this.atlasKey(), WAVE_FRAMES[0].name)
+        .image(wave.x, floorTop, this.atlasKey(), `${this.entity.typeKey}/${WAVE_FRAMES[0].name}`)
         .setOrigin(0.5, 1)
         .setDepth(3)
         .setFlipX(wave.dir < 0)
@@ -216,7 +219,7 @@ export class CustodianWalkerBrain implements EnemyBrain {
         return false
       }
       live.image.setX(live.wave.x)
-      const frame = WAVE_FRAMES[Math.floor((now - live.bornAt) / WAVE_FRAME_MS) % WAVE_FRAMES.length].name
+      const frame = `${this.entity.typeKey}/${WAVE_FRAMES[Math.floor((now - live.bornAt) / WAVE_FRAME_MS) % WAVE_FRAMES.length].name}`
       if (live.image.frame.name !== frame) {
         live.image.setFrame(frame)
       }
@@ -264,17 +267,18 @@ export class CustodianWalkerBrain implements EnemyBrain {
   }
 }
 
-function ensureWaveFrames(scene: Phaser.Scene): void {
-  const key = 'atlas_custodian_walker'
+function ensureWaveFrames(scene: Phaser.Scene, typeKey: string): void {
+  const key = `atlas_${typeKey}`
   if (!scene.textures.exists(key)) {
     return
   }
   const texture = scene.textures.get(key)
   for (const spec of WAVE_FRAMES) {
-    if (texture.has(spec.name)) {
+    const name = `${typeKey}/${spec.name}`
+    if (texture.has(name)) {
       continue
     }
-    const source = texture.get(spec.from)
-    texture.add(spec.name, source.sourceIndex, source.cutX + spec.x, source.cutY + spec.y, spec.w, spec.h)
+    const source = texture.get(`${typeKey}/${spec.from}`)
+    texture.add(name, source.sourceIndex, source.cutX + spec.x, source.cutY + spec.y, spec.w, spec.h)
   }
 }

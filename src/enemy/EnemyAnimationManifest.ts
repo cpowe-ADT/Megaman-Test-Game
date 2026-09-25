@@ -122,5 +122,22 @@ export const EnemyAnimationManifest: Record<string, EnemyAnimationEntry[]> = {
   ...Object.fromEntries(keys.map((key) => [key, createSet(key)])),
   // Mini-boss (atlas custodian_walker, 64px frames): a heavy walk, a 500 ms leg-raise tell (three frames
   // at 6 fps), a 250 ms stomp and four death frames over 500 ms (CUSTODIAN_TUNING).
-  custodian_walker: createSet('custodian_walker', { idle: 5, move: 6, attack_windup: 6, attack_active: 12, death: 8 })
+  custodian_walker: createSet('custodian_walker', { idle: 5, move: 6, attack_windup: 6, attack_active: 12, death: 8 }),
+  // 12c: the walker's skins keep its timings; the relay nest's barrel glows over 600 ms (three wind-up
+  // frames at 5 fps; the mortar plays them faster); the sentry twin's hover frames trail speed lines (the
+  // swoop) and its lens crackles over 600 ms; the drill serpent coils over 500 ms (three frames at 6 fps)
+  // and lunges over 450 ms. Every death is four frames over 500 ms.
+  ...Object.fromEntries(
+    (
+      [
+        ['custodian_walker_basalt', { idle: 5, move: 6, attack_windup: 6, attack_active: 12, death: 8 }],
+        ['custodian_walker_glacier', { idle: 5, move: 6, attack_windup: 6, attack_active: 12, death: 8 }],
+        ['relay_turret_nest', { idle: 5, move: 6, attack_windup: 5, attack_active: 12, death: 8 }],
+        ['relay_turret_nest_ferro', { idle: 5, move: 6, attack_windup: 5, attack_active: 12, death: 8 }],
+        ['sentry_twin', { idle: 6, move: 12, attack_windup: 5, attack_active: 10, death: 8 }],
+        ['sentry_twin_gale', { idle: 6, move: 12, attack_windup: 5, attack_active: 10, death: 8 }],
+        ['drill_serpent', { idle: 5, move: 8, attack_windup: 6, attack_active: 7, death: 8 }]
+      ] as Array<[string, Partial<Record<AnimationSuffix, number>>]>
+    ).map(([key, rates]) => [key, createSet(key, rates)])
+  )
 }

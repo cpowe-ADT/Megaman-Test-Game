@@ -112,9 +112,11 @@ export interface EnemyDefinition {
   deathSequenceMs?: number
   /** A dedicated behaviour in place of the generic `EnemyAI` (see `enemyBrains.ts`). */
   brain?: EnemyBrainKey
+  /** A mini-boss (12c): its defeat forces a health drop (`minibossCatalog.ts`). */
+  role?: 'miniboss'
 }
 
-export type EnemyBrainKey = 'custodian_walker'
+export type EnemyBrainKey = 'custodian_walker' | 'relay_turret_nest' | 'sentry_twins' | 'drill_serpent'
 
 /** A per-family behaviour the entity runs instead of `EnemyAI`; it owns the entity's state and facing. */
 export interface EnemyBrain {
@@ -122,6 +124,10 @@ export interface EnemyBrain {
   onHurt(now: number): void
   onDefeated(now: number): void
   destroy(): void
+  /** True while nothing can hurt it (the drill serpent under the floor); the entity asks before any damage. */
+  isInvulnerable?(): boolean
+  /** An animation key that replaces the one its state maps to (frames the family's set does not name). */
+  animationKey?(): string | undefined
 }
 
 export interface DamageEvent {

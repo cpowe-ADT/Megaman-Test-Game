@@ -124,12 +124,15 @@ export class EnemyEntity {
     }
     this.combat.update(now, this.facing)
     this.motor.update(now)
-    this.animator.update(this.state, this.facing)
+    this.animator.update(this.state, this.facing, this.brain?.animationKey?.())
   }
 
   applyDamage(event: DamageEvent): number {
     if (this.state === 'dead') {
       return 0
+    }
+    if (this.brain?.isInvulnerable?.()) {
+      return this.combat.currentHp
     }
 
     const remaining = this.combat.receiveDamage(event, this.context.scene.time.now)
