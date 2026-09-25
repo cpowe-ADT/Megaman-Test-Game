@@ -4,10 +4,10 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
 
 ## Now
 
-- Branch `codex/05a-feel-hero-camera` (PR #58 to `main`; this week's commits are local). D-015: push and update the PR once the prompt 05 Exit Gate is green (part 12a closes it); never force-push.
-- The finish work order is `docs/prompts/12-finish-the-game.md` (2026-09-25, from a six-seat audit): 12a ship the branch, 12b seven mechanics, 12c mini-bosses, 12d seven warden stages, 12e Omega, 12f boss fights, 12g story, 12h audio, 12i release. Wave 1 is running as three lanes (cards `output/notes/lane-12a.md`, `lane-12b.md`, `lane-12f.md`).
+- Branch `codex/05a-feel-hero-camera`, pushed; PR #59 to `main` (https://github.com/cpowe-ADT/Megaman-Test-Game/pull/59; PR #58 was an older, merged branch). Prompt 05 is COMPLETE on `04bd3b8` (handoff written, `npm run verify` PASS). Record PR #59's CI run in the ledger (EVAL-P12-001). Never force-push.
+- The finish work order is `docs/prompts/12-finish-the-game.md` (2026-09-25, from a six-seat audit): 12a ship the branch, 12b seven mechanics, 12c mini-bosses, 12d seven warden stages, 12e Omega, 12f boss fights, 12g story, 12h audio, 12i release. Wave 1 landed (12a, 12b, 12f wave 1, 12g text). Wave 2 runs in isolated worktrees (cards `output/notes/lane-12c.md`, `lane-12f-2.md`, `lane-12h-1.md`): each lane commits on its own branch and the orchestrator verifies and merges.
 - Built and green this week: Heat Works (12 screens), combat (three-hit saber, reflect, per-frame hitbox, buster art), the custodian walker, mechanics art and gate signs, the respawn-loop fix, stage textures 27MB to 8MB (full smoke 56/56, sweep, footprint 22/22 on 265976f). Art for 12b, 12c and 12f is cut and loaded (cbdac1e, 8ca7df4).
-- STOP 6.5 (Craig plays Pyro Maw and the tutorial) is raised when wave 1 lands; part 12d's stage rebuilds wait on his answer.
+- STOP 6.5 is OPEN as D-018: Craig plays Heat Works; part 12d (the seven warden stages) waits on his answer, the other parts do not.
 - Higgsfield: the MCP draws all art (`gpt_image_2`). Its audio models are barred for standalone music and SFX, so audio is procedural or CC0 (a download needs Craig's yes). The CLI (`higgsfield auth login`) needs Craig to approve the browser page within a couple of minutes.
 - Browser gates under load: lanes run smoke at once; rerun a timeout alone. Probes must kill their `vite preview` process group: a stale server on 4190 once made `perf:footprint` measure an old build.
 - Craig plays at http://localhost:4180 after `npm run build`. Standing gates: `npm run verify`, `npm run test:visual-sweep`, `npm run build` then `npm run perf:footprint`.
