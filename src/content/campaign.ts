@@ -443,22 +443,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Waste Labyrinth',
     rewardWeaponId: 'AcidGlob',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('mire_fly', 'enemy_fly_trap', 150, 164, undefined, undefined, {
-        spawnTriggerX: 58,
-        retireTriggerX: 214
-      }),
-      marker('mire_mine', 'enemy_mine_bot', 236, 185, undefined, undefined, {
-        spawnTriggerX: 108,
-        retireTriggerX: 304
-      }),
-      marker('mire_shield', 'enemy_shield_drone', 322, 126, undefined, undefined, {
-        spawnTriggerX: 150,
-        retireTriggerX: 384
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in `src/content/stages/mireWraith.ts` (12d).
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#0d140f',
@@ -466,12 +454,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('mire_start', 44, 40, 0), checkpoint('mire_mid', 150, 40, 178)],
-      hazards: [{ id: 'mire_spike_1', x: 286, y: 230 }],
-      midPlatforms: [
-        { id: 'mire_mid_1', x: 174, y: 178, width: 50, type: 'oneWay', color: 0x2a5b38 },
-        { id: 'mire_mid_2', x: 240, y: 140, width: 50, type: 'oneWay', color: 0x2a5b38 }
-      ]
+      checkpoints: [checkpoint('mire_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   },
   gale_vixen: {
@@ -843,45 +828,6 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       marker('ferro_bouncer_gate', 'enemy_bouncer', 826, 185, undefined, undefined, {
         spawnTriggerX: 654,
         retireTriggerX: 904
-      })
-    ]
-  },
-  mire_wraith: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('mire_start', 44, 40, 0),
-      checkpoint('mire_mid_a', 202, 40, 224),
-      checkpoint('mire_mid_b', 450, 40, 488),
-      checkpoint('mire_mid_c', 606, 40, 652),
-      checkpoint('mire_boss_gate', 746, 40, 804)
-    ],
-    hazards: [
-      { id: 'mire_spike_2', x: 508, y: 230 },
-      { id: 'mire_spike_3', x: 706, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'mire_mid_3', x: 410, y: 176, width: 50, type: 'oneWay', color: 0x2a5b38 },
-      { id: 'mire_mid_4', x: 532, y: 142, width: 48, type: 'oneWay', color: 0x2a5b38, motion: { toX: 590, duration: 2150 } },
-      { id: 'mire_mid_5', x: 676, y: 118, width: 48, type: 'oneWay', color: 0x2a5b38 },
-      { id: 'mire_mid_6', x: 812, y: 144, width: 52, type: 'oneWay', color: 0x2a5b38 }
-    ],
-    enemyMarkers: [
-      marker('mire_drone_late', 'enemy_drone', 440, 120, undefined, undefined, {
-        spawnTriggerX: 258,
-        retireTriggerX: 520
-      }),
-      marker('mire_fly_late', 'enemy_fly_trap', 578, 166, undefined, undefined, {
-        spawnTriggerX: 418,
-        retireTriggerX: 676
-      }),
-      marker('mire_bouncer_late', 'enemy_bouncer', 734, 185, undefined, undefined, {
-        spawnTriggerX: 566,
-        retireTriggerX: 822
-      }),
-      marker('mire_shield_gate', 'enemy_shield_drone', 822, 132, undefined, undefined, {
-        spawnTriggerX: 650,
-        retireTriggerX: 902
       })
     ]
   },

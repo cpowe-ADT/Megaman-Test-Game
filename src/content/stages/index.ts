@@ -1,5 +1,6 @@
 import type { CampaignStageId, StageExtensionPatch } from '../campaign'
 import { HEAT_WORKS_PATCH } from './heatWorks'
+import { MIRE_WRAITH_PATCH } from './mireWraith'
 import { TIDE_REAVER_PATCH } from './tideReaver'
 
 /**
@@ -9,5 +10,6 @@ import { TIDE_REAVER_PATCH } from './tideReaver'
  */
 export const REBUILT_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
   pyro_maw: HEAT_WORKS_PATCH,
-  tide_reaver: TIDE_REAVER_PATCH
+  tide_reaver: TIDE_REAVER_PATCH,
+  mire_wraith: MIRE_WRAITH_PATCH
 }

@@ -118,6 +118,14 @@
 - Radio beat: checkpoint 2.
 - Boss room: `pits` with acid channels; Mire's glob puddles pool in them.
 - Difficulty rating: 3.
+- Built (12d, `EVAL-P6-010`, `src/content/stages/mireWraith.ts`, layout table in its header; `tests/mire-wraith-stage.test.ts`, smoke `54-mire-route`). What changed from this brief, and why:
+  - The filter switch is a floor plate in the hatch between the tower's pre-chamber and its shaft, and the hatch wall runs to the tower's top, so every way up trips it and the rise cannot be skipped. `rising_liquid` gained `switchBox` (the rise starts when the hero's body touches it, not at `triggerX`; the respawn re-arms it).
+  - "Before the acid rises" means before the trip: the sub tank ledge is in the pre-chamber, left of the switch, 296px from the launch ledge and 152px over the floor (a dash jump; a miss lands on the safe floor). The acid floods the pre-chamber too and covers that ledge about 6s after the trip. The tower is therefore 760px wide (pre-chamber and shaft) and two screens tall; the camera scrolls both ways inside it. The shaft keeps Heat Works' measured ledges with two turned to crumbles, plus two more crumbles; its hatch face and right wall take wall kicks, the pre-chamber's faces do not.
+  - "Acid pools" are the six acid pits (drawn flat in the acid's chartreuse, as is the rising acid; tinting the slag art left it orange) and eight spore-thorn patches (the Mire atlas's spike cell, 2 HP). There are no vents: their art is flame.
+  - The `crumble_group` walkways are planks at floor height over three of the pits: walkable at a run (a plank is underfoot about 330ms of its 400ms shake), or jump the pit.
+  - Enemies: 18 placements (mine bot 5, drone 4, fly trap 3, shield drone 3, bouncer 3) plus the serpent. Each spawns a full screen (448px) ahead, per the shared convention (Heat Works used 260px).
+  - Checkpoint 3 is at the start of the secret screen: this brief puts the secret between the mid-boss and the tower, so a death in the tower walks back one screen. The serpent's room has a flat floor (it tunnels anywhere on it) and the serpent stands 360px in, so it wakes as the hero enters and not before.
+  - The boss room is unchanged here: the `pits` arena with acid channels belongs to the boss lane.
 
 ## Weather District (`gale_vixen`)
 
