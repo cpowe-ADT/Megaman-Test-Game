@@ -116,7 +116,7 @@ export const SFX_ASSETS: Record<SfxAssetKey, SfxAssetDefinition> = {
  * Strings the game passes to `playSfx` that are not sound keys, each mapped to a key or to `null` (silent on
  * purpose). Boss attack telegraphs arrive as the attack's display name (`BossProjectileController.onBossAttack`
  * through `BossBeats.playAttackSfx`); all of them are silent today, as they were before keys were checked.
- * `tests/audio-cue-map.test.ts` fails when the boss roster names an attack this table does not.
+ * `tests/audio-cue-map.test.ts` fails when the boss roster names an attack (base or desperation) this table does not.
  */
 export const SFX_ALIASES: Readonly<Record<string, SfxAssetKey | null>> = {
   'Giga Hop': null,
@@ -149,7 +149,18 @@ export const SFX_ALIASES: Readonly<Record<string, SfxAssetKey | null>> = {
   'Directive Volley': null,
   'Lockdown Pulse': null,
   'Core Ram': null,
-  'Override Cascade': null
+  'Override Cascade': null,
+  // Desperation attacks (`blueprint.desperation.attack`, outside `attacks`).
+  'Rook Barrage': null,
+  'Magma Geyser': null,
+  Maelstrom: null,
+  'Storm Grid': null,
+  'Tectonic Rift': null,
+  'Disc Storm': null,
+  'Miasma Flood': null,
+  Tempest: null,
+  'Absolute Zero': null,
+  'Final Directive': null
 }
 
 export function isSfxAssetKey(key: string): key is SfxAssetKey {

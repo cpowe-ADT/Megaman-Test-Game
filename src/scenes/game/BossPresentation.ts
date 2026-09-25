@@ -221,6 +221,17 @@ export class BossPresentation {
     pending.onDialogue()
   }
 
+  /**
+   * Automation (`bossDebug.unlockIntro`): cancel a pending intro beat (WARNING, card, bar fill) so the intro dialogue
+   * cannot open once the fight is running, and show the bar full. No-op outside the intro.
+   */
+  skipIntro(): void {
+    if (this.beat !== 'warning' && this.beat !== 'card' && this.beat !== 'dialogue' && this.beat !== 'bar_fill') return
+    this.clear()
+    this.host.hud?.setBossBarFill(null)
+    this.mark('fight')
+  }
+
   /** A new fight (the scene is reused on restart): cancel every beat and forget the last fight's records. */
   resetFight(): void {
     this.clear()

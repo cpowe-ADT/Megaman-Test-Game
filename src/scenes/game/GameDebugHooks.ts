@@ -77,7 +77,10 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
         },
         unlockIntro: () => {
           host.dialogueOverlay?.skip()
+          // The intro is timed (WARNING, card, dialogue, bar fill): cancel what is pending so no dialogue opens mid-fight.
+          host.bossBeats?.presentation.skipIntro()
           host.bossController?.unlockIntro()
+          if (host.bossEncounterActive) host.bossBeats?.beginBossCombat()
         },
         hp: () => host.bossHp,
         /** Feet vs body vs floor for the live boss; feetToBodyGap must be 0 when grounded. */

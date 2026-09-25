@@ -72,7 +72,8 @@ test('every SFX string the code plays resolves to a sound or a deliberate silenc
   for (const key of played) assert.doesNotThrow(() => resolveSfxKey(key, true), `'${key}' is played but has no sound`)
   // Boss attack telegraphs reach playSfx as attack display names (BossProjectileController.onBossAttack).
   for (const [bossId, blueprint] of Object.entries(BOSS_ROSTER)) {
-    for (const attack of blueprint.attacks) {
+    // The desperation attack sits outside `attacks` and reaches playSfx the same way.
+    for (const attack of [...blueprint.attacks, ...(blueprint.desperation ? [blueprint.desperation.attack] : [])]) {
       assert.ok(Object.prototype.hasOwnProperty.call(SFX_ALIASES, attack.name), `${bossId} attack '${attack.name}' is missing from SFX_ALIASES`)
     }
   }

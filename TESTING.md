@@ -128,7 +128,7 @@ Blocking dialogue is also part of the automation contract. `render_game_to_text(
 | Hook | Effect or returned state |
 | --- | --- |
 | `bossDebug.damage(amount = 1)` | Applies damage through the normal boss damage path; use this for new boss-clear scenarios. |
-| `bossDebug.hp()` / `bossDebug.unlockIntro()` | Read boss HP; skip dialogue and unlock the boss intro. |
+| `bossDebug.hp()` / `bossDebug.unlockIntro()` | Read boss HP; skip the whole intro (dialogue, and any pending WARNING, card or bar fill, so no dialogue opens mid-fight) and start the fight. |
 | `bossDebug.forceVictory()` | Legacy direct victory bypass; do not use in new scenarios. |
 | `stageDebug.checkpointIndex()` / `stageDebug.enemyStream()` | Current checkpoint index and enemy stream snapshot. |
 | `stageDebug.projectilePools()` | Active, visible, and allocated player/enemy projectile pool diagnostics. |
