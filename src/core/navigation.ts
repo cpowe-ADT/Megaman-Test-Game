@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { PIXEL_FONT, pixelFontSize } from '../ui/pixelFont'
 import { GAME_WIDTH } from '../config/renderPolicy'
 import InputActions from '../input/InputActions'
 
@@ -49,8 +50,8 @@ export function showToast(scene: Phaser.Scene, message: string, durationMs = 180
   container.setScrollFactor(0)
 
   const metrics = scene.add.text(0, 0, message, {
-    fontFamily: '"Trebuchet MS", monospace',
-    fontSize: '12px',
+    fontFamily: PIXEL_FONT,
+    fontSize: pixelFontSize(1),
     color: '#dbeafe',
     align: 'center'
   })

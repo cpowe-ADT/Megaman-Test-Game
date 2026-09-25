@@ -12,7 +12,7 @@ const buildSourcemap = process.env.BUILD_SOURCEMAP === '1' ? 'hidden' : false
 function copyRuntimeAssetsPlugin(): Plugin {
   const sourceRoot = resolve(__dirname, 'assets')
   const targetRoot = resolve(__dirname, 'dist/assets')
-  const ownedRuntimeDirs = ['audio', 'backgrounds', 'sprites', 'ui']
+  const ownedRuntimeDirs = ['audio', 'backgrounds', 'fonts', 'sprites', 'ui']
 
   return {
     name: 'copy-runtime-assets',
