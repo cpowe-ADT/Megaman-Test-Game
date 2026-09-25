@@ -3,9 +3,12 @@ import { GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { getCampaignStage } from '../../content/campaign'
 import { stageVerticalTop } from '../../stage/stageGeometry'
+import { hazardStripPattern } from '../../mechanics/mechanicsVisuals'
 
 const PIT_SLAG_COLOR = 0xff5a1f
 const PIT_SLAG_SURFACE_COLOR = 0xffe08a
+/** The pattern's teeth: dark enough to read against the orange in greyscale. */
+const PIT_SLAG_PATTERN_COLOR = 0x6a1606
 const PIT_SLAG_DEPTH_PX = 10
 
 /**
@@ -136,8 +139,15 @@ export class StageBackdrop {
     if (gaps.length === 0) return
     const slag = this.scene.add.graphics().setDepth(3)
     for (const gap of gaps) {
-      slag.fillStyle(PIT_SLAG_COLOR, 0.9).fillRect(gap.x, height - PIT_SLAG_DEPTH_PX, gap.width, PIT_SLAG_DEPTH_PX)
-      slag.fillStyle(PIT_SLAG_SURFACE_COLOR, 1).fillRect(gap.x, height - PIT_SLAG_DEPTH_PX, gap.width, 2)
+      const top = height - PIT_SLAG_DEPTH_PX
+      slag.fillStyle(PIT_SLAG_COLOR, 0.9).fillRect(gap.x, top, gap.width, PIT_SLAG_DEPTH_PX)
+      slag.fillStyle(PIT_SLAG_SURFACE_COLOR, 1).fillRect(gap.x, top, gap.width, 2)
+      // A pattern as well as a colour (prompt 04 §4.3 colour-blind check): dark teeth and a bright crust.
+      const pattern = hazardStripPattern(gap.x, gap.width, top, PIT_SLAG_DEPTH_PX)
+      slag.fillStyle(PIT_SLAG_PATTERN_COLOR, 1)
+      pattern.teeth.forEach(([x1, y1, x2, y2, x3, y3]) => slag.fillTriangle(x1, y1, x2, y2, x3, y3))
+      slag.fillStyle(PIT_SLAG_SURFACE_COLOR, 1)
+      pattern.dots.forEach((dot) => slag.fillRect(dot.x, dot.y, dot.width, dot.height))
     }
     this.slag = slag
   }

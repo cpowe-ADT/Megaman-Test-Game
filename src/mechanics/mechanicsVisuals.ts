@@ -86,6 +86,35 @@ export function slagFrameIndices(clockMs: number): { surface: FrameIndex; fill: 
   return { surface: SLAG_SURFACE_FRAMES[step % SLAG_SURFACE_FRAMES.length], fill: (step % 4) as FrameIndex }
 }
 
+// ------------------------------------------------------------------------------ hazard strip pattern
+
+/** One tooth of the hazard strip pattern per this many pixels. */
+export const HAZARD_TOOTH_PERIOD_PX = 6
+export type HazardStripPattern = {
+  /** Downward teeth under the surface line, as fillTriangle points `[x1, y1, x2, y2, x3, y3]`. */
+  teeth: Array<[number, number, number, number, number, number]>
+  /** A dotted crust under every other tooth. */
+  dots: Array<{ x: number; y: number; width: number; height: number }>
+}
+
+/**
+ * The colour-blind pattern for a flat hazard strip (prompt 04 §4.3; the pit slag, which was a flat
+ * orange band): a row of dark teeth under the 2px surface line and a dotted crust below them, so the
+ * strip reads by shape as well as by colour. World pixels; a partial tooth at the right end is left plain.
+ */
+export function hazardStripPattern(x: number, width: number, top: number, depth: number): HazardStripPattern {
+  const teeth: HazardStripPattern['teeth'] = []
+  const dots: HazardStripPattern['dots'] = []
+  const toothTop = top + 2
+  const toothHeight = Math.max(2, Math.min(4, depth - 5))
+  const dotY = toothTop + toothHeight + 2
+  for (let index = 0, left = x; left + HAZARD_TOOTH_PERIOD_PX <= x + width; index += 1, left += HAZARD_TOOTH_PERIOD_PX) {
+    teeth.push([left, toothTop, left + HAZARD_TOOTH_PERIOD_PX, toothTop, left + HAZARD_TOOTH_PERIOD_PX / 2, toothTop + toothHeight])
+    if (index % 2 === 0 && dotY < top + depth) dots.push({ x: left + 2, y: dotY, width: 2, height: 1 })
+  }
+  return { teeth, dots }
+}
+
 // ---------------------------------------------------------------------------------- breakable walls
 
 /** Intact 000, cracked 001, heavily cracked 002 (by hits over hitsRequired), collapsing 003 once broken. */

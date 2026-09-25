@@ -28,11 +28,12 @@ function fixture() {
     return exports
   }
   const action = load('src/input/ActionState.ts')
-  const settings = load('src/systems/Settings.ts', { '../input/ActionState': action })
+  const settings = load('src/systems/Settings.ts', { '../input/ActionState': action, '../config/renderPolicy': load('src/config/renderPolicy.ts') })
   const input = load('src/input/InputActions.ts', {
     '../audio': { default: { unlock: () => {} } },
     '../systems/Settings': settings,
-    './ActionState': action
+    './ActionState': action,
+    './visibilityPause': load('src/input/visibilityPause.ts')
   })
   const scene: any = { events: new EventEmitter() }
   const game = { events: new EventEmitter(), loop: { frame: 0 }, scene: { getScenes: () => [scene] } }

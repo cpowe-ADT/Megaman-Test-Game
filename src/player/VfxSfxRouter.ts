@@ -5,7 +5,7 @@ import { GAMEPLAY_TEXTURE_KEYS } from '../ui/gameplay/GameplayTextures'
 import { resolveSwordTrailPose } from './SwordTrailProfile'
 import { SHAKES, resolveChargeAuraFrequencyMs } from './hitFeel'
 import { FEEL_FRAME_MS, LANDING_SQUASH_FRAMES } from './config'
-import { Settings } from '../systems/Settings'
+import { explosionFlashStyle, Settings } from '../systems/Settings'
 import {
   CHARGE_AURA,
   CHARGE_AURA_BY_LEVEL,
@@ -255,13 +255,15 @@ export class VfxSfxRouter {
         break
       }
       case 'fx_death_orbs': {
+        // The hero's death burst is the explosion reduced flashing dims (prompt 04 §4.3).
+        const burst = explosionFlashStyle(Settings.get().reducedFlashing)
         for (let index = 0; index < DEATH_ORB_COUNT; index += 1) {
           const angle = (index / DEATH_ORB_COUNT) * Math.PI * 2
           const frame = VFX_FRAMES.aura[index % VFX_FRAMES.aura.length]
           const orb = this.own(this.scene.add.sprite(this.player.x, this.player.y, EFFECTS_ATLAS_KEY, frame))
           orb.setDepth(this.player.depth + 2)
-          orb.setBlendMode(Phaser.BlendModes.ADD)
-          orb.setScale(1.4)
+          if (burst.additive) orb.setBlendMode(Phaser.BlendModes.ADD)
+          orb.setScale(1.4).setAlpha(burst.alphaScale)
           this.scene.tweens.add({
             targets: orb,
             x: this.player.x + Math.cos(angle) * DEATH_ORB_RADIUS_PX,

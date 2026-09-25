@@ -19,8 +19,8 @@ function fixture() {
     return exports
   }
   const action=load('src/input/ActionState.ts')
-  const settings=load('src/systems/Settings.ts',{'../input/ActionState':action})
-  const input=load('src/input/InputActions.ts',{'../audio':{default:{unlock:()=>{}}},'../systems/Settings':settings,'./ActionState':action})
+  const settings=load('src/systems/Settings.ts',{'../input/ActionState':action,'../config/renderPolicy':load('src/config/renderPolicy.ts')})
+  const input=load('src/input/InputActions.ts',{'../audio':{default:{unlock:()=>{}}},'../systems/Settings':settings,'./ActionState':action,'./visibilityPause':load('src/input/visibilityPause.ts')})
   const config=load('src/player/config.ts')
   const combatModule=load('src/player/PlayerCombat.ts',{'../progression/upgrades':load('src/progression/upgrades.ts'),'./config':config})
   const controllerModule=load('src/player/PlayerController.ts')

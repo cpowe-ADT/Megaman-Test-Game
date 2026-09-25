@@ -863,7 +863,7 @@ export class Game extends Phaser.Scene {
     this.dialogueOverlay = new DialogueOverlayController(this)
     this.toastLane = new ToastLane(this)
 
-    this.actions.onPressed('pause', () => this.openSystemMenu())
+    InputActions.bindPause(this, { pause: () => this.openSystemMenu(), blocked: () => this.paused || Boolean(this.dialogueOverlay?.isActive() || this.victoryModal?.isOpen()) })
     const resumeHandler = () => {
       this.setPaused(false)
       this.bossProjectileController?.onPauseChanged(false)
