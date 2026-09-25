@@ -33,7 +33,7 @@ test('floor gaps split the main ground: clipped, merged, sorted, the first span 
 test('a stage world reaches up to its tallest room; one-screen stages stay at 0', () => {
   assert.equal(stageVerticalTop(getCampaignStage('pyro_maw').arena, 252), -252)
   assert.equal(stageVerticalTop(getCampaignStage(TUTORIAL_STAGE_ID).arena, 252), -252)
-  assert.equal(stageVerticalTop(getCampaignStage('tide_reaver').arena, 252), 0)
+  assert.equal(stageVerticalTop(getCampaignStage('volt_hopper').arena, 252), 0)
 })
 
 test('a defeat lock opens only once every marker is gone, counts markers cleared before arming, ignores verbs', () => {
@@ -56,8 +56,8 @@ test('Heat Works pickups sit on their anchors; ids are unchanged and other stage
   const byCategory = Object.fromEntries(getStageLocationDefinitions('pyro_maw').map((entry) => [entry.category, entry]))
   assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['pyro_maw:heart_tank', 1284, 68])
   assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [2500, -212, 4680])
-  const tide = getStageLocationDefinitions('tide_reaver').find((entry) => entry.category === 'heart_tank')
-  assert.equal(tide?.y, 132)
+  const volt = getStageLocationDefinitions('volt_hopper').find((entry) => entry.category === 'heart_tank')
+  assert.equal(volt?.y, 132)
 })
 
 test('Heat Works route: twelve screens, four checkpoints clear of every mechanic, pits a plain jump clears', () => {

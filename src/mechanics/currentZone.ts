@@ -1,6 +1,7 @@
 /**
  * `current_zone` (prompt 12 part 12b; 02 §2.2): a water current that pushes the hero with a capped
- * force while the centre of its body is inside the rect (half as much on the ground). The tell is the
+ * force while the centre of its body is inside the rect (half as much on the ground), and a jump started
+ * inside rises `CURRENT_JUMP_RISE_SCALE` of its height (12d, the Water District brief). The tell is the
  * `current` art tiled over the rect, its bubbles drifting with the flow. Pure; the Phaser edge is
  * `adapters/MotionMechanicsAdapter.ts`.
  */
@@ -18,6 +19,9 @@ export type CurrentZoneDefinition = ZoneRect & {
 
 export const CURRENT_DEFAULTS = { forceX: 420, forceY: 0, maxSpeed: 80 } as const
 
+/** Inside a current a jump rises this share of its height (brief: jump height minus 20%). */
+export const CURRENT_JUMP_RISE_SCALE = 0.8
+
 function finiteOr(value: number | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
@@ -34,6 +38,11 @@ export function currentPush(definition: CurrentZoneDefinition): ZonePush {
 /** The current's push when the hero is inside, else null. */
 export function currentPushOn(definition: CurrentZoneDefinition, hero: Box): ZonePush | null {
   return heroInZone(definition, hero) ? currentPush(definition) : null
+}
+
+/** The jump's rise share for a hero in any of these currents (1 outside them). */
+export function currentJumpRiseScale(definitions: readonly CurrentZoneDefinition[], hero: Box): number {
+  return definitions.some((definition) => heroInZone(definition, hero)) ? CURRENT_JUMP_RISE_SCALE : 1
 }
 
 /** Which way the bubbles drift (the art flips for a leftward flow); a purely vertical current reads as right. */

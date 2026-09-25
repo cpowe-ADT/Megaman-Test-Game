@@ -15,6 +15,7 @@ import {
   NEUTRAL_PLAYER_ENVIRONMENT,
   applyVerticalForce,
   environmentDriftX,
+  jumpLaunchVelocity,
   normalizePlayerEnvironment,
   stepPushVelocity,
   type PlayerEnvironment
@@ -222,7 +223,7 @@ export class PlayerMotor {
       const away: 1 | -1 = kickSide === -1 ? 1 : -1
       const boostMultiplier = intent.dashHeld ? this.movement.wallJumpBoostMultiplier : 1
       body.setVelocityX(this.movement.wallJumpVelocityX * boostMultiplier * this.wallJumpSpeedMultiplier * away)
-      body.setVelocityY(this.movement.wallJumpVelocityY)
+      body.setVelocityY(jumpLaunchVelocity(this.movement.wallJumpVelocityY, environment.jumpRiseScale))
       this.wallJumpRemainingMs = this.movement.wallJumpLockMs
       this.dashRemainingMs = 0
       this.isAirDashing = false
@@ -248,7 +249,7 @@ export class PlayerMotor {
       if (groundDashing) {
         this.startDashJumpCarry(this.facing, beltCarryX)
       }
-      body.setVelocityY(this.movement.jumpVelocity)
+      body.setVelocityY(jumpLaunchVelocity(this.movement.jumpVelocity, environment.jumpRiseScale))
       this.jumpBufferRemainingMs = 0
       this.coyoteRemainingMs = 0
       this.jumpCutArmed = true

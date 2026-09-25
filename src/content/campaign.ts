@@ -20,6 +20,7 @@ import type { BreakableWallDefinition } from '../mechanics/breakableWall'
 import type { ConveyorDefinition } from '../mechanics/conveyor'
 import type { IceFloorDefinition } from '../mechanics/iceFloor'
 import type { CurrentZoneDefinition } from '../mechanics/currentZone'
+import type { WaterLevelGateDefinition } from '../mechanics/waterLevelGate'
 import type { WindZoneDefinition } from '../mechanics/windZone'
 import type { TimedRailGroupDefinition } from '../mechanics/timedRailGroup'
 import type { RockfallDefinition } from '../mechanics/rockfall'
@@ -82,6 +83,8 @@ export type StageArenaDefinition = {
   iceFloors?: IceFloorDefinition[]
   /** Water currents that push the hero with a capped force (12b `current_zone`). */
   currentZones?: CurrentZoneDefinition[]
+  /** Water that cycles high and low on the stage clock, its sluice open only at one level; the hero floats under it (12d). */
+  waterLevelGates?: WaterLevelGateDefinition[]
   /** Sideways gusts on a cycle and upward lifts, Ferro's magnet lift included (12b `wind_zone`). */
   windZones?: WindZoneDefinition[]
   /** Electrified floor rails on one shared timer, for Volt (12b `timed_rail_group`). */
@@ -277,36 +280,20 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Reservoir Lock',
     rewardWeaponId: 'HydroLance',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('tide_drone', 'enemy_drone', 152, 150, undefined, undefined, {
-        spawnTriggerX: 60,
-        retireTriggerX: 214
-      }),
-      marker('tide_gunner', 'enemy_gunner_bot', 236, 185, 210, 286, {
-        spawnTriggerX: 100,
-        retireTriggerX: 308
-      }),
-      marker('tide_rocket', 'enemy_rocket_bot', 330, 185, undefined, undefined, {
-        spawnTriggerX: 166,
-        retireTriggerX: 388
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in `src/content/stages/tideReaver.ts`.
+    enemyMarkers: [],
     arena: {
       allowFallOff: true,
-      leftWall: false,
-      rightWall: false,
+      leftWall: true,
+      rightWall: true,
       backgroundColor: '#081622',
       background: EMPTY_BACKGROUND,
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
       checkpoints: [checkpoint('tide_start', 44, 40, 0), checkpoint('tide_mid', 156, 40, 185)],
-      hazards: [{ id: 'tide_spike_1', x: 206, y: 230 }],
-      midPlatforms: [
-        { id: 'tide_mid_1', x: 150, y: 176, width: 50, type: 'oneWay', color: 0x214c77 },
-        { id: 'tide_mid_2', x: 210, y: 144, width: 44, type: 'oneWay', color: 0x214c77 },
-        { id: 'tide_mid_3', x: 268, y: 112, width: 44, type: 'oneWay', color: 0x214c77 }
-      ]
+      hazards: [],
+      midPlatforms: []
     }
   },
   volt_hopper: {
@@ -651,6 +638,7 @@ export type StageExtensionPatch = {
     | 'conveyors'
     | 'iceFloors'
     | 'currentZones'
+    | 'waterLevelGates'
     | 'windZones'
     | 'timedRailGroups'
     | 'rockfalls'
@@ -744,46 +732,6 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       teachRoom(2, 'wall_jump', { room: { y: -252, height: 504 } }),
       teachRoom(3, 'charge'),
       teachRoom(4, 'saber', { hitsRequired: 3 })
-    ]
-  },
-  tide_reaver: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('tide_start', 44, 40, 0),
-      checkpoint('tide_mid_a', 194, 40, 224),
-      checkpoint('tide_mid_b', 430, 40, 470),
-      checkpoint('tide_mid_c', 588, 40, 634),
-      checkpoint('tide_boss_gate', 748, 40, 806)
-    ],
-    hazards: [
-      { id: 'tide_spike_2', x: 502, y: 230 },
-      { id: 'tide_spike_3', x: 688, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'tide_mid_4', x: 402, y: 182, width: 48, type: 'oneWay', color: 0x214c77 },
-      { id: 'tide_mid_5', x: 492, y: 150, width: 46, type: 'oneWay', color: 0x214c77, motion: { toX: 544, duration: 2100 } },
-      { id: 'tide_mid_6', x: 598, y: 118, width: 46, type: 'oneWay', color: 0x214c77 },
-      { id: 'tide_mid_7', x: 706, y: 150, width: 52, type: 'oneWay', color: 0x214c77 },
-      { id: 'tide_mid_8', x: 818, y: 126, width: 48, type: 'oneWay', color: 0x214c77 }
-    ],
-    enemyMarkers: [
-      marker('tide_hopper_late', 'enemy_shock_hopper', 432, 185, undefined, undefined, {
-        spawnTriggerX: 256,
-        retireTriggerX: 510
-      }),
-      marker('tide_shield_late', 'enemy_shield_drone', 560, 126, undefined, undefined, {
-        spawnTriggerX: 378,
-        retireTriggerX: 662
-      }),
-      marker('tide_fly_late', 'enemy_fly_trap', 724, 150, undefined, undefined, {
-        spawnTriggerX: 534,
-        retireTriggerX: 814
-      }),
-      marker('tide_mine_gate', 'enemy_mine_bot', 820, 185, undefined, undefined, {
-        spawnTriggerX: 642,
-        retireTriggerX: 904
-      })
     ]
   },
   volt_hopper: {

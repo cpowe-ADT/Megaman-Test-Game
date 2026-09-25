@@ -15,6 +15,7 @@ import {
   getBossRoomMovementBounds
 } from '../src/content/stageArenaLayout'
 import { GAMEPLAY_ACTOR_CEILING, getGameplayWorldBounds } from '../src/config/gameplayLayout'
+import { REBUILT_STAGE_PATCHES } from '../src/content/stages/index'
 
 test('default boss rooms lock to the final visible screen', () => {
   const stageIds = [TUTORIAL_STAGE_ID, ...getRobotMasterStages().map((stage) => stage.id), FINAL_STAGE_ID]
@@ -52,8 +53,8 @@ test('robot-master routes retain intro, mid, pre-boss, and gate content budgets'
     const report = getStageContentRetentionReport(stage.id)
     assert.ok(report)
     assert.equal(report.routeWidth >= 928, true)
-    // Heat Works follows its brief (start, after teach, after the mid-boss, before the gate); the rest keep five.
-    assert.equal(report.retained.checkpoints >= (stage.id === 'pyro_maw' ? 4 : 5), true)
+    // Rebuilt stages (12d registry) follow their briefs (start, after teach, after the mid-boss, before the gate); the rest keep five.
+    assert.equal(report.retained.checkpoints >= (stage.id in REBUILT_STAGE_PATCHES ? 4 : 5), true)
     assert.equal(report.retained.enemies >= 6, true)
     assert.equal(report.retained.platforms >= 5, true)
     assert.equal(report.retained.hazards >= 3, true)

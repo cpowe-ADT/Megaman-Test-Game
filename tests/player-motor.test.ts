@@ -763,7 +763,31 @@ test('12b a neutral or cleared environment leaves the run, dash, dash-jump and t
     }),
     plain
   )
-  assert.deepEqual(normalizePlayerEnvironment({ forceX: Number.NaN, surface: 'lava' as never }), { surface: 'ground', carryVelocityX: 0, forceX: 0, forceY: 0, pushCap: ENVIRONMENT_PUSH_CAP })
+  assert.deepEqual(normalizePlayerEnvironment({ forceX: Number.NaN, surface: 'lava' as never }), { surface: 'ground', carryVelocityX: 0, forceX: 0, forceY: 0, pushCap: ENVIRONMENT_PUSH_CAP, jumpRiseScale: 1 })
+})
+
+test('12d current: a jump launched inside a current rises 80% as high; neutral keeps the launch speed exact', () => {
+  const held = (environment?: Parameters<PlayerMotor['setEnvironment']>[0]) => {
+    const { motor, state } = createMotor(groundedBody())
+    if (environment) motor.setEnvironment(environment)
+    motor.update(createIntent({ jumpPressed: true, jumpHeld: true }), FRAME_60, false)
+    const launch = state.velocity.y
+    state.onFloor = false
+    state.blocked.down = false
+    let rise = 0
+    for (let frame = 0; frame < 120 && state.velocity.y < 0; frame += 1) {
+      rise -= state.velocity.y * (FRAME_60 / 1000)
+      state.velocity.y += MOVE.gravity * (FRAME_60 / 1000)
+      motor.update(createIntent({ jumpHeld: true }), FRAME_60, false)
+    }
+    return { launch, rise }
+  }
+  const plain = held()
+  const current = held({ forceX: -420, pushCap: 80, jumpRiseScale: 0.8 })
+  assert.equal(plain.launch, MOVE.jumpVelocity)
+  near(current.launch, MOVE.jumpVelocity * Math.sqrt(0.8), 'launch speed x sqrt 0.8')
+  const ratio = current.rise / plain.rise
+  assert.ok(ratio > 0.77 && ratio < 0.83, `rise in a current ${current.rise.toFixed(1)}px vs ${plain.rise.toFixed(1)}px (${ratio.toFixed(3)})`)
 })
 
 test('12b conveyor: an idle hero rides the belt at its speed and reads idle; running against it the body moves at run minus belt', () => {

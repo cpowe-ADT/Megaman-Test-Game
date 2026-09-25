@@ -16,6 +16,8 @@ export type PlayerEnvironment = {
   forceY: number
   /** The largest speed the forces build, px/s (default `ENVIRONMENT_PUSH_CAP`). */
   pushCap?: number
+  /** How high a jump or wall kick rises here, as a share of its normal rise (12d: 0.8 in a water current; default 1). */
+  jumpRiseScale?: number
 }
 
 export const NEUTRAL_PLAYER_ENVIRONMENT: Readonly<PlayerEnvironment> = Object.freeze({
@@ -43,13 +45,23 @@ function finite(value: unknown): number {
 /** Unknown surfaces read as ground, missing or non-finite numbers as 0, a missing cap as the default. */
 export function normalizePlayerEnvironment(input?: Partial<PlayerEnvironment> | null): Required<PlayerEnvironment> {
   const cap = finite(input?.pushCap)
+  const rise = finite(input?.jumpRiseScale)
   return {
     surface: input?.surface === 'ice' ? 'ice' : 'ground',
     carryVelocityX: finite(input?.carryVelocityX),
     forceX: finite(input?.forceX),
     forceY: finite(input?.forceY),
-    pushCap: cap > 0 ? cap : ENVIRONMENT_PUSH_CAP
+    pushCap: cap > 0 ? cap : ENVIRONMENT_PUSH_CAP,
+    jumpRiseScale: rise > 0 ? Math.min(rise, 2) : 1
   }
+}
+
+/**
+ * The launch speed for a jump that rises `riseScale` of its normal height: the rise grows with the
+ * square of the launch speed, so the speed scales by the square root. A scale of 1 keeps it exact.
+ */
+export function jumpLaunchVelocity(velocityY: number, riseScale: number): number {
+  return riseScale === 1 ? velocityY : velocityY * Math.sqrt(Math.max(0, riseScale))
 }
 
 /** One frame of the sideways push: a force builds it toward its cap; with no force it fades to 0. */

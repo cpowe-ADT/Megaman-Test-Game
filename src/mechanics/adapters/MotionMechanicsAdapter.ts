@@ -29,6 +29,7 @@ import {
 import { resolveWindZone, windCycleAt, type ResolvedWindZone, type WindPhase } from '../windZone'
 import { mechanicsFrameName, mechanicsV2ArtReady, playMechanicSfx, setMechanicsV2Frame, type MechanicsFrame } from './mechanicsArt'
 import { windPhaseSfx } from '../../audio/mechanicsSfx'
+import { WaterLevelGateAdapter } from './WaterLevelGateAdapter'
 
 export type MotionMechanicsDeps = {
   scene: Phaser.Scene
@@ -76,10 +77,12 @@ export class MotionMechanicsAdapter {
   private beltId: string | null = null
   private iceId: string | null = null
   private zoneIds: string[] = []
+  /** 12d water-level gates: the cycling water, its sluices and its float (`waterLevelGate.ts`). */
+  private readonly water: WaterLevelGateAdapter
 
   constructor(
     private readonly deps: MotionMechanicsDeps,
-    arena: Pick<StageArenaDefinition, 'conveyors' | 'iceFloors' | 'currentZones' | 'windZones'>
+    arena: Pick<StageArenaDefinition, 'conveyors' | 'iceFloors' | 'currentZones' | 'windZones' | 'waterLevelGates'>
   ) {
     this.art = mechanicsV2ArtReady(deps.scene)
     this.zoneDepth = (deps.player()?.depth ?? 0) - ZONE_DEPTH_UNDER_HERO
@@ -100,11 +103,12 @@ export class MotionMechanicsAdapter {
       this.currents.push(entry)
     }
     for (const def of arena.windZones ?? []) this.winds.push(this.createWind(resolveWindZone(def)))
+    this.water = new WaterLevelGateAdapter({ scene: deps.scene, player: deps.player, art: this.art, depth: this.zoneDepth }, arena.waterLevelGates ?? [])
   }
 
   /** Any movement mechanic on this stage (a stage without one never touches the hero's environment). */
   get active(): boolean {
-    return this.belts.length + this.ice.length + this.currents.length + this.winds.length > 0
+    return this.belts.length + this.ice.length + this.currents.length + this.winds.length + this.water.count > 0
   }
 
   /** The belts' and ice floors' own drawing is hidden; the art stands on the body's top edge. */
@@ -180,6 +184,7 @@ export class MotionMechanicsAdapter {
       const { rect } = wind.zone
       if (gustSfx) playMechanicSfx(this.deps.scene, { left: rect.x, right: rect.x + rect.width, top: rect.y, bottom: rect.y + rect.height }, gustSfx)
     }
+    this.water.update(clockMs)
     this.draw(clockMs)
     if (!frame || !this.active) return
     this.carryBodies(frame.stepMs)
@@ -194,7 +199,8 @@ export class MotionMechanicsAdapter {
       conveyors: this.belts.map((belt) => belt.def),
       iceFloors: this.ice.map((entry) => entry.def),
       currents: this.currents.map((entry) => entry.def),
-      winds: this.winds.map((entry) => entry.zone)
+      winds: this.winds.map((entry) => entry.zone),
+      extraPushes: this.water.pushesOn(frame.hero)
     })
     this.applyEnvironment(resolved.environment, resolved.beltId, resolved.iceId, resolved.zoneIds)
   }
@@ -294,7 +300,8 @@ export class MotionMechanicsAdapter {
         alpha: wind.art ? Number(wind.art.alpha.toFixed(2)) : null,
         plateFrame: mechanicsFrameName(wind.plate)
       })),
-      heroEnvironment: { ...this.environment, beltId: this.beltId, iceId: this.iceId, zoneIds: [...this.zoneIds] }
+      heroEnvironment: { ...this.environment, beltId: this.beltId, iceId: this.iceId, zoneIds: [...this.zoneIds] },
+      ...this.water.getDebugState()
     }
   }
 
@@ -303,5 +310,6 @@ export class MotionMechanicsAdapter {
     this.ice.forEach((entry) => entry.art?.destroy())
     this.currents.forEach((entry) => { entry.art?.destroy(); entry.plain?.destroy() })
     this.winds.forEach((wind) => { wind.art?.destroy(); wind.plate?.destroy(); wind.plain?.destroy() })
+    this.water.destroy()
   }
 }
