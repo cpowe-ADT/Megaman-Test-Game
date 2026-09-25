@@ -4,13 +4,13 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
 
 ## Now
 
-- Branch `codex/05a-feel-hero-camera` (from `main` 93a04a1, PR #58; unpushed). D-015: push and open a PR to main once the prompt 05 Exit Gate is green; never force-push. Prompt 05 is mid-run: 05a and 05b done; 05c in progress: 5.8 playtest fixes PASS (EVAL-P5-011: HUD bars under WebGL, overlays off the floor row, TARGET label), 5.5 hero sheets at STOP 5.5 (EVAL-P5-006, P5-007), then 5.6 profiles (memo `output/notes/05c-5.6.md`, draft module and tests parked in `output/notes/05c-5.6-draft/`), then the 05 Exit Gate.
-- Craig's overhaul ask ("better enemies, bosses, graphics, ledges, background, hit boxes, animations") was audited by four seats and folded into 06 and 07 ("Additions from the 2026-09-24 overhaul audit": EVAL-P6-015 hit contract, P6-016 warden sheets, P7-010 boss boxes; findings `docs/prompts/reviews/2026-09-24-overhaul-audit/FINDINGS.md`). 06 starts with the 05b carry-overs listed there.
-- Higgsfield: the MCP works (gpt_image_2, reference images by job id). The CLI is 1.1.26 (`higgsfield`, not `hf`: on this Mac `hf` is Hugging Face) and needs Craig's `higgsfield auth login` (approve the page at once; one code expired) and `higgsfield workspace set <id>`.
-- Browser gates (full smoke, sweep, footprint) only on a quiet machine: on 2026-09-24 the load average ran 80 to 280 from other sessions, a Docker VM and Safari, and scenarios timed out. Probes use Playwright against the 4180 preview (`output/probes/*.mjs`); the pane pauses Phaser when hidden.
-- Craig plays at http://localhost:4180 after `npm run build` (`omega-relay-dist`; 5173 is Docker). `assets/private/` (untracked, 4.5MB) is Craig's to delete; nothing reads it.
-- Work lean (`docs/prompts/11-token-efficiency.md`): gates via `npm run -s gate -- ...`, reviews by risk tier with packets, `Tokens:` lines. Craig's to run: `git gc --prune=now`, `npm run clean:artifacts -- --yes` after a dry run.
-- Standing gates: `npm run verify` (starts with `agents:check`), `npm run test:visual-sweep`, and after `npm run build`, `npm run perf:footprint`.
+- Branch `codex/05a-feel-hero-camera` (PR #58 to `main`; this week's commits are local). D-015: push and update the PR once the prompt 05 Exit Gate is green (part 12a closes it); never force-push.
+- The finish work order is `docs/prompts/12-finish-the-game.md` (2026-09-25, from a six-seat audit): 12a ship the branch, 12b seven mechanics, 12c mini-bosses, 12d seven warden stages, 12e Omega, 12f boss fights, 12g story, 12h audio, 12i release. Wave 1 is running as three lanes (cards `output/notes/lane-12a.md`, `lane-12b.md`, `lane-12f.md`).
+- Built and green this week: Heat Works (12 screens), combat (three-hit saber, reflect, per-frame hitbox, buster art), the custodian walker, mechanics art and gate signs, the respawn-loop fix, stage textures 27MB to 8MB (full smoke 56/56, sweep, footprint 22/22 on 265976f). Art for 12b, 12c and 12f is cut and loaded (cbdac1e, 8ca7df4).
+- STOP 6.5 (Craig plays Pyro Maw and the tutorial) is raised when wave 1 lands; part 12d's stage rebuilds wait on his answer.
+- Higgsfield: the MCP draws all art (`gpt_image_2`). Its audio models are barred for standalone music and SFX, so audio is procedural or CC0 (a download needs Craig's yes). The CLI (`higgsfield auth login`) needs Craig to approve the browser page within a couple of minutes.
+- Browser gates under load: lanes run smoke at once; rerun a timeout alone. Probes must kill their `vite preview` process group: a stale server on 4190 once made `perf:footprint` measure an old build.
+- Craig plays at http://localhost:4180 after `npm run build`. Standing gates: `npm run verify`, `npm run test:visual-sweep`, `npm run build` then `npm run perf:footprint`.
 
 ## Entry template (1.5KB at most)
 
@@ -65,3 +65,10 @@ The rolling handoff log for every agent (Claude, Codex, ChatGPT). Read **Now** a
   - Decisions: D-014, D-015, D-016 decided (Craig verbatim); D-017 raised at STOP 6.P. EVAL-P5-011 PASS; P5-006, P5-007 and P6-017..019 wait on the quiet-machine full smoke and sweep and Craig's play.
   - Open: full smoke and sweep; Rook and the eight wardens still the September sheets; lock gates still flat rectangles; the tutorial secret needs a progression change (tutorial has no pickup locations); crumble platforms do not exist; Higgsfield CLI login expired twice (MCP used); 5.6 profiles parked in `output/notes/05c-5.6-draft/`.
   - Tokens: main session large (long run, many captures read). Over budget: 5.5 pipeline worker 147K/75 calls (card 60), 6.P engine worker 225K/204 calls (card 70: a throwaway capture script), 6.P level worker 127K/53; seats 39K to 65K each (principal-engineer 65K over the 60K seat budget on a 1,000-line diff). About 40 Higgsfield generations.
+- 2026-09-24/25, finish plan (D-017): Pyro Maw, combat, mini-boss, fixes, finish audit, prompt 12, Claude Code (Opus 5.5 orchestrating; game-implementer lanes on opus; seats level-designer, game-director, art-director, narrative-designer, audio-director, release-engineer)
+  - Changed: Heat Works rebuilt (`src/content/stages/heatWorks.ts`); mechanics library 5 of 12 with art; combat wired (`src/combat/SwordHitRouter.ts`, reflect, combo); custodian walker (`src/enemy/custodianWalker.ts`); respawn loop fixed (`keepBodyUnscaled`); view-wide parallax and per-stage boss atlases; dist no longer ships `assets/**/source`; Higgsfield art for hero combos, VFX, mechanics v1 and v2, telegraphs, four mini-bosses; `docs/prompts/12-finish-the-game.md`.
+  - Gates on 265976f: `npm run -s gate -- agents:check test build` -> `0 errors`, `# pass 475`, PASS; full smoke `56 ran`, all pass (`output/smoke-runs/2026-09-25T01-12-28-556Z`); sweep complete (`output/sweep-runs/2026-09-25T01-18-47-293Z`); `footprint: 22/22 within budget` (`output/perf/footprint-latest.json`).
+  - Decisions: none raised; ledger P5-006, P5-007, P6-020 to P6-022 PASS; P12-001 to P12-004 added.
+  - Open: wave 1 lanes (12a, 12b, 12f) running; STOP 6.5 after them.
+  - Tokens: main session well over 1M across two contexts (the finish plan, reviews and art direction); six audit seats 47K to 81K each; lanes 140K to 360K each. Over budget for a reason: the finish plan is the change the rest of the game builds on.
+
