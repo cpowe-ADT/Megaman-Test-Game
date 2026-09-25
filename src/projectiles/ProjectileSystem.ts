@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { ProjectileRegistry } from './ProjectileRegistry'
 import { liftShotAboveFloor, resolveProjectileStall } from './projectileLifecycle'
 import type { ProjectileDefinition, ProjectilePoolKey, ProjectileSpawnRequest } from './types'
+import { bounceVelocity, classifyImpact, magnetPullVelocity, resolveImpactFollowUp, shotAngleDeg } from './weaponEffects'
 
 type ProjectileSystemOptions = {
   playerPoolSize?: number
@@ -11,10 +12,18 @@ type ProjectileSystemOptions = {
 type UpdateContext = {
   player?: Phaser.Physics.Arcade.Sprite
   enemyReturnTarget?: Phaser.GameObjects.GameObject & { x: number; y: number }
+  /** Enemy drops a MagcutDisc in flight pulls toward itself (prompt 07 phase 7.3 `magnet`). */
+  pickups?: Phaser.GameObjects.Group
 }
+
+/** Why `recycle` was called: the lifetime ran out (no impact effects) or anything else (hits, floors, walls). */
+export type ProjectileRecycleReason = 'expired' | 'impact'
 
 export class ProjectileSystem {
   private readonly groups: Record<ProjectilePoolKey, Phaser.Physics.Arcade.Group>
+  /** The last impact an on-hit tag acted on, and counts per follow-up (smoke 12 reads them). */
+  lastImpact: { projectileId: string; tag: string; impact: string; followUp: string; atMs: number } | null = null
+  readonly impactCounts: Record<string, number> = {}
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -127,6 +136,13 @@ export class ProjectileSystem {
     bullet.data?.set('baseScale', request.scale ?? definition.visual.scale)
     bullet.data?.set('stalledSince', null)
     bullet.data?.set('chargeLevel', request.chargeLevel ?? 0)
+    // The router marks target hits here before recycling; impact effects read it (weaponEffects.classifyImpact).
+    bullet.data?.set('hitTarget', null)
+    bullet.data?.set('hitFloorY', null)
+    // Aimed and fanned shots tilt their drawing along the flight line.
+    const baseAngle = definition.visual.flipXWithDirection && request.velocity ? shotAngleDeg({ x: velocityX, y: velocityY }, request.direction) : 0
+    bullet.data?.set('baseAngle', baseAngle)
+    bullet.setAngle(baseAngle)
 
     if (definition.behavior.kind === 'wave') {
       bullet.data?.set('waveAmplitude', definition.behavior.amplitude)
@@ -190,7 +206,7 @@ export class ProjectileSystem {
         const spawnedAt = Number(bullet.data?.get?.('spawnedAt') ?? now)
         const lifetimeMs = Number(bullet.data?.get?.('lifetimeMs') ?? definition.lifetimeMs)
         if (lifetimeMs > 0 && now - spawnedAt >= lifetimeMs) {
-          this.recycle(bullet)
+          this.recycle(bullet, 'expired')
           return false
         }
 
@@ -215,7 +231,7 @@ export class ProjectileSystem {
           bullet.data?.set('stalledSince', stall.stalledSince)
         }
         if (stall.shouldRecycle) {
-          this.recycle(bullet)
+          this.recycle(bullet, 'expired')
           return false
         }
 
@@ -250,7 +266,7 @@ export class ProjectileSystem {
             const dy = returnTarget.y + homeOffsetY - bullet.y
             const distance = Math.hypot(dx, dy)
             if (distance <= 14) {
-              this.recycle(bullet)
+              this.recycle(bullet, 'expired')
               return false
             }
             const scale = returnSpeed / Math.max(1, distance)
@@ -271,11 +287,13 @@ export class ProjectileSystem {
           const pulse = 1 + Math.sin(elapsed * 0.026) * 0.06
           bullet.setScale(baseScale * pulse)
           bullet.setAngle(0)
-        } else if (projectileId === 'player_weapon_MagcutDisc' || projectileId === 'player_weapon_ThunderSpike') {
-          bullet.setAngle((now * 0.42 * Math.sign(body.velocity.x || 1)) % 360)
         } else {
+          // weapons_v1 art is drawn travelling right and animates itself: tilt along the aim, never spin.
           bullet.setScale(baseScale)
-          bullet.setAngle(0)
+          bullet.setAngle(Number(bullet.data?.get?.('baseAngle') ?? 0))
+        }
+        if (context.pickups && bullet.data?.get?.('onHitTag') === 'magnet') {
+          this.pullPickups(bullet, context.pickups)
         }
 
         return false
@@ -283,7 +301,7 @@ export class ProjectileSystem {
     })
   }
 
-  recycle(target: Phaser.GameObjects.GameObject | null | undefined): boolean {
+  recycle(target: Phaser.GameObjects.GameObject | null | undefined, reason: ProjectileRecycleReason = 'impact'): boolean {
     const bullet = target as Phaser.Physics.Arcade.Sprite | null
     if (!bullet) {
       return false
@@ -295,6 +313,10 @@ export class ProjectileSystem {
     }
 
     const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+    if (owner === 'player' && reason === 'impact' && bullet.active && this.applyImpact(bullet, body)) {
+      // A bounce: the shot flies on.
+      return true
+    }
     if (body) {
       body.onWorldBounds = false
     }
@@ -328,8 +350,79 @@ export class ProjectileSystem {
     return true
   }
 
+  /**
+   * On-hit tags that act where a player shot ends (prompt 07 phase 7.3): a flame leaves a burn puddle, a knuckle
+   * that lands quakes, a dart with a bounce left bounces. Returns true when the shot keeps flying (a bounce).
+   */
+  private applyImpact(bullet: Phaser.Physics.Arcade.Sprite, body: Phaser.Physics.Arcade.Body | undefined): boolean {
+    const tag = bullet.data?.get?.('onHitTag') as string | undefined
+    if (!tag || tag === 'none') return false
+    const contact = body ? { up: body.touching.up || body.blocked.up, down: body.touching.down || body.blocked.down, left: body.touching.left || body.blocked.left, right: body.touching.right || body.blocked.right } : undefined
+    const impact = classifyImpact(bullet.data?.get?.('hitTarget'), contact)
+    const bouncesLeft = Number(bullet.data?.get?.('bouncesLeft') ?? 0)
+    const followUp = resolveImpactFollowUp(tag, impact, bouncesLeft)
+    if (!followUp) return false
+    this.impactCounts[followUp.kind] = (this.impactCounts[followUp.kind] ?? 0) + 1
+    this.lastImpact = { projectileId: String(bullet.data?.get?.('projectileId') ?? ''), tag, impact, followUp: followUp.kind, atMs: this.scene.time?.now ?? 0 }
+    if (followUp.kind === 'bounce') {
+      if (!body) return false
+      const next = bounceVelocity({ x: body.velocity.x, y: body.velocity.y }, impact)
+      bullet.data?.set('bouncesLeft', bouncesLeft - 1)
+      bullet.data?.set('baseSpeedX', next.x)
+      bullet.data?.set('baseSpeedY', next.y)
+      body.setVelocity(next.x, next.y)
+      const direction = next.x < 0 ? -1 : 1
+      bullet.setFlipX(direction < 0)
+      bullet.data?.set('baseAngle', shotAngleDeg(next, direction))
+      return true
+    }
+    const hitFloorY = Number(bullet.data?.get?.('hitFloorY'))
+    const floorY = impact === 'floor' && body ? body.bottom : Number.isFinite(hitFloorY) && hitFloorY > 0 ? hitFloorY : undefined
+    this.spawn({
+      id: followUp.projectileId,
+      x: bullet.x,
+      y: floorY ?? bullet.y,
+      direction: bullet.flipX ? -1 : 1,
+      clearFloorY: floorY,
+      metadata: {
+        weaponId: bullet.data?.get?.('weaponId'),
+        weaponElement: bullet.data?.get?.('weaponElement'),
+        chargeLevel: 0,
+        source: 'player',
+        onHitTag: 'none',
+        followUpOf: bullet.data?.get?.('projectileId')
+      }
+    })
+    if (followUp.kind === 'quake') this.drawQuake(bullet.x, floorY ?? bullet.y)
+    return false
+  }
+
+  private drawQuake(x: number, floorY: number): void {
+    const scene = this.scene as Phaser.Scene & { add?: Phaser.GameObjects.GameObjectFactory; tweens?: Phaser.Tweens.TweenManager }
+    scene.cameras?.main?.shake?.(90, 0.004)
+    const ring = scene.add?.ellipse?.(x, floorY - 3, 26, 7, 0xd29f68, 0.75)
+    if (!ring) return
+    ring.setDepth(2)
+    scene.tweens?.add({ targets: ring, scaleX: 4.6, scaleY: 1.6, alpha: 0, duration: 220, onComplete: () => ring.destroy() })
+  }
+
+  /** MagcutDisc `magnet`: drops within reach drift to the disc (and come home with it). */
+  private pullPickups(disc: Phaser.Physics.Arcade.Sprite, pickups: Phaser.GameObjects.Group): void {
+    pickups.children?.iterate((child) => {
+      const drop = child as Phaser.Physics.Arcade.Sprite | null
+      const dropBody = drop?.body as Phaser.Physics.Arcade.Body | undefined
+      if (!drop?.active || !dropBody?.enable) return true
+      const pull = magnetPullVelocity(drop, disc)
+      if (pull) {
+        dropBody.setVelocity(pull.x, pull.y)
+        drop.data?.set?.('pulledBy', 'MagcutDisc')
+      }
+      return true
+    })
+  }
+
   private recycleInvalidProjectile(bullet: Phaser.Physics.Arcade.Sprite): void {
-    if (this.recycle(bullet)) {
+    if (this.recycle(bullet, 'expired')) {
       return
     }
     bullet.disableBody(true, true)

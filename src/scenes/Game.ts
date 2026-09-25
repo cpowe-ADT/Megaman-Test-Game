@@ -987,7 +987,7 @@ export class Game extends Phaser.Scene {
       enemyBullets: this.bossBullets,
       getPlayer: () => this.player,
       getNow: () => this.time.now,
-      getFacing: () => this.facing,
+      getFacing: () => this.facing, getEnemies: () => this.enemies?.getChildren() as Phaser.Physics.Arcade.Sprite[],
       damageBoss: (damage, meta) => { this.cameraDirector.onContactHit('pellet'); this.applyDamageToBoss(damage, meta) },
       damagePlayer: (damage, meta) =>
         this.requestPlayerDamage({
@@ -998,13 +998,13 @@ export class Game extends Phaser.Scene {
           direction: meta.direction,
           element: meta.element
         }),
-      damageEnemy: (enemy, damage) => {
+      damageEnemy: (enemy, damage, extras) => {
         this.cameraDirector.onContactHit('pellet')
         const handledByFramework = this.enemySpawner?.applyDamageToSprite(enemy, {
           amount: damage,
           type: 'bullet',
           knockback: new Phaser.Math.Vector2(this.facing * 120, -40),
-          sourceId: 'player_bullet'
+          sourceId: 'player_bullet', ...extras
         })
         if (handledByFramework) {
           return {
@@ -1099,7 +1099,7 @@ export class Game extends Phaser.Scene {
     this.swordHitRouter = new SwordHitRouter({
       scene: this, player: () => this.player, facing: () => this.facing, enemies: () => this.enemies, enemyShots: () => this.bossBullets,
       boss: () => (this.victoryTriggered ? null : ((this.bossTarget ?? this.bossBody) as any) ?? null), bossHp: () => this.bossHp?.current ?? null,
-      projectiles: () => this.projectileSystem, damageBoss: (amount) => this.applyDamageToBoss(amount), flashEnemy: (enemy) => this.flashEnemy(enemy),
+      projectiles: () => this.projectileSystem, damageBoss: (amount) => this.applyDamageToBoss(amount, { weaponId: 'Buster' }), flashEnemy: (enemy) => this.flashEnemy(enemy),
       damageEnemy: (enemy, amount, knockback) => { if (!this.enemySpawner?.applyDamageToSprite(enemy, { amount, type: 'melee', knockback, sourceId: 'player_sword' })) this.applyDamageToTarget(enemy, amount) },
       onSwing: () => this.weaponRuntime.rechargeSelectedFromSaber(), onContactHit: (kind, frames) => this.cameraDirector.onContactHit(kind, frames)
     })
@@ -1247,11 +1247,11 @@ export class Game extends Phaser.Scene {
       throw new Error('[Game] NewPlayerRuntime is required in v2 runtime')
     }
     this.handleDropThroughInput(now)
-    this.weaponRuntime.handleCycling()
+    this.weaponRuntime.update(now)
     this.newPlayerRuntime.update(now, delta)
     this.weaponRuntime.updateEnergyRecharge(delta)
     this.projectileSystem?.update(now, delta, {
-      player: this.player,
+      player: this.player, pickups: this.drops,
       enemyReturnTarget: this.bossController
     })
     this.updateRespawnCheckpoint()
@@ -1319,7 +1319,7 @@ export class Game extends Phaser.Scene {
       '??'
     this.hud.setNames(IDENTITY.HERO_CALLSIGN, String(bossLabelRaw))
     this.hud.setWeaponName(getWeaponDisplayName(this.getCurrentWeaponId()))
-    this.hud.setWeaponColor(this.getCurrentWeaponConfig().tint)
+    this.hud.setWeaponColor(this.getCurrentWeaponConfig().tint); this.hud.setWeaponIcon(this.getCurrentWeaponId())
     this.hud.setLives(this.playerLives)
     this.hud.updatePlayerHp(this.playerHp, this.playerMaxHp)
     this.syncWeaponHud()

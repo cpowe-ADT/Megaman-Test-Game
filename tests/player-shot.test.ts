@@ -31,7 +31,7 @@ test('resolvePlayerShot builds canonical Buster pellet and max-charge commands',
   assert.equal(charged.spawnRequest.metadata?.chargeLevel, 4)
 })
 
-test('every special weapon resolves without charge and retains its configured energy cost', () => {
+test('every special weapon but a charge weapon (ThunderSpike, prompt 07 phase 7.3) resolves without charge and retains its configured energy cost', () => {
   for (const weaponId of SPECIAL_WEAPON_ORDER) {
     const weapon = getWeaponConfig(weaponId)
     const shot = resolvePlayerShot({
@@ -42,7 +42,7 @@ test('every special weapon resolves without charge and retains its configured en
     })
 
     assert.equal(shot.projectileId, `player_weapon_${weaponId}`)
-    assert.equal(shot.chargeLevel, 0)
+    assert.equal(shot.chargeLevel, weapon.allowCharge ? 4 : 0)
     assert.equal(shot.energyCost, weapon.energyCost)
     assert.equal(shot.spawnRequest.metadata?.weaponElement, weapon.element)
   }

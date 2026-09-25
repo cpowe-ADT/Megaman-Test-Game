@@ -13,6 +13,7 @@ import type { SceneInputActions } from '../../input/InputActions'
 import { resolveUpgradeModifiers } from '../../progression/upgrades'
 import { firePlayerShot } from '../../projectiles/firePlayerShot'
 import type { ProjectileSystem } from '../../projectiles'
+import { streamShouldFire } from '../../projectiles/weaponEffects'
 import type { Save } from '../../systems/Save'
 import type { HUD } from '../../ui/HUD'
 import { passiveRechargeTicks, wrapWeaponIndex } from './combatRules'
@@ -29,6 +30,8 @@ export interface WeaponRuntimeHost {
   readonly time: Phaser.Time.Clock
   readonly actions: Pick<SceneInputActions, 'snapshot'>
   player?: Phaser.Physics.Arcade.Sprite
+  /** The hero's facing; FlameSerpent's held stream fires this way. */
+  facing?: 1 | -1
   playerBullets: Phaser.Physics.Arcade.Group
   projectileSystem?: Pick<ProjectileSystem, 'spawn'>
   progressionSave: ReturnType<typeof Save.load>
@@ -39,7 +42,7 @@ export interface WeaponRuntimeHost {
   passiveWeaponRechargeAccumulatorMs: number
   lastSaberWeaponRechargeAtMs: number
   weaponLabel?: Phaser.GameObjects.Text
-  hud?: Pick<HUD, 'setWeaponName' | 'setWeaponColor' | 'updateWeapon'>
+  hud?: Pick<HUD, 'setWeaponName' | 'setWeaponColor' | 'updateWeapon'> & Partial<Pick<HUD, 'setWeaponIcon'>>
   devRegister<T extends Phaser.GameObjects.GameObject>(ref: T | undefined, kind: string): T | undefined
   showStageToast(message: string, durationMs?: number): void
 }
@@ -50,7 +53,34 @@ export interface WeaponRuntimeHost {
  * `currentWeaponIndex`, `weaponEnergyById`) because saves, the pause menu and smoke read it there.
  */
 export class WeaponRuntime {
+  /** FlameSerpent's held stream: frames held since the first flame, and whether this hold began with a real shot. */
+  private streamHeldFrames = 0
+  private streamAnchored = false
+
   constructor(private readonly host: WeaponRuntimeHost) {}
+
+  /** Once per frame: weapon cycling, then the held behaviours (prompt 07 phase 7.3). */
+  update(_now?: number): void {
+    this.handleCycling()
+    this.updateStream()
+  }
+
+  /**
+   * FlameSerpent (`hold_stream`): the first flame is the player's own shot; while shoot stays held, more follow on
+   * the frame cadence in `WEAPON_TUNING.flameStream` at the sustain cost. Releasing, switching or running dry ends it.
+   */
+  private updateStream(): void {
+    const weapon = this.getCurrentWeaponConfig()
+    const held = weapon.behavior === 'hold_stream' && Boolean(this.host.actions.snapshot().shoot?.held)
+    if (!held || !this.streamAnchored) {
+      if (!held) this.streamAnchored = false
+      return
+    }
+    this.streamHeldFrames += 1
+    if (!streamShouldFire({ held, anchored: true, heldFrames: this.streamHeldFrames })) return
+    const fired = this.fire({ type: 'pellet', chargeLevel: 0, facing: this.host.facing ?? 1 }, { sustain: true })
+    if (!fired) this.streamAnchored = false
+  }
 
   handleCycling(): void {
     const snapshot = this.host.actions.snapshot()
@@ -109,27 +139,36 @@ export class WeaponRuntime {
     }
   }
 
-  fire(config: PlayerShotRequest): Record<string, unknown> | false {
+  fire(config: PlayerShotRequest, options: { sustain?: boolean } = {}): Record<string, unknown> | false {
     const host = this.host
     const player = host.player
     if (!player?.active) {
       return false
     }
     const currentWeapon = this.getCurrentWeaponConfig()
+    const snapshot = currentWeapon.behavior === 'aim' ? host.actions.snapshot() : undefined
+    const aim: -1 | 0 | 1 = snapshot?.aimUp?.held ? -1 : snapshot?.aimDown?.held ? 1 : 0
     const fired = firePlayerShot({
       request: config,
       equippedWeaponId: currentWeapon.id,
       availableEnergy: host.weaponEnergyById[currentWeapon.id] ?? currentWeapon.maxEnergy,
       x: player.x + (config.facing === -1 ? -8 : 8),
       y: player.y - 6,
-      activeBusterCount: host.playerBullets.countActive(true),
+      // The three-on-screen rule counts Buster shots only (weapon shots and their puddles do not).
+      activeBusterCount: countActiveBusterShots(host.playerBullets),
       modifiers: resolveUpgradeModifiers(host.progressionSave),
+      aim,
+      sustain: options.sustain,
       spawn: (request) => host.projectileSystem?.spawn(request) ?? null
     })
     if (!fired) return false
     const { projectile: bullet, shot } = fired
     host.weaponEnergyById[currentWeapon.id] = fired.remainingEnergy
-    host.devRegister(bullet, 'bullet')
+    fired.projectiles.forEach((projectile) => host.devRegister(projectile, 'bullet'))
+    if (shot.behavior === 'hold_stream' && !config.weaponId && !options.sustain) {
+      this.streamHeldFrames = 0
+      this.streamAnchored = true
+    }
     this.syncHud()
     const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
     return {
@@ -144,7 +183,22 @@ export class WeaponRuntime {
       pierce: Number(bullet.data?.get?.('pierceRemaining') ?? shot.weapon.projectile.pierce),
       impactFxKey: shot.impactFxKey,
       energyCost: shot.energyCost,
-      energyRemaining: host.weaponEnergyById[currentWeapon.id]
+      energyRemaining: host.weaponEnergyById[currentWeapon.id],
+      // Weapon identity (prompt 07 phase 7.3; smoke 12 reads these).
+      behavior: shot.behavior,
+      onHitTag: shot.onHitTag,
+      projectileCount: fired.projectiles.length,
+      sustain: Boolean(options.sustain),
+      ...(shot.behavior === 'aim' ? { aim } : {}),
+      ...(bullet.data?.get?.('chainJumps') != null ? { chainJumps: Number(bullet.data.get('chainJumps')) } : {}),
+      textureKey: bullet.texture?.key ?? null,
+      frame: String(bullet.frame?.name ?? ''),
+      flipX: Boolean(bullet.flipX),
+      angle: Math.round(Number(bullet.angle ?? 0)),
+      velocityY: Math.round(body?.velocity.y ?? 0),
+      bodyWidth: Math.round(body?.width ?? 0),
+      bodyHeight: Math.round(body?.height ?? 0),
+      displayWidth: Math.round(bullet.displayWidth ?? 0)
     }
   }
 
@@ -159,6 +213,7 @@ export class WeaponRuntime {
     this.host.weaponLabel?.setText(`WEAPON • ${getWeaponDisplayName(weapon).toUpperCase()}`)
     this.host.hud?.setWeaponName(getWeaponDisplayName(weapon))
     this.host.hud?.setWeaponColor(getWeaponConfig(weapon).tint)
+    this.host.hud?.setWeaponIcon?.(weapon)
     this.syncHud()
   }
 
@@ -176,4 +231,14 @@ export class WeaponRuntime {
     this.host.weaponEnergy = { current, max: currentWeapon.maxEnergy }
     this.host.hud?.updateWeapon(current, currentWeapon.maxEnergy)
   }
+}
+
+function countActiveBusterShots(group: Phaser.Physics.Arcade.Group): number {
+  let count = 0
+  group.children?.iterate((child) => {
+    const shot = child as Phaser.Physics.Arcade.Sprite | null
+    if (shot?.active && shot.data?.get?.('weaponId') === 'Buster') count += 1
+    return true
+  })
+  return count
 }

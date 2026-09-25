@@ -5,7 +5,7 @@ import { HERO_COMBAT_ATLASES } from '../../combat/heroCombatVisuals'
 import { getCampaignStage } from '../../content/campaign'
 import { MECHANICS_ATLAS, MECHANICS_V2_ATLAS } from '../../mechanics/mechanicsVisuals'
 import { TELEGRAPHS_ATLAS } from '../../boss/telegraphArt'
-import { WEAPONS_ATLAS } from '../../projectiles/weaponArt'
+import { HUD_ICONS_ATLAS, WEAPONS_ATLAS } from '../../projectiles/weaponArt'
 import { PICKUPS_ATLAS } from '../../ui/pickups/pickupArt'
 import { STAGE_BACKGROUND_ASSETS, type StageBackgroundAsset } from '../../content/stageBackgroundCatalog'
 import { queueStageTileAtlas } from './stageTileLoading'
@@ -84,7 +84,7 @@ export function queueStageBackgrounds(scene: Phaser.Scene, stageId: string): voi
  * two in step. Rule: loaded on the first Game.preload and kept resident across stages, never evicted,
  * because every stage draws them (every pit has slag, every boss telegraphs, every weapon is one pickup away) and together they are about 1.1MB decoded.
  */
-export const GAME_SCENE_ATLASES = [...HERO_COMBAT_ATLASES, MECHANICS_ATLAS, MECHANICS_V2_ATLAS, TELEGRAPHS_ATLAS, WEAPONS_ATLAS, PICKUPS_ATLAS] as const
+export const GAME_SCENE_ATLASES = [...HERO_COMBAT_ATLASES, MECHANICS_ATLAS, MECHANICS_V2_ATLAS, TELEGRAPHS_ATLAS, WEAPONS_ATLAS, PICKUPS_ATLAS, HUD_ICONS_ATLAS] as const
 
 export function queueGameSceneAtlases(scene: Phaser.Scene): void {
   GAME_SCENE_ATLASES.forEach((atlas) => {

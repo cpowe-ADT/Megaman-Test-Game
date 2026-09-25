@@ -676,6 +676,23 @@
       },
       "loadScope": "game",
       "notes": "Higgsfield gpt_image_2 pickups (health_small, health_large, energy_small, energy_large, extra_life, heart_tank, sub_tank, capsule), two frames each (the second glows); cut by scripts/sprites/cut_vfx_sheet.py (pickups_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by src/ui/pickups (prompt 12 part 12h)."
+    },
+    {
+      "id": "ui-hud_icons_v1",
+      "atlasKey": "atlas_hud_icons_v1",
+      "frame": {
+        "width": 18,
+        "height": 18
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.png",
+        "runtimeData": "/assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json",
+        "localImagePath": "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.png",
+        "localDataPath": "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 HUD icons (buster, the nine warden weapons, saber, shield, heart, sub_tank, capsule, key_card; 16px art in 18px cells); cut by scripts/sprites/cut_vfx_sheet.py (hud_icons_v1.json); provenance assets/ui/source/ui_v1.prompts.md. Game-scene resident: the HUD weapon icon (prompt 12 part 12f wave 3)."
     }
   ]
 }

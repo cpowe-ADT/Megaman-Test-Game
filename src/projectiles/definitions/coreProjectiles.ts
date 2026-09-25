@@ -28,7 +28,9 @@ function createReflectedShotDefinition(): ProjectileDefinition {
     hitPolicy: { hitsEnvironment: true, collidesWithWorldBounds: true, pierce: 0 }
   }
 }
-import { getWeaponConfig } from '../../content/weapons'
+import { getWeaponConfig, WEAPON_TUNING, type WeaponRuntimeConfig } from '../../content/weapons'
+import { WEAPON_ART_FRAME_SIZE, WEAPONS_ATLAS, weaponArtFrame } from '../weaponArt'
+import { BURN_PUDDLE_PROJECTILE_ID, QUAKE_WAVE_PROJECTILE_ID } from '../weaponEffects'
 import { PLAYER_GAMEPLAY_CONFIG } from '../../player/config'
 import type { ProjectileDefinition } from '../types'
 
@@ -170,6 +172,52 @@ function busterHitbox(level: ChargeLevel, sensorHeightPx: number): { width: numb
   return { width: art.width, height: Math.ceil(sensorHeightPx / art.scale) }
 }
 
+/** A warden weapon's `weapons_v1` group: four frames cycled in flight, flipped with facing (prompt 07 phase 7.3). */
+function weaponArtVisual(group: string, scale: number, depth: number, alpha?: number): ProjectileDefinition['visual'] {
+  const frames = [0, 1, 2, 3].map((index) => weaponArtFrame(group, index))
+  return { textureKey: WEAPONS_ATLAS.key, frame: frames[0], animationFrames: frames, animationFrameMs: 70, depth, scale, flipXWithDirection: true, ...(alpha != null ? { alpha } : {}) }
+}
+
+/**
+ * Bodies sized to the art (source px; Arcade scales them with the sprite). Level shots keep the Buster's tall
+ * combat sensor (46 game px) so a muzzle-height shot still meets short ground enemies; lobs, the disc and the
+ * bouncing darts are exactly the drawing, so they land and bounce where they are drawn.
+ */
+export function weaponArtHitbox(weapon: Pick<WeaponRuntimeConfig, 'artGroup' | 'scale' | 'behavior' | 'projectile'>): { width: number; height: number } {
+  const art = WEAPON_ART_FRAME_SIZE[weapon.artGroup ?? ''] ?? { width: 16, height: 16 }
+  const levelShot = (weapon.projectile.style === 'standard' || weapon.projectile.style === 'wave') && weapon.behavior !== 'fan'
+  return { width: art.width, height: levelShot ? Math.max(art.height, Math.ceil(46 / weapon.scale)) : art.height }
+}
+
+/** FlameSerpent's burn puddle and QuakeKnuckle's shockwave: stationary, short-lived, they hit what walks in. */
+function createFollowUpDefinitions(): ProjectileDefinition[] {
+  const burn = WEAPON_TUNING.burnPuddle
+  const quake = WEAPON_TUNING.quake
+  const flame = WEAPON_ART_FRAME_SIZE.flame_serpent
+  const still = { speed: 0, maxVelocityX: 0, maxVelocityY: 0, owner: 'player', pool: 'player', behavior: { kind: 'standard' } } as const
+  return [
+    {
+      ...still,
+      id: BURN_PUDDLE_PROJECTILE_ID,
+      damage: burn.damage,
+      lifetimeMs: burn.lifetimeMs,
+      visual: { ...weaponArtVisual('flame_serpent', burn.scale, 2, 0.9), animationFrameMs: 90 },
+      hitbox: { width: flame.width, height: flame.height },
+      hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: burn.pierce }
+    },
+    {
+      ...still,
+      id: QUAKE_WAVE_PROJECTILE_ID,
+      damage: quake.damage,
+      lifetimeMs: quake.lifetimeMs,
+      // Drawn by ProjectileSystem as a dust ring and a camera shake; the body is the floor strip it hits.
+      visual: { ...weaponArtVisual('quake_knuckle', 1, 2, 0), animationFrames: undefined, flipXWithDirection: false },
+      hitbox: { width: quake.widthPx, height: quake.heightPx },
+      hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: quake.pierce }
+    }
+  ]
+}
+
 function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
   const weapon = getWeaponConfig(weaponId)
   const style = weapon.projectile.style
@@ -183,20 +231,10 @@ function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
     lifetimeMs: weapon.projectile.lifetimeMs,
     maxVelocityX: 640,
     maxVelocityY: 640,
-    visual:
-      weapon.id === 'Buster'
-        ? busterVisual(0, 2)
-        : {
-            textureKey: PROJECTILES_ATLAS_KEY,
-            frame: resolvePlayerWeaponFrame(weapon.id),
-            depth: 2,
-            scale: weapon.scale,
-            tint: weapon.tint,
-            flipXWithDirection: true
-          },
-    // Enemy movement colliders hug their feet. Keep a generous, centered combat
-    // sensor so a muzzle-height pellet cannot pass over short ground enemies.
-    hitbox: weapon.id === 'Buster' ? busterHitbox(0, BUSTER_SENSOR_HEIGHT[0]) : { width: 16, height: 46 },
+    visual: weapon.id === 'Buster' ? busterVisual(0, 2) : weapon.artGroup ? weaponArtVisual(weapon.artGroup, weapon.scale, 2) : {
+      textureKey: PROJECTILES_ATLAS_KEY, frame: resolvePlayerWeaponFrame(weapon.id), depth: 2, scale: weapon.scale, tint: weapon.tint, flipXWithDirection: true
+    },
+    hitbox: weapon.id === 'Buster' ? busterHitbox(0, BUSTER_SENSOR_HEIGHT[0]) : weaponArtHitbox(weapon),
     behavior:
       style === 'wave'
         ? {
@@ -279,6 +317,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     createChargeDefinition(3),
     createChargeDefinition(4),
     createReflectedShotDefinition(),
+    ...createFollowUpDefinitions(),
     createEnemyDefinition({
       id: 'enemy_basic_shot',
       reflectable: true,

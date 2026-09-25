@@ -5,6 +5,7 @@ import { getHudLayout } from './hudLayout'
 export { formatDistrictLabel } from './hudLayout'
 import { BakedGraphics, type BakeBounds } from './BakedGraphics'
 import { getRenderScale } from '../config/hdRender'
+import { HUD_ICONS_ATLAS, weaponHudIconFrame } from '../projectiles/weaponArt'
 
 export class HUD {
   private scene: Phaser.Scene
@@ -18,6 +19,8 @@ export class HUD {
   private gBossChrome: BakedGraphics
   private tPlayer: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tWeapon: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
+  /** The equipped weapon's `hud_icons_v1` icon at the right end of the WEAPON row (prompt 07 phase 7.3). */
+  private weaponIcon?: Phaser.GameObjects.Image
   private tBoss: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tLives: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private playerSnapshot = { current: 0, max: 1 }
@@ -113,6 +116,11 @@ export class HUD {
 
     this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', 9)
     this.root.add(this.tWeapon)
+    if (scene.textures.exists(HUD_ICONS_ATLAS.key)) {
+      const icon = hudWeaponIconPlacement(layout)
+      this.weaponIcon = scene.add.image(icon.x, icon.y, HUD_ICONS_ATLAS.key, weaponHudIconFrame('Buster')).setDisplaySize(icon.size, icon.size)
+      this.root.add(this.weaponIcon)
+    }
 
     this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', 9, 1, 0)
     this.tBoss.setVisible(this.bossBarVisible)
@@ -134,6 +142,24 @@ export class HUD {
   setWeaponName(weaponName: string): void {
     this.weaponName = `WEAPON • ${this.truncateLabel(weaponName.toUpperCase(), 16)}`
     this.tWeapon.setText(this.weaponName)
+  }
+
+  /** Shows the weapon's HUD icon (the Buster's for an unknown id). */
+  setWeaponIcon(weaponId: string): void {
+    const frame = weaponHudIconFrame(weaponId)
+    if (this.weaponIcon && this.scene.textures.get(HUD_ICONS_ATLAS.key).has(frame)) this.weaponIcon.setFrame(frame)
+  }
+
+  /** Where the weapon icon is and which frame it draws (smoke 12 reads it). */
+  getWeaponIconState(): { frame: string; x: number; y: number; size: number; labelRight: number } | null {
+    if (!this.weaponIcon) return null
+    return {
+      frame: String(this.weaponIcon.frame?.name ?? ''),
+      x: this.weaponIcon.x,
+      y: this.weaponIcon.y,
+      size: Math.round(this.weaponIcon.displayWidth),
+      labelRight: Math.round(this.tWeapon.x + this.tWeapon.width)
+    }
   }
 
   setWeaponColor(color?: number): void {
@@ -248,6 +274,8 @@ export class HUD {
     this.tLives.setPosition(layout.livesLabel.x, layout.livesLabel.y)
     this.tPlayer.setPosition(layout.playerLabel.x, layout.playerLabel.y)
     this.tWeapon.setPosition(layout.weaponLabel.x, layout.weaponLabel.y)
+    const icon = hudWeaponIconPlacement(layout)
+    this.weaponIcon?.setPosition(icon.x, icon.y)
     this.tPlayer.setText(this.playerName)
     this.tWeapon.setText(this.weaponName)
     this.tBoss.setText(this.bossName)
@@ -303,4 +331,10 @@ export class HUD {
     }
     this.gBossChrome.bake(bounds)
   }
+}
+
+/** The weapon icon: 12 game px (an 18px cell), right-aligned to the weapon bar, between the WEAPON label row and the bar. */
+export function hudWeaponIconPlacement(layout: Pick<ReturnType<typeof getHudLayout>, 'weaponBar' | 'weaponLabel'>): { x: number; y: number; size: number } {
+  const size = 12
+  return { x: layout.weaponBar.x + layout.weaponBar.width - size / 2, y: layout.weaponBar.y - size / 2 - 0.5, size }
 }
