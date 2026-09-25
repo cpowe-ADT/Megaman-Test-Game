@@ -1,0 +1,340 @@
+{
+  "frames": {
+    "pickups_v1/health_small/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 26
+      }
+    },
+    "pickups_v1/health_small/001": {
+      "frame": {
+        "x": 24,
+        "y": 0,
+        "w": 24,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 26
+      }
+    },
+    "pickups_v1/health_large/000": {
+      "frame": {
+        "x": 48,
+        "y": 0,
+        "w": 30,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 38
+      }
+    },
+    "pickups_v1/health_large/001": {
+      "frame": {
+        "x": 78,
+        "y": 0,
+        "w": 30,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 38
+      }
+    },
+    "pickups_v1/energy_small/000": {
+      "frame": {
+        "x": 0,
+        "y": 38,
+        "w": 24,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 26
+      }
+    },
+    "pickups_v1/energy_small/001": {
+      "frame": {
+        "x": 24,
+        "y": 38,
+        "w": 24,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 24,
+        "h": 26
+      }
+    },
+    "pickups_v1/energy_large/000": {
+      "frame": {
+        "x": 48,
+        "y": 38,
+        "w": 30,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 38
+      }
+    },
+    "pickups_v1/energy_large/001": {
+      "frame": {
+        "x": 78,
+        "y": 38,
+        "w": 30,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 38
+      }
+    },
+    "pickups_v1/extra_life/000": {
+      "frame": {
+        "x": 0,
+        "y": 76,
+        "w": 34,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 30
+      }
+    },
+    "pickups_v1/extra_life/001": {
+      "frame": {
+        "x": 34,
+        "y": 76,
+        "w": 34,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 30
+      }
+    },
+    "pickups_v1/heart_tank/000": {
+      "frame": {
+        "x": 68,
+        "y": 76,
+        "w": 38,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 34
+      }
+    },
+    "pickups_v1/heart_tank/001": {
+      "frame": {
+        "x": 0,
+        "y": 110,
+        "w": 38,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 34
+      }
+    },
+    "pickups_v1/sub_tank/000": {
+      "frame": {
+        "x": 38,
+        "y": 110,
+        "w": 34,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 30
+      }
+    },
+    "pickups_v1/sub_tank/001": {
+      "frame": {
+        "x": 72,
+        "y": 110,
+        "w": 34,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 30
+      }
+    },
+    "pickups_v1/capsule/000": {
+      "frame": {
+        "x": 0,
+        "y": 144,
+        "w": 32,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 34
+      }
+    },
+    "pickups_v1/capsule/001": {
+      "frame": {
+        "x": 32,
+        "y": 144,
+        "w": 32,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 34
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "pickups_v1.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 128,
+      "h": 178
+    },
+    "scale": "1",
+    "source": [
+      "assets/ui/source/pickups_v1_a.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "pickups_v1.json"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "_note": "Pickups v1 (2026-09-25, prompt 12; PickupTextures drew them in code): Higgsfield gpt_image_2 sheet assets/ui/source/pickups_v1_a.png (ui_v1.prompts.md). Two frames each (the second glows with a sparkle); one scale keeps relative sizes.",
+  "key": "pickups_v1",
+  "outDir": "assets/sprites/pickups/pickups_v1",
+  "atlasWidth": 128,
+  "groups": [
+    {
+      "name": "health_small",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        0,
+        8
+      ],
+      "scale": 0.16
+    },
+    {
+      "name": "health_large",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        1,
+        9
+      ],
+      "scale": 0.16
+    },
+    {
+      "name": "energy_small",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        2,
+        10
+      ],
+      "scale": 0.16
+    },
+    {
+      "name": "energy_large",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        3,
+        11
+      ],
+      "scale": 0.16
+    },
+    {
+      "name": "extra_life",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        4,
+        12
+      ],
+      "scale": 0.16
+    },
+    {
+      "name": "heart_tank",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        5,
+        13
+      ],
+      "scale": 0.16
+    },
+    {
+      "name": "sub_tank",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        6,
+        14
+      ],
+      "scale": 0.16
+    },
+    {
+      "name": "capsule",
+      "sheet": "assets/ui/source/pickups_v1_a.png",
+      "cells": [
+        7,
+        15
+      ],
+      "scale": 0.16
+    }
+  ]
+}

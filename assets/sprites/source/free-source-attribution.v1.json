@@ -640,6 +640,32 @@
         "assets/sprites/projectiles/weapons_v1/weapons_v1.atlas.json"
       ],
       "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with weapons_v1.json; wired by prompt 12 part 12f"
+    },
+    {
+      "id": "pickups-v1-hf",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original pickups (energy capsules, extra life, heart tank, sub tank, upgrade capsule), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [
+        "assets/sprites/pickups/pickups_v1/pickups_v1.png",
+        "assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json"
+      ],
+      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with pickups_v1.json; not wired yet"
+    },
+    {
+      "id": "hud-icons-v1-hf",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original HUD icons (buster, warden weapons, saber, shield, heart, sub tank, capsule, key card), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [
+        "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.png",
+        "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json"
+      ],
+      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with hud_icons_v1.json; not wired yet"
     }
   ]
 }
