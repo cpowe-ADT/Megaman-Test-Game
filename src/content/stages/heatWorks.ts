@@ -5,7 +5,7 @@ import type { RisingLiquidDefinition } from '../../mechanics/risingLiquid'
 import type { CrumbleGroupDefinition } from '../../mechanics/crumbleGroup'
 import type { BreakableWallDefinition } from '../../mechanics/breakableWall'
 import type { FloorGap } from '../../stage/stageGeometry'
-import type { StagePlatformDefinition, LocationAnchors } from '../campaign'
+import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
 
 /**
  * Heat Works (`pyro_maw`), the pilot stage (EVAL-P6-009; brief in `docs/design/stage-briefs.md`, segment
@@ -217,3 +217,22 @@ export const HEAT_WORKS_ENEMIES: EnemyLevelMarker[] = [
   enemy('pyro_works_rocket', 'enemy_rocket_bot', 4560, standingOn(196), 4300, 4660),
   enemy('pyro_pre_armored', 'enemy_armored_bot', 4760, standingOn(FLOOR), 4500, 4880, [4700, 4800])
 ]
+
+/** The whole Heat Works route as one patch, registered in `src/content/stages/index.ts`. */
+export const HEAT_WORKS_PATCH: StageExtensionPatch = {
+  width: HEAT_WORKS_ROUTE_WIDTH,
+  bossSpawnX: HEAT_WORKS_ROUTE_WIDTH - 84,
+  checkpoints: HEAT_WORKS_CHECKPOINTS,
+  hazards: HEAT_WORKS_HAZARDS,
+  midPlatforms: HEAT_WORKS_PLATFORMS,
+  enemyMarkers: HEAT_WORKS_ENEMIES,
+  roomLocks: HEAT_WORKS_ROOM_LOCKS,
+  arena: {
+    floorGaps: HEAT_WORKS_FLOOR_GAPS,
+    locationAnchors: HEAT_WORKS_LOCATION_ANCHORS,
+    verticalSegments: HEAT_WORKS_VERTICAL_SEGMENTS,
+    risingLiquids: HEAT_WORKS_SLAG,
+    crumbleGroups: HEAT_WORKS_CRUMBLES,
+    breakableWalls: HEAT_WORKS_BREAKABLE_WALLS
+  }
+}

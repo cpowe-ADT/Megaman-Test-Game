@@ -25,7 +25,7 @@ import type { TimedRailGroupDefinition } from '../mechanics/timedRailGroup'
 import type { RockfallDefinition } from '../mechanics/rockfall'
 import type { IcicleDefinition } from '../mechanics/icicle'
 import type { FloorGap } from '../stage/stageGeometry'
-import * as HEAT_WORKS from './stages/heatWorks'
+import { REBUILT_STAGE_PATCHES } from './stages/index'
 import { MINIBOSS_LAB_STAGE_ID, minibossLabStage } from './stages/minibossLab'
 
 export type CampaignStageKind = 'tutorial' | 'robot_master' | 'final'
@@ -630,7 +630,8 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
   }
 }
 
-type StageExtensionPatch = {
+/** A stage's route over its base definition: one per stage, from `src/content/stages/index.ts` or inline below. */
+export type StageExtensionPatch = {
   width: number
   bossSpawnX: number
   checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
@@ -638,8 +639,23 @@ type StageExtensionPatch = {
   midPlatforms?: StagePlatformDefinition[]
   enemyMarkers?: EnemyLevelMarker[]
   roomLocks?: RoomLockDefinition[]
-  /** Mechanics and pits beyond the shared fields (Heat Works). */
-  arena?: Pick<StageArenaDefinition, 'floorGaps' | 'locationAnchors' | 'verticalSegments' | 'risingLiquids' | 'crumbleGroups' | 'breakableWalls'>
+  /** Mechanics and pits beyond the shared fields (Heat Works; the 12b mechanics for the other stages). */
+  arena?: Pick<
+    StageArenaDefinition,
+    | 'floorGaps'
+    | 'locationAnchors'
+    | 'verticalSegments'
+    | 'risingLiquids'
+    | 'crumbleGroups'
+    | 'breakableWalls'
+    | 'conveyors'
+    | 'iceFloors'
+    | 'currentZones'
+    | 'windZones'
+    | 'timedRailGroups'
+    | 'rockfalls'
+    | 'icicles'
+  >
 }
 
 const TEACH_SCREEN = 448
@@ -659,7 +675,8 @@ function teachRoom(
   }
 }
 
-const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
+/** Routes not yet rebuilt (prompt 12 part 12d); a stage in `REBUILT_STAGE_PATCHES` replaces its entry here. */
+const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
   // Six screens (2688px) before the unchanged boss room: move and jump, dash, the two-screen wall-kick
   // shaft, charge, saber, then the approach. Each teach screen ends at a room_lock gate (prompt 05 §5.7).
   tutorial_sentinel: {
@@ -728,24 +745,6 @@ const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPat
       teachRoom(3, 'charge'),
       teachRoom(4, 'saber', { hitsRequired: 3 })
     ]
-  },
-  // Heat Works, the pilot stage (EVAL-P6-009): twelve screens, layout table in src/content/stages/heatWorks.ts.
-  pyro_maw: {
-    width: HEAT_WORKS.HEAT_WORKS_ROUTE_WIDTH,
-    bossSpawnX: HEAT_WORKS.HEAT_WORKS_ROUTE_WIDTH - 84,
-    checkpoints: HEAT_WORKS.HEAT_WORKS_CHECKPOINTS,
-    hazards: HEAT_WORKS.HEAT_WORKS_HAZARDS,
-    midPlatforms: HEAT_WORKS.HEAT_WORKS_PLATFORMS,
-    enemyMarkers: HEAT_WORKS.HEAT_WORKS_ENEMIES,
-    roomLocks: HEAT_WORKS.HEAT_WORKS_ROOM_LOCKS,
-    arena: {
-      floorGaps: HEAT_WORKS.HEAT_WORKS_FLOOR_GAPS,
-      locationAnchors: HEAT_WORKS.HEAT_WORKS_LOCATION_ANCHORS,
-      verticalSegments: HEAT_WORKS.HEAT_WORKS_VERTICAL_SEGMENTS,
-      risingLiquids: HEAT_WORKS.HEAT_WORKS_SLAG,
-      crumbleGroups: HEAT_WORKS.HEAT_WORKS_CRUMBLES,
-      breakableWalls: HEAT_WORKS.HEAT_WORKS_BREAKABLE_WALLS
-    }
   },
   tide_reaver: {
     width: 928,
@@ -1053,6 +1052,8 @@ const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPat
     ]
   }
 }
+
+const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = { ...INLINE_STAGE_PATCHES, ...REBUILT_STAGE_PATCHES }
 
 for (const [stageId, patch] of Object.entries(STAGE_EXTENSION_PATCHES) as Array<[CampaignStageId, StageExtensionPatch]>) {
   const stage = CAMPAIGN_STAGES[stageId]
