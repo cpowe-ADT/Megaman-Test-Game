@@ -3084,6 +3084,23 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
       window.spawnEnemyDebug?.('enemy_gunner_bot', x, y)
     }, moving ? 72 : 28)
     await advanceFrames(page, 8)
+    // The slash lasts about 13 frames; a real-time poll on a loaded machine can miss every one of them. Record
+    // the first frame that shows the east slash from inside the page, then check that recorded state.
+    await page.evaluate(() => {
+      const game = window.__phaserGame?.scene?.getScene?.('Game')
+      window.__eastSlashSeen = null
+      window.__eastSlashProbe = () => {
+        if (window.__eastSlashSeen) return
+        const state = JSON.parse(window.render_game_to_text())
+        const animationKey = String(state.newPlayer?.visuals?.animationKey ?? '')
+        const frameName = String(state.playerVisual?.frameName ?? '')
+        const validSlash =
+          (animationKey === 'player_slash_ground_e' && frameName.startsWith('player_main/slash_ground_e/')) ||
+          (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/'))
+        if (state.scene === 'Game' && validSlash && state.newPlayer?.visuals?.activeHitbox?.direction === 'e') window.__eastSlashSeen = state
+      }
+      game?.events.on('postupdate', window.__eastSlashProbe)
+    })
     await tapKey(page, 'c', 2)
     const isEastSlashState = (state) => {
       if (state?.scene !== 'Game') {
@@ -3110,9 +3127,12 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
       await captureScenarioState(page, scenarioDir, 0, movingHitState)
     } else {
       const immediateSlashState = await readState(page)
-      const slashState = isEastSlashState(immediateSlashState)
-        ? immediateSlashState
-        : await waitForState(page, isEastSlashState, 2500)
+      let slashState = isEastSlashState(immediateSlashState) ? immediateSlashState : null
+      if (!slashState) {
+        await waitForPageCheck(page, () => Boolean(window.__eastSlashSeen), 5000, 'an east slash on any frame after the press')
+        slashState = await page.evaluate(() => window.__eastSlashSeen)
+      }
+      if (!isEastSlashState(slashState)) throw new Error(`Expected the recorded east slash state; saw ${JSON.stringify(slashState?.newPlayer?.visuals ?? null)}.`)
       await captureScenarioState(page, scenarioDir, 0, slashState)
       await waitForPageCheck(
         page,
@@ -3130,6 +3150,7 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
       fs.writeFileSync(path.join(scenarioDir, 'hit-feel.json'), JSON.stringify(hitFeel, null, 2))
     }
   } finally {
+    await page.evaluate(() => { window.__phaserGame?.scene?.getScene?.('Game')?.events.off('postupdate', window.__eastSlashProbe) }).catch(() => {})
     if (moving) {
       await page.keyboard.up('ArrowRight').catch(() => {})
     }
