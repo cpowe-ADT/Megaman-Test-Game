@@ -9,11 +9,15 @@ import { AnimationManifest, type AnimationManifestEntry } from '../player/Animat
 import { resolvePlayerAtlasBinding } from '../player/PlayerAtlasBindings'
 import { ensureGameplayTextures } from '../ui/gameplay/GameplayTextures'
 import { findMissingPlayerGroups } from '../assets/coverageRequirements'
+import dialogueUrl from '../content/dialogue/dialogue.v2.json?url'
+import { dialogueContentInstalled, installDialogueContent } from '../content/dialogue/index'
 
 const PLAYER_ATLAS_KEY = 'atlas_player_main'
 const PLAYER_SWORD_FX_ATLAS_KEY = 'atlas_player_sword_fx'
 const PROJECTILES_ATLAS_KEY = 'atlas_projectiles_core'
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
+/** Production builds fetch the dialogue lines instead of bundling them (`src/content/dialogue/index.ts`). */
+const DIALOGUE_JSON_KEY = 'dialogue_v2'
 
 type AtlasAnimationOptions = {
   start?: number
@@ -30,6 +34,8 @@ export class Preload extends Phaser.Scene {
     if (!manifestValidation.valid) {
       throw new Error(`[sprites] Manifest invalid: ${manifestValidation.errors.join('; ')}`)
     }
+
+    if (!dialogueContentInstalled()) this.load.json(DIALOGUE_JSON_KEY, dialogueUrl)
 
     const atlasEntries = getLoadableAtlasEntries(manifestValidation.manifest)
     atlasEntries.forEach((entry) => {
@@ -63,6 +69,7 @@ export class Preload extends Phaser.Scene {
   }
 
   create(): void {
+    if (!dialogueContentInstalled()) installDialogueContent(this.cache.json.get(DIALOGUE_JSON_KEY))
     ensureGameplayTextures(this)
     this.assertAtlasLoaded(PLAYER_ATLAS_KEY)
     this.assertAtlasLoaded(PROJECTILES_ATLAS_KEY)
