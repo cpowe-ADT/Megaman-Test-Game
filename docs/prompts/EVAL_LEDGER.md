@@ -62,7 +62,7 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 | EVAL-P7-004 | gate | weapon identities; weakness ring; no BLOCKED in Classic | PENDING | | |
 | EVAL-P7-005 | gate + review | all ten fights; 44 across the sweep | PENDING | | |
 | EVAL-P7-006 | gate | portraits and dialogue presentation | PENDING | | |
-| EVAL-P7-007 | gate + review | every sequence id consumed; Craig reads the script | PENDING | | |
+| EVAL-P7-007 | gate + review | every sequence id consumed; Craig reads the script | PENDING | text pass A1-A6 and the panel text conditions done (verb stems 24/24, Central Core, Iona contractions; `tests/story-text-pass.test.ts`); left: item 12 needs a validator change, Craig reads the script, the new triggers (P7-009) |  |
 | EVAL-P7-008 | gate | boss beats, damage router, weapon runtime and hit wires extracted; Game.ts at or below 2,600 | PENDING | | |
 | EVAL-P7-009 | gate + review | seven new dialogue triggers with fixtures, coverage, consumers and smoke assertions; water margin pilot | PENDING | | |
 | EVAL-P7-010 | gate | bosses split into floor body, hurtbox and per-phase attack hitboxes (roster.ts, BossDamageRouter); projectiles hit platforms by body | PENDING | | |
