@@ -16,13 +16,13 @@ import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } fr
  *                            deck and the first valve attendant; then the first water-level gate: the
  *                            sluice opens only while the water behind it holds low
  *   3-4 escalate  1344-2240  checkpoint 2 and the radio, carry belts over the widest pit, the valve deck,
- *                            a headwind current over a pit, the heart chimney (two wall faces 48px apart;
- *                            the heart ledge is 176px over the floor, so only wall kicks reach it), the
- *                            dry catwalk
+ *                            a headwind current over a pit, the heart room (two screens tall): a chimney
+ *                            of two wall faces 48px apart capped by the heart ledge 176px over the floor,
+ *                            so only wall kicks reach it; the dry catwalk
  *   5 midboss     2240-2688  the locked intake room: the relay turret nest on the intake housing, a belt
  *                            feeding it; the gate opens once the nest falls
- *   6 secret      2688-3136  checkpoint 3, the float basin: its water climbs to y 70 and drains; at high
- *                            water the hero floats to the sub tank ledge (148px over the floor)
+ *   6 secret      2688-3136  checkpoint 3, the float basin (two screens tall): its water climbs to y 60
+ *                            and drains; at high water the hero floats to the sub tank ledge (148px up)
  *   7-9 master    3136-4480  the flooded shaft (two screens tall, wall faces both sides, one-way ledges;
  *                            entered through the intake opening under the left wall): the water cycles, the
  *                            current pushes toward the intake at the bottom and across the middle, and the
@@ -35,7 +35,9 @@ import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } fr
  * Measured on this build (2026-09-24, Heat Works): a held running jump rises about 124px and covers about
  * 246px; a dash jump covers about 336px. In a current the launch speed is scaled so the rise is 80% (about
  * 100px) and the push (80px/s airborne) shortens a jump against it to about 150px. Every pit is under 180px
- * and a still pool sits in each. The main ground's top is y 236; outside the shaft the world top is y 0.
+ * and a still pool sits in each. The main ground's top is y 236; the actor ceiling is y 90 outside the three
+ * tall rooms. A floating hero bobs about 6px round the water line, so each high line sits 28-30px over the
+ * ledge it floats the hero onto.
  */
 
 const FLOOR = 236
@@ -131,14 +133,16 @@ export const TIDE_REAVER_HAZARDS: StageHazardDefinition[] = [
 export const TIDE_REAVER_PLATFORMS: StagePlatformDefinition[] = [
   // Intro and teach.
   block('tide_intro_step', 320, 416, 204),
-  block('tide_teach_deck', 800, 896, 196),
+  // The pit jump lands about 200px on (x 780-810): the deck's face stands 70px past that, room to jump it.
+  block('tide_teach_deck', 880, 976, 196),
   // Escalate: the valve deck past the carry belts, the grate by the chimney, the dry catwalk.
   block('tide_valve_deck', 1664, 1760, 196),
   block('tide_grate_block', 1952, 1984, 212),
   // The heart chimney: two wall faces hanging to 64px over the floor (walk under, jump in, kick up);
-  // the heart ledge caps the gap 176px over the floor (a held jump rises about 127).
+  // the heart ledge caps the gap 176px over the floor (a held jump rises about 127). Both tops sit at
+  // y 56, out of a jump's reach from the catwalk, so no plain jump lands on a wall top beside the heart.
   wall('tide_heart_wall_left', 1984, 2000, 56, 172),
-  wall('tide_heart_wall_right', 2048, 2064, 88, 172),
+  wall('tide_heart_wall_right', 2048, 2064, 56, 172),
   ledge('tide_heart_ledge', 2000, 2048, 60),
   block('tide_catwalk', 2144, 2240, 204),
   // Mid-boss: the intake housing the nest stands on.
@@ -194,14 +198,14 @@ export const TIDE_REAVER_WATER: WaterLevelGateDefinition[] = [
     timing: { highMs: 1500, fallMs: 2000, lowMs: 3000, riseMs: 2000 },
     gate: { x: 1104, top: 0, bottom: FLOOR }
   },
-  // Secret: the float basin climbs to 18px over the sub tank ledge's top, then drains below the floor.
-  { id: 'tide_float_basin', x: 2848, width: 128, highY: 70, lowY: 240, bottomY: FLOOR, timing: { highMs: 3000, fallMs: 2000, lowMs: 3500, riseMs: 2500 } },
-  // Master: the shaft fills to 18px over the top ledge, drains to a puddle; the exit sluice sits on the right wall.
+  // Secret: the float basin climbs to 28px over the sub tank ledge's top, then drains below the floor.
+  { id: 'tide_float_basin', x: 2848, width: 128, highY: 60, lowY: 240, bottomY: FLOOR, timing: { highMs: 3000, fallMs: 2000, lowMs: 3500, riseMs: 2500 } },
+  // Master: the shaft fills to 30px over the top ledge, drains to a puddle; the exit sluice sits on the right wall.
   {
     id: 'tide_shaft_water',
     x: 3184,
     width: 384,
-    highY: -168,
+    highY: -180,
     lowY: 230,
     bottomY: FLOOR,
     timing: { highMs: 2500, fallMs: 3500, lowMs: 3500, riseMs: 3500 },
@@ -220,7 +224,11 @@ export const TIDE_REAVER_WATER: WaterLevelGateDefinition[] = [
   ...TIDE_REAVER_FLOOR_GAPS.map(pool)
 ]
 
-export const TIDE_REAVER_VERTICAL_SEGMENTS: VerticalSegmentDefinition[] = [{ id: 'tide_shaft', x: 3136, width: 448, verticalScreens: 2 }]
+export const TIDE_REAVER_VERTICAL_SEGMENTS: VerticalSegmentDefinition[] = [
+  { id: 'tide_heart_room', x: 1792, width: 448, verticalScreens: 2 },
+  { id: 'tide_basin_room', x: 2688, width: 448, verticalScreens: 2 },
+  { id: 'tide_shaft', x: 3136, width: 448, verticalScreens: 2 }
+]
 
 export const TIDE_REAVER_ROOM_LOCKS: RoomLockDefinition[] = [
   { id: 'tide_midboss_lock', room: { x: 2240, y: 0, width: 448, height: 252 }, gateX: 2688, defeatMarkers: TIDE_REAVER_MIDBOSS_MARKERS }
@@ -239,7 +247,7 @@ export const TIDE_REAVER_LOCATION_ANCHORS: LocationAnchors = {
  * fights from the intake housing, inside the locked room.
  */
 export const TIDE_REAVER_ENEMIES: EnemyLevelMarker[] = [
-  enemy('tide_teach_gunner', 'enemy_gunner_bot', 872, standingOn(196)),
+  enemy('tide_teach_gunner', 'enemy_gunner_bot', 940, standingOn(196)),
   enemy('tide_lock_mine', 'enemy_mine_bot', 1216, standingOn(FLOOR)),
   enemy('tide_lock_drone', 'enemy_drone', 1320, 124),
   enemy('tide_valve_gunner', 'enemy_gunner_bot', 1712, standingOn(196)),

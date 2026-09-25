@@ -59,6 +59,7 @@
   - The water is not `rising_liquid` (a kill plane) run backwards but its own mechanic: the level cycles on the stage clock (hold high, fall, hold low, rise) and under the surface the hero floats up like a lift. That is what makes "swim up" work, and a water line that kills would read wrong in a reservoir.
   - The current's jump penalty applies to wall kicks as well as jumps (the launch speed scales by the square root of 0.8, so the rise is 80%); a kick is a jump, and the shaft's current sits on the climb.
   - The sub tank room has no second gate: its ledge is 148px over the floor and only the high-water float reaches it. A gate that shut when the water fell would trap the hero inside until the next high.
+  - The heart room and the float basin are two screens tall, as Heat Works' heart room is: outside a tall room the actor ceiling is y 90, and the heart ledge (y 60) and the sub tank ledge (y 88) stand above it. Each high water line sits 28-30px over the ledge it floats the hero onto, since a floating hero bobs about 6px round the line.
   - The shaft is entered through the intake opening under its left wall, and that wall's bottom hangs over a floor jump's head, so its outer face cannot start a wall-kick climb to the sub tank.
   - Not built in this lane: the nest's Tide skin (the rotating shield is `src/enemy/` work) and the `pits` boss room with water channels; both keep their current forms, as Heat Works kept its boss room.
 

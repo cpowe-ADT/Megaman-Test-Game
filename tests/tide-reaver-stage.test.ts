@@ -17,6 +17,7 @@ import {
   type WaterLevelGateDefinition
 } from '../src/mechanics/waterLevelGate.ts'
 import { TIDE_REAVER_MIDBOSS_MARKERS } from '../src/content/stages/tideReaver.ts'
+import { GAMEPLAY_ACTOR_CEILING } from '../src/config/gameplayLayout.ts'
 
 // Measured on this build (Heat Works, 2026-09-24): held running jump 246px across, 124-127px up; dash
 // jump 336px across. A current keeps 80% of the rise. The hero's body is 16x22.
@@ -27,6 +28,8 @@ const BODY_PX = 16
 const HALF_BODY_HEIGHT = 11
 const FLOOR = 236
 const SCREEN = 448
+/** A floating hero bobs about 6px round the water line: its feet clear a ledge only if the line is 22px+ over it. */
+const FLOAT_CLEARANCE_PX = 22
 
 const heroAt = (x: number, feetY: number) => ({ left: x - BODY_PX / 2, right: x + BODY_PX / 2, top: feetY - 2 * HALF_BODY_HEIGHT, bottom: feetY })
 
@@ -161,6 +164,18 @@ test('Water District route: twelve screens, four checkpoints clear of every mech
   assert.ok(currents.length >= 4 && currents.slice(1).every((zone) => (zone.forceX ?? 0) < 0))
   assert.ok(belts.some((entry) => entry.type === 'oneWay' && entry.y < FLOOR - 20), 'raised carry belts')
   assert.ok(water.filter((entry) => entry.gate).length >= 3)
+  // Outside a tall room the world ceiling is y 90: every ledge a hero stands on above it, and every water line
+  // that floats the hero above it, sits in a room two screens tall (as Heat Works' heart room does).
+  const tall = (arena.verticalSegments ?? []).filter((segment) => segment.verticalScreens >= 2)
+  const inTall = (left: number, right: number) => tall.some((segment) => left >= segment.x && right <= segment.x + segment.width)
+  for (const platform of arena.midPlatforms.map(surface)) {
+    if (platform.top - 2 * HALF_BODY_HEIGHT >= GAMEPLAY_ACTOR_CEILING) continue
+    assert.ok(inTall(platform.left, platform.right), `${platform.id} (top ${platform.top}) rises past the actor ceiling outside a tall room`)
+  }
+  for (const entry of water) {
+    if (entry.highY - 2 * HALF_BODY_HEIGHT >= GAMEPLAY_ACTOR_CEILING) continue
+    assert.ok(inTall(entry.x, entry.x + entry.width), `${entry.id} floats the hero past the actor ceiling outside a tall room`)
+  }
 })
 
 test('Water District master: the flooded shaft is two screens tall, walled both sides, and its exit sluice opens only at low water', () => {
@@ -178,7 +193,7 @@ test('Water District master: the flooded shaft is two screens tall, walled both 
   assert.ok(box.left >= right.left - 1 && box.right <= right.right + 1 && box.bottom === right.top && box.top <= -252, 'the sluice stands on the right wall')
   const top = platforms.get('tide_shaft_top')!
   assert.equal(top.top, right.top)
-  assert.ok(top.top - water.highY >= 8 && top.top - water.highY <= 24, 'high water floats the hero onto the top ledge')
+  assert.ok(top.top - water.highY >= FLOAT_CLEARANCE_PX && top.top - water.highY <= 40, 'high water floats the hero onto the top ledge')
   assert.ok(water.lowY >= FLOOR - HALF_BODY_HEIGHT + 2, 'low water is a puddle a standing hero is dry in')
   const phases = new Set<string>()
   for (let ms = 0; ms < 20000; ms += 250) {
@@ -198,8 +213,8 @@ test('Water District secrets: the heart needs wall kicks, the sub tank needs hig
   const floor: Surface = { id: 'floor', left: -1e6, right: 1e6, top: FLOOR, type: 'solid' }
   const walls = all.filter((entry) => entry.type === 'wall')
   const wallBottoms = new Map(arena.midPlatforms.map((platform) => [platform.id, platform.y + (platform.height ?? 8) / 2]))
-  const unreachable = (target: Surface, label: string) => {
-    for (const from of [floor, ...all.filter((entry) => entry.type !== 'wall' && entry.id !== target.id)]) {
+  const unreachable = (target: Surface, label: string, except: string[] = []) => {
+    for (const from of [floor, ...all.filter((entry) => entry.type !== 'wall' && entry.id !== target.id && !except.includes(entry.id))]) {
       for (const span of [PLAIN_JUMP_PX, DASH_JUMP_PX]) assert.ok(!canJumpOnto(from, target, span, walls, wallBottoms), `${label} is out of a ${span}px jump from ${from.id}`)
     }
   }
@@ -219,11 +234,14 @@ test('Water District secrets: the heart needs wall kicks, the sub tank needs hig
   assert.ok(wallBottom('tide_heart_wall_left') > FLOOR - MAX_RISE_PX && wallBottom('tide_heart_wall_left') <= FLOOR - 2 * HALF_BODY_HEIGHT - 20, 'a floor jump meets the faces; the hero walks under them')
   assert.ok(wallLeft.top <= heart.top + 4)
   unreachable(heart, 'the heart ledge')
+  // No plain jump lands on a wall top beside the heart (from anywhere but the heart ledge itself).
+  unreachable(wallLeft, 'the top of the left chimney wall', [heart.id])
+  unreachable(wallRight, 'the top of the right chimney wall', [heart.id])
   assert.ok(anchors.heart_tank && anchors.heart_tank.x > heart.left && anchors.heart_tank.x < heart.right && anchors.heart_tank.y < heart.top)
   // Sub tank: a ledge 18px under the basin's high line, over its right edge; the basin drains below the floor.
   const basin = (arena.waterLevelGates ?? []).find((entry) => entry.id === 'tide_float_basin')!
   const subTank = byId.get('tide_subtank_ledge')!
-  assert.ok(subTank.top - basin.highY >= 8 && subTank.top - basin.highY <= 24, 'high water floats the hero over the ledge')
+  assert.ok(subTank.top - basin.highY >= FLOAT_CLEARANCE_PX && subTank.top - basin.highY <= 40, 'high water floats the hero over the ledge')
   assert.ok(subTank.left < basin.x + basin.width && subTank.right > basin.x + basin.width, 'the ledge overhangs the basin edge')
   assert.ok(basin.lowY >= FLOOR, 'low water drains the basin')
   unreachable(subTank, 'the sub tank ledge')
