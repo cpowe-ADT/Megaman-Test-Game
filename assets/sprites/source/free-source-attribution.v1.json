@@ -634,7 +634,7 @@
         "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.png",
         "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.atlas.json"
       ],
-      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut_enemy_sheet.py from template atlases; not wired yet; palette skins by scripts/sprites/palette_skin.py (custodian walker basalt and glacier, turret nest ferro, sentry twin gale)"
+      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut_enemy_sheet.py from template atlases; wired by part 12c (src/enemy/minibossCatalog.ts, the miniboss_lab stage); palette skins by scripts/sprites/palette_skin.py (custodian walker basalt and glacier, turret nest ferro, sentry twin gale)"
     },
     {
       "id": "weapons-v1-hf",
@@ -673,7 +673,7 @@
         "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.png",
         "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json"
       ],
-      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with hud_icons_v1.json; not wired yet"
+      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with hud_icons_v1.json; the HUD weapon icon since part 12f wave 3 (src/ui/HUD.ts)"
     }
   ]
 }
