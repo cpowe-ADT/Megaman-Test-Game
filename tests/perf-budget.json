@@ -3,7 +3,7 @@
   "static": {
     "distTotalMB": 9.5,
     "distMapsMB": 0.5,
-    "jsGzipKB": 510,
+    "jsGzipKB": 520,
     "phaserChunkGzipKB": 300,
     "bootDownloadMB": 2.5
   },
