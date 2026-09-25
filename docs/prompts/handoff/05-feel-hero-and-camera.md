@@ -1,10 +1,10 @@
 # Handoff 05: Feel, hero and camera
 
-## Status: PARTIAL until the exit commit. Every Exit Gate check is green in the working tree (Evidence below). Missing, and not the 12a lane's to do: `EVAL-P5-008` is still PENDING in the ledger (the orchestrator flips it on the commit that lands 12a, after the seat review its "gate + review" type asks for), and the `npm run verify` and sweep lines must be re-cited on that commit. Flip this line to COMPLETE then.
+## Status: COMPLETE (2026-09-25). Every Exit Gate check is green on the exit commit `04bd3b8`: every `EVAL-P5` row PASS (P5-008 after the qa-eval review), `npm run verify` PASS, the sweep complete, no franchise strings, `assets/private/` absent, Game.ts 1930 lines.
 
 ## Branch and final commit
 
-Branch `codex/05a-feel-hero-camera`. HEAD when this was written: `7141a5f`, with the 5.6 profiles work (part 12a) uncommitted in the tree. D-015: the orchestrator commits, pushes and opens the pull request to `main`; write the exit commit's hash here.
+Branch `codex/05a-feel-hero-camera`. Exit commit `04bd3b8` (the last code change is the smoke-timeout commit; the profiles work landed in `e9781ef`, the prompt 12 lanes before it). This handoff and the ledger rows land in the commit after it. D-015: the orchestrator pushes and updates PR #58 to `main`; CI's browser gates run on the pull request (EVAL-P12-001).
 
 ## What changed (by area, with file paths)
 
@@ -46,12 +46,12 @@ Branch `codex/05a-feel-hero-camera`. HEAD when this was written: `7141a5f`, with
 | Eval or check | Result | Where |
 | --- | --- | --- |
 | EVAL-P5-001 to P5-007, P5-009 to P5-011 | PASS | `docs/prompts/EVAL_LEDGER.md` rows (each cites its commit) |
-| EVAL-P5-008 profiles | tests: `PASS test (14s): # pass 500 \| # fail 0`; smoke: `Smoke test complete: 5 ran, 52 skipped` (41, 38c, 4, 34, 49 all pass) | `output/gates/test.log`, `output/smoke-runs/2026-09-25T01-52-34-789Z/`, uncommitted |
-| `npm run verify` (working tree, other lanes mid-edit) | agents:check 0 errors; `# pass 538` `# fail 0`; build built; `Smoke test complete: 58 ran, 0 skipped` with 57 pass, 1 fail: `42-mechanics-matrix` (the mechanics lane's unfinished ice dash, not 05); re-cite on the exit commit | `output/gates/lane12a-verify2.log`, `output/smoke-runs/2026-09-25T03-15-25-605Z/` |
-| `npm run test:visual-sweep` | `Mission visual sweep complete`, exit 0, 10/10 missions pass; re-cite on the exit commit | `output/sweep-runs/2026-09-25T03-22-19-889Z/` |
-| `git grep -i "mega man\|mmx4\|spriters-resource" -- src scripts assets` | prints nothing | working tree, 2026-09-25 |
-| `assets/private/` | does not exist | working tree |
-| `wc -l src/scenes/Game.ts` | 1930 (ceiling 3,400) | working tree |
+| EVAL-P5-008 profiles | PASS on `e9781ef`: `tests/save-profiles.test.ts`, smoke `41-profiles` and `38c-title-continue-autosave` pass; qa-eval review SHIP (`docs/prompts/reviews/2026-09-25-5.6-profiles/qa-eval.md`) | `output/gates/test.log`, `output/smoke-runs/2026-09-25T01-52-34-789Z/`, uncommitted |
+| `npm run verify` on `04bd3b8` | `PASS verify (352s)`: agents:check `0 errors`, sprites `Manifest valid (32 entries)`, `# pass 538` `# fail 0`, `built in 2.46s`, `Smoke test complete: 58 ran, 0 skipped`, 58 pass | `output/evidence/05-exit/verify.log`, `output/evidence/05-exit/verify-smoke-summary.json` |
+| `npm run test:visual-sweep` on `04bd3b8` | `Mission visual sweep complete`, exit 0 | `output/sweep-runs/2026-09-25T04-16-40-311Z/` |
+| `git grep -i "mega man\|mmx4\|spriters-resource" -- src scripts assets` | prints nothing | `04bd3b8` |
+| `assets/private/` | does not exist | `04bd3b8` |
+| `wc -l src/scenes/Game.ts` | 1930 (ceiling 3,400) | `04bd3b8` |
 
 ## Open risks and known debt
 
