@@ -649,48 +649,9 @@ export class Game extends Phaser.Scene {
       return
     }
 
-    this.physics.add.collider(
-      this.playerBullets,
-      this.stagePlatforms,
-      this.recycleBullet,
-      this.shouldProjectileHitPlatform,
-      this
-    )
-    this.physics.add.collider(
-      this.bossBullets,
-      this.stagePlatforms,
-      this.recycleBullet,
-      this.shouldProjectileHitPlatform,
-      this
-    )
-  }
-
-  private shouldProjectileHitPlatform(
-    objA: Phaser.GameObjects.GameObject,
-    objB: Phaser.GameObjects.GameObject
-  ): boolean {
-    const spriteA = objA as Phaser.Physics.Arcade.Sprite
-    const spriteB = objB as Phaser.Physics.Arcade.Sprite
-    const bullet =
-      this.playerBullets?.contains(spriteA) || this.bossBullets?.contains(spriteA)
-        ? spriteA
-        : this.playerBullets?.contains(spriteB) || this.bossBullets?.contains(spriteB)
-          ? spriteB
-          : null
-    const platform = bullet === spriteA ? spriteB : spriteA
-    const platformBody = platform?.body as Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody | undefined
-    if (!bullet || !platformBody) {
-      return false
-    }
-
-    const visibleBounds = bullet.getBounds()
-    const platformBounds = new Phaser.Geom.Rectangle(
-      platformBody.x,
-      platformBody.y,
-      platformBody.width,
-      platformBody.height
-    )
-    return Phaser.Geom.Rectangle.Overlaps(visibleBounds, platformBounds)
+    // Shots hit platforms by their physics body, not their drawn bounds (prompt 07 phase 7.0 note, EVAL-P7-010).
+    this.physics.add.collider(this.playerBullets, this.stagePlatforms, this.recycleBullet, undefined, this)
+    this.physics.add.collider(this.bossBullets, this.stagePlatforms, this.recycleBullet, undefined, this)
   }
 
   private handleDropThroughInput(now: number): void {
@@ -1097,7 +1058,7 @@ export class Game extends Phaser.Scene {
     }
     this.swordHitRouter = new SwordHitRouter({
       scene: this, player: () => this.player, facing: () => this.facing, enemies: () => this.enemies, enemyShots: () => this.bossBullets,
-      boss: () => (this.victoryTriggered ? null : ((this.bossTarget ?? this.bossBody) as any) ?? null), bossHp: () => this.bossHp?.current ?? null,
+      boss: () => (this.victoryTriggered ? null : (this.bossBeats.bodies.hurtTarget() ?? (this.bossTarget ?? this.bossBody)) as any ?? null), bossHp: () => this.bossHp?.current ?? null,
       projectiles: () => this.projectileSystem, damageBoss: (amount) => this.applyDamageToBoss(amount, { weaponId: 'Buster' }), flashEnemy: (enemy) => this.flashEnemy(enemy),
       damageEnemy: (enemy, amount, knockback) => { if (!this.enemySpawner?.applyDamageToSprite(enemy, { amount, type: 'melee', knockback, sourceId: 'player_sword' })) this.applyDamageToTarget(enemy, amount) },
       onSwing: () => this.weaponRuntime.rechargeSelectedFromSaber(), onContactHit: (kind, frames) => this.cameraDirector.onContactHit(kind, frames)
@@ -1129,7 +1090,7 @@ export class Game extends Phaser.Scene {
       runtimeDefinition,
       movementBounds: getBossRoomMovementBounds(stage.arena.bossRoom),
       getActiveHazardCount: () => this.bossBeats.countActiveBossRoomHazards(),
-      telegraphProbe: () => this.bossBeats.telegraphs.getDebugState()
+      telegraphProbe: () => this.bossBeats.telegraphs.getDebugState(), hazardProbe: () => this.bossBeats.hazards.getDebugState()
     })
     if (this.bossController) {
       const bossActor = this.bossController as Phaser.Types.Physics.Arcade.GameObjectWithBody

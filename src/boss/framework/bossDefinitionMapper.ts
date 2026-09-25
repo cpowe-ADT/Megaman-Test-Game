@@ -16,7 +16,8 @@ function toAttackType(pattern: AttackPattern): BossAttackDefinition['type'] {
   return 'melee'
 }
 
-function normalizedId(name: string): string {
+/** The runtime attack id for an authored attack name ('Ignition Dash' -> 'ignition_dash'). */
+export function normalizedId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '_')
 }
 
@@ -24,7 +25,8 @@ function resolveDamageType(blueprint: BossBlueprint): string {
   return blueprint.element.toLowerCase()
 }
 
-function resolveAttackDamage(pattern: AttackPattern): number {
+/** An attack's hit damage: its hazards, its shots and (while it is active) its contact hitbox deal this much. */
+export function resolveAttackDamage(pattern: AttackPattern): number {
   if (pattern.state === 'dash' || pattern.state === 'special') {
     return 2
   }
@@ -147,8 +149,8 @@ export function toBossDefinition(blueprint: BossBlueprint): BossDefinition {
     displayName: blueprint.codename,
     maxHP: blueprint.baseStats.maxHp,
     contactDamage: blueprint.baseStats.contactDamage,
-    defense: 0,
-    resistances: {},
+    defense: blueprint.defense ?? 0,
+    resistances: { ...(blueprint.resistances ?? {}) },
     introLockMs: 1200,
     recoverMs: 180,
     hurtInvulnMs: 220,

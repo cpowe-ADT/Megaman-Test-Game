@@ -15,7 +15,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0x7d8cff, accent: 0xfff0b3, glow: 0x96a2ff, trail: 0x4552d4 },
     baseStats: {
       maxHp: 100,
-      contactDamage: 6,
+      contactDamage: 2,
       moveSpeed: 60,
       dashSpeed: 90,
       jumpHeight: 120
@@ -23,8 +23,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'heavy',
       preferredRange: 'mid',
-      mobilityNotes:
-        'Short tutorial hops with heavy landing lag that teaches players timing windows.'
+      // Mobility: Short tutorial hops with heavy landing lag that teaches players timing windows.
     },
     weaponReward: {
       id: 'ArcSlash',
@@ -38,12 +37,13 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Giga Hop',
+        hitbox: { width: 30, height: 34, damage: 2 },
         state: 'jump',
         description: 'A short, slow hop that aims to land near the player.',
         telegraph: { telegraphMs: 350, warningFx: 'wave', anchor: 'self' },
         executeMs: 600,
         cooldownMs: 900,
-        movementCue: 'Applies upward velocity then eases toward player mid-air.'
+        // Movement: Applies upward velocity then eases toward player mid-air.
       },
       {
         name: 'Guard Shot',
@@ -56,12 +56,13 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Stomp Shock',
+        hitbox: { width: 34, height: 26 },
         state: 'special',
         description: 'Slow stomp that emits a low shockwave across the floor.',
         telegraph: { telegraphMs: 420, warningFx: 'glow', anchor: 'self' },
         executeMs: 320,
         cooldownMs: 1200,
-        movementCue: 'Locks in place; after landing spawn ground ripple.',
+        // Movement: Locks in place; after landing spawn ground ripple.
         spawns: ['short_quake']
       }
     ],
@@ -103,6 +104,9 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['arc_shards', 'slow_bullet']
       }
     },
+    // Three bodies (prompt 07 phase 7.0, EVAL-P7-010): the floor body is spritePlan.frame; the hurtbox takes hits;
+    // the hitbox deals contactDamage while no attack is active, and an active attack's own hitbox after that.
+    bodies: { hurtbox: { width: 36, height: 40 }, hitbox: { width: 24, height: 30 } },
     spritePlan: {
       frame: PX(48, 48),
       origin: { x: 0.5, y: 0.9 },
@@ -147,7 +151,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0xff6b3b, accent: 0xffc857, glow: 0xff8b5a, trail: 0xff392b },
     baseStats: {
       maxHp: 120,
-      contactDamage: 8,
+      contactDamage: 2,
       moveSpeed: 70,
       dashSpeed: 120,
       jumpHeight: 160
@@ -155,7 +159,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'medium',
       preferredRange: 'mid',
-      mobilityNotes: 'Serpentine slides with flame dashes leaving embers behind.'
+      // Mobility: Serpentine slides with flame dashes leaving embers behind.
     },
     weaponReward: {
       id: 'FlameSerpent',
@@ -175,18 +179,19 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         telegraph: { telegraphMs: 320, warningFx: 'glow', anchor: 'self' },
         executeMs: 900,
         cooldownMs: 700,
-        movementCue: 'Anchors feet; rotates torso following player.',
+        // Movement: Anchors feet; rotates torso following player.
         spawns: ['flame_cone']
       },
       {
         name: 'Ignition Dash',
+        hitbox: { width: 40, height: 28, offsetX: 6 },
         shortName: 'IGNITION',
         state: 'dash',
         description: 'Ground dash leaving burning puddles that linger.',
         telegraph: { telegraphMs: 280, warningFx: 'fan-lines', anchor: 'self' },
         executeMs: 260,
         cooldownMs: 900,
-        movementCue: 'Applies rapid horizontal velocity; spawns puddle each 24px.',
+        // Movement: Applies rapid horizontal velocity; spawns puddle each 24px.
         spawns: ['burn_puddle']
       },
       {
@@ -196,7 +201,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         telegraph: { telegraphMs: 340, warningFx: 'reticle', anchor: 'projectile' },
         executeMs: 280,
         cooldownMs: 820,
-        spawns: ['fire_orb', 'arc_shards']
+        spawns: ['fire_orb']
       }
     ],
     phases: [
@@ -237,6 +242,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['burn_puddle', 'fire_orb']
       }
     },
+    bodies: { hurtbox: { width: 40, height: 40 }, hitbox: { width: 28, height: 30 } },
     spritePlan: {
       frame: PX(56, 48),
       origin: { x: 0.5, y: 0.88 },
@@ -281,7 +287,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0x3b9dff, accent: 0xa0f2ff, glow: 0x62c1ff, trail: 0x1a6bff },
     baseStats: {
       maxHp: 120,
-      contactDamage: 8,
+      contactDamage: 2,
       moveSpeed: 64,
       dashSpeed: 100,
       jumpHeight: 150
@@ -289,7 +295,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'medium',
       preferredRange: 'long',
-      mobilityNotes: 'Hovering water jets allow sustained air strafing and vertical dives.'
+      // Mobility: Hovering water jets allow sustained air strafing and vertical dives.
     },
     weaponReward: {
       id: 'HydroLance',
@@ -308,7 +314,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         telegraph: { telegraphMs: 260, warningFx: 'wave', anchor: 'self' },
         executeMs: 480,
         cooldownMs: 600,
-        movementCue: 'Switches gravity scale to floaty while jets active.'
+        // Movement: Switches gravity scale to floaty while jets active.
       },
       {
         name: 'Lance Volley',
@@ -321,13 +327,14 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Riptide Crash',
+        hitbox: { width: 34, height: 36 },
         shortName: 'RIPTIDE',
         state: 'special',
-        description: 'Ceiling cling then diagonal dive leaving puddles upon impact.',
+        description: 'Clings to the ceiling over the hero, then drops onto that column; splash pillars rise either side.',
         telegraph: { telegraphMs: 360, warningFx: 'reticle', anchor: 'target' },
         executeMs: 520,
         cooldownMs: 1100,
-        movementCue: 'Increases fall speed; spawns splash pillars on landing.',
+        // Movement: Rises to the ceiling tracking the hero, then falls straight down; spawns splash pillars on landing.
         spawns: ['splash_pillar']
       }
     ],
@@ -369,6 +376,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['splash_pillar', 'water_lance']
       }
     },
+    bodies: { hurtbox: { width: 38, height: 42 }, hitbox: { width: 26, height: 32 } },
     spritePlan: {
       frame: PX(52, 50),
       origin: { x: 0.5, y: 0.86 },
@@ -413,7 +421,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0xffdd57, accent: 0xfff3b0, glow: 0xffff8d, trail: 0xffa600 },
     baseStats: {
       maxHp: 116,
-      contactDamage: 8,
+      contactDamage: 2,
       moveSpeed: 90,
       dashSpeed: 140,
       jumpHeight: 180
@@ -421,7 +429,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'light',
       preferredRange: 'mid',
-      mobilityNotes: 'Chain jumps with electromagnetic tethers allow fast ceiling rebounds.'
+      // Mobility: Chain jumps with electromagnetic tethers allow fast ceiling rebounds.
     },
     weaponReward: {
       id: 'ThunderSpike',
@@ -435,13 +443,14 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Capacitor Charge',
+        hitbox: { width: 28, height: 30, damage: 2 },
         shortName: 'CAPACITOR',
         state: 'jump',
         description: 'High parabolic leap that drops charged mines on apex.',
         telegraph: { telegraphMs: 280, warningFx: 'glow', anchor: 'self' },
         executeMs: 520,
         cooldownMs: 660,
-        movementCue: 'Launch upward with increased gravity scale on descent.',
+        // Movement: Launch upward with increased gravity scale on descent.
         spawns: ['charge_mine']
       },
       {
@@ -456,12 +465,13 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Impulse Dash',
+        hitbox: { width: 38, height: 26, offsetX: 6 },
         state: 'dash',
         description: 'Blink dash that leaves static orbs mid path.',
         telegraph: { telegraphMs: 180, warningFx: 'reticle', anchor: 'self' },
         executeMs: 180,
         cooldownMs: 720,
-        movementCue: 'Instant acceleration to dashSpeed with slight afterimage.',
+        // Movement: Instant acceleration to dashSpeed with slight afterimage.
         spawns: ['static_orb']
       }
     ],
@@ -502,6 +512,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['vertical_bolt', 'static_orb']
       }
     },
+    bodies: { hurtbox: { width: 34, height: 38 }, hitbox: { width: 24, height: 28 } },
     spritePlan: {
       frame: PX(48, 46),
       origin: { x: 0.5, y: 0.86 },
@@ -546,7 +557,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0x9b6b4a, accent: 0xffd7a0, glow: 0xc48c5a, trail: 0x6a4127 },
     baseStats: {
       maxHp: 132,
-      contactDamage: 10,
+      contactDamage: 2,
       moveSpeed: 50,
       dashSpeed: 80,
       jumpHeight: 120
@@ -554,7 +565,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'heavy',
       preferredRange: 'close',
-      mobilityNotes: 'Slow strides but armored dash punches that shake the arena.'
+      // Mobility: Slow strides but armored dash punches that shake the arena.
     },
     weaponReward: {
       id: 'QuakeKnuckle',
@@ -568,12 +579,13 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Fault Punch',
+        hitbox: { width: 44, height: 30, offsetX: 10 },
         state: 'dash',
         description: 'Armored shoulder rush that ends with a ground punch.',
         telegraph: { telegraphMs: 360, warningFx: 'glow', anchor: 'self' },
         executeMs: 280,
         cooldownMs: 820,
-        movementCue: 'Applies forward burst speed with super armor.',
+        // Movement: Applies forward burst speed with super armor.
         spawns: ['ground_shockwave']
       },
       {
@@ -588,12 +600,13 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Crustquake',
+        hitbox: { width: 44, height: 30 },
         state: 'special',
         description: 'Leaps up and slams to create radial boulders.',
         telegraph: { telegraphMs: 400, warningFx: 'fan-lines', anchor: 'self' },
         executeMs: 480,
         cooldownMs: 1000,
-        movementCue: 'Slow rise, heavy slam, spawn boulder projectiles.',
+        // Movement: Slow rise, heavy slam, spawn boulder projectiles.
         spawns: ['boulder_radial']
       }
     ],
@@ -626,6 +639,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       flashPalette: [0xffffff, 0xc48c5a, 0xffd7a0],
       attack: {
         name: 'Tectonic Rift',
+        hitbox: { width: 44, height: 30 },
         shortName: 'RIFT',
         state: 'special',
         description: 'Slams down: a shockwave runs the floor under a boulder spread.',
@@ -635,6 +649,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['ground_shockwave', 'boulder_radial']
       }
     },
+    bodies: { hurtbox: { width: 44, height: 48 }, hitbox: { width: 32, height: 38 } },
     spritePlan: {
       frame: PX(60, 56),
       origin: { x: 0.5, y: 0.92 },
@@ -679,7 +694,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0xc1d0ff, accent: 0xfff1b2, glow: 0xe0f0ff, trail: 0x8aa4ff },
     baseStats: {
       maxHp: 116,
-      contactDamage: 8,
+      contactDamage: 2,
       moveSpeed: 100,
       dashSpeed: 150,
       jumpHeight: 170
@@ -687,7 +702,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'medium',
       preferredRange: 'mid',
-      mobilityNotes: 'Teleports along magnetic rails and redirects boomerang blades.'
+      // Mobility: Teleports along magnetic rails and redirects boomerang blades.
     },
     weaponReward: {
       id: 'MagcutDisc',
@@ -701,12 +716,13 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Vector Slice',
+        hitbox: { width: 40, height: 30, offsetX: 8 },
         state: 'dash',
         description: 'Teleport slash across the arena leaving a metal trail.',
         telegraph: { telegraphMs: 220, warningFx: 'reticle', anchor: 'target' },
         executeMs: 200,
         cooldownMs: 640,
-        movementCue: 'Instantly move to mirrored side before striking.'
+        // Movement: Instantly move to mirrored side before striking.
       },
       {
         name: 'Mag Disc',
@@ -765,6 +781,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['mag_disc', 'arc_shards']
       }
     },
+    bodies: { hurtbox: { width: 36, height: 40 }, hitbox: { width: 24, height: 30 } },
     spritePlan: {
       frame: PX(50, 48),
       origin: { x: 0.5, y: 0.86 },
@@ -824,7 +841,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0x83d483, accent: 0xfff59d, glow: 0xb4f3b4, trail: 0x4f8c4f },
     baseStats: {
       maxHp: 116,
-      contactDamage: 8,
+      contactDamage: 2,
       moveSpeed: 80,
       dashSpeed: 110,
       jumpHeight: 150
@@ -832,7 +849,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'light',
       preferredRange: 'long',
-      mobilityNotes: 'Phase-shifting slides and hovering gas clouds create zoning traps.'
+      // Mobility: Phase-shifting slides and hovering gas clouds create zoning traps.
     },
     weaponReward: {
       id: 'AcidGlob',
@@ -846,12 +863,13 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Toxic Slide',
+        hitbox: { width: 40, height: 18 },
         state: 'dash',
         description: 'Slides into mist form, phasing through the player.',
         telegraph: { telegraphMs: 240, warningFx: 'glow', anchor: 'self' },
         executeMs: 200,
         cooldownMs: 680,
-        movementCue: 'Temporarily disables collisions and leaves poison trail.',
+        // Movement: Temporarily disables collisions and leaves poison trail.
         spawns: ['acid_trail']
       },
       {
@@ -909,6 +927,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['acid_trail', 'acid_glob']
       }
     },
+    bodies: { hurtbox: { width: 34, height: 36 }, hitbox: { width: 24, height: 26 } },
     spritePlan: {
       frame: PX(48, 48),
       origin: { x: 0.5, y: 0.84 },
@@ -953,7 +972,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0xa5f4ff, accent: 0xfff6c7, glow: 0xc3f9ff, trail: 0x6bd9ff },
     baseStats: {
       maxHp: 112,
-      contactDamage: 8,
+      contactDamage: 2,
       moveSpeed: 110,
       dashSpeed: 160,
       jumpHeight: 190
@@ -961,7 +980,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'light',
       preferredRange: 'mid',
-      mobilityNotes: 'Can wall-ride gusts and double-dash mid-air with tornado lifts.'
+      // Mobility: Can wall-ride gusts and double-dash mid-air with tornado lifts.
     },
     weaponReward: {
       id: 'AeroDarts',
@@ -975,13 +994,14 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Turbine Slice',
+        hitbox: { width: 38, height: 26, offsetX: 6, offsetY: 4 },
         shortName: 'TURBINE',
         state: 'dash',
         description: 'Spins into a horizontal cyclone that travels across the arena.',
         telegraph: { telegraphMs: 240, warningFx: 'wave', anchor: 'self' },
         executeMs: 260,
         cooldownMs: 700,
-        movementCue: 'Applies forward dash, lifts slightly off ground.',
+        // Movement: Applies forward dash, lifts slightly off ground.
         spawns: ['wind_hitbox']
       },
       {
@@ -1000,7 +1020,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         telegraph: { telegraphMs: 320, warningFx: 'reticle', anchor: 'self' },
         executeMs: 300,
         cooldownMs: 860,
-        movementCue: 'Switch to aerial state; enables follow-up dash mid-air.',
+        // Movement: Switch to aerial state; enables follow-up dash mid-air.
         spawns: ['tornado_pillar']
       }
     ],
@@ -1040,6 +1060,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['dart_spread', 'wind_hitbox']
       }
     },
+    bodies: { hurtbox: { width: 34, height: 38 }, hitbox: { width: 22, height: 28 } },
     spritePlan: {
       frame: PX(46, 46),
       origin: { x: 0.5, y: 0.84 },
@@ -1084,7 +1105,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0xb0e4ff, accent: 0xfff3d1, glow: 0xd0f6ff, trail: 0x7ac8ff },
     baseStats: {
       maxHp: 120,
-      contactDamage: 8,
+      contactDamage: 2,
       moveSpeed: 90,
       dashSpeed: 130,
       jumpHeight: 160
@@ -1092,7 +1113,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'medium',
       preferredRange: 'close',
-      mobilityNotes: 'Slides on ice paths and counterattacks with precise strikes.'
+      // Mobility: Slides on ice paths and counterattacks with precise strikes.
     },
     weaponReward: {
       id: 'FrostShatter',
@@ -1106,13 +1127,14 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Glacier Slide',
+        hitbox: { width: 40, height: 24, offsetX: 6 },
         shortName: 'ICE SLIDE',
         state: 'dash',
         description: 'Slides across the floor leaving icy residue.',
         telegraph: { telegraphMs: 280, warningFx: 'wave', anchor: 'self' },
         executeMs: 220,
         cooldownMs: 620,
-        movementCue: 'Applies frictionless velocity with slight deceleration.'
+        // Movement: Applies frictionless velocity with slight deceleration.
       },
       {
         name: 'Frost Draw',
@@ -1172,6 +1194,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['icicle_fall', 'freeze_cone']
       }
     },
+    bodies: { hurtbox: { width: 36, height: 40 }, hitbox: { width: 24, height: 30 } },
     spritePlan: {
       frame: PX(50, 48),
       origin: { x: 0.5, y: 0.86 },
@@ -1218,7 +1241,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     theme: { primary: 0x142d52, accent: 0x42e7ff, glow: 0x70f4ff, trail: 0xff8a32 },
     baseStats: {
       maxHp: 140,
-      contactDamage: 10,
+      contactDamage: 2,
       moveSpeed: 82,
       dashSpeed: 176,
       jumpHeight: 0
@@ -1226,7 +1249,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     movementProfile: {
       weight: 'heavy',
       preferredRange: 'mid',
-      mobilityNotes: 'Hovers with deliberate range corrections, then commits to high-speed armored rams.'
+      // Mobility: Hovers with deliberate range corrections, then commits to high-speed armored rams.
     },
     attacks: [
       {
@@ -1251,6 +1274,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Core Ram',
+        hitbox: { width: 48, height: 40, offsetX: 8 },
         state: 'dash',
         description: 'Seals its armor and rams through the player lane while shedding static orbs.',
         telegraph: { telegraphMs: 280, warningFx: 'glow', anchor: 'self' },
@@ -1260,6 +1284,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       },
       {
         name: 'Override Cascade',
+        hitbox: { width: 44, height: 40, damage: 2 },
         shortName: 'CASCADE',
         state: 'summon',
         description: 'Combines falling command shards with persistent denial zones.',
@@ -1317,6 +1342,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         spawns: ['arc_shards', 'static_orb', 'icicle_fall']
       }
     },
+    bodies: { hurtbox: { width: 48, height: 54 }, hitbox: { width: 34, height: 42 } },
     spritePlan: {
       frame: PX(64, 64),
       origin: { x: 0.5, y: 0.78 },

@@ -1,6 +1,9 @@
 import type Phaser from 'phaser'
 import AudioService from '../../audio'
-import { BossProjectileController } from '../../boss/framework/BossProjectileController'
+import { BossProjectileController, resolveBossMuzzleY } from '../../boss/framework/BossProjectileController'
+import { HAZARD_PIECES_BY_ATTACK, type BossHazardId } from '../../boss/hazards/hazardSpawners'
+import { getBossAttackCombatProfile } from '../../bosses/bossCombatProfiles'
+import type { BossId } from '../../bosses/types'
 import type { BossUIBinder } from '../../boss/framework/BossUIBinder'
 import type { BossController } from '../../bosses/BossController'
 import { countClearedRobotMasters, FINAL_STAGE_ID, getCampaignStage, TUTORIAL_STAGE_ID } from '../../content/campaign'
@@ -9,16 +12,16 @@ import { evaluateFinalGate, getLocationCheckId } from '../../progression'
 import type { ProjectileSystem } from '../../projectiles'
 import { Save } from '../../systems/Save'
 import type { HUD } from '../../ui/HUD'
-import { GAMEPLAY_TEXTURE_KEYS } from '../../ui/gameplay/GameplayTextures'
 import { VictoryModal } from '../../ui/VictoryModal'
+import { BossBodies } from './BossBodies'
+import { BossHazards } from './BossHazards'
 import { BossPresentation } from './BossPresentation'
 import { BossTelegraphs } from './BossTelegraphs'
-import { bossHazardRingCount } from './combatRules'
 import type { CameraDirector } from './CameraDirector'
 import { pendingMilestoneId, type StoryDirector } from './StoryDirector'
 
-/** The legacy boss body (no controller) walks at this speed and turns at walls. */
-const LEGACY_BOSS_WALK_SPEED = 60
+/** Icicles hang from this far below the camera's top: under the HUD panels, not over them. */
+const HAZARD_CEILING_BELOW_VIEW_TOP = 66
 
 /** The Game scene state the boss beats read and write (the scene itself supplies add, tweens, time and the rest). */
 export interface BossBeatsState {
@@ -26,7 +29,6 @@ export interface BossBeatsState {
   bossController?: BossController
   bossTarget?: Phaser.Physics.Arcade.Sprite
   bossBody?: Phaser.Physics.Arcade.Sprite
-  bossArt?: Phaser.GameObjects.Sprite
   player?: Phaser.Physics.Arcade.Sprite
   projectileSystem?: ProjectileSystem
   bossBullets?: Phaser.Physics.Arcade.Group
@@ -55,7 +57,6 @@ export interface BossBeatsState {
   updatePhaseHud(action?: string): void
   showStageToast(message: string, durationMs?: number): void
   devRegister<T extends Phaser.GameObjects.GameObject>(ref: T | undefined, kind: string): T | undefined
-  playAnimationSafe(target: Phaser.GameObjects.Sprite | undefined, key: string, ignoreIfPlaying?: boolean): void
   disableBossCombatActors(): void
   disableProjectileGroups(): void
   freezeCombatWorld(): void
@@ -78,11 +79,17 @@ export class BossBeats {
   readonly telegraphs: BossTelegraphs
   /** WARNING band, name card, bar fill, desperation pulses and the death chain (prompt 07 phase 7.2). */
   readonly presentation: BossPresentation
+  /** Every authored hazard's own spawner: body, art and timing (prompt 07 phase 7.1, EVAL-P7-001). */
+  readonly hazards: BossHazards
+  /** The hurtbox and contact hitbox beside the floor body (prompt 07 phase 7.0, EVAL-P7-010). */
+  readonly bodies: BossBodies
   private listening = false
 
   constructor(private readonly host: BossBeatsHost) {
     this.telegraphs = new BossTelegraphs(host)
     this.presentation = new BossPresentation(host)
+    this.hazards = new BossHazards(host)
+    this.bodies = new BossBodies(host)
   }
 
   /** Once per scene run: a weakness interrupt cancels the pending spawn and tell; the desperation phase starts the arena pulses. */
@@ -103,6 +110,7 @@ export class BossBeats {
       host.events.off('boss-attack-interrupted', onInterrupted)
       host.events.off('boss-phase-change', onPhase)
       this.presentation.resetFight()
+      this.bodies.forget()
       this.listening = false
     })
   }
@@ -110,6 +118,7 @@ export class BossBeats {
   initializeProjectileController(): void {
     const host = this.host
     this.listen()
+    this.hazards.reset()
     if (!host.projectileSystem || !host.bossBullets) {
       return
     }
@@ -141,13 +150,8 @@ export class BossBeats {
       registerProjectile: (bullet, kind) => host.devRegister(bullet, kind),
       playAttackSfx: (name) => AudioService.playSfx(name as Parameters<typeof AudioService.playSfx>[0]),
       setActionLabel: (text) => host.updatePhaseHud(text),
-      playShootAnimation: () => {
-        if (host.bossArt) host.playAnimationSafe(host.bossArt, 'boss_shoot', true)
-      },
-      restoreWalkAnimation: () => {
-        if (host.bossArt?.anims) host.playAnimationSafe(host.bossArt, 'boss_walk', true)
-      },
-      spawnGroundSlamHazard: (hazardOrigin, attackData) => this.spawnGroundSlamHazard(hazardOrigin, attackData),
+      spawnHazard: (id, hazardOrigin, attackData) => this.spawnHazard(id, hazardOrigin, attackData),
+      getPhaseIndex: () => host.bossController?.phaseIndex ?? 0,
       log: (level, message, payload) => {
         if (typeof window === 'undefined' || !(window as unknown as { __DEV__?: boolean }).__DEV__) {
           return
@@ -158,53 +162,37 @@ export class BossBeats {
     })
   }
 
-  spawnGroundSlamHazard(origin: { x: number; y: number }, attackData?: unknown): void {
+  /** An attack's hazard, placed from the boss, the floor it stands on, the room and the hero (see hazardSpawners.ts). */
+  spawnHazard(id: BossHazardId, origin: { x: number; y: number }, attackData?: unknown): void {
     const host = this.host
-    if (!host.hazards) {
-      return
-    }
-    const data = (attackData ?? {}) as { id?: string; params?: { radius?: number; hazardDuration?: number }; hit?: { damageAmount?: number } }
-    const attackId = String(data.id ?? 'ground_slam')
-    const radius = Math.max(24, Number(data.params?.radius ?? 72))
-    const duration = Math.max(200, Number(data.params?.hazardDuration ?? 700))
-    const rings = bossHazardRingCount(host.bossController?.getRoomHazardCap() ?? 3, this.countActiveBossRoomHazards())
-    const direction = host.bossController?.getAttackFacing() ?? 1
-    const texture =
-      attackId === 'ignition_dash' || attackId === 'toxic_slide' ? GAMEPLAY_TEXTURE_KEYS.flameVent : GAMEPLAY_TEXTURE_KEYS.spikeBank
-    for (let i = 0; i < rings; i += 1) {
-      const laneOffset = attackId === 'ignition_dash' ? direction * i * (radius * 0.42) : (i - 1) * (radius * 0.45)
-      const hazard = host.hazards.create(origin.x + laneOffset, origin.y + 16, texture) as Phaser.Physics.Arcade.Sprite
-      hazard.setDataEnabled?.()
-      hazard.data?.set?.('damageSourceType', 'boss_projectile')
-      hazard.data?.set?.('damageSourceId', attackId)
-      hazard.data?.set?.('damageAmount', Number(data.hit?.damageAmount ?? 2))
-      hazard.data?.set?.('bossRoomHazard', true)
-      hazard.refreshBody()
-      const body = hazard.body as Phaser.Physics.Arcade.StaticBody | undefined
-      if (body) body.enable = false
-      hazard.setAlpha(0.22)
-      hazard.setTint(host.bossController?.blueprint.theme.glow ?? 0xffffff)
-      host.tweens.add({
-        targets: hazard,
-        alpha: 0.82 - i * 0.08,
-        duration: 180,
-        yoyo: false,
-        onComplete: () => {
-          if (!hazard.active) return
-          hazard.clearTint()
-          if (body) body.enable = true
-        }
-      })
-      host.time.delayedCall(180 + duration + i * 90, () => hazard.destroy())
-    }
+    const data = (attackData ?? {}) as { id?: string; displayName?: string; params?: { dashSpeed?: number }; hit?: { damageAmount?: number } }
+    const attackId = String(data.id ?? id)
+    const controller = host.bossController
+    const originBody = (host.bossTarget ?? host.bossBody)?.body as Phaser.Physics.Arcade.Body | undefined
+    const view = host.cameras.main.worldView
+    const room = host.activeBossRoom
+    const motion = controller ? getBossAttackCombatProfile(controller.blueprint.id as BossId, attackId)?.motion : undefined
+    this.hazards.spawn(
+      {
+        id,
+        originX: origin.x,
+        floorY: controller?.getFloorY() ?? originBody?.bottom ?? origin.y,
+        ceilingY: view.y + HAZARD_CEILING_BELOW_VIEW_TOP,
+        muzzleY: resolveBossMuzzleY(origin.y, originBody),
+        facing: controller?.getAttackFacing() ?? 1,
+        heroX: host.player?.active ? host.player.x : origin.x,
+        minX: room ? room.x + 8 : view.x + 8,
+        maxX: room ? room.x + room.width - 8 : view.right - 8,
+        damage: Math.max(1, Number(data.hit?.damageAmount ?? 2)),
+        speed: motion?.speed ?? data.params?.dashSpeed,
+        count: HAZARD_PIECES_BY_ATTACK[attackId]
+      },
+      String(data.displayName ?? attackId)
+    )
   }
 
   countActiveBossRoomHazards(): number {
-    const hazards = this.host.hazards
-    if (!hazards) return 0
-    return hazards
-      .getChildren()
-      .filter((hazard) => Boolean(hazard?.active && (hazard as Phaser.GameObjects.Sprite).data?.get?.('bossRoomHazard'))).length
+    return this.hazards.countActive()
   }
 
   /** BossController draws the boss; this only fails fast when the stage's boss atlas is missing or empty. */
@@ -219,30 +207,15 @@ export class BossBeats {
     this.host.bossUsingPlaceholder = false
   }
 
-  /** Every frame: the art follows the boss; a legacy body without a controller walks and turns at walls. */
+  /** Every frame: the hurtbox and hitbox follow the floor body (BossController draws and moves the boss itself). */
   update(): void {
-    const host = this.host
-    this.syncBossArt()
-    const legacy = host.bossBody
-    if (!host.bossEncounterActive || !legacy || !legacy.active || host.bossController) {
-      return
-    }
-    const body = legacy.body as Phaser.Physics.Arcade.Body | undefined
-    if (!body) {
-      return
-    }
-    if (body.blocked.left) {
-      legacy.setVelocityX(LEGACY_BOSS_WALK_SPEED)
-    } else if (body.blocked.right) {
-      legacy.setVelocityX(-LEGACY_BOSS_WALK_SPEED)
-    } else if (body.velocity.x === 0) {
-      legacy.setVelocityX(LEGACY_BOSS_WALK_SPEED * (host.player && host.player.x < legacy.x ? -1 : 1))
-    }
+    this.bodies.sync()
   }
 
   /** Shots, hazards and the telegraphs of attacks still in their wind-up. */
   updateProjectiles(now: number, delta: number): void {
     this.host.bossProjectileController?.update(now, delta)
+    this.hazards.update(delta)
     this.telegraphs.update(now)
   }
 
@@ -335,6 +308,7 @@ export class BossBeats {
     host.victoryTriggered = true
     host.bossProjectileController?.stop()
     this.telegraphs.clear()
+    this.hazards.clear()
     host.bossUiBinder?.onBossDeath()
     AudioService.stopMusic()
     if (host.bossHp) {
@@ -394,21 +368,5 @@ export class BossBeats {
         })
       }
     })
-  }
-
-  private syncBossArt(): void {
-    const host = this.host
-    if (!host.bossArt) {
-      return
-    }
-    const source = (host.bossController ? host.bossTarget : host.bossBody) ?? host.bossBody
-    if (!source) {
-      return
-    }
-    host.bossArt.setPosition(source.x, source.y)
-    const body = source.body as Phaser.Physics.Arcade.Body | undefined
-    if (body && body.velocity.x !== 0) {
-      host.bossArt.setFlipX(body.velocity.x < 0)
-    }
   }
 }

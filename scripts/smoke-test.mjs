@@ -3935,6 +3935,7 @@ async function main() {
     await executeSmokeScenario(summary, '50-pyro-route', async () => (await import('./smoke/pyro-route.mjs')).runPyroRouteScenario('50-pyro-route', storyDeps))
     await executeSmokeScenario(summary, '51-saber-combo', async () => (await import('./smoke/saber-combo.mjs')).runSaberComboScenario('51-saber-combo', { outputDir, url, readState, waitForState, advanceFrames }))
     await executeSmokeScenario(summary, '52-boss-telegraphs', async () => (await import('./smoke/boss-telegraphs.mjs')).runBossTelegraphsScenario('52-boss-telegraphs', { outputDir, url, readState, waitForState }))
+    await executeSmokeScenario(summary, '53-boss-hazards', async () => (await import('./smoke/boss-hazards.mjs')).runBossHazardsScenario('53-boss-hazards', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '44-boss-beats', async () => (await import('./smoke/boss-beats.mjs')).runBossBeatsScenario('44-boss-beats', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     await executeSmokeScenario(summary, '37b-story-triggers', async () => (await import('./smoke/story-surfaces.mjs')).runStoryTriggersScenario('37b-story-triggers', storyDeps))

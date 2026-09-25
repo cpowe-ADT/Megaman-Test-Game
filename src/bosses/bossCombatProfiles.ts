@@ -29,6 +29,8 @@ export interface BossAttackMotionSpec {
   riseSpeed?: number
   diveSpeed?: number
   crossPlayer?: boolean
+  /** dive_to only: the wind-up tracks the hero's column and the dive drops straight down it (Riptide Crash). */
+  dropToPlayerColumn?: boolean
 }
 
 export interface BossAttackAnimationSpec {
@@ -177,7 +179,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
       }),
       attack('riptide_crash', {
         facingPolicy: 'lock_at_windup',
-        motion: { kind: 'dive_to', hoverHeight: 108, riseSpeed: 190, diveSpeed: 430, speed: 120 },
+        motion: { kind: 'dive_to', hoverHeight: 120, riseSpeed: 300, diveSpeed: 460, speed: 160, dropToPlayerColumn: true },
         animation: anim('dive', 'splash_land'),
         strategyTags: ['gap_close', 'finisher'],
         landingMs: 260

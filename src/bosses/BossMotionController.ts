@@ -204,10 +204,14 @@ export class BossMotionController {
         if (nextPhase === 'windup') {
           output.allowGravity = false
           output.velocityY = input.y > targetY ? -(motion.riseSpeed ?? 180) : 0
-          output.velocityX = 0
+          // Riptide Crash (prompt 07 phase 7.1 item 4): cling to the ceiling over the hero's column, then drop down it.
+          const columnSpeed = motion.speed ?? 120
+          output.velocityX = motion.dropToPlayerColumn
+            ? Math.max(-columnSpeed, Math.min(columnSpeed, (input.playerX - input.x) * 8))
+            : 0
         } else if (nextPhase === 'active') {
           output.allowGravity = false
-          output.velocityX = action.facing * (motion.speed ?? 120)
+          output.velocityX = motion.dropToPlayerColumn ? 0 : action.facing * (motion.speed ?? 120)
           output.velocityY = motion.diveSpeed ?? 420
           if (!action.motionStarted) {
             action.motionStarted = true

@@ -6,7 +6,8 @@ import { ArenaController } from '../boss/framework/ArenaController'
 import { BossBase } from '../boss/framework/BossBase'
 import { BossDefinition, DamageEvent, HitResult } from '../boss/framework/types'
 import { clampBossXToBounds, type MovementBounds } from '../content/stageArenaLayout'
-import { toAttackPatternFromDefinition, toBossDefinition } from '../boss/framework/bossDefinitionMapper'
+import { normalizedId, resolveAttackDamage, toAttackPatternFromDefinition, toBossDefinition } from '../boss/framework/bossDefinitionMapper'
+import { defaultBossBodyPlan, resolveBossBodies, type BossBodyBoxes, type BossContactAttack } from './bossBodies'
 import { getBossJumpInterval, getBossMotionProfile } from './bossMotionProfile'
 import {
   BOSS_COMBAT_PROFILES,
@@ -26,6 +27,8 @@ export interface BossControllerConfig {
   getActiveHazardCount?: () => number
   /** The Game scene's live attack telegraph, reported by getDebugState (`bossState.runtime.telegraph`). */
   telegraphProbe?: () => unknown
+  /** The Game scene's live boss hazards, reported by getDebugState (`bossState.runtime.hazards`). */
+  hazardProbe?: () => unknown
 }
 
 interface BossPhaseView {
@@ -88,6 +91,9 @@ export class BossController extends Phaser.GameObjects.Container {
   private lastMotionIntent: BossMotionIntentKind = 'hold'
   private lastGroundY = 0
   private readonly telegraphProbe?: () => unknown
+  private readonly hazardProbe?: () => unknown
+  /** Each attack's id, authored contact hitbox and hit damage, for `getBodyBoxes`. */
+  private readonly contactAttacks: BossContactAttack[]
   /** Feet row relative to the container origin, measured from the idle frame. */
   private readonly contactOffsetY: number
   private traceSequence = 0
@@ -130,6 +136,12 @@ export class BossController extends Phaser.GameObjects.Container {
     }
     this.getActiveHazardCount = config.getActiveHazardCount ?? (() => 0)
     this.telegraphProbe = config.telegraphProbe
+    this.hazardProbe = config.hazardProbe
+    this.contactAttacks = [...blueprint.attacks, ...(blueprint.desperation ? [blueprint.desperation.attack] : [])].map((attack) => ({
+      id: normalizedId(attack.name),
+      hitbox: attack.hitbox,
+      damage: resolveAttackDamage(attack)
+    }))
 
     this.atlasKey = `atlas_${blueprint.id}`
     if (!scene.textures.exists(this.atlasKey)) {
@@ -292,6 +304,28 @@ export class BossController extends Phaser.GameObjects.Container {
     }
   }
 
+  /** The phase the brain is in (0 for phase one; desperation counts after the authored phases). */
+  get phaseIndex(): number {
+    return this.bossBrain.currentPhaseIndex
+  }
+
+  /**
+   * The hurtbox and the contact hitbox this frame (prompt 07 phase 7.0, EVAL-P7-010): placed from the floor body's
+   * feet and the drawn facing; an active attack with an authored `hitbox` swaps in its box and damage.
+   */
+  getBodyBoxes(): BossBodyBoxes {
+    const body = this.body
+    return resolveBossBodies({
+      plan: this.blueprint.bodies ?? defaultBossBodyPlan(this.blueprint.spritePlan.frame),
+      contactDamage: this.blueprint.baseStats.contactDamage,
+      feet: { x: body?.center?.x ?? this.x, y: body?.bottom ?? this.y },
+      facing: this.sprite.flipX ? -1 : 1,
+      activeAttackId: this.bossBrain.activeAttackId ?? null,
+      lifecycle: this.bossBrain.activeAttackLifecycle ?? null,
+      attacks: this.contactAttacks
+    })
+  }
+
   get currentPhase(): BossPhaseView {
     return this.phaseView
   }
@@ -367,6 +401,8 @@ export class BossController extends Phaser.GameObjects.Container {
       grounded: this.body?.onFloor?.() || this.body?.blocked?.down || false,
       ground: this.getGroundReport(),
       telegraph: this.telegraphProbe?.() ?? null,
+      bodies: this.getBodyBoxes(),
+      hazards: this.hazardProbe?.() ?? null,
       velocity: { x: Math.round(this.body?.velocity?.x ?? 0), y: Math.round(this.body?.velocity?.y ?? 0) },
       invulnerable: this.isInvulnerable,
       facing: this.sprite.flipX ? 'west' : 'east',
@@ -558,6 +594,14 @@ export class BossController extends Phaser.GameObjects.Container {
     return this.lastGroundY || this.y
   }
 
+  /**
+   * The floor the boss stands on: the last ground line plus the floor body's bottom offset. `getGroundY` is the
+   * container's y, a few pixels above the body bottom the hero and the boss actually stand on.
+   */
+  getFloorY(): number {
+    return this.getGroundY() + ((this.body?.bottom ?? this.y) - this.y)
+  }
+
   getRoomHazardCap(): number {
     return this.combatProfile?.room.maxActiveHazards ?? 3
   }
@@ -577,12 +621,10 @@ export class BossController extends Phaser.GameObjects.Container {
       }
     }
 
+    // An unauthored slam quakes (the short_quake spawner). A dash spawns nothing: its authored hitbox rides the
+    // boss while it is active (`getBodyBoxes`), so no stand-in bullet is injected (prompt 07 phase 7.1 item 3).
     if (attack.type === 'hazard' || attack.type === 'slam') {
       pattern.spawns = ['ground_slam_hazard']
-    }
-
-    if (attack.type === 'dash') {
-      pattern.spawns = ['dash_strike']
     }
 
     return pattern

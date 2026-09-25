@@ -43,10 +43,10 @@
         "shock_punch": 3,
         "spark_shot": 4,
         "ground_slam": 2,
-        "dash_strike": 3
+        "shoulder_rush": 3
       },
       "unlockAttacks": [
-        "dash_strike"
+        "shoulder_rush"
       ],
       "transitionLockMs": 520
     }
@@ -151,7 +151,7 @@
       }
     },
     {
-      "id": "dash_strike",
+      "id": "shoulder_rush",
       "displayName": "DashStrike",
       "type": "dash",
       "windupTime": 180,

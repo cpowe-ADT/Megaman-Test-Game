@@ -1,17 +1,23 @@
 import Phaser from 'phaser'
 import AudioService from '../../audio'
+import { BOSS_ROSTER } from '../../bosses/roster'
+import type { BossId } from '../../bosses/types'
 import type { EnemySpawner } from '../../enemy'
 import type { NewPlayerRuntime } from '../../player/NewPlayerRuntime'
 import type { PlayerDamageRequest, PlayerDamageResult } from '../../player/types'
 import type { ProjectileCollisionRouter, ProjectileSystem } from '../../projectiles'
 import type { CombatDebugBus } from '../../tools/debug/CombatDebugBus'
 import type { HUD } from '../../ui/HUD'
+import type { BossBodies } from './BossBodies'
+import type { BossHazards } from './BossHazards'
 import { combatSourceForDamage, type CombatHitSource, type CombatHitTarget } from './combatRules'
 
 export type { CombatHitSource, CombatHitTarget } from './combatRules'
 
-/** Boss body contact: a flat heavy hit of 2 (prompt 07 7.0 replaces it with per-attack hitboxes, EVAL-P7-010). */
-export const BOSS_CONTACT_DAMAGE = 2
+/** Contact without a live hitbox (no controller): the roster's idle `contactDamage`. */
+function rosterContactDamage(bossId: string | undefined): number {
+  return BOSS_ROSTER[(bossId ?? '') as BossId]?.baseStats.contactDamage ?? 2
+}
 
 /** The members of the Game scene the hit wires, contact handlers and player damage read and write. */
 export interface HitWiresHost {
@@ -39,6 +45,8 @@ export interface HitWiresHost {
   playerHitWire?: Phaser.Physics.Arcade.Collider
   bossContactWire?: Phaser.Physics.Arcade.Collider
   projectileClashWire?: Phaser.Physics.Arcade.Collider
+  /** The boss's hurtbox and contact hitbox, and the hazard bodies (prompt 07 phases 7.0 and 7.1). */
+  bossBeats?: { bodies: Pick<BossBodies, 'ensure' | 'boxes'>; hazards: Pick<BossHazards, 'group' | 'solids'> }
   killPlayer(reason: 'pit' | 'debug' | 'damage'): void
 }
 
@@ -51,6 +59,9 @@ const asObject = (value: Overlapping): Phaser.GameObjects.GameObject => value as
  * with the same names (`recycleBullet`, `recordCombatHit`, `requestPlayerDamage`) for debug hooks and smoke.
  */
 export class HitWires {
+  private bossHazardWire?: Phaser.Physics.Arcade.Collider
+  private bossHazardSolidWire?: Phaser.Physics.Arcade.Collider
+
   constructor(private readonly host: HitWiresHost) {}
 
   install(): void {
@@ -66,6 +77,10 @@ export class HitWires {
     host.playerHitWire = undefined
     host.bossContactWire = undefined
     host.projectileClashWire = undefined
+    this.bossHazardWire?.destroy()
+    this.bossHazardSolidWire?.destroy()
+    this.bossHazardWire = undefined
+    this.bossHazardSolidWire = undefined
 
     const target = host.bossTarget
     if (target) {
@@ -77,16 +92,30 @@ export class HitWires {
       target.setDataEnabled?.()
       if (target.data?.get('maxHp') == null) target.data?.set('maxHp', 20)
       if (target.data?.get('hp') == null) target.data?.set('hp', target.data?.get('maxHp') ?? 20)
+      // Shots and the saber meet the hurtbox, the hero meets the contact hitbox; the floor body (target) meets
+      // neither (prompt 07 phase 7.0, EVAL-P7-010). Without a controller the one body still does all three.
+      const boxes = host.bossBeats?.bodies.ensure() ?? null
+      const hurtbox = (boxes?.hurtbox ?? target) as Phaser.Physics.Arcade.Sprite
+      const hitbox = boxes?.hitbox ?? target
       if (host.playerBullets) {
-        host.bossHitWire = host.physics.add.overlap(host.playerBullets, target, (a, b) =>
-          host.projectileCollisionRouter.handlePlayerBulletHitsBoss(asObject(a), asObject(b), target)
+        host.bossHitWire = host.physics.add.overlap(host.playerBullets, hurtbox, (a, b) =>
+          host.projectileCollisionRouter.handlePlayerBulletHitsBoss(asObject(a), asObject(b), hurtbox)
         )
       }
       if (host.player) {
-        host.bossContactWire = host.physics.add.overlap(host.player, target, (playerObj, bossObj) =>
+        host.bossContactWire = host.physics.add.overlap(host.player, hitbox, (playerObj, bossObj) =>
           this.onBossContact(asObject(playerObj), asObject(bossObj))
         )
       }
+    }
+    const hazards = host.bossBeats?.hazards
+    if (host.player && hazards?.group) {
+      this.bossHazardWire = host.physics.add.overlap(host.player, hazards.group, (playerObj, hazardObj) =>
+        this.onHazardContact(asObject(playerObj), asObject(hazardObj))
+      )
+    }
+    if (host.player && hazards?.solids) {
+      this.bossHazardSolidWire = host.physics.add.collider(host.player, hazards.solids)
     }
     if (host.player && host.bossBullets) {
       host.playerHitWire = host.physics.add.overlap(host.player, host.bossBullets, (playerObj, bulletObj) =>
@@ -187,11 +216,18 @@ export class HitWires {
     if (!player.active || !boss.active || !this.host.bossEncounterActive) {
       return
     }
+    // Idle: the roster's contactDamage; an active attack's hitbox: that attack's damage.
+    const boxes = this.host.bossBeats?.bodies.boxes ?? null
+    const amount = boxes?.damage ?? rosterContactDamage(this.host.activeBossId)
+    if (amount <= 0) {
+      return
+    }
+    const bossId = String(this.host.activeBossId ?? 'boss_contact')
     this.requestPlayerDamage({
-      amount: BOSS_CONTACT_DAMAGE,
-      tier: 'heavy',
+      amount,
+      tier: amount >= 2 ? 'heavy' : 'light',
       sourceType: 'boss_contact',
-      sourceId: String(this.host.activeBossId ?? 'boss_contact'),
+      sourceId: boxes?.attack ? `${bossId}:${boxes.attack}` : bossId,
       direction: player.x >= boss.x ? 1 : -1
     })
   }

@@ -115,6 +115,32 @@ export const ELEMENT_DAMAGE_TYPE: Record<Element, string> = {
   Ice: 'ice'
 }
 
+/**
+ * A box on the boss (prompt 07 phase 7.0, EVAL-P7-010), placed from the floor body's bottom centre (the feet) and
+ * mirrored with the boss's facing: `offsetX` forward, `offsetY` up from the feet line.
+ */
+export interface BossBox {
+  width: number
+  height: number
+  offsetX?: number
+  offsetY?: number
+}
+
+/** An attack's contact box; `damage` defaults to the attack's own hit damage. */
+export interface BossAttackHitbox extends BossBox {
+  damage?: number
+}
+
+/**
+ * A boss is three bodies: the floor body (`spritePlan.frame`: stands on the floor, collides with platforms, never
+ * hurts), the hurtbox (takes the Buster, the weapons and the saber) and the contact hitbox (the roster's
+ * `contactDamage` while no attack is active; an active attack's `hitbox` and damage replace it).
+ */
+export interface BossBodyPlan {
+  hurtbox: BossBox
+  hitbox: BossBox
+}
+
 export type BossStateKey =
   | 'intro'
   | 'idle'
@@ -164,12 +190,14 @@ export interface AttackPattern {
   telegraph: TelegraphSpec
   executeMs: number
   cooldownMs: number
-  /** Movement envelope or velocity hints */
+  /** Movement envelope or velocity hints (authoring note; the roster keeps these as comments). */
   movementCue?: string
   /** Projectiles or hazards spawned */
   spawns?: string[]
   /** Whether the attack ignores the player's i-frames */
   piercesIFrames?: boolean
+  /** The contact hitbox while this attack is active (a dash, hop, slam or dive: the body is the strike); see `bodies`. */
+  hitbox?: BossAttackHitbox
 }
 
 export interface PhaseDefinition {
@@ -235,11 +263,18 @@ export interface BossBlueprint {
   movementProfile: {
     weight: 'light' | 'medium' | 'heavy'
     preferredRange: 'close' | 'mid' | 'long'
-    mobilityNotes: string
+    /** Authoring note; the roster keeps these as comments, since no runtime code reads them. */
+    mobilityNotes?: string
   }
   weaponReward?: WeaponRewardPlan
   /** Exceptions to the weakness ring (Rook: Buster only; Omega: a weakness per phase). */
   damageProfile?: BossDamageProfile
+  /** The framework's flat damage reduction for this boss (none authored yet; the mapper passes it through). */
+  defense?: number
+  /** The framework's per-damage-type multipliers (`ELEMENT_DAMAGE_TYPE` keys); none authored yet. */
+  resistances?: Record<string, number>
+  /** Hurtbox and idle contact hitbox (prompt 07 phase 7.0, EVAL-P7-010); the floor body is `spritePlan.frame`. */
+  bodies?: BossBodyPlan
   attacks: AttackPattern[]
   phases: PhaseDefinition[]
   /** Not in `attacks`: the desperation attack unlocks only at its threshold, after every phase. */

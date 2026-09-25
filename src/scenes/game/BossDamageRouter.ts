@@ -153,36 +153,8 @@ export class BossDamageRouter {
       return
     }
 
-    const target = host.bossTarget ?? host.bossBody
-    if (!target || !target.active) {
-      host.recordCombatHit('player', 'boss', dmg, hitKind, false, 'missing target')
-      return
-    }
-    target.setDataEnabled?.()
-    const current = (target.data?.get?.('hp') ?? target.data?.get?.('maxHp') ?? 0) as number
-    const max = (target.data?.get?.('maxHp') ?? Math.max(1, current)) as number
-    const next = Math.max(0, current - scaledDamage)
-    host.recordCombatHit('player', 'boss', scaledDamage, hitKind, true, next <= 0 ? 'defeat' : 'hit')
-    target.data?.set?.('hp', next)
-    target.data?.set?.('maxHp', max)
-    host.bossHp = { current: next, max }
-    host.hud?.updateBossHp(next, max)
-    AudioService.playSfx('boss_hit')
-    host.cameraDirector.onBossHit(multiplier, scaledDamage)
-    this.showHitFeedback(weaponId, multiplier)
-    if (next <= 0) {
-      if (typeof target.disableBody === 'function') {
-        target.disableBody(true, true)
-      } else {
-        target.setActive(false).setVisible(false)
-        const body = target.body as Phaser.Physics.Arcade.Body | undefined
-        if (body) {
-          body.enable = false
-        }
-      }
-      host.events.emit('boss-defeated', { reward: { displayName: 'FROST SLASH' } })
-      host.onBossDefeated()
-    }
+    // Every boss is a BossController; Game never builds a bare body, so there is nothing else to hit.
+    host.recordCombatHit('player', 'boss', dmg, hitKind, false, 'missing target')
   }
 
   /** The last hit label the phase panel showed. */
