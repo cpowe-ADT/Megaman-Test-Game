@@ -9,6 +9,8 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     codename: 'Sentinel ROOK',
     element: 'Normal',
     arena: 'Tutorial Drill Hangar',
+    // The tutorial warden takes the Buster (and the saber) only (prompt 07 phase 7.3).
+    damageProfile: { onlyWeapons: ['Buster'] },
     introCallout: 'AUTONOMOUS GATEKEEPER',
     theme: { primary: 0x7d8cff, accent: 0xfff0b3, glow: 0x96a2ff, trail: 0x4552d4 },
     baseStats: {
@@ -1210,6 +1212,8 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     codename: IDENTITY.ANTAGONIST_NAME,
     element: 'Normal',
     arena: 'Omega Citadel Command Vault',
+    // Omega's weakness rotates with its phases: Lightning, then Metal, then Ice (desperation keeps Ice); prompt 07 phase 7.3.
+    damageProfile: { phaseWeaknesses: ['Lightning', 'Metal', 'Ice'] },
     introCallout: 'CENTRAL DIRECTIVE',
     theme: { primary: 0x142d52, accent: 0x42e7ff, glow: 0x70f4ff, trail: 0xff8a32 },
     baseStats: {

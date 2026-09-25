@@ -35,14 +35,84 @@ export const WeaknessTable: Record<Element, Element> = {
   Normal: 'Normal'
 }
 
+/** The authored ring's multipliers (prompt 07 phase 7.3, EVAL-P7-004). */
+export const WEAKNESS_MULTIPLIER = 1.75
+export const RESIST_MULTIPLIER = 0.75
+
+/**
+ * The authored ring: a boss takes 1.75x from the element it is weak to (`WeaknessTable[boss]`) and 0.75x from an
+ * element its own beats (`WeaknessTable[weapon] === boss`); everything else is neutral. Normal (the Buster, the
+ * saber, ArcSlash, Rook and Omega) sits outside the ring.
+ */
 export function damageMultiplier(weapon: Element, boss: Element): number {
+  if (weapon === 'Normal' || boss === 'Normal') {
+    return 1
+  }
   if (WeaknessTable[boss] === weapon) {
-    return 1.5
+    return WEAKNESS_MULTIPLIER
   }
   if (WeaknessTable[weapon] === boss) {
-    return 0.75
+    return RESIST_MULTIPLIER
   }
   return 1
+}
+
+/** Authored exceptions to the ring: Rook takes the Buster only; Omega's weakness rotates with its phases. */
+export interface BossDamageProfile {
+  /** Only these weapons hurt the boss (the saber counts as the Buster); every other weapon does nothing. */
+  onlyWeapons?: WeaponId[]
+  /** The element the boss is weak to in each phase, in phase order; later phases (desperation) keep the last. */
+  phaseWeaknesses?: Element[]
+}
+
+export type BossHitOutcome = 'weakness' | 'neutral' | 'resisted' | 'immune'
+
+export interface BossElementHit {
+  multiplier: number
+  outcome: BossHitOutcome
+  /** The element the boss is weak to right now (null for Normal bosses without a rotation). */
+  weakTo: Element | null
+}
+
+/** The weakness table for one hit (Classic): the ring, then the boss's authored profile. */
+export function resolveBossElementHit(options: {
+  bossElement: Element
+  weaponId: string
+  weaponElement: Element
+  profile?: BossDamageProfile
+  phaseIndex?: number
+}): BossElementHit {
+  const { bossElement, weaponId, weaponElement, profile } = options
+  const rotation = profile?.phaseWeaknesses ?? []
+  const weakTo = rotation.length > 0 ? rotation[Math.max(0, Math.min(rotation.length - 1, Math.floor(options.phaseIndex ?? 0)))] : bossElement === 'Normal' ? null : WeaknessTable[bossElement]
+  if (profile?.onlyWeapons && !profile.onlyWeapons.includes(weaponId as WeaponId)) {
+    return { multiplier: 0, outcome: 'immune', weakTo }
+  }
+  const multiplier = rotation.length > 0 && weaponElement !== 'Normal' && weaponElement === weakTo ? WEAKNESS_MULTIPLIER : damageMultiplier(weaponElement, bossElement)
+  const outcome: BossHitOutcome = multiplier >= WEAKNESS_MULTIPLIER ? 'weakness' : multiplier < 1 ? 'resisted' : 'neutral'
+  return { multiplier, outcome, weakTo }
+}
+
+/** The boss's phase index from the phase name on the HUD (desperation counts after the authored phases). */
+export function bossPhaseIndex(blueprint: Pick<BossBlueprint, 'phases' | 'desperation'>, currentPhaseName: string | undefined): number {
+  const name = (currentPhaseName ?? '').trim().toUpperCase()
+  if (!name) return 0
+  const index = blueprint.phases.findIndex((phase) => phase.name.toUpperCase() === name)
+  if (index >= 0) return index
+  return blueprint.desperation?.name.toUpperCase() === name ? blueprint.phases.length : 0
+}
+
+/** The boss framework's damage type for an element: `BossDamageController` looks it up in a definition's `resistances`. */
+export const ELEMENT_DAMAGE_TYPE: Record<Element, string> = {
+  Normal: 'normal',
+  Fire: 'fire',
+  Water: 'water',
+  Lightning: 'electric',
+  Earth: 'impact',
+  Metal: 'metal',
+  Toxic: 'toxic',
+  Wind: 'wind',
+  Ice: 'ice'
 }
 
 export type BossStateKey =
@@ -168,6 +238,8 @@ export interface BossBlueprint {
     mobilityNotes: string
   }
   weaponReward?: WeaponRewardPlan
+  /** Exceptions to the weakness ring (Rook: Buster only; Omega: a weakness per phase). */
+  damageProfile?: BossDamageProfile
   attacks: AttackPattern[]
   phases: PhaseDefinition[]
   /** Not in `attacks`: the desperation attack unlocks only at its threshold, after every phase. */

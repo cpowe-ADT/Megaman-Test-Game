@@ -1,8 +1,10 @@
 import type Phaser from 'phaser'
 import AudioService from '../../audio'
 import type { BossController } from '../../bosses/BossController'
+import { BOSS_ROSTER } from '../../bosses/roster'
+import { bossPhaseIndex, ELEMENT_DAMAGE_TYPE, resolveBossElementHit, type BossBlueprint, type BossElementHit, type BossId } from '../../bosses/types'
 import { getCampaignStage } from '../../content/campaign'
-import { getWeaponDisplayName } from '../../content/weapons'
+import { getWeaponConfig } from '../../content/weapons'
 import {
   getBossWeaknessProfile,
   getBusterDamageBonus,
@@ -61,6 +63,8 @@ export interface BossDamageRouterHost {
 export class BossDamageRouter {
   /** The last player hit on the boss and how it reacted (prompt 07 phase 7.2 item 3; smoke 44 reads the weakness stagger). */
   lastReaction: (BossHitReaction & { atMs: number; multiplier: number; accepted: boolean; interruptedAttackId: string | null }) | null = null
+  /** The weakness table's verdict on the last player hit (prompt 07 phase 7.3; smoke 12 and 44 read it). */
+  lastElementHit: (BossElementHit & { weaponId: string; classic: boolean; label: string; damageType: string }) | null = null
 
   constructor(private readonly host: BossDamageRouterHost) {}
 
@@ -69,16 +73,37 @@ export class BossDamageRouter {
     const weaponId = hitContext.weaponId ?? host.getCurrentWeaponConfig().id
     const hitKind = hitContext.kind ?? 'direct'
     const save = host.progressionSave
-    const multiplier = resolveBossDamageMultiplier({
-      strictness: getWeaknessStrictness(save),
-      profile: getBossWeaknessProfile(save, host.activeBossId ?? 'pyro_maw'),
-      weaponId,
-      chargeLevel: weaponId === 'Buster' ? hitContext.chargeLevel ?? 0 : 0,
-      hasArmsUpgrade: resolveUpgradeModifiers(save).hasArmsUpgrade
-    })
+    // Classic reads the authored ring and the boss's profile (prompt 07 phase 7.3): weakness 1.75, neutral 1,
+    // resist 0.75, and no BLOCKED. The Randomizer keeps its seeded weakness profiles and strictness.
+    const classic = save.progressionWorld?.progressionMode === 'classic'
+    const weapon = getWeaponConfig(weaponId)
+    const blueprint = BOSS_ROSTER[(host.activeBossId ?? '') as BossId] as BossBlueprint | undefined
+    const elementHit = blueprint
+      ? resolveBossElementHit({ bossElement: blueprint.element, weaponId: weapon.id, weaponElement: weapon.element, profile: blueprint.damageProfile, phaseIndex: bossPhaseIndex(blueprint, host.currentPhaseName) })
+      : null
+    const multiplier =
+      classic && elementHit
+        ? elementHit.multiplier
+        : resolveBossDamageMultiplier({
+            strictness: getWeaknessStrictness(save),
+            profile: getBossWeaknessProfile(save, host.activeBossId ?? 'pyro_maw'),
+            weaponId,
+            chargeLevel: weaponId === 'Buster' ? hitContext.chargeLevel ?? 0 : 0,
+            hasArmsUpgrade: resolveUpgradeModifiers(save).hasArmsUpgrade
+          })
+    const damageType = ELEMENT_DAMAGE_TYPE[weapon.element] ?? 'normal'
+    const profileRejected = classic && elementHit?.outcome === 'immune'
+    this.lastElementHit = {
+      ...(elementHit ?? { outcome: multiplier <= 0 ? 'immune' : 'neutral', weakTo: null }),
+      multiplier,
+      weaponId: weapon.id,
+      classic,
+      damageType,
+      label: bossHitFeedbackLabel(multiplier, multiplier <= 0 ? (profileRejected ? 'BUSTER ONLY' : 'BLOCKED') : undefined)
+    }
     if (multiplier <= 0) {
-      host.recordCombatHit('player', 'boss', dmg, hitKind, false, 'blocked-by-weakness-rules')
-      this.showHitFeedback(weaponId, multiplier, 'BLOCKED')
+      host.recordCombatHit('player', 'boss', dmg, hitKind, false, profileRejected ? 'buster-only-profile' : 'blocked-by-weakness-rules')
+      this.showHitFeedback(weaponId, multiplier, profileRejected ? 'BUSTER ONLY' : 'BLOCKED')
       return
     }
     const damageBonus =
@@ -89,7 +114,8 @@ export class BossDamageRouter {
       const reaction = bossHitReaction(multiplier)
       const hit = controller.applyDamage({
         amount: scaledDamage,
-        type: 'normal',
+        // The element reaches the framework, so a bossConfig's authored `resistances` and `defense` apply to it.
+        type: damageType,
         source: 'player',
         hitstopFrames: 2,
         iFrameMs: reaction.iFrameMs,
@@ -159,6 +185,9 @@ export class BossDamageRouter {
     }
   }
 
+  /** The last hit label the phase panel showed. */
+  lastFeedback: { label: string; weaponId: string } | null = null
+
   showHitFeedback(weaponId: string, multiplier: number, forcedLabel?: string): void {
     const host = this.host
     if (!host.phaseLabel || host.victoryTriggered) {
@@ -170,7 +199,9 @@ export class BossDamageRouter {
       return
     }
     host.bossHitFeedbackTimer?.remove(false)
-    host.updatePhaseHud(`${label.slice(0, 7)} ${getWeaponDisplayName(weaponId)}`)
+    // The whole label (twelve characters at most): `WEAKNESS HIT`, `RESISTED HIT`, `BUSTER ONLY`, `IMMUNE`.
+    host.updatePhaseHud(label)
+    this.lastFeedback = { label, weaponId }
     host.bossHitFeedbackTimer = host.time.delayedCall(520, () => {
       if (host.victoryTriggered) {
         return
