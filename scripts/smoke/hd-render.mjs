@@ -22,6 +22,9 @@ function scenarioDir(outputDir, name) {
   return dir
 }
 
+// Page opens and scene transitions only (not feel timing): a 2x software-WebGL page took 12s to open under load.
+const SCENE_WAIT_MS = 20000
+
 async function openGame(browser, { url, waitForState, tapKey, advanceFrames }, viewport, errors) {
   const page = await browser.newPage({ viewport })
   await page.addInitScript(() => {
@@ -33,9 +36,9 @@ async function openGame(browser, { url, waitForState, tapKey, advanceFrames }, v
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
   await page.goto(url, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(300)
-  await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
+  await waitForState(page, (state) => state.scene === 'StageSelect', SCENE_WAIT_MS)
   await tapKey(page, 'Enter')
-  await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
+  await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, SCENE_WAIT_MS)
   await advanceFrames(page, 30)
   return page
 }
@@ -103,15 +106,15 @@ async function assertMenusInsideFrame(browser, { url, waitForState, tapKey }, di
   const report = {}
   try {
     await page.goto(url.replace('&startScene=StageSelect', ''), { waitUntil: 'domcontentloaded' })
-    await waitForState(page, (state) => state.scene === 'Title', 8000)
+    await waitForState(page, (state) => state.scene === 'Title', SCENE_WAIT_MS)
     report.title = await textOutsideFrame(page)
     await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-title-2x.png') })
     await tapKey(page, 'o')
-    await waitForState(page, (state) => state.scene === 'Options' || state.options, 8000)
+    await waitForState(page, (state) => state.scene === 'Options' || state.options, SCENE_WAIT_MS)
     report.options = await textOutsideFrame(page)
     await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-options-2x.png') })
     await page.goto(url, { waitUntil: 'domcontentloaded' })
-    await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
+    await waitForState(page, (state) => state.scene === 'StageSelect', SCENE_WAIT_MS)
     report.stageSelect = await textOutsideFrame(page)
     await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-stage-select-2x.png') })
   } finally {

@@ -459,7 +459,10 @@ async function executeSmokeScenario(summary, name, runScenario) {
   }
 }
 
-async function waitForState(page, predicate, timeoutMs = 8000, description = 'state condition') {
+// 15s by default: a wait still needs its condition to become true, so a longer wait cannot pass a broken build;
+// it only stops scene transitions and page opens timing out on a loaded machine (2x software WebGL opens in 12s).
+// Checks that something happens within a time budget pass their own shorter timeout.
+async function waitForState(page, predicate, timeoutMs = 15000, description = 'state condition') {
   const startedAt = Date.now()
   let lastState = null
   while (Date.now() - startedAt < timeoutMs) {
@@ -2995,7 +2998,7 @@ async function openGameplayPage(name, targetUrl = url) {
   await page.goto(targetUrl, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(400)
   await page.evaluate(() => window.dispatchEvent(new Event('resize')))
-  await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
+  await waitForState(page, (state) => state.scene === 'StageSelect', 15000)
   await tapKey(page, 'Enter')
   try {
     await waitForState(page, (state) => state.scene === 'Game', 4000)
@@ -3004,7 +3007,7 @@ async function openGameplayPage(name, targetUrl = url) {
     if (retryState?.scene === 'StageSelect') {
       await tapKey(page, 'Enter')
     }
-    await waitForState(page, (state) => state.scene === 'Game', 8000)
+    await waitForState(page, (state) => state.scene === 'Game', 15000)
   }
 
   return { browser, page, scenarioDir, errors }
