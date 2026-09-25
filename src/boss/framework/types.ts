@@ -1,3 +1,5 @@
+import type { TelegraphSpec } from '../../bosses/types'
+
 export type BossState =
   | 'INTRO'
   | 'THINK'
@@ -28,6 +30,10 @@ export interface AttackTelegraphSpec {
   animationName?: string
   sfxName?: string
   vfxName?: string
+  /** The authored wind-up tell (`src/bosses/roster.ts`); required by `validateBossDefinition`, drawn by the Game scene. */
+  warningFx?: TelegraphSpec['warningFx']
+  /** Where the tell appears relative to the boss; required with `warningFx`. */
+  anchor?: TelegraphSpec['anchor']
 }
 
 export interface AttackParams {

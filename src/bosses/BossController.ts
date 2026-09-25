@@ -23,6 +23,8 @@ export interface BossControllerConfig {
   runtimeDefinition?: BossDefinition
   movementBounds?: MovementBounds
   getActiveHazardCount?: () => number
+  /** The Game scene's live attack telegraph, reported by getDebugState (`bossState.runtime.telegraph`). */
+  telegraphProbe?: () => unknown
 }
 
 interface BossPhaseView {
@@ -84,6 +86,7 @@ export class BossController extends Phaser.GameObjects.Container {
   private lastLifecyclePhase: BossAttackLifecyclePhase = 'done'
   private lastMotionIntent: BossMotionIntentKind = 'hold'
   private lastGroundY = 0
+  private readonly telegraphProbe?: () => unknown
   /** Feet row relative to the container origin, measured from the idle frame. */
   private readonly contactOffsetY: number
   private traceSequence = 0
@@ -117,6 +120,7 @@ export class BossController extends Phaser.GameObjects.Container {
       maxX: GAME_WIDTH - 16
     }
     this.getActiveHazardCount = config.getActiveHazardCount ?? (() => 0)
+    this.telegraphProbe = config.telegraphProbe
 
     this.atlasKey = `atlas_${blueprint.id}`
     if (!scene.textures.exists(this.atlasKey)) {
@@ -298,6 +302,7 @@ export class BossController extends Phaser.GameObjects.Container {
       traceTail: this.runtimeTraces.slice(-8),
       grounded: this.body?.onFloor?.() || this.body?.blocked?.down || false,
       ground: this.getGroundReport(),
+      telegraph: this.telegraphProbe?.() ?? null,
       velocity: { x: Math.round(this.body?.velocity?.x ?? 0), y: Math.round(this.body?.velocity?.y ?? 0) },
       invulnerable: this.isInvulnerable,
       facing: this.sprite.flipX ? 'west' : 'east',
@@ -482,6 +487,11 @@ export class BossController extends Phaser.GameObjects.Container {
 
   getAttackFacing(): -1 | 1 {
     return this.attackFacing
+  }
+
+  /** The feet line the boss last stood on (the arena floor); its current y before it first lands. */
+  getGroundY(): number {
+    return this.lastGroundY || this.y
   }
 
   getRoomHazardCap(): number {

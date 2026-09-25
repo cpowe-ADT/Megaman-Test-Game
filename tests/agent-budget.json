@@ -1,6 +1,6 @@
 {
   "$comment": "Budgets and chain rules for npm run agents:check (scripts/agents/check.mjs). Lower a ceiling when you beat it; raising one needs a ledger row that says why. Doc budgets are bytes (about 4 bytes per token) of the files an agent reads at the start of a session.",
-  "gameTsMaxLines": 2763,
+  "gameTsMaxLines": 1930,
   "tsNocheckAllowed": [
     "src/scenes/Game.ts"
   ],

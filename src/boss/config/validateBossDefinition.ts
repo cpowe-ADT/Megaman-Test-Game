@@ -35,6 +35,12 @@ export function validateBossDefinition(definition: BossDefinition): string[] {
     if (!Number.isFinite(attack.hit?.damageAmount) || attack.hit.damageAmount <= 0) {
       errors.push(`[${label}:${attack.id}] attack damage must be positive`)
     }
+    if (
+      !['glow', 'fan-lines', 'reticle', 'wave'].includes(String(attack.telegraph?.warningFx)) ||
+      !['self', 'target', 'projectile'].includes(String(attack.telegraph?.anchor))
+    ) {
+      errors.push(`[${label}:${attack.id}] attack telegraph needs an authored warningFx and anchor`)
+    }
   }
 
   const sortedThresholds = [...(definition?.phases ?? [])].map((phase) => phase.threshold)

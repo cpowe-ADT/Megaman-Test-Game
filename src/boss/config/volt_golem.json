@@ -80,7 +80,9 @@
       "telegraph": {
         "animationName": "volt_punch_windup",
         "sfxName": "sfx_volt_charge",
-        "vfxName": "fx_warning_arc"
+        "vfxName": "fx_warning_arc",
+        "warningFx": "glow",
+        "anchor": "self"
       }
     },
     {
@@ -111,7 +113,9 @@
       "telegraph": {
         "animationName": "volt_shot_windup",
         "sfxName": "sfx_volt_shot",
-        "vfxName": "fx_muzzle_arc"
+        "vfxName": "fx_muzzle_arc",
+        "warningFx": "fan-lines",
+        "anchor": "target"
       }
     },
     {
@@ -141,7 +145,9 @@
       "telegraph": {
         "animationName": "volt_slam_windup",
         "sfxName": "sfx_volt_slam",
-        "vfxName": "fx_ground_warning"
+        "vfxName": "fx_ground_warning",
+        "warningFx": "wave",
+        "anchor": "self"
       }
     },
     {
@@ -171,7 +177,9 @@
       "telegraph": {
         "animationName": "volt_dash_windup",
         "sfxName": "sfx_volt_dash",
-        "vfxName": "fx_dash_line"
+        "vfxName": "fx_dash_line",
+        "warningFx": "glow",
+        "anchor": "self"
       }
     }
   ]

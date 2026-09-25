@@ -44,9 +44,13 @@ type BossBulletConfig = {
 type PendingBossAttack = {
   attack: AttackPattern
   attackData?: any
+  startedAt: number
   executeAt: number
   direction: 1 | -1
 }
+
+/** An attack in its wind-up: the telegraph renderer draws it from `startedAt` until `executeAt`. */
+export type PendingBossTelegraph = Readonly<PendingBossAttack>
 
 export function buildBossSpreadAngles(count: number, spread: number): number[] {
   const clampedCount = Math.max(1, Math.min(7, Math.round(count)))
@@ -94,8 +98,6 @@ export class BossProjectileController {
   private paused = false
   private nextTimerShotAt = 0
   private lastBossBulletSpawnAt = 0
-  private bossAttackActiveUntil = 0
-  private bossWatchdogCooldownUntil = 0
   private attackFirstLogEmitted = false
   private restoreWalkAt = 0
   private pausedTrailEmitters: Phaser.GameObjects.Particles.ParticleEmitter[] = []
@@ -119,10 +121,12 @@ export class BossProjectileController {
 
     if (!this.options.isControllerDriven()) {
       this.maybeFireTimerLoop(now)
-      return
     }
+  }
 
-    this.maybeFireWatchdog(now)
+  /** Attacks between their event and their execution, oldest first (prompt 07 phase 7.1 telegraphs). */
+  getPendingTelegraphs(): readonly PendingBossTelegraph[] {
+    return this.pendingAttacks
   }
 
   startLoop(): void {
@@ -137,8 +141,6 @@ export class BossProjectileController {
     this.paused = false
     this.nextTimerShotAt = 0
     this.lastBossBulletSpawnAt = 0
-    this.bossAttackActiveUntil = 0
-    this.bossWatchdogCooldownUntil = 0
     this.restoreWalkAt = 0
     this.attackFirstLogEmitted = false
     this.pendingAttacks = []
@@ -153,9 +155,6 @@ export class BossProjectileController {
     }
 
     const now = this.options.getNow()
-    const attackWindow = Math.max(attack.executeMs, attack.telegraph.telegraphMs, 600)
-    this.bossAttackActiveUntil = now + attackWindow + 200
-    this.bossWatchdogCooldownUntil = now + 300
 
     if (!this.attackFirstLogEmitted) {
       this.options.log?.('info', '[Boss] first attack event received', { attack: attack.name })
@@ -177,6 +176,7 @@ export class BossProjectileController {
     this.pendingAttacks.push({
       attack,
       attackData,
+      startedAt: now,
       executeAt: now + Math.max(0, attack.telegraph.telegraphMs),
       direction
     })
@@ -244,7 +244,6 @@ export class BossProjectileController {
     const now = this.options.getNow()
     this.resumeTrailEmitters()
     this.lastBossBulletSpawnAt = now
-    this.bossWatchdogCooldownUntil = now
     if (this.loopActive && !this.options.isControllerDriven()) {
       this.nextTimerShotAt = now + 200
     }
@@ -270,36 +269,6 @@ export class BossProjectileController {
       direction
     })
     this.nextTimerShotAt = now + 1200
-  }
-
-  private maybeFireWatchdog(now: number): void {
-    if (now > this.bossAttackActiveUntil) {
-      return
-    }
-
-    if (now - this.lastBossBulletSpawnAt <= 1500) {
-      return
-    }
-
-    if (now < this.bossWatchdogCooldownUntil) {
-      return
-    }
-
-    const origin = this.options.getBossOrigin()
-    const playerPosition = this.options.getPlayerPosition()
-    if (!isOriginActive(origin) || !playerPosition) {
-      return
-    }
-
-    const direction = playerPosition.x < origin.x ? -1 : 1
-    this.spawnBossBullet(origin, undefined, {
-      speed: 220,
-      damage: 1,
-      label: 'watchdog',
-      direction
-    })
-    this.bossWatchdogCooldownUntil = now + 1500
-    this.options.log?.('warn', '[Boss][Watchdog] forced projectile', { time: now })
   }
 
   private spawnBossProjectile(

@@ -91,7 +91,9 @@ export function toBossDefinition(blueprint: BossBlueprint): BossDefinition {
       telegraph: {
         animationName: attack.state,
         sfxName: attack.name,
-        vfxName: attack.telegraph.warningFx
+        vfxName: attack.telegraph.warningFx,
+        warningFx: attack.telegraph.warningFx,
+        anchor: attack.telegraph.anchor
       },
       requirements: {
         grounded: combatProfile?.requiresGrounded,
@@ -164,14 +166,20 @@ export function toAttackPatternFromDefinition(attack: BossAttackDefinition): Att
           ? 'special'
           : 'move'
 
+  // The authored tell passes through: no fallback, `validateBossDefinition` rejects an attack without one.
+  const warningFx = attack.telegraph?.warningFx
+  const anchor = attack.telegraph?.anchor
+  if (!warningFx || !anchor) {
+    throw new Error(`[Boss] attack '${attack.id}' names no telegraph warningFx and anchor`)
+  }
   return {
     name: attack.displayName ?? attack.id,
     state,
     description: attack.displayName ?? attack.id,
     telegraph: {
       telegraphMs: attack.windupTime,
-      warningFx: 'glow',
-      anchor: 'self'
+      warningFx,
+      anchor
     },
     executeMs: attack.activeTime,
     cooldownMs: attack.cooldown,
