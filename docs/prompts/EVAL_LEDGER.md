@@ -118,7 +118,7 @@ Complete; rows moved verbatim to `docs/prompts/archive/EVAL_LEDGER-09.md` on 202
 
 | Id | Kind | What passes | Status | Evidence | Commit |
 | --- | --- | --- | --- | --- | --- |
-| EVAL-P12-001 | gate | CI runs smoke and sweep on every pull request, not only by hand | PENDING | | |
-| EVAL-P12-002 | gate | saves migrate forward: a versioned migrate step with fixture tests | PENDING | | |
-| EVAL-P12-003 | gate | version and changelog: package version bumps with a CHANGELOG entry per release | PENDING | | |
+| EVAL-P12-001 | gate | CI runs smoke and sweep on every pull request, not only by hand | PENDING | `.github/workflows/ci.yml` runs smoke and the sweep on pull requests to main (e9781ef); passes when a PR run is recorded |  |
+| EVAL-P12-002 | gate | saves migrate forward: a versioned migrate step with fixture tests | PASS | `tests/save-migration.test.ts`: a fixture per historical save shape (five, from git history) migrates forward; `# pass 506` on the commit | e9781ef |
+| EVAL-P12-003 | gate | version and changelog: package version bumps with a CHANGELOG entry per release | PASS | `output/evidence/12a/version.txt`: `node -p "require('./package.json').version"` -> 0.5.0 and the `CHANGELOG.md` 0.5.0 entry | e9781ef |
 | EVAL-P12-004 | gate | a sound for every new action (combo hits, air spin, reflect, vents, slag, walls, crumbles, gates, mini-bosses); unknown SFX keys throw in development | PENDING | | |
