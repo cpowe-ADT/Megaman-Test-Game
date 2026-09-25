@@ -17,29 +17,43 @@ export type RoomLockDefinition = {
   room: RoomRect
   /** World x of the gate at the room's exit. */
   gateX: number
-  requiredInput: RoomLockInput
+  /** The verb that opens a teach gate; a fight room that opens on `defeatMarkers` leaves it out. */
+  requiredInput?: RoomLockInput
   /** Saber only: hits on the breakable gate before it falls (default 1). */
   hitsRequired?: number
+  /** Enemy marker ids: the gate opens once every one is defeated (Heat Works' mid-boss catwalk room). */
+  defeatMarkers?: string[]
 }
 
 export type RoomLockState = {
   id: string
   phase: RoomLockPhase
-  requiredInput: RoomLockInput
+  /** Null on a defeat lock. */
+  requiredInput: RoomLockInput | null
+  /** Verb hits, or markers defeated on a defeat lock. */
   progress: number
+  /** Verb hits needed, or the number of markers on a defeat lock. */
   hitsRequired: number
-  /** The required input was performed while the lock was armed. */
+  /** The required input was performed (or every marker defeated) while the lock was armed. */
   satisfied: boolean
+  /** Defeat lock only: markers still standing. */
+  remainingMarkers: string[]
+}
+
+export function isDefeatLock(definition: Pick<RoomLockDefinition, 'defeatMarkers'>): boolean {
+  return (definition.defeatMarkers?.length ?? 0) > 0
 }
 
 export function createRoomLockState(definition: RoomLockDefinition): RoomLockState {
+  const markers = [...new Set(definition.defeatMarkers ?? [])]
   return {
     id: definition.id,
     phase: 'dormant',
-    requiredInput: definition.requiredInput,
+    requiredInput: definition.requiredInput ?? null,
     progress: 0,
-    hitsRequired: Math.max(1, Math.floor(definition.hitsRequired ?? 1)),
-    satisfied: false
+    hitsRequired: markers.length > 0 ? markers.length : Math.max(1, Math.floor(definition.hitsRequired ?? 1)),
+    satisfied: false,
+    remainingMarkers: markers
   }
 }
 
@@ -54,6 +68,19 @@ export function applyRoomLockInput(state: RoomLockState, input: RoomLockInput): 
   const progress = state.progress + 1
   const satisfied = progress >= state.hitsRequired
   return { ...state, progress, satisfied, phase: satisfied ? 'open' : 'locked' }
+}
+
+/**
+ * Defeat lock: markers gone for good (defeated, or fallen out of the stage) count while the lock is
+ * armed, including any cleared before the hero walked in; the gate opens when none remain.
+ */
+export function applyRoomLockDefeats(state: RoomLockState, cleared: ReadonlySet<string> | readonly string[]): RoomLockState {
+  if (state.phase !== 'locked' || state.remainingMarkers.length === 0) return state
+  const gone = cleared instanceof Set ? cleared : new Set(cleared as readonly string[])
+  const remainingMarkers = state.remainingMarkers.filter((id) => !gone.has(id))
+  if (remainingMarkers.length === state.remainingMarkers.length) return state
+  const satisfied = remainingMarkers.length === 0
+  return { ...state, remainingMarkers, progress: state.hitsRequired - remainingMarkers.length, satisfied, phase: satisfied ? 'open' : 'locked' }
 }
 
 /**

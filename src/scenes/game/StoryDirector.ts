@@ -143,6 +143,17 @@ export class StoryDirector {
     lane.supersede(COACH_LANE_CHANNEL, items)
   }
 
+  /** The mid-boss room locked: the stage's `miniboss_callout` plays on the radio lane once (never blocks, grants nothing). */
+  onMiniBossLock(): void {
+    const lane = this.deps.lane()
+    const sequence = DIALOGUE_REGISTRY.getSequence(this.deps.stageId, 'miniboss_callout')
+    if (!lane || !sequence || !shouldPlayStory(Save.load().storyFlags, sequence.id, currentStoryPolicy())) return
+    Save.markStorySeen(sequence.id)
+    for (const line of resolvePlaybackLines(sequence.id, sequence.lines, this.deps.values())) {
+      lane.enqueue({ kind: 'radio', speaker: line.speakerName, text: line.text, durationMs: RADIO_LINE_MS })
+    }
+  }
+
   /** Boss dialogue ignores the automation switch (existing smoke contracts) but honors seen flags. */
   playBossIntro(then: () => void): void {
     this.playBlocking(`${this.deps.stageId}_intro`, 'boss_intro', then)

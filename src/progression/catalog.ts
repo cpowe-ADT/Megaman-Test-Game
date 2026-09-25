@@ -87,7 +87,9 @@ function makePickupLocation(
     }
   }
 
-  const position = positions[category]
+  // A stage's hand-placed anchor wins (Heat Works); the ids stay the same, so saves are unaffected.
+  const anchor = category === 'boss_clear' ? undefined : stage.arena.locationAnchors?.[category]
+  const position = anchor ?? positions[category]
   return {
     id: getLocationCheckId(stageId, category),
     stageId,

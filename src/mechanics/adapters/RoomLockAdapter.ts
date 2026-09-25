@@ -3,11 +3,13 @@ import { GAME_HEIGHT } from '../../config/renderPolicy'
 import { getCampaignStage } from '../../content/campaign'
 import { Settings } from '../../systems/Settings'
 import {
+  applyRoomLockDefeats,
   applyRoomLockInput,
   armRoomLock,
   createRoomLockState,
   detectRoomLockVerbs,
   findRoomIndex,
+  isDefeatLock,
   isSaberInReach,
   resolveCameraRoomIndex,
   resolveWorldCeiling,
@@ -35,6 +37,10 @@ export type RoomLockAdapterDeps = {
   /** A lock armed: the story director plays Rook's recorded prompt and the lane shows the key hint. */
   /** The lock's position in the stage's `roomLocks` (the coach line with the same position plays). */
   onArmed: (lockIndex: number, keyHint: string) => void
+  /** A defeat lock closed (the mid-boss room): the story director plays the stage's `miniboss_callout` on the radio lane. */
+  onDefeatLockArmed?: (lockId: string) => void
+  /** Level markers gone for good this run (`EnemySpawner.getClearedMarkerIds`); a defeat lock opens when all of its are. */
+  clearedMarkers?: () => ReadonlySet<string> | readonly string[]
   /** Hands the camera back to the host: the boss-room lock when it is on, else the stage bounds. */
   restoreCamera: () => void
 }
@@ -44,6 +50,7 @@ export const ROOM_LOCK_DATA_KEY = 'roomLocks'
 const GATE_WIDTH = 12
 const ENERGY_GATE_COLOR = 0x7ec8ff
 const SCRAP_WALL_COLOR = 0x6b5a48
+const FIGHT_GATE_COLOR = 0xffb347
 /** `cameraRoom` while the stage bounds keep the shaft's raised top (the hero left the shaft high). */
 const RAISED_STAGE_CAMERA = -2
 
@@ -79,8 +86,9 @@ export class RoomLockAdapter {
       const top = Math.min(0, lock.room.y)
       const height = GAME_HEIGHT - top
       const saber = lock.requiredInput === 'saber'
+      const color = saber ? SCRAP_WALL_COLOR : isDefeatLock(lock) ? FIGHT_GATE_COLOR : ENERGY_GATE_COLOR
       const gate = scene.add
-        .rectangle(lock.gateX, top + height / 2, GATE_WIDTH, height, saber ? SCRAP_WALL_COLOR : ENERGY_GATE_COLOR, saber ? 1 : 0.55)
+        .rectangle(lock.gateX, top + height / 2, GATE_WIDTH, height, color, saber ? 1 : 0.55)
         .setDepth(4)
       scene.physics.add.existing(gate, true)
       ;(gate.body as Phaser.Physics.Arcade.StaticBody | undefined)?.updateFromGameObject()
@@ -118,9 +126,14 @@ export class RoomLockAdapter {
     if (index >= 0 && this.states[index].phase === 'dormant') {
       this.states[index] = armRoomLock(this.states[index])
       this.prevSample = null
-      this.deps.onArmed(index, roomLockKeyHint(this.locks[index].requiredInput, Settings.get().bindings))
+      const lock = this.locks[index]
+      if (lock.requiredInput) this.deps.onArmed(index, roomLockKeyHint(lock.requiredInput, Settings.get().bindings))
+      else this.deps.onDefeatLockArmed?.(lock.id)
     }
-    if (index >= 0 && this.states[index].phase === 'locked') {
+    if (index >= 0 && this.states[index].phase === 'locked' && isDefeatLock(this.locks[index])) {
+      this.commit(index, applyRoomLockDefeats(this.states[index], this.deps.clearedMarkers?.() ?? []))
+      this.prevSample = null
+    } else if (index >= 0 && this.states[index].phase === 'locked') {
       const sample = this.deps.runtime()?.getVerbSample() ?? null
       const verbs = sample ? detectRoomLockVerbs(this.prevSample, sample) : []
       this.prevSample = sample
@@ -135,7 +148,11 @@ export class RoomLockAdapter {
     const lock = this.locks[index]
     const facing = this.deps.runtime()?.getFacing() ?? 1
     if (verb === 'saber' && !isSaberInReach(player.x, facing, lock.gateX)) return
-    const next = applyRoomLockInput(this.states[index], verb)
+    this.commit(index, applyRoomLockInput(this.states[index], verb))
+  }
+
+  /** A changed state fades the gate with progress and removes its body when the lock opens. */
+  private commit(index: number, next: RoomLockState): void {
     if (next === this.states[index]) return
     this.states[index] = next
     const gate = this.gates[index]
@@ -192,7 +209,7 @@ export class RoomLockAdapter {
   }
 }
 
-/** Stage build entry: installs the adapter when the stage authors room locks (the tutorial) or vertical segments. */
+/** Stage build entry: installs the adapter when the stage authors room locks (the tutorial, Heat Works) or vertical segments. */
 export function installRoomLocks(deps: RoomLockAdapterDeps): RoomLockAdapter | null {
   const arena = getCampaignStage(deps.stageId).arena
   const locks = arena.roomLocks ?? []

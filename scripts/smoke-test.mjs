@@ -41,6 +41,8 @@ let smokeFromMatched = smokeFromScenario == null
 // scenario gets SMOKE_SCENARIO_TIMEOUT_MS (default 120s); SMOKE_FORCE_FAIL=<name> is test-only.
 const smokeFailFast = String(process.env.SMOKE_FAIL_FAST ?? '') === '1'
 const smokeScenarioTimeoutMs = Number(process.env.SMOKE_SCENARIO_TIMEOUT_MS ?? 120000) || 120000
+// Route walks that cross a whole stage get more room (50-pyro-route: six steps, about 100s on a quiet machine).
+const SMOKE_LONG_SCENARIO_TIMEOUT_MS = { '50-pyro-route': 300000 }
 const smokeForceFailScenario = String(process.env.SMOKE_FORCE_FAIL ?? '').trim() || null
 
 // scripts/smoke/*.mjs import the same 'playwright' module instance, so patching chromium.launch here
@@ -432,7 +434,7 @@ async function executeSmokeScenario(summary, name, runScenario) {
             throw new Error(`SMOKE_FORCE_FAIL forced scenario "${name}" to fail`)
           }
         : runScenario
-    const result = await runScenarioWithTimeout(name, effectiveRunScenario, smokeScenarioTimeoutMs)
+    const result = await runScenarioWithTimeout(name, effectiveRunScenario, Math.max(smokeScenarioTimeoutMs, SMOKE_LONG_SCENARIO_TIMEOUT_MS[name] ?? 0))
     summary.scenarios.push({
       name,
       status: 'pass',
@@ -1352,7 +1354,9 @@ async function runEnemyStreamingScenario(name) {
     }
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.setPlayerX))
-    await page.evaluate(() => window.stageDebug?.setPlayerX?.(150))
+    // Heat Works (EVAL-P6-009): the intro mine streams in from x 170; by x 700 it has retired behind
+    // the hero and the teach slicer and rocket loader are live.
+    await page.evaluate(() => window.stageDebug?.setPlayerX?.(200))
 
     const midState = await waitForState(
       page,
@@ -1362,7 +1366,7 @@ async function runEnemyStreamingScenario(name) {
         Number(state.enemySpawner?.activeMarkers ?? 0) <= Number(state.enemySpawner?.totalMarkers ?? 0)
     )
 
-    await page.evaluate(() => window.stageDebug?.setPlayerX?.(250))
+    await page.evaluate(() => window.stageDebug?.setPlayerX?.(700))
 
     const finalState = await waitForState(
       page,
@@ -3891,6 +3895,7 @@ async function main() {
     await executeSmokeScenario(summary, '36-ending-flow', () => runEndingFlowScenario('36-ending-flow', storyDeps))
     await executeSmokeScenario(summary, '42-mechanics-matrix', async () => (await import('./smoke/mechanics-matrix.mjs')).runMechanicsMatrixScenario('42-mechanics-matrix', { outputDir, url, readState, waitForState, advanceFrames, tapKey }))
     await executeSmokeScenario(summary, '49-tutorial-verbs', async () => (await import('./smoke/tutorial-verbs.mjs')).runTutorialVerbsScenario('49-tutorial-verbs', storyDeps))
+    await executeSmokeScenario(summary, '50-pyro-route', async () => (await import('./smoke/pyro-route.mjs')).runPyroRouteScenario('50-pyro-route', storyDeps))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }
     await executeSmokeScenario(summary, '38-options-persist', () => runOptionsPersistScenario('38-options-persist', pauseDeps))

@@ -17,6 +17,8 @@ import type { StageHazardDefinition } from '../mechanics/hazards'
 import type { RisingLiquidDefinition } from '../mechanics/risingLiquid'
 import type { CrumbleGroupDefinition } from '../mechanics/crumbleGroup'
 import type { BreakableWallDefinition } from '../mechanics/breakableWall'
+import type { FloorGap } from '../stage/stageGeometry'
+import * as HEAT_WORKS from './stages/heatWorks'
 
 export type CampaignStageKind = 'tutorial' | 'robot_master' | 'final'
 
@@ -37,6 +39,10 @@ export type StagePlatformDefinition = {
     ease?: string
   }
 }
+
+/** Pickup categories a stage may place by hand (`src/progression/catalog.ts`); ids are unchanged, so saves are too. */
+export type LocationAnchorCategory = 'capsule' | 'heart_tank' | 'sub_tank' | 'pickup_bonus'
+export type LocationAnchors = Partial<Record<LocationAnchorCategory, { x: number; y: number }>>
 
 export type StageArenaDefinition = {
   width?: number
@@ -62,6 +68,10 @@ export type StageArenaDefinition = {
   crumbleGroups?: CrumbleGroupDefinition[]
   /** Solid blocks a saber or a charged shot breaks (06 §6.2 `breakable_wall`). */
   breakableWalls?: BreakableWallDefinition[]
+  /** Pits (x is the left edge): the main ground is split around them (`src/stage/stageGeometry.ts`); needs `allowFallOff`. */
+  floorGaps?: FloorGap[]
+  /** Hand-placed pickups; a category left out keeps its checkpoint-derived default. */
+  locationAnchors?: LocationAnchors
 }
 
 export type CampaignStageDefinition = {
@@ -217,22 +227,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Smelter Crucible',
     rewardWeaponId: 'FlameSerpent',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('pyro_slicer', 'enemy_slicer_bot', 160, 185, 132, 204, {
-        spawnTriggerX: 104,
-        retireTriggerX: 240
-      }),
-      marker('pyro_mine', 'enemy_mine_bot', 232, 185, undefined, undefined, {
-        spawnTriggerX: 128,
-        retireTriggerX: 300
-      }),
-      marker('pyro_rocket', 'enemy_rocket_bot', 324, 185, undefined, undefined, {
-        spawnTriggerX: 150,
-        retireTriggerX: 380
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in STAGE_EXTENSION_PATCHES.pyro_maw.
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#180d0b',
@@ -240,15 +238,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('pyro_start', 44, 40, 0), checkpoint('pyro_mid', 152, 40, 170)],
-      hazards: [
-        { id: 'pyro_lava_1', x: 118, y: 230 },
-        { id: 'pyro_lava_2', x: 302, y: 230 }
-      ],
-      midPlatforms: [
-        { id: 'pyro_mid_1', x: 180, y: 170, width: 54, type: 'oneWay', color: 0x6c3520 },
-        { id: 'pyro_mid_2', x: 250, y: 132, width: 60, type: 'oneWay', color: 0x6c3520 }
-      ]
+      checkpoints: [checkpoint('pyro_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   },
   tide_reaver: {
@@ -624,6 +616,8 @@ type StageExtensionPatch = {
   midPlatforms?: StagePlatformDefinition[]
   enemyMarkers?: EnemyLevelMarker[]
   roomLocks?: RoomLockDefinition[]
+  /** Mechanics and pits beyond the shared fields (Heat Works). */
+  arena?: Pick<StageArenaDefinition, 'floorGaps' | 'locationAnchors' | 'verticalSegments' | 'risingLiquids' | 'crumbleGroups' | 'breakableWalls'>
 }
 
 const TEACH_SCREEN = 448
@@ -713,44 +707,23 @@ const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPat
       teachRoom(4, 'saber', { hitsRequired: 3 })
     ]
   },
+  // Heat Works, the pilot stage (EVAL-P6-009): twelve screens, layout table in src/content/stages/heatWorks.ts.
   pyro_maw: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('pyro_start', 44, 40, 0),
-      checkpoint('pyro_mid_a', 214, 40, 232),
-      checkpoint('pyro_mid_b', 458, 40, 488),
-      checkpoint('pyro_mid_c', 616, 40, 662),
-      checkpoint('pyro_boss_gate', 760, 40, 808)
-    ],
-    hazards: [
-      { id: 'pyro_lava_3', x: 502, y: 230 },
-      { id: 'pyro_lava_4', x: 726, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'pyro_mid_3', x: 430, y: 176, width: 56, type: 'oneWay', color: 0x6c3520 },
-      { id: 'pyro_mid_4', x: 548, y: 146, width: 62, type: 'solid', color: 0x6c3520, motion: { toX: 598, duration: 2200 } },
-      { id: 'pyro_mid_5', x: 690, y: 126, width: 56, type: 'oneWay', color: 0x6c3520 },
-      { id: 'pyro_mid_6', x: 812, y: 154, width: 48, type: 'oneWay', color: 0x6c3520 }
-    ],
-    enemyMarkers: [
-      marker('pyro_bouncer_late', 'enemy_bouncer', 438, 185, undefined, undefined, {
-        spawnTriggerX: 252,
-        retireTriggerX: 530
-      }),
-      marker('pyro_armored_late', 'enemy_armored_bot', 586, 185, 556, 640, {
-        spawnTriggerX: 372,
-        retireTriggerX: 686
-      }),
-      marker('pyro_drone_late', 'enemy_drone', 734, 128, undefined, undefined, {
-        spawnTriggerX: 520,
-        retireTriggerX: 818
-      }),
-      marker('pyro_shield_gate', 'enemy_shield_drone', 828, 140, undefined, undefined, {
-        spawnTriggerX: 646,
-        retireTriggerX: 900
-      })
-    ]
+    width: HEAT_WORKS.HEAT_WORKS_ROUTE_WIDTH,
+    bossSpawnX: HEAT_WORKS.HEAT_WORKS_ROUTE_WIDTH - 84,
+    checkpoints: HEAT_WORKS.HEAT_WORKS_CHECKPOINTS,
+    hazards: HEAT_WORKS.HEAT_WORKS_HAZARDS,
+    midPlatforms: HEAT_WORKS.HEAT_WORKS_PLATFORMS,
+    enemyMarkers: HEAT_WORKS.HEAT_WORKS_ENEMIES,
+    roomLocks: HEAT_WORKS.HEAT_WORKS_ROOM_LOCKS,
+    arena: {
+      floorGaps: HEAT_WORKS.HEAT_WORKS_FLOOR_GAPS,
+      locationAnchors: HEAT_WORKS.HEAT_WORKS_LOCATION_ANCHORS,
+      verticalSegments: HEAT_WORKS.HEAT_WORKS_VERTICAL_SEGMENTS,
+      risingLiquids: HEAT_WORKS.HEAT_WORKS_SLAG,
+      crumbleGroups: HEAT_WORKS.HEAT_WORKS_CRUMBLES,
+      breakableWalls: HEAT_WORKS.HEAT_WORKS_BREAKABLE_WALLS
+    }
   },
   tide_reaver: {
     width: 928,
@@ -1076,7 +1049,8 @@ for (const [stageId, patch] of Object.entries(STAGE_EXTENSION_PATCHES) as Array<
     checkpoints: patch.checkpoints,
     hazards: [...stage.arena.hazards, ...(patch.hazards ?? [])],
     midPlatforms: [...stage.arena.midPlatforms, ...(patch.midPlatforms ?? [])],
-    ...(patch.roomLocks ? { roomLocks: patch.roomLocks } : {})
+    ...(patch.roomLocks ? { roomLocks: patch.roomLocks } : {}),
+    ...(patch.arena ?? {})
   }
 }
 
@@ -1191,6 +1165,11 @@ function buildMechanicsLabStage(): CampaignStageDefinition {
     enemyMarkers: [],
     arena: {
       ...base.arena,
+      // Heat Works' route stays out of the lab: no pits, no mid-boss lock, no hand-placed pickups.
+      allowFallOff: false,
+      floorGaps: undefined,
+      roomLocks: undefined,
+      locationAnchors: undefined,
       width: worldWidth,
       bossRoom,
       bossSpawn: { x: bossRoom.bossSpawnX, y: base.arena.bossSpawn.y },

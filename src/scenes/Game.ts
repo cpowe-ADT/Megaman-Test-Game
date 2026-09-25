@@ -51,7 +51,7 @@ import {
   SABER_WEAPON_RECHARGE_COOLDOWN_MS
 } from '../content/weaponEnergyEconomy'
 import { AUTOMATION } from '../config/automation'
-import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP, getGameplayWorldBounds } from '../config/gameplayLayout'
+import { GAMEPLAY_ACTOR_CEILING, getGameplayWorldBounds } from '../config/gameplayLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/renderPolicy'
 import { returnToStageSelect, showToast } from '../core/navigation'
 import { DigitalButtonPad } from '../input/DigitalButtonPad'
@@ -103,6 +103,8 @@ import {
 import { CombatDebugBus } from '../tools/debug/CombatDebugBus'
 import { PlatformCollisionSystem, PlatformType } from '../physics'
 import { installRoomLocks } from '../mechanics/adapters/RoomLockAdapter'
+import { mainGroundPlatforms } from '../stage/stageGeometry'
+import { StageBackdrop } from './game/StageBackdrop'
 import { buildStageHazards, installStageMechanics, stageMechanicPlatforms } from '../mechanics/adapters/StageMechanicsAdapter'
 import {
   createDefaultProjectileRegistry,
@@ -358,8 +360,7 @@ export class Game extends Phaser.Scene {
   private storyDirector?: StoryDirector
   private selectedSubTank = 0
   private toastLane?: ToastLane
-  private stageBackgroundLayers: Phaser.GameObjects.TileSprite[] = []
-  private stageBackgroundBackdrop?: Phaser.GameObjects.Graphics
+  private readonly stageBackdrop = new StageBackdrop(this)
   private scaleResizeHandler?: Phaser.Types.Core.ScaleEventCallback
   private readonly missingAnimationWarnings = new Set<string>()
   // ======================= [DEV-UX-BEGIN] (moved to ./game/DevUx; `_dev` stays readable for smoke)
@@ -371,56 +372,6 @@ export class Game extends Phaser.Scene {
   private readonly runState = new RunState(this)
 
   // [REGION: STAGE-BUILDER - BEGIN]
-  private clearStageBackgroundLayers(): void {
-    this.stageBackgroundLayers.forEach((layer) => layer.destroy())
-    this.stageBackgroundLayers = []
-    this.stageBackgroundBackdrop?.destroy()
-    this.stageBackgroundBackdrop = undefined
-  }
-
-  private renderStageBackground(stageId: string, worldWidth: number): void {
-    this.clearStageBackgroundLayers()
-
-    const stage = getCampaignStage(stageId)
-    // Game pixels, not this.scale (canvas pixels): the parallax canvases were 252*scale tall, 32MB at scale 6.
-    const height = GAME_HEIGHT
-    const layers = stage.arena.background?.layers ?? []
-    const baseColor = Phaser.Display.Color.HexStringToColor(stage.arena.background.baseColor).color
-    const accentColor = layers.find((layer) => typeof layer.tint === 'number')?.tint ?? 0x4a8cff
-    const backdrop = this.add.graphics().setDepth(-50)
-    backdrop.fillStyle(baseColor, 1).fillRect(0, 0, worldWidth, height)
-    backdrop.fillStyle(accentColor, 0.1).fillRect(0, GAMEPLAY_VIEWPORT_TOP, worldWidth, height - GAMEPLAY_VIEWPORT_TOP)
-    for (let y = GAMEPLAY_VIEWPORT_TOP; y < height; y += 14) {
-      const depthAlpha = 0.08 + ((y - GAMEPLAY_VIEWPORT_TOP) / Math.max(1, height - GAMEPLAY_VIEWPORT_TOP)) * 0.1
-      backdrop.fillStyle(accentColor, depthAlpha).fillRect(0, y, worldWidth, 1)
-    }
-    backdrop.lineStyle(1, accentColor, 0.1)
-    for (let x = 0; x < worldWidth; x += 64) {
-      backdrop.lineBetween(x, GAMEPLAY_VIEWPORT_TOP, x + 32, height)
-    }
-    backdrop.fillStyle(accentColor, 0.45).fillRect(0, GAMEPLAY_VIEWPORT_TOP, worldWidth, 2)
-    this.stageBackgroundBackdrop = backdrop
-    layers.forEach((layer, index) => {
-      if (!this.textures.exists(layer.key)) {
-        return
-      }
-      const tileSprite = this.add
-        .tileSprite(0, layer.y, worldWidth, Math.max(16, height - layer.y), layer.key)
-        .setOrigin(0, 0)
-        .setScrollFactor(layer.scrollFactorX, 1)
-        .setDepth(-40 + index)
-
-      if (typeof layer.alpha === 'number') {
-        tileSprite.setAlpha(layer.alpha)
-      }
-      if (typeof layer.tint === 'number') {
-        tileSprite.setTint(layer.tint)
-      }
-
-      this.stageBackgroundLayers.push(tileSprite)
-    })
-  }
-
   private applyStageCameraBounds(stageId: string): void { this.cameraDirector.applyStageCameraBounds(stageId) }
   private applyBossRoomCameraLock(): void { this.cameraDirector.applyBossRoomCameraLock() }
   private buildStage(stageId: string): void {
@@ -444,20 +395,12 @@ export class Game extends Phaser.Scene {
     this.physics.world.setBoundsCollision(cfg.leftWall, cfg.rightWall, true, !cfg.allowFallOff)
     this.applyStageCameraBounds(stageId)
     this.cameras.main.setBackgroundColor(cfg.background.baseColor ?? cfg.backgroundColor ?? '#0b1220')
-    this.renderStageBackground(stageId, worldWidth)
+    this.stageBackdrop.render(stageId, worldWidth)
     this.platformCollisionSystem?.destroy()
     this.platformCollisionSystem = new PlatformCollisionSystem(this)
 
     const platforms = [
-      {
-        id: `${stage.id}_main_ground`,
-        x: worldWidth / 2,
-        y: height - 8,
-        width: worldWidth,
-        height: 16,
-        type: 'solid' as const,
-        color: 0x1a2230, tileKind: 'ground' as const
-      },
+      ...mainGroundPlatforms(stage.id, worldWidth, height, cfg.floorGaps),
       ...cfg.midPlatforms.map((platform) => ({
         id: platform.id,
         x: platform.x,
@@ -478,7 +421,7 @@ export class Game extends Phaser.Scene {
     this.bossGateLocked = false
     this.bossRoomCameraLocked = false
     this.installEntityPlatformCollisions()
-    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (lockIndex, hint) => this.storyDirector?.onRoomLockArmed(lockIndex, hint), restoreCamera: () => (this.bossRoomCameraLocked ? this.applyBossRoomCameraLock() : this.applyStageCameraBounds(stageId)) })
+    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (lockIndex, hint) => this.storyDirector?.onRoomLockArmed(lockIndex, hint), onDefeatLockArmed: () => this.storyDirector?.onMiniBossLock(), clearedMarkers: () => this.enemySpawner?.getClearedMarkerIds() ?? [], restoreCamera: () => (this.bossRoomCameraLocked ? this.applyBossRoomCameraLock() : this.applyStageCameraBounds(stageId)) })
     installStageMechanics({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, platforms: () => this.platformCollisionSystem, playerBullets: () => this.playerBullets, isDying: () => this.fallingToDeath, damagePlayer: (request) => this.requestPlayerDamage(request) })
   }
 
@@ -1144,7 +1087,7 @@ export class Game extends Phaser.Scene {
       this.physics?.world?.colliders?.destroy?.()
       this.platformCollisionSystem?.destroy()
       this.platformCollisionSystem = undefined
-      this.clearStageBackgroundLayers()
+      this.stageBackdrop.clear()
       this.destroyBossGateBarrier()
       this.stagePlatforms = undefined
       this.stageOneWayPlatforms = undefined

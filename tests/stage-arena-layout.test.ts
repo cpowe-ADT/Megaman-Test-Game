@@ -52,7 +52,8 @@ test('robot-master routes retain intro, mid, pre-boss, and gate content budgets'
     const report = getStageContentRetentionReport(stage.id)
     assert.ok(report)
     assert.equal(report.routeWidth >= 928, true)
-    assert.equal(report.retained.checkpoints >= 5, true)
+    // Heat Works follows its brief (start, after teach, after the mid-boss, before the gate); the rest keep five.
+    assert.equal(report.retained.checkpoints >= (stage.id === 'pyro_maw' ? 4 : 5), true)
     assert.equal(report.retained.enemies >= 6, true)
     assert.equal(report.retained.platforms >= 5, true)
     assert.equal(report.retained.hazards >= 3, true)

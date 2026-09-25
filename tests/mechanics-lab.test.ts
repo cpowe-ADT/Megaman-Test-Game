@@ -40,6 +40,8 @@ test('mechanics_lab has one of each mechanic, is not a campaign stage, and its c
   assert.equal(isInsideLiquid(slag, top, { left: topStep.x - 8, right: topStep.x + 8, bottom: feet }), false, 'the top step stays dry')
 })
 
-test('pyro_maw hazards keep their spike defaults (no stage layout changed)', () => {
-  assert.ok(getCampaignStage('pyro_maw').arena.hazards.every((hazard) => resolveHazard(hazard).kind === 'spikes'))
+test('Heat Works hazards are timed vents (EVAL-P6-009 replaced the spike strips; other stages keep spikes)', () => {
+  const pyro = getCampaignStage('pyro_maw').arena.hazards.map(resolveHazard)
+  assert.ok(pyro.length > 0 && pyro.every((hazard) => hazard.kind === 'vent' && hazard.timing !== null))
+  assert.ok(getCampaignStage('tide_reaver').arena.hazards.every((hazard) => resolveHazard(hazard).kind === 'spikes'))
 })

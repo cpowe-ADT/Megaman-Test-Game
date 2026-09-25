@@ -37,7 +37,7 @@ Machine-checked by `npm run agents:check` from prompt 05 on: the status starts w
 | EVAL-P6-006 | gate | enemy behaviour and respawn tests and captures | PENDING | | |
 | EVAL-P6-007 | gate + review | nine tilesets and backgrounds, zero placeholder skins | PENDING | | |
 | EVAL-P6-008 | gate | twelve enemy families original; frame audit | PENDING | | |
-| EVAL-P6-009 | gate + review | Pyro Maw pilot to budget; Craig plays | PENDING | | |
+| EVAL-P6-009 | gate + review | Pyro Maw pilot to budget; Craig plays | PENDING | built 2026-09-25: 12 screens, 20 placements of 5 types, 13 vents, 5 pits, 4 checkpoints, 3 secrets; 448 tests; smoke 40, 42, 49, 50 `output/smoke-runs/2026-09-25T00-08-32-926Z`; mini-boss is stand-ins until P6-005; Craig has not played it | |
 | EVAL-P6-010 | gate + review | nine non-Omega stages pass audit and lint | PENDING | | |
 | EVAL-P6-011 | gate + review | Omega in three acts | PENDING | | |
 | EVAL-P6-012 | gate | difficulty and death economy | PENDING | | |

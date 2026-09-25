@@ -139,6 +139,11 @@ export class EnemySpawner {
     return id ? this.enemies.get(id) : undefined
   }
 
+  /** Level markers gone for good this run (defeated, fallen out, or passed); a defeat room lock reads it. */
+  getClearedMarkerIds(): ReadonlySet<string> {
+    return this.retiredMarkerIds
+  }
+
   getEntities(): EnemyEntity[] {
     return Array.from(this.enemies.values())
   }

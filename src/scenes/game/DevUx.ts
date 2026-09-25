@@ -26,7 +26,7 @@ export interface DevUxHost extends Phaser.Scene {
   bossUsingPlaceholder: boolean
   dashCooldownTimer?: number
   enemies?: Phaser.Physics.Arcade.Group
-  stageBackgroundLayers: readonly unknown[]
+  stageBackdrop: { readonly layerCount: number }
   combatDebugBus: Pick<CombatDebugBus, 'getRecentHits' | 'getTotals'>
   enemySpawner?: Pick<EnemySpawner, 'getEntities'>
   newPlayerRuntime?: Pick<NewPlayerRuntime, 'getDebugState'>
@@ -390,7 +390,7 @@ export class DevUx {
       placeholderCount: (playerUsingPlaceholder ? 1 : 0) + enemyPlaceholderCount + (host.bossUsingPlaceholder ? 1 : 0),
       missingAtlasCount: playerAtlasMissing + bossAtlasMissing + missingEnemyAtlases.size,
       nonPixelFilteredCount,
-      backgroundLayerCount: host.stageBackgroundLayers.length
+      backgroundLayerCount: host.stageBackdrop.layerCount
     }
   }
 
