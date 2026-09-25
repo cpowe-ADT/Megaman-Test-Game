@@ -19,7 +19,8 @@ import { SFX_ASSETS, isSfxAssetKey, resolveSfxKey } from '../src/audio/sfxLibrar
 
 test('a known key plays itself, an alias its mapping, and an unknown key throws only when strict', () => {
   assert.equal(resolveSfxKey('wall_break', true), 'wall_break')
-  assert.equal(resolveSfxKey('Stomp Shock', true), null)
+  assert.equal(resolveSfxKey('Stomp Shock', true), 'miniboss_shockwave')
+  assert.equal(resolveSfxKey('Giga Hop', true), null)
   assert.throws(() => resolveSfxKey('wal_break', true), /unknown SFX key 'wal_break'/)
   assert.equal(resolveSfxKey('wal_break', false), null)
   // The old substring guesses are gone: a near miss is an error in development, not a random sound.

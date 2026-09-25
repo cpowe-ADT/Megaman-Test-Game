@@ -10,9 +10,9 @@ import type { SolidRect } from './floorProbe'
  */
 export const MINIBOSS_BAR = { width: 36, height: 3, back: 0x140806 } as const
 
-export type MinibossSound = 'tell' | 'shot' | 'bolt' | 'mortar' | 'impact' | 'dash' | 'burst'
+export type MinibossSound = 'tell' | 'shot' | 'bolt' | 'mortar' | 'impact' | 'dash' | 'burst' | 'stomp' | 'shockwave'
 
-/** Mini-boss sounds from the existing SFX set (12c), until the audio lane gives them their own. */
+/** Mini-boss sounds: the custodian's stomp and its shockwave have their own (12h); the rest reuse the SFX set (12c). */
 export const MINIBOSS_SFX: Record<MinibossSound, SfxAssetKey> = {
   tell: 'charge_start',
   shot: 'shot_basic',
@@ -20,7 +20,9 @@ export const MINIBOSS_SFX: Record<MinibossSound, SfxAssetKey> = {
   mortar: 'shot_charge_lv2',
   impact: 'land',
   dash: 'dash',
-  burst: 'sword_hit'
+  burst: 'sword_hit',
+  stomp: 'miniboss_stomp',
+  shockwave: 'miniboss_shockwave'
 }
 
 export function playMinibossSfx(sound: MinibossSound): void {

@@ -866,7 +866,7 @@ export class Game extends Phaser.Scene {
     this.victoryModal?.destroy()
     this.victoryModal = undefined
 
-    AudioService.playMusic(this, stage.id === FINAL_STAGE_ID ? 'final' : 'stage')
+    AudioService.playMusic(this, stage.id === FINAL_STAGE_ID ? 'final' : 'stage', { stageId: stage.id })
     const unlockAudio = () => AudioService.unlock()
     this.input.once('pointerdown', unlockAudio)
     this.createPauseOverlay(width, height)
@@ -1170,8 +1170,8 @@ export class Game extends Phaser.Scene {
     this.bossSceneEvents?.destroy()
     this.bossSceneEvents = new BossSceneEventBindings({
       events: this.events,
-      playBossMusic: () => AudioService.playMusic(this, 'boss'),
-      playStageMusic: () => AudioService.playMusic(this, stage.id === FINAL_STAGE_ID ? 'final' : 'stage'),
+      playBossMusic: () => AudioService.playMusic(this, 'boss', { bossId: this.bossController?.blueprint.id }),
+      playStageMusic: () => AudioService.playMusic(this, stage.id === FINAL_STAGE_ID ? 'final' : 'stage', { stageId: stage.id }),
       onPhaseChanged: (phaseName) => {
         this.currentPhaseName = phaseName
         this.updatePhaseHud()

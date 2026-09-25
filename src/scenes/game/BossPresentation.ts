@@ -82,6 +82,7 @@ export class BossPresentation {
     this.resetFight()
     host.bossController?.beginIntroPresentation()
     this.mark('warning')
+    AudioService.playSfx('boss_warning')
     const y = Math.round(GAME_HEIGHT * 0.4)
     this.band = host.add.graphics().setScrollFactor(0).setDepth(BAND_DEPTH)
     this.drawBand(0x3c0008, 0xff2e44, y)

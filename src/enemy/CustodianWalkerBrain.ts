@@ -126,7 +126,7 @@ export class CustodianWalkerBrain implements EnemyBrain {
       if (event === 'windup') {
         playMinibossSfx('tell')
       } else if (event === 'stomp') {
-        playMinibossSfx('impact')
+        playMinibossSfx('stomp')
         this.launch(body.center.x, floorTop, body.halfWidth, now)
       } else if (event === 'defeated') {
         this.clearWaves()
@@ -194,10 +194,10 @@ export class CustodianWalkerBrain implements EnemyBrain {
     const arena = bounds ? { minX: bounds.minX - halfWidth, maxX: bounds.maxX + halfWidth } : undefined
     const span = resolveShockwaveSpan(this.readSolids(), originX, floorTop, CUSTODIAN_SHOCKWAVE, { arena })
     const scene = this.entity.context.scene
-    for (const wave of launchShockwaves(originX, floorTop, span)) {
-      if (!wave.alive) {
-        continue
-      }
+    // The stomp plays its own thud; the rumble plays only when a wave actually runs.
+    const waves = launchShockwaves(originX, floorTop, span).filter((wave) => wave.alive)
+    if (waves.length > 0) playMinibossSfx('shockwave')
+    for (const wave of waves) {
       const image = scene.add
         .image(wave.x, floorTop, this.atlasKey(), `${this.entity.typeKey}/${WAVE_FRAMES[0].name}`)
         .setOrigin(0.5, 1)

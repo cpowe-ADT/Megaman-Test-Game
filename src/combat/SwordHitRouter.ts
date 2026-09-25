@@ -84,6 +84,7 @@ export class SwordHitRouter {
     const damage = hitbox.damage ?? 2
     const knockback = hitbox.knockback ?? { x: facing * 100, y: -60 }
     let landed = false
+    let bossLanded = false
 
     this.host.enemies()?.children.iterate((child) => {
       const enemy = child as Phaser.Physics.Arcade.Sprite | null
@@ -117,13 +118,14 @@ export class SwordHitRouter {
           this.host.scene.tweens?.add({ targets: boss, alpha: 0.25, yoyo: true, duration: 70 })
           this.spark('fx_hit_spark', boss.x + facing * 10, boss.y - 6, 1.4)
           this.record({ swingId, move: hitbox.move ?? 'combo1', target: 'boss', damage, knockbackX: knockback.x, bossHpBefore: before, bossHpAfter: after })
-          landed = true
+          bossLanded = true
         }
       }
     }
 
-    if (landed) {
-      AudioService.playSfx('sword_hit')
+    if (landed || bossLanded) {
+      // A boss hit already sounds through its damage path (boss_hit), so the saber's hit sound is for enemies.
+      if (landed) AudioService.playSfx('sword_hit')
       this.host.scene.events.emit('camera.shake', { intensity: damage >= 4 ? 0.009 : 0.005, duration: damage >= 4 ? 100 : 75 })
       this.host.onContactHit(hitbox.grounded ? 'sword_ground' : 'sword_air', hitbox.hitstopFrames)
     }
@@ -180,7 +182,7 @@ export class SwordHitRouter {
       return true
     })
     if (reflected.length > 0) {
-      AudioService.playSfx('sword_hit')
+      AudioService.playSfx('saber_reflect')
       this.host.onContactHit(hitbox.grounded ? 'sword_ground' : 'sword_air', REFLECT_HITSTOP_FRAMES)
     }
   }

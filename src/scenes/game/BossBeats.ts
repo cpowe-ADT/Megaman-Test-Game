@@ -91,7 +91,9 @@ export class BossBeats {
     if (this.listening) return
     this.listening = true
     const onInterrupted = (event: { attackId?: string }) => host.bossProjectileController?.cancelPendingAttack(String(event?.attackId ?? ''))
-    const onPhase = (event: { phaseData?: { desperation?: boolean } }) => {
+    const onPhase = (event: { phaseIndex?: number; phaseData?: { desperation?: boolean } }) => {
+      // Phase two (and any later phase) crossfades the boss track to its phase-two layer; a no-op after the first.
+      if (Number(event?.phaseIndex ?? 0) >= 1) AudioService.setMusicPhase(2)
       if (event?.phaseData?.desperation) this.presentation.beginDesperation()
     }
     host.events.on('boss-attack-interrupted', onInterrupted)
@@ -278,7 +280,7 @@ export class BossBeats {
     host.bossEncounterActive = true
     host.lockBossGate()
     host.applyBossRoomCameraLock()
-    AudioService.playMusic(host, 'boss')
+    AudioService.playMusic(host, 'boss', { bossId: host.bossController?.blueprint.id })
     AudioService.playSfx('boss_activate')
     const phase = host.bossController?.currentPhase
     if (phase) {

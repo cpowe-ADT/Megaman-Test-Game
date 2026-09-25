@@ -1,4 +1,5 @@
 import type Phaser from 'phaser'
+import type { SfxAssetKey } from '../audio/sfxLibrary'
 import { resolveUpgradeModifiers, type UpgradeModifiers } from '../progression/upgrades'
 import type { PlayerDamageRequest } from './types'
 import { shouldFlipPlayerSpriteForFacing } from './config'
@@ -18,6 +19,8 @@ const FRAME_MS = 1000 / 60
 /** Phase clocks are float ms; anything this close to zero has run out. */
 const PHASE_EPSILON_MS = 1e-6
 const COMBO_MOVES: readonly SlashMove[] = ['combo1', 'combo2', 'combo3']
+/** Each combo hit and the air spin has its own saber sound (part 12h). */
+const SLASH_SFX: Record<SlashMove, SfxAssetKey> = { combo1: 'saber_combo_1', combo2: 'saber_combo_2', combo3: 'saber_combo_3', air_spin: 'saber_air_spin' }
 /** Legacy single slash (comboEnabled false): the adapter's old flat numbers. */
 const LEGACY_SWORD_DAMAGE = 2
 const LEGACY_SWORD_KNOCKBACK = { x: 100, y: -60 }
@@ -406,7 +409,7 @@ export class PlayerCombat {
     this.slashStartedThisTick = true
     this.swingId += 1
     this.swingTargets.clear()
-    events.push({ type: 'sfx', key: 'sword_swing' })
+    events.push({ type: 'sfx', key: SLASH_SFX[this.slashMove] })
     return true
   }
 
