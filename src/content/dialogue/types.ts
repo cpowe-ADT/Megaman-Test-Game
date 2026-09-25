@@ -1,4 +1,5 @@
 import type { CampaignStageId } from '../campaign'
+import type { RoomLockInput } from '../../mechanics/roomLock'
 
 export const DIALOGUE_SCHEMA_VERSION = '2' as const
 
@@ -35,16 +36,24 @@ export const STAGE_DIALOGUE_TRIGGERS = [
   'miniboss_callout',
   'boss_intro',
   'boss_defeat',
-  'district_restored'
+  'district_restored',
+  /** Tutorial only: Rook's recorded intake prompts, one per teach lock, on the ticker as each lock arms. */
+  'tutorial_coach',
+  /** Warden stages: the stage warden's recorded cache log, above the effect label on the capsule card. */
+  'capsule_pickup',
+  /** Warden stages: Iona reads the district registry on the weapon-get card, keyed by the weapon's source stage. */
+  'weapon_get',
+  /** Warden stages: one OMEGA line on the ticker as the warden enters phase two. */
+  'warden_phase'
 ] as const
 
 /** Triggers that belong to the campaign as a whole. */
-export const GLOBAL_DIALOGUE_TRIGGERS = ['prologue', 'epilogue', 'credits', 'finale_phase'] as const
+export const GLOBAL_DIALOGUE_TRIGGERS = ['prologue', 'epilogue', 'credits', 'finale_phase', 'game_over', 'epilogue_secret'] as const
 
 export const FINALE_PHASES = [1, 2, 3] as const
 
 /** Triggers whose lines may be narration (no speaker). */
-export const NARRATION_TRIGGERS = ['prologue', 'epilogue', 'credits'] as const
+export const NARRATION_TRIGGERS = ['prologue', 'epilogue', 'credits', 'epilogue_secret'] as const
 
 export type DialogueSpeakerId = (typeof DIALOGUE_SPEAKER_IDS)[number]
 export type DialogueInterpolationToken = (typeof DIALOGUE_INTERPOLATION_TOKENS)[number]
@@ -64,10 +73,18 @@ export const DIALOGUE_LINE_LIMITS: Record<DialogueTrigger, { min: number; max: n
   boss_intro: { min: 2, max: 4 },
   boss_defeat: { min: 2, max: 4 },
   district_restored: { min: 1, max: 1 },
+  tutorial_coach: { min: 4, max: 6 },
+  capsule_pickup: { min: 1, max: 1 },
+  weapon_get: { min: 1, max: 1 },
+  warden_phase: { min: 1, max: 1 },
   prologue: { min: 4, max: 12 },
   epilogue: { min: 9, max: 12 },
   credits: { min: 1, max: 40 },
-  finale_phase: { min: 1, max: 2 }
+  finale_phase: { min: 1, max: 2 },
+  /** Rotated over the Continue row by the save's game-over count. */
+  game_over: { min: 4, max: 4 },
+  /** The Drill Hangar card (narration) and Iona's line; plays only with all eight capsule caches. */
+  epilogue_secret: { min: 2, max: 2 }
 }
 
 export const DIALOGUE_MILESTONE_LINE_LIMITS = { min: 1, max: 4 } as const
@@ -86,6 +103,8 @@ export type DialogueLineDefinition = {
   text: string
   /** Epilogue only: the warden stage whose district card this line captions. */
   card?: CampaignStageId
+  /** tutorial_coach only: the room lock (by required input) whose arming plays this line. */
+  lock?: RoomLockInput
 }
 
 export type DialogueSequenceDefinition = {

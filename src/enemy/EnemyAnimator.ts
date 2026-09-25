@@ -15,9 +15,10 @@ export class EnemyAnimator {
     this.ensureAnimations()
   }
 
-  update(state: EnemyState, facing: 1 | -1): void {
+  /** `override` (a brain's own frames) wins over the key the state maps to. */
+  update(state: EnemyState, facing: 1 | -1, override?: string): void {
     this.sprite.setFlipX(facing < 0)
-    const key = this.resolveAnimationKey(state)
+    const key = override && this.scene.anims.exists(override) ? override : this.resolveAnimationKey(state)
     if (key && this.sprite.anims?.currentAnim?.key !== key) {
       this.playSafe(key)
       this.emittedMarkers.clear()
@@ -84,8 +85,9 @@ export class EnemyAnimator {
       case 'attack_windup':
         return animations.attackWindup
       case 'attack_active':
-      case 'attack_recover':
         return animations.attackActive
+      case 'attack_recover':
+        return animations.attackRecover ?? animations.attackActive
       case 'stunned':
         return animations.stunned ?? animations.hurt
       case 'dead':

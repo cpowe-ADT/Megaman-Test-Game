@@ -1,0 +1,200 @@
+{
+  "_note": "HUD icons v1 (2026-09-25, prompt 08 phase 8.2 weapon icons; prompt 12 part 12i): Higgsfield gpt_image_2 sheet assets/ui/source/hud_icons_v1_a.png (ui_v1.prompts.md). One 16x16 frame per icon.",
+  "key": "hud_icons_v1",
+  "outDir": "assets/ui/hud_icons/hud_icons_v1",
+  "atlasWidth": 64,
+  "groups": [
+    {
+      "name": "buster",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        0
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "arc_slash",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        1
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "flame_serpent",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        2
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "hydro_lance",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        3
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "thunder_spike",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        4
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "quake_knuckle",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        5
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "magcut_disc",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        6
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "acid_glob",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        7
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "aero_darts",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        8
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "frost_shatter",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        9
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "saber",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        10
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "shield",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        11
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "heart",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        12
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "sub_tank",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        13
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "capsule",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        14
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    },
+    {
+      "name": "key_card",
+      "sheet": "assets/ui/source/hud_icons_v1_a.png",
+      "cells": [
+        15
+      ],
+      "scale": 0.11,
+      "size": [
+        16,
+        16
+      ]
+    }
+  ]
+}

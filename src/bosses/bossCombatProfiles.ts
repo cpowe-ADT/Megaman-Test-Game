@@ -29,6 +29,8 @@ export interface BossAttackMotionSpec {
   riseSpeed?: number
   diveSpeed?: number
   crossPlayer?: boolean
+  /** dive_to only: the wind-up tracks the hero's column and the dive drops straight down it (Riptide Crash). */
+  dropToPlayerColumn?: boolean
 }
 
 export interface BossAttackAnimationSpec {
@@ -109,6 +111,13 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         strategyTags: ['anti_air', 'finisher'],
         requiresGrounded: true,
         landingMs: 300
+      }),
+      attack('rook_barrage', {
+        facingPolicy: 'track_until_active',
+        motion: { kind: 'hold' },
+        animation: anim('rook_barrage'),
+        strategyTags: ['zoning', 'finisher'],
+        requiresGrounded: true
       })
     )
   },
@@ -139,6 +148,13 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         animation: anim('lob'),
         strategyTags: ['zoning', 'setup'],
         requiresGrounded: true
+      }),
+      attack('magma_geyser', {
+        facingPolicy: 'lock_at_windup',
+        motion: { kind: 'hold' },
+        animation: anim('magma_geyser'),
+        strategyTags: ['zoning', 'finisher'],
+        requiresGrounded: true
       })
     )
   },
@@ -163,10 +179,16 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
       }),
       attack('riptide_crash', {
         facingPolicy: 'lock_at_windup',
-        motion: { kind: 'dive_to', hoverHeight: 108, riseSpeed: 190, diveSpeed: 430, speed: 120 },
+        motion: { kind: 'dive_to', hoverHeight: 120, riseSpeed: 300, diveSpeed: 460, speed: 160, dropToPlayerColumn: true },
         animation: anim('dive', 'splash_land'),
         strategyTags: ['gap_close', 'finisher'],
         landingMs: 260
+      }),
+      attack('maelstrom', {
+        facingPolicy: 'track_until_active',
+        motion: { kind: 'hover_to', hoverHeight: 88, riseSpeed: 150 },
+        animation: anim('maelstrom'),
+        strategyTags: ['zoning', 'finisher']
       })
     )
   },
@@ -196,6 +218,13 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         motion: { kind: 'dash_through', speed: 320, crossPlayer: true },
         animation: anim('impulse_dash'),
         strategyTags: ['escape', 'gap_close'],
+        requiresGrounded: true
+      }),
+      attack('storm_grid', {
+        facingPolicy: 'track_until_active',
+        motion: { kind: 'hold' },
+        animation: anim('storm_grid'),
+        strategyTags: ['zoning', 'finisher'],
         requiresGrounded: true
       })
     )
@@ -228,6 +257,14 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         strategyTags: ['finisher', 'anti_air'],
         requiresGrounded: true,
         landingMs: 340
+      }),
+      attack('tectonic_rift', {
+        facingPolicy: 'lock_at_windup',
+        motion: { kind: 'slam_to_floor', jumpVelocityY: -260, diveSpeed: 460 },
+        animation: anim('tectonic_rift', 'rift_land'),
+        strategyTags: ['anti_air', 'finisher'],
+        requiresGrounded: true,
+        landingMs: 280
       })
     )
   },
@@ -258,6 +295,12 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         animation: anim('snare'),
         strategyTags: ['setup', 'zoning'],
         requiresGrounded: true
+      }),
+      attack('disc_storm', {
+        facingPolicy: 'track_until_active',
+        motion: { kind: 'hold' },
+        animation: anim('disc_storm'),
+        strategyTags: ['zoning', 'finisher']
       })
     )
   },
@@ -284,6 +327,12 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         facingPolicy: 'track_until_active',
         motion: { kind: 'hover_to', hoverHeight: 48, riseSpeed: 100 },
         animation: anim('bloom'),
+        strategyTags: ['zoning', 'finisher']
+      }),
+      attack('miasma_flood', {
+        facingPolicy: 'lock_at_windup',
+        motion: { kind: 'hold' },
+        animation: anim('miasma_flood'),
         strategyTags: ['zoning', 'finisher']
       })
     )
@@ -312,6 +361,12 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         motion: { kind: 'hover_to', hoverHeight: 112, riseSpeed: 230, speed: 110 },
         animation: anim('cyclone_lift', 'land'),
         strategyTags: ['setup', 'escape']
+      }),
+      attack('tempest', {
+        facingPolicy: 'track_until_active',
+        motion: { kind: 'hover_to', hoverHeight: 96, riseSpeed: 170 },
+        animation: anim('tempest'),
+        strategyTags: ['anti_air', 'finisher']
       })
     )
   },
@@ -341,6 +396,13 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         motion: { kind: 'hold' },
         animation: anim('shard_rain'),
         strategyTags: ['zoning', 'setup'],
+        requiresGrounded: true
+      }),
+      attack('absolute_zero', {
+        facingPolicy: 'track_until_active',
+        motion: { kind: 'hold' },
+        animation: anim('absolute_zero'),
+        strategyTags: ['zoning', 'finisher'],
         requiresGrounded: true
       })
     )
@@ -381,6 +443,12 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
         animation: anim('override_cascade', 'cascade_land'),
         strategyTags: ['finisher', 'zoning'],
         landingMs: 260
+      }),
+      attack('final_directive', {
+        facingPolicy: 'track_until_active',
+        motion: { kind: 'hover_to', hoverHeight: 90, riseSpeed: 130 },
+        animation: anim('final_directive'),
+        strategyTags: ['zoning', 'finisher']
       })
     )
   }

@@ -7,7 +7,8 @@ const distIndexPath = path.join(root, 'dist', 'index.html')
 const distRoot = path.join(root, 'dist', 'assets')
 const excludedRuntimeRoots = [
   path.join(sourceRoot, 'sprites', 'source'),
-  path.join(sourceRoot, 'private', 'source')
+  // The developer-only skin was retired in 05c (5.5): nothing under assets/private is a runtime asset.
+  path.join(sourceRoot, 'private')
 ]
 
 function isInside(parent, candidate) {
@@ -20,7 +21,19 @@ function shouldSkip(candidate) {
   if (basename === '.DS_Store') {
     return true
   }
+  // Any `source` folder under assets holds generator sheets, not runtime files (see vite.config.ts).
+  if (basename === 'source' && fs.statSync(candidate).isDirectory()) {
+    return true
+  }
   return excludedRuntimeRoots.some((excludedRoot) => isInside(excludedRoot, candidate))
+}
+
+function findSourceDirs(dir) {
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).flatMap((entry) => {
+    const fullPath = path.join(dir, entry.name)
+    return entry.name === 'source' ? [fullPath] : findSourceDirs(fullPath)
+  })
 }
 
 function collectRuntimeFiles(dir) {
@@ -53,6 +66,17 @@ if (!fs.existsSync(distRoot)) {
 
 if (!fs.existsSync(distIndexPath)) {
   console.error(`Missing production index: ${path.relative(root, distIndexPath)}`)
+  process.exit(1)
+}
+
+if (fs.existsSync(path.join(distRoot, 'private'))) {
+  console.error('dist/assets/private exists: the retired developer skin must never ship')
+  process.exit(1)
+}
+
+const shippedSources = findSourceDirs(distRoot)
+if (shippedSources.length > 0) {
+  console.error(`Generator source folders shipped in dist: ${shippedSources.map((dir) => path.relative(root, dir)).join(', ')}`)
   process.exit(1)
 }
 

@@ -1,6 +1,6 @@
 import type Phaser from 'phaser'
 import { AUTOMATION } from '../../config/automation'
-import { Save, type SaveData } from '../../systems/Save'
+import { Profiles, Save, type SaveData } from '../../systems/Save'
 import { ALL_UPGRADE_IDS, ROBOT_MASTER_WEAPON_IDS, applyProgressionItem } from '../../progression'
 import type { ProgressionItemId } from '../../progression/types'
 
@@ -16,7 +16,11 @@ export function installProgressionDebugHooks(scene: Phaser.Scene, refresh: (prev
     refresh(previous, Save.load(), id)
     return true
   }
-  const hooks = { ...existing, grantWeapon: (id: string) => grant(id, ROBOT_MASTER_WEAPON_IDS), grantUpgrade: (id: string) => grant(id, [...ALL_UPGRADE_IDS, 'arc_slash']) }
+  // 5.6: in the Game scene only (Stage Select's hook set is a smoke 13e contract), make a slot active,
+  // creating or renaming its pilot; payload `profiles` shows the result.
+  const setProfile = (options: { slot?: unknown; pilotName?: unknown }) => ({ ...Profiles.debugSetProfile(options), profiles: Profiles.debugState() })
+  const hooks = { ...existing, grantWeapon: (id: string) => grant(id, ROBOT_MASTER_WEAPON_IDS), grantUpgrade: (id: string) => grant(id, [...ALL_UPGRADE_IDS, 'arc_slash']),
+    ...(scene.scene.key === 'Game' ? { setProfile } : {}) }
   target.stageDebug = hooks
   scene.events.once('shutdown', () => { if (target.stageDebug === hooks) delete target.stageDebug })
 }

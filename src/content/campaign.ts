@@ -12,6 +12,22 @@ import {
   type StageBossRoomDefinition
 } from './stageArenaLayout'
 import { getStageBackgroundDefinition } from './stageBackgroundCatalog'
+import type { RoomLockDefinition, RoomLockInput, VerticalSegmentDefinition } from '../mechanics/roomLock'
+import type { StageHazardDefinition } from '../mechanics/hazards'
+import type { RisingLiquidDefinition } from '../mechanics/risingLiquid'
+import type { CrumbleGroupDefinition } from '../mechanics/crumbleGroup'
+import type { BreakableWallDefinition } from '../mechanics/breakableWall'
+import type { ConveyorDefinition } from '../mechanics/conveyor'
+import type { IceFloorDefinition } from '../mechanics/iceFloor'
+import type { CurrentZoneDefinition } from '../mechanics/currentZone'
+import type { WaterLevelGateDefinition } from '../mechanics/waterLevelGate'
+import type { WindZoneDefinition } from '../mechanics/windZone'
+import type { TimedRailGroupDefinition } from '../mechanics/timedRailGroup'
+import type { RockfallDefinition } from '../mechanics/rockfall'
+import type { IcicleDefinition } from '../mechanics/icicle'
+import type { FloorGap } from '../stage/stageGeometry'
+import { REBUILT_STAGE_PATCHES } from './stages/index'
+import { MINIBOSS_LAB_STAGE_ID, minibossLabStage } from './stages/minibossLab'
 
 export type CampaignStageKind = 'tutorial' | 'robot_master' | 'final'
 
@@ -21,7 +37,8 @@ export type StagePlatformDefinition = {
   y: number
   width: number
   height?: number
-  type?: 'solid' | 'oneWay' | 'passThrough'
+  /** `wall`: a solid block whose side faces take wall slides and kicks (06 §6.1, pulled forward for the tutorial shaft). */
+  type?: 'solid' | 'oneWay' | 'passThrough' | 'wall'
   color?: number
   motion?: {
     toX: number
@@ -31,6 +48,10 @@ export type StagePlatformDefinition = {
     ease?: string
   }
 }
+
+/** Pickup categories a stage may place by hand (`src/progression/catalog.ts`); ids are unchanged, so saves are too. */
+export type LocationAnchorCategory = 'capsule' | 'heart_tank' | 'sub_tank' | 'pickup_bonus'
+export type LocationAnchors = Partial<Record<LocationAnchorCategory, { x: number; y: number }>>
 
 export type StageArenaDefinition = {
   width?: number
@@ -43,8 +64,39 @@ export type StageArenaDefinition = {
   bossSpawn: { x: number; y: number }
   bossRoom: StageBossRoomDefinition
   checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
-  hazards: Array<{ id: string; x: number; y: number }>
+  /** Spikes (always on) and timed vents; box and damage from each definition (`src/mechanics/hazards.ts`). */
+  hazards: StageHazardDefinition[]
   midPlatforms: StagePlatformDefinition[]
+  /** Teach gates (prompt 05 §5.7): each opens once its verb was performed inside its room. */
+  roomLocks?: RoomLockDefinition[]
+  /** Gateless segments taller than a screen: the camera follows vertically inside (06 §6.1 `verticalScreens`). */
+  verticalSegments?: VerticalSegmentDefinition[]
+  /** Kill planes that rise after a trigger x (06 §6.2 `rising_liquid`). */
+  risingLiquids?: RisingLiquidDefinition[]
+  /** Platforms that shake, fall and return (06 §6.2 `crumble_group`). */
+  crumbleGroups?: CrumbleGroupDefinition[]
+  /** Solid blocks a saber or a charged shot breaks (06 §6.2 `breakable_wall`). */
+  breakableWalls?: BreakableWallDefinition[]
+  /** Belt platforms that carry the hero and enemies; a dash-jump off one keeps its speed (12b `conveyor`). */
+  conveyors?: ConveyorDefinition[]
+  /** Ice-tile platforms: ground friction x0.35, a grounded dash +40% distance (12b `ice_floor`). */
+  iceFloors?: IceFloorDefinition[]
+  /** Water currents that push the hero with a capped force (12b `current_zone`). */
+  currentZones?: CurrentZoneDefinition[]
+  /** Water that cycles high and low on the stage clock, its sluice open only at one level; the hero floats under it (12d). */
+  waterLevelGates?: WaterLevelGateDefinition[]
+  /** Sideways gusts on a cycle and upward lifts, Ferro's magnet lift included (12b `wind_zone`). */
+  windZones?: WindZoneDefinition[]
+  /** Electrified floor rails on one shared timer, for Volt (12b `timed_rail_group`). */
+  timedRailGroups?: TimedRailGroupDefinition[]
+  /** Ceiling spawners: dust puff, boulder, rubble (12b `rockfall`). */
+  rockfalls?: RockfallDefinition[]
+  /** Icicles that shake when the hero passes under, fall and shatter; back on the checkpoint respawn (12b `icicle`). */
+  icicles?: IcicleDefinition[]
+  /** Pits (x is the left edge): the main ground is split around them (`src/stage/stageGeometry.ts`); needs `allowFallOff`. */
+  floorGaps?: FloorGap[]
+  /** Hand-placed pickups; a category left out keeps its checkpoint-derived default. */
+  locationAnchors?: LocationAnchors
 }
 
 export type CampaignStageDefinition = {
@@ -85,6 +137,8 @@ export type StageContentRetentionReport = {
 }
 
 export const GROUNDED_PLAYER_SPAWN_Y = 214
+/** Top of the main ground strip (16px tall, bottom of the 252px frame). */
+const GAME_FLOOR_TOP = 236
 
 const STAGE_CONTENT_RETENTION = new Map<string, StageContentRetentionReport>()
 
@@ -155,13 +209,14 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         spawnTriggerX: 52,
         retireTriggerX: 204
       }),
-      marker('tutorial_hopper', 'enemy_shock_hopper', 220, 185, undefined, undefined, {
-        spawnTriggerX: 96,
-        retireTriggerX: 282
+      // 06.P: the hopper moved from the jump screen to the saber room (one threat at a time on screen one).
+      marker('tutorial_hopper', 'enemy_shock_hopper', 1860, 185, undefined, undefined, {
+        spawnTriggerX: 1800,
+        retireTriggerX: 1980
       }),
-      marker('tutorial_drone', 'enemy_drone', 308, 126, undefined, undefined, {
-        spawnTriggerX: 144,
-        retireTriggerX: 360
+      marker('tutorial_drone', 'enemy_drone', 1480, 126, undefined, undefined, {
+        spawnTriggerX: 1360,
+        retireTriggerX: 1560
       })
     ],
     arena: {
@@ -177,7 +232,8 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
         checkpoint('tutorial_start', 44, 40, 0),
         checkpoint('tutorial_boss_gate', 132, 40, 160)
       ],
-      hazards: [{ id: 'tutorial_spike_1', x: 240, y: 230 }],
+      // 06.P: no spike on the jump screen; spikes appear only after the verb they test (the approach).
+      hazards: [],
       midPlatforms: [
         { id: 'tutorial_mid_1', x: 150, y: 176, width: 56, type: 'oneWay', color: 0x304a6d },
         { id: 'tutorial_mid_2', x: 236, y: 138, width: 56, type: 'oneWay', color: 0x304a6d }
@@ -196,22 +252,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Smelter Crucible',
     rewardWeaponId: 'FlameSerpent',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('pyro_slicer', 'enemy_slicer_bot', 160, 185, 132, 204, {
-        spawnTriggerX: 104,
-        retireTriggerX: 240
-      }),
-      marker('pyro_mine', 'enemy_mine_bot', 232, 185, undefined, undefined, {
-        spawnTriggerX: 128,
-        retireTriggerX: 300
-      }),
-      marker('pyro_rocket', 'enemy_rocket_bot', 324, 185, undefined, undefined, {
-        spawnTriggerX: 150,
-        retireTriggerX: 380
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in STAGE_EXTENSION_PATCHES.pyro_maw.
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#180d0b',
@@ -219,15 +263,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('pyro_start', 44, 40, 0), checkpoint('pyro_mid', 152, 40, 170)],
-      hazards: [
-        { id: 'pyro_lava_1', x: 118, y: 230 },
-        { id: 'pyro_lava_2', x: 302, y: 230 }
-      ],
-      midPlatforms: [
-        { id: 'pyro_mid_1', x: 180, y: 170, width: 54, type: 'oneWay', color: 0x6c3520 },
-        { id: 'pyro_mid_2', x: 250, y: 132, width: 60, type: 'oneWay', color: 0x6c3520 }
-      ]
+      checkpoints: [checkpoint('pyro_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   },
   tide_reaver: {
@@ -242,36 +280,20 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Reservoir Lock',
     rewardWeaponId: 'HydroLance',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('tide_drone', 'enemy_drone', 152, 150, undefined, undefined, {
-        spawnTriggerX: 60,
-        retireTriggerX: 214
-      }),
-      marker('tide_gunner', 'enemy_gunner_bot', 236, 185, 210, 286, {
-        spawnTriggerX: 100,
-        retireTriggerX: 308
-      }),
-      marker('tide_rocket', 'enemy_rocket_bot', 330, 185, undefined, undefined, {
-        spawnTriggerX: 166,
-        retireTriggerX: 388
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in `src/content/stages/tideReaver.ts`.
+    enemyMarkers: [],
     arena: {
       allowFallOff: true,
-      leftWall: false,
-      rightWall: false,
+      leftWall: true,
+      rightWall: true,
       backgroundColor: '#081622',
       background: EMPTY_BACKGROUND,
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
       checkpoints: [checkpoint('tide_start', 44, 40, 0), checkpoint('tide_mid', 156, 40, 185)],
-      hazards: [{ id: 'tide_spike_1', x: 206, y: 230 }],
-      midPlatforms: [
-        { id: 'tide_mid_1', x: 150, y: 176, width: 50, type: 'oneWay', color: 0x214c77 },
-        { id: 'tide_mid_2', x: 210, y: 144, width: 44, type: 'oneWay', color: 0x214c77 },
-        { id: 'tide_mid_3', x: 268, y: 112, width: 44, type: 'oneWay', color: 0x214c77 }
-      ]
+      hazards: [],
+      midPlatforms: []
     }
   },
   volt_hopper: {
@@ -548,11 +570,11 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     kind: 'final',
     bossId: 'omega_core',
     runtimeBossConfigId: 'omega_core',
-    title: 'Omega Fortress',
+    title: 'Central Core',
     selectLabel: 'FINAL',
     introCallout: IDENTITY.ANTAGONIST_NAME,
     description: 'Remixed final route that cashes in on the full unlocked toolkit and ends the campaign.',
-    arenaLabel: 'Omega Citadel',
+    arenaLabel: 'Core Command Vault',
     rewardEnabled: false,
     enemyMarkers: [
       marker('omega_armored', 'enemy_armored_bot', 142, 185, 116, 176, {
@@ -595,119 +617,121 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
   }
 }
 
-type StageExtensionPatch = {
+/** A stage's route over its base definition: one per stage, from `src/content/stages/index.ts` or inline below. */
+export type StageExtensionPatch = {
   width: number
   bossSpawnX: number
-  checkpoints: Array<{ id: string; x: number; y: number; triggerX: number }>
-  hazards?: Array<{ id: string; x: number; y: number }>
+  checkpoints: Array<{ id: string; x: number; y: number; triggerX: number; radioSequenceId?: string }>
+  hazards?: StageHazardDefinition[]
   midPlatforms?: StagePlatformDefinition[]
   enemyMarkers?: EnemyLevelMarker[]
+  roomLocks?: RoomLockDefinition[]
+  /** Mechanics and pits beyond the shared fields (Heat Works; the 12b mechanics for the other stages). */
+  arena?: Pick<
+    StageArenaDefinition,
+    | 'floorGaps'
+    | 'locationAnchors'
+    | 'verticalSegments'
+    | 'risingLiquids'
+    | 'crumbleGroups'
+    | 'breakableWalls'
+    | 'conveyors'
+    | 'iceFloors'
+    | 'currentZones'
+    | 'waterLevelGates'
+    | 'windZones'
+    | 'timedRailGroups'
+    | 'rockfalls'
+    | 'icicles'
+  >
 }
 
-const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
+const TEACH_SCREEN = 448
+
+/** One tutorial screen whose exit gate opens on `requiredInput`; the shaft passes a taller room. */
+function teachRoom(
+  index: number,
+  requiredInput: RoomLockInput,
+  extra: { hitsRequired?: number; room?: { y: number; height: number } } = {}
+): RoomLockDefinition {
+  return {
+    id: `tutorial_lock_${requiredInput}`,
+    room: { x: index * TEACH_SCREEN, y: extra.room?.y ?? 0, width: TEACH_SCREEN, height: extra.room?.height ?? 252 },
+    gateX: (index + 1) * TEACH_SCREEN,
+    requiredInput,
+    ...(extra.hitsRequired ? { hitsRequired: extra.hitsRequired } : {})
+  }
+}
+
+/** Routes not yet rebuilt (prompt 12 part 12d); a stage in `REBUILT_STAGE_PATCHES` replaces its entry here. */
+const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
+  // Six screens (2688px) before the unchanged boss room: move and jump, dash, the two-screen wall-kick
+  // shaft, charge, saber, then the approach. Each teach screen ends at a room_lock gate (prompt 05 §5.7).
   tutorial_sentinel: {
-    width: 640,
-    bossSpawnX: 574,
+    width: 2688,
+    bossSpawnX: 2622,
     checkpoints: [
       checkpoint('tutorial_start', 44, 40, 0),
-      checkpoint('tutorial_mid', 214, 40, 230),
-      checkpoint('tutorial_boss_gate', 402, 40, 488)
+      checkpoint('tutorial_dash_exit', 928, 40, 912),
+      // The radio pair belongs at the shaft exit; the dash exit is checkpoint 2's toast only.
+      { ...checkpoint('tutorial_shaft_exit', 1392, 40, 1380), radioSequenceId: 'tutorial_sentinel_radio' },
+      // The last checkpoint starts the boss door on every stage; kept at the approach's end, on the
+      // landing ledge past the dash check, so a respawn never drops into the spike bay.
+      checkpoint('tutorial_boss_gate', 2640, 40, 2624)
     ],
+    // 06.P: spikes only after the verb they test. The dash check on the approach: two spikes where a
+    // plain jump off the loading deck lands, a spike-free near floor where a walk-off lands.
     hazards: [
-      { id: 'tutorial_spike_2', x: 434, y: 230 }
+      { id: 'tutorial_check_spike_1', x: 2556, y: 230 },
+      { id: 'tutorial_check_spike_2', x: 2584, y: 230 }
     ],
     midPlatforms: [
-      { id: 'tutorial_mid_3', x: 352, y: 166, width: 52, type: 'oneWay', color: 0x304a6d },
-      { id: 'tutorial_mid_4', x: 448, y: 132, width: 52, type: 'oneWay', color: 0x304a6d }
+      { id: 'tutorial_step', x: 360, y: 224, width: 40, height: 24, type: 'solid', color: 0x2a3a52 },
+      // The dash teach (06.P): a launch deck and a landing ledge at one height over a 216px bay with a
+      // flat, spike-free floor. A plain running jump covers about 168px and lands in the bay (one hop
+      // back up the deck face); a dash jump covers about 244px and lands on ledge B.
+      { id: 'tutorial_dash_ledge_a', x: 544, y: 216, width: 112, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_dash_ledge_b', x: 848, y: 216, width: 64, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_shaft_wall_left', x: 1040, y: -30, width: 16, height: 424, type: 'wall', color: 0x3b4f6e },
+      { id: 'tutorial_shaft_wall_right', x: 1120, y: 50, width: 16, height: 372, type: 'wall', color: 0x3b4f6e },
+      { id: 'tutorial_mid_5', x: 2000, y: 176, width: 56, type: 'oneWay', color: 0x304a6d },
+      // The dash check on the approach: loading deck, a 212px bay, the landing ledge before the boss door.
+      { id: 'tutorial_check_ledge_a', x: 2368, y: 216, width: 64, height: 40, type: 'solid', color: 0x2a3a52 },
+      { id: 'tutorial_check_ledge_b', x: 2640, y: 216, width: 56, height: 40, type: 'solid', color: 0x2a3a52 }
     ],
+    // Brief roster (8 placements, 5 types) plus the charge target; spawn triggers keep one arrival at a time.
     enemyMarkers: [
-      marker('tutorial_shield', 'enemy_shield_drone', 424, 142, undefined, undefined, {
-        spawnTriggerX: 248,
-        retireTriggerX: 506
+      marker('tutorial_armored', 'enemy_armored_bot', 1600, 185, 1540, 1700, {
+        spawnTriggerX: 1400,
+        retireTriggerX: 1760
       }),
-      marker('tutorial_rocket', 'enemy_rocket_bot', 510, 185, undefined, undefined, {
-        spawnTriggerX: 332,
-        retireTriggerX: 592
+      marker('tutorial_drone_2', 'enemy_drone', 1740, 112, undefined, undefined, {
+        spawnTriggerX: 1640,
+        retireTriggerX: 1840
+      }),
+      marker('tutorial_gunner_2', 'enemy_gunner_bot', 2040, 185, 2010, 2080, {
+        spawnTriggerX: 1980,
+        retireTriggerX: 2150
+      }),
+      marker('tutorial_hopper_2', 'enemy_shock_hopper', 2150, 185, undefined, undefined, {
+        spawnTriggerX: 2080,
+        retireTriggerX: 2250
+      }),
+      marker('tutorial_shield', 'enemy_shield_drone', 2296, 128, undefined, undefined, {
+        spawnTriggerX: 2240,
+        retireTriggerX: 2420
+      }),
+      marker('tutorial_rocket', 'enemy_rocket_bot', 2368, 145, undefined, undefined, {
+        spawnTriggerX: 2260,
+        retireTriggerX: 2440
       })
-    ]
-  },
-  pyro_maw: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('pyro_start', 44, 40, 0),
-      checkpoint('pyro_mid_a', 214, 40, 232),
-      checkpoint('pyro_mid_b', 458, 40, 488),
-      checkpoint('pyro_mid_c', 616, 40, 662),
-      checkpoint('pyro_boss_gate', 760, 40, 808)
     ],
-    hazards: [
-      { id: 'pyro_lava_3', x: 502, y: 230 },
-      { id: 'pyro_lava_4', x: 726, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'pyro_mid_3', x: 430, y: 176, width: 56, type: 'oneWay', color: 0x6c3520 },
-      { id: 'pyro_mid_4', x: 548, y: 146, width: 62, type: 'solid', color: 0x6c3520, motion: { toX: 598, duration: 2200 } },
-      { id: 'pyro_mid_5', x: 690, y: 126, width: 56, type: 'oneWay', color: 0x6c3520 },
-      { id: 'pyro_mid_6', x: 812, y: 154, width: 48, type: 'oneWay', color: 0x6c3520 }
-    ],
-    enemyMarkers: [
-      marker('pyro_bouncer_late', 'enemy_bouncer', 438, 185, undefined, undefined, {
-        spawnTriggerX: 252,
-        retireTriggerX: 530
-      }),
-      marker('pyro_armored_late', 'enemy_armored_bot', 586, 185, 556, 640, {
-        spawnTriggerX: 372,
-        retireTriggerX: 686
-      }),
-      marker('pyro_drone_late', 'enemy_drone', 734, 128, undefined, undefined, {
-        spawnTriggerX: 520,
-        retireTriggerX: 818
-      }),
-      marker('pyro_shield_gate', 'enemy_shield_drone', 828, 140, undefined, undefined, {
-        spawnTriggerX: 646,
-        retireTriggerX: 900
-      })
-    ]
-  },
-  tide_reaver: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('tide_start', 44, 40, 0),
-      checkpoint('tide_mid_a', 194, 40, 224),
-      checkpoint('tide_mid_b', 430, 40, 470),
-      checkpoint('tide_mid_c', 588, 40, 634),
-      checkpoint('tide_boss_gate', 748, 40, 806)
-    ],
-    hazards: [
-      { id: 'tide_spike_2', x: 502, y: 230 },
-      { id: 'tide_spike_3', x: 688, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'tide_mid_4', x: 402, y: 182, width: 48, type: 'oneWay', color: 0x214c77 },
-      { id: 'tide_mid_5', x: 492, y: 150, width: 46, type: 'oneWay', color: 0x214c77, motion: { toX: 544, duration: 2100 } },
-      { id: 'tide_mid_6', x: 598, y: 118, width: 46, type: 'oneWay', color: 0x214c77 },
-      { id: 'tide_mid_7', x: 706, y: 150, width: 52, type: 'oneWay', color: 0x214c77 },
-      { id: 'tide_mid_8', x: 818, y: 126, width: 48, type: 'oneWay', color: 0x214c77 }
-    ],
-    enemyMarkers: [
-      marker('tide_hopper_late', 'enemy_shock_hopper', 432, 185, undefined, undefined, {
-        spawnTriggerX: 256,
-        retireTriggerX: 510
-      }),
-      marker('tide_shield_late', 'enemy_shield_drone', 560, 126, undefined, undefined, {
-        spawnTriggerX: 378,
-        retireTriggerX: 662
-      }),
-      marker('tide_fly_late', 'enemy_fly_trap', 724, 150, undefined, undefined, {
-        spawnTriggerX: 534,
-        retireTriggerX: 814
-      }),
-      marker('tide_mine_gate', 'enemy_mine_bot', 820, 185, undefined, undefined, {
-        spawnTriggerX: 642,
-        retireTriggerX: 904
-      })
+    roomLocks: [
+      teachRoom(0, 'jump'),
+      teachRoom(1, 'dash'),
+      teachRoom(2, 'wall_jump', { room: { y: -252, height: 504 } }),
+      teachRoom(3, 'charge'),
+      teachRoom(4, 'saber', { hitsRequired: 3 })
     ]
   },
   volt_hopper: {
@@ -977,6 +1001,8 @@ const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPat
   }
 }
 
+const STAGE_EXTENSION_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = { ...INLINE_STAGE_PATCHES, ...REBUILT_STAGE_PATCHES }
+
 for (const [stageId, patch] of Object.entries(STAGE_EXTENSION_PATCHES) as Array<[CampaignStageId, StageExtensionPatch]>) {
   const stage = CAMPAIGN_STAGES[stageId]
   if (!stage) {
@@ -993,7 +1019,9 @@ for (const [stageId, patch] of Object.entries(STAGE_EXTENSION_PATCHES) as Array<
     },
     checkpoints: patch.checkpoints,
     hazards: [...stage.arena.hazards, ...(patch.hazards ?? [])],
-    midPlatforms: [...stage.arena.midPlatforms, ...(patch.midPlatforms ?? [])]
+    midPlatforms: [...stage.arena.midPlatforms, ...(patch.midPlatforms ?? [])],
+    ...(patch.roomLocks ? { roomLocks: patch.roomLocks } : {}),
+    ...(patch.arena ?? {})
   }
 }
 
@@ -1069,8 +1097,135 @@ for (const stage of Object.values(CAMPAIGN_STAGES)) {
   })
 }
 
+/**
+ * `mechanics_lab` (06 §6.2): a developer-only stage with one of each stage mechanic, for smoke
+ * `42-mechanics-matrix`. Not in `CAMPAIGN_STAGES`, so stage select, saves and the campaign never list it;
+ * it borrows Heat Works' boss, background and colours. Nine screens: vents and a wide spike, a crumble
+ * group, a two-screen climb with rising slag between two walls, two breakable walls; then the 12b
+ * mechanics: an ice floor (plain floor before it for the reference dash), two belts, a current and a gust,
+ * a wind lift and a magnet lift with ledges, and a rail pair, a rockfall and an icicle under a ceiling.
+ */
+export const MECHANICS_LAB_STAGE_ID = 'mechanics_lab'
+const LAB_ROUTE_WIDTH = 9 * TEACH_SCREEN
+const LAB_FLOOR_TOP = GAME_FLOOR_TOP
+const LAB_STEP = 40
+
+function buildMechanicsLabStage(): CampaignStageDefinition {
+  const base = CAMPAIGN_STAGES.pyro_maw
+  const worldWidth = LAB_ROUTE_WIDTH + BOSS_ROOM_VIEWPORT_WIDTH
+  const bossRoom = buildDefaultBossRoom(worldWidth, { bossSpawnX: LAB_ROUTE_WIDTH + 360 })
+  const lab = (id: string, x: number, triggerX: number) => ({ ...checkpoint(id, x, GROUNDED_PLAYER_SPAWN_Y, triggerX) })
+  // The climb: one-way steps every 40px from the floor to two screens up (24px gaps), ending by the
+  // right wall's top, which is the way out over the slag at full rise.
+  const climbSteps = [1000, 1080, 1160, 1240, 1160, 1080, 1160, 1240, 1300].map((x, index) => ({
+    id: `lab_climb_${index + 1}`,
+    x,
+    y: LAB_FLOOR_TOP - LAB_STEP * (index + 1),
+    width: 56,
+    type: 'oneWay' as const,
+    color: 0x6c3520
+  }))
+  return {
+    ...base,
+    id: MECHANICS_LAB_STAGE_ID,
+    district: 'Mechanics Lab',
+    title: 'Mechanics Lab',
+    selectLabel: 'LAB',
+    introCallout: 'Mechanics lab',
+    description: 'Developer lab: one of each stage mechanic.',
+    arenaLabel: 'Mechanics Lab',
+    rewardEnabled: false,
+    enemyMarkers: [],
+    arena: {
+      ...base.arena,
+      // Heat Works' route stays out of the lab: no pits, no mid-boss lock, no hand-placed pickups.
+      allowFallOff: false,
+      floorGaps: undefined,
+      roomLocks: undefined,
+      locationAnchors: undefined,
+      width: worldWidth,
+      bossRoom,
+      bossSpawn: { x: bossRoom.bossSpawnX, y: base.arena.bossSpawn.y },
+      spawn: { x: 44, y: GROUNDED_PLAYER_SPAWN_Y },
+      checkpoints: [
+        lab('lab_start', 44, 0),
+        lab('lab_climb', 904, 896),
+        lab('lab_walls', 1400, 1390),
+        lab('lab_motion', 1800, 1792),
+        lab('lab_drops', 3600, 3592),
+        lab('lab_boss_gate', LAB_ROUTE_WIDTH - 32, LAB_ROUTE_WIDTH - 52)
+      ],
+      hazards: [
+        { id: 'lab_spike_wide', x: 120, y: 231, width: 40, height: 10, damage: 2 },
+        { id: 'lab_vent_a', kind: 'vent', x: 220, y: LAB_FLOOR_TOP - 24, width: 16, height: 48, damage: 2, timing: { onMs: 1000, offMs: 1600 } },
+        { id: 'lab_vent_b', kind: 'vent', x: 300, y: LAB_FLOOR_TOP - 24, width: 16, height: 48, damage: 2, timing: { onMs: 1000, offMs: 1600 } }
+      ],
+      midPlatforms: [
+        { id: 'lab_climb_wall_left', x: 904, y: -64, width: 16, height: 360, type: 'wall', color: 0x4a2a1c },
+        { id: 'lab_climb_wall_right', x: 1336, y: 58, width: 16, height: 356, type: 'wall', color: 0x4a2a1c },
+        ...climbSteps,
+        { id: 'lab_secret_shelf', x: 1580, y: 196, width: 40, type: 'oneWay', color: 0xc9a14a },
+        // 12b: ledges beside the two lifts, and the ceiling the rockfall and the icicle hang from.
+        { id: 'lab_lift_ledge', x: 3252, y: 84, width: 56, type: 'oneWay', color: 0x6c3520 },
+        { id: 'lab_magnet_ledge', x: 3460, y: 84, width: 56, type: 'oneWay', color: 0x6c3520 },
+        { id: 'lab_ceiling', x: 3870, y: 96, width: 220, height: 16, type: 'solid', color: 0x4a2a1c }
+      ],
+      verticalSegments: [{ id: 'lab_climb', x: 896, width: 448, verticalScreens: 2 }],
+      // Starts 40px under the floor: about 1.6s before it covers the floor, then 14s to the top.
+      risingLiquids: [{ id: 'lab_slag', x: 912, width: 416, floorY: LAB_FLOOR_TOP + 40, topY: LAB_FLOOR_TOP - 336, riseMs: 14000, triggerX: 930 }],
+      crumbleGroups: [
+        {
+          id: 'lab_crumble',
+          platforms: [
+            { id: 'lab_crumble_1', x: 560, y: 196, width: 48 },
+            { id: 'lab_crumble_2', x: 660, y: 172, width: 48 }
+          ]
+        }
+      ],
+      breakableWalls: [
+        { id: 'lab_wall_saber', x: 1500, y: LAB_FLOOR_TOP / 2, width: 16, height: LAB_FLOOR_TOP, hitsRequired: 3 },
+        { id: 'lab_wall_shot', x: 1660, y: LAB_FLOOR_TOP / 2, width: 16, height: LAB_FLOOR_TOP, hitsRequired: 3, minChargeLevel: 1 }
+      ],
+      // 12b. Belts and ice lie flush with the floor (their tops on it), so walking on and off has no lip. The
+      // ceiling (bottom at y 104) sits below the HUD band so the dust puff and the icicle mount show.
+      iceFloors: [{ id: 'lab_ice', x: 2096, y: LAB_FLOOR_TOP + 8, width: 288 }],
+      conveyors: [
+        { id: 'lab_belt_right', x: 2352, y: LAB_FLOOR_TOP + 6, width: 168, speed: 60 },
+        { id: 'lab_belt_left', x: 2576, y: LAB_FLOOR_TOP + 6, width: 112, speed: -60 }
+      ],
+      currentZones: [{ id: 'lab_current', x: 2704, y: LAB_FLOOR_TOP - 120, width: 176, height: 120, forceX: 420, maxSpeed: 80 }],
+      windZones: [
+        { id: 'lab_gust', kind: 'gust', direction: -1, x: 2912, y: LAB_FLOOR_TOP - 140, width: 208, height: 140 },
+        { id: 'lab_lift', kind: 'lift', x: 3184, y: 44, width: 40, height: LAB_FLOOR_TOP - 44 },
+        { id: 'lab_magnet', kind: 'lift', style: 'magnet', x: 3392, y: 44, width: 40, height: LAB_FLOOR_TOP - 44 }
+      ],
+      timedRailGroups: [{ id: 'lab_rails', rails: [{ id: 'lab_rail_1', x: 3640, y: LAB_FLOOR_TOP }, { id: 'lab_rail_2', x: 3712, y: LAB_FLOOR_TOP }] }],
+      rockfalls: [{ id: 'lab_rock', x: 3820, topY: 115, floorY: LAB_FLOOR_TOP - 11, triggerX: 3790 }],
+      icicles: [{ id: 'lab_icicle', x: 3920, y: 104, floorY: LAB_FLOOR_TOP }]
+    }
+  }
+}
+
+export const MECHANICS_LAB_STAGE: CampaignStageDefinition = buildMechanicsLabStage()
+
 export function getCampaignStage(id: string): CampaignStageDefinition {
+  if (id === MECHANICS_LAB_STAGE_ID) return MECHANICS_LAB_STAGE
+  if (id === MINIBOSS_LAB_STAGE_ID) return minibossLabStage(CAMPAIGN_STAGES.pyro_maw)
   return CAMPAIGN_STAGES[id as CampaignStageId] ?? CAMPAIGN_STAGES.pyro_maw
+}
+
+/**
+ * The radio sequence a checkpoint starts: the one it declares; otherwise the stage radio at index 1,
+ * but only for stages that declare no radio checkpoint at all (the tutorial moves its radio to the shaft exit).
+ */
+export function resolveCheckpointRadioId(
+  stageId: string,
+  index: number,
+  checkpoints: ReadonlyArray<{ radioSequenceId?: string }>
+): string | undefined {
+  const declared = checkpoints[index]?.radioSequenceId
+  if (declared) return declared
+  return index === 1 && !checkpoints.some((entry) => entry.radioSequenceId) ? `${stageId}_radio` : undefined
 }
 
 export function getRobotMasterStages(): CampaignStageDefinition[] {

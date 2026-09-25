@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { EnemyAttackConfig, EnemyDefinition, EnemyRuntimeContext, DamageEvent } from './types'
 import { EnemyProjectileCatalog, spawnEnemyProjectile } from './EnemyProjectiles'
 import { EnemyMotor } from './EnemyMotor'
+import { resolveHeavyPush } from './enemyDamage'
 
 export type EnemyAttackPhase = 'none' | 'windup' | 'active' | 'recover'
 
@@ -20,6 +21,7 @@ export class EnemyCombat {
   private projectileBurstsFired = 0
   private readonly touchedPlayers = new Set<string>()
   private readonly enableProjectiles: boolean
+  private defeatFinished = false
 
   constructor(
     sprite: Phaser.Physics.Arcade.Sprite,
@@ -117,9 +119,17 @@ export class EnemyCombat {
     const nextHp = Math.max(0, this.hp - Math.max(0, event.amount))
     const didHeavy = event.amount >= 2
     const hitstun = event.hitstunMs ?? (didHeavy ? this.definition.stats.hitstunHeavyMs : this.definition.stats.hitstunLightMs)
-    this.stunnedUntil = Math.max(this.stunnedUntil, now + hitstun)
+    const heavy = this.definition.stats.heavy
+    if (!heavy) {
+      this.stunnedUntil = Math.max(this.stunnedUntil, now + hitstun)
+    }
 
-    if (event.knockback) {
+    if (event.knockback && heavy) {
+      const push = resolveHeavyPush(event.amount, event.knockback.x, heavy)
+      if (push) {
+        this.motor.applyKnockback(new Phaser.Math.Vector2(push.vx, 0), push.ms, now)
+      }
+    } else if (event.knockback) {
       const scale = 1 - Phaser.Math.Clamp(this.definition.stats.knockbackResist, 0, 1)
       this.motor.applyKnockback(event.knockback.clone().scale(scale), hitstun, now)
     }
@@ -131,16 +141,34 @@ export class EnemyCombat {
     }
 
     if (this.hp <= 0) {
-      const anySprite = this.sprite as any
-      if (typeof anySprite.disableBody === 'function') {
-        anySprite.disableBody(true, true)
+      if ((this.definition.deathSequenceMs ?? 0) > 0) {
+        // The death frames play first (the entity's brain calls finishDefeat); nothing can touch it meanwhile.
+        const body = this.sprite.body as Phaser.Physics.Arcade.Body | undefined
+        if (body) {
+          body.stop()
+          body.enable = false
+        }
       } else {
-        this.sprite.setActive(false).setVisible(false)
+        this.finishDefeat()
       }
-      this.context.onEnemyDefeated(this.sprite)
     }
 
     return this.hp
+  }
+
+  /** Hides the sprite and hands it to the scene's defeat (explosion, drop); runs once. */
+  finishDefeat(): void {
+    if (this.defeatFinished) {
+      return
+    }
+    this.defeatFinished = true
+    const anySprite = this.sprite as any
+    if (typeof anySprite.disableBody === 'function') {
+      anySprite.disableBody(true, true)
+    } else {
+      this.sprite.setActive(false).setVisible(false)
+    }
+    this.context.onEnemyDefeated(this.sprite)
   }
 
   getActiveHitboxRect(facing: 1 | -1): Phaser.Geom.Rectangle | null {

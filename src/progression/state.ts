@@ -607,21 +607,21 @@ export function resolveBossDamageMultiplier(options: {
   const upgradedBusterUsable = isBuster && chargeLevel > 0 && hasArmsUpgrade
 
   if (strictness === 'permissive') {
-    return weaknessMatch ? 1.75 : 1
+    return weaknessMatch ? 2.5 : 1
   }
   if (strictness === 'weakness_and_buster') {
     if (weaknessMatch) {
-      return 1.75
+      return 2.5
     }
     return isBuster ? 1 : 0
   }
   if (strictness === 'upgraded_buster_only') {
     if (weaknessMatch) {
-      return 1.75
+      return 2.5
     }
     return upgradedBusterUsable ? 1 : 0
   }
-  return weaknessMatch ? 1.75 : 0
+  return weaknessMatch ? 2.5 : 0
 }
 
 export function getBossWeaknessProfile(save: ProgressionSaveLike, bossId: string): BossWeaknessProfile | null {

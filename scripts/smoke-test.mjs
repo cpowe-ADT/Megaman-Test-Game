@@ -14,6 +14,7 @@ import os from 'node:os'
 import { chromium } from 'playwright'
 import { assertPelletHitEvidence } from './smoke/assert-pellet-hit.mjs'
 import { runInputLifecycleScenario } from './smoke/input-lifecycle.mjs'
+import { runWeaponIdentityMatrix } from './smoke/weapon-identities.mjs'
 
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT ?? 4173)
@@ -24,7 +25,10 @@ const touchUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro
 const titleUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off`
 /** Story surfaces on: for the narrative scenarios only. */
 const storyUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=on`
-const outputDir = path.resolve('output/web-game-smoke')
+const smokeStableDir = path.resolve('output/web-game-smoke')
+const outputDir = process.env.SMOKE_OUTPUT_DIR
+  ? path.resolve(process.env.SMOKE_OUTPUT_DIR)
+  : path.resolve('output/smoke-runs', new Date().toISOString().replace(/[:.]/g, '-'))
 const smokeSummaryPath = path.join(outputDir, 'summary.json')
 const smokeOnlyScenarios = new Set(
   String(process.env.SMOKE_ONLY ?? '')
@@ -34,6 +38,24 @@ const smokeOnlyScenarios = new Set(
 )
 const smokeFromScenario = String(process.env.SMOKE_FROM ?? '').trim() || null
 let smokeFromMatched = smokeFromScenario == null
+// Continue-on-failure harness controls: SMOKE_FAIL_FAST=1 restores stop-at-first-failure; every
+// scenario gets SMOKE_SCENARIO_TIMEOUT_MS (default 120s); SMOKE_FORCE_FAIL=<name> is test-only.
+const smokeFailFast = String(process.env.SMOKE_FAIL_FAST ?? '') === '1'
+const smokeScenarioTimeoutMs = Number(process.env.SMOKE_SCENARIO_TIMEOUT_MS ?? 120000) || 120000
+// Route walks that cross a whole stage get more room (50-pyro-route: six steps, about 100s on a quiet machine).
+const SMOKE_LONG_SCENARIO_TIMEOUT_MS = { '50-pyro-route': 300000, '55-tide-route': 480000 }
+const smokeForceFailScenario = String(process.env.SMOKE_FORCE_FAIL ?? '').trim() || null
+
+// scripts/smoke/*.mjs import the same 'playwright' module instance, so patching chromium.launch here
+// also tracks the browsers they open. A scenario timeout force-closes whatever it opened.
+const smokeActiveBrowsers = new Set()
+const smokeOriginalChromiumLaunch = chromium.launch.bind(chromium)
+chromium.launch = async (...launchArgs) => {
+  const browser = await smokeOriginalChromiumLaunch(...launchArgs)
+  smokeActiveBrowsers.add(browser)
+  browser.on('disconnected', () => smokeActiveBrowsers.delete(browser))
+  return browser
+}
 const localClient = path.resolve('scripts/web_game_playwright_client.js')
 const defaultClient = path.join(
   os.homedir(),
@@ -88,6 +110,17 @@ function getSmokeServerConfig() {
   }
 }
 
+// `npm run dev` starts Vite as a grandchild; on Linux, signalling npm alone leaves Vite holding the pipes, so
+// the dev server runs in its own process group and the whole group is signalled (2026-09-23 CI browser-gates).
+function signalChildGroup(child, signal) {
+  try {
+    if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal)
+    else child.kill(signal)
+  } catch {
+    child.kill(signal)
+  }
+}
+
 const clickOnlyActions = {
   steps: [
     { buttons: [], frames: 60 },
@@ -133,6 +166,22 @@ function run(command, args, options = {}) {
       reject(new Error(`${command} ${args.join(' ')} exited with code ${code ?? 'unknown'}`))
     })
   })
+}
+
+function linkStableRunDir(target, linkPath) {
+  try {
+    const stat = fs.lstatSync(linkPath)
+    if (stat.isDirectory() && !stat.isSymbolicLink()) {
+      fs.rmSync(linkPath, { recursive: true, force: true })
+    } else {
+      fs.rmSync(linkPath, { force: true })
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error
+    }
+  }
+  fs.symlinkSync(target, linkPath, 'dir')
 }
 
 async function waitForServerReady(targetUrl, timeoutMs = 30_000) {
@@ -211,6 +260,26 @@ async function advanceFrames(page, frames = 1) {
     })
   }
 }
+
+/**
+ * Loads a `{ meta, rows }` input script from `scripts/smoke/inputs/` (or a bare `[{ frame, held }]`
+ * array) and replays it through `stageDebug.replayInputs`, which feeds the automation-only action
+ * source and steps `window.stepFrames` between rows (prompt 05 §5.1 item 9). Resolves with
+ * `{ frames, finalPlayer: { x, y, vx, vy } }`.
+ */
+async function replayInputs(page, scriptPath) {
+  const raw = fs.readFileSync(path.resolve(scriptPath), 'utf8')
+  const parsed = JSON.parse(raw)
+  const rows = Array.isArray(parsed) ? parsed : parsed.rows
+  return page.evaluate((script) => window.stageDebug.replayInputs(script), rows)
+}
+
+/** Releases every automation-held action, so the next `replayInputs` call presses fresh (a held
+ * dash never registers a new dash edge; a real keyboard release does). */
+async function releaseReplayedInputs(page) {
+  await page.evaluate(() => window.stageDebug.replayInputs([{ frame: 0, held: [] }]))
+}
+
 
 async function readState(page) {
   let text = null
@@ -293,7 +362,38 @@ function createSmokeSummary() {
     ...provenance(),
     serverMode: smokeServerMode,
     outputDir,
+    runDir: outputDir,
     scenarios: []
+  }
+}
+
+async function runScenarioWithTimeout(name, runScenario, timeoutMs) {
+  const browsersBefore = new Set(smokeActiveBrowsers)
+  let timedOut = false
+  let timer
+  const scenarioPromise = Promise.resolve().then(() => runScenario())
+  const timeoutPromise = new Promise((_resolve, reject) => {
+    timer = setTimeout(() => {
+      timedOut = true
+      const error = new Error(`Scenario "${name}" exceeded SMOKE_SCENARIO_TIMEOUT_MS (${timeoutMs}ms)`)
+      error.name = 'ScenarioTimeoutError'
+      error.timeoutMs = timeoutMs
+      reject(error)
+    }, timeoutMs)
+  })
+
+  try {
+    return await Promise.race([scenarioPromise, timeoutPromise])
+  } catch (error) {
+    if (timedOut) {
+      const scenarioBrowsers = [...smokeActiveBrowsers].filter((browser) => !browsersBefore.has(browser))
+      await Promise.all(scenarioBrowsers.map((browser) => browser.close().catch(() => {})))
+      // The abandoned scenario call may still settle later; never let that surface as an unhandled rejection.
+      scenarioPromise.catch(() => {})
+    }
+    throw error
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -327,7 +427,15 @@ async function executeSmokeScenario(summary, name, runScenario) {
 
   const startedAt = Date.now()
   try {
-    const result = await runScenario()
+    // SMOKE_FORCE_FAIL is test-only: it throws instead of running the scenario so continue-on-failure
+    // (and SMOKE_FAIL_FAST) can be proven without editing a real scenario.
+    const effectiveRunScenario =
+      smokeForceFailScenario === name
+        ? async () => {
+            throw new Error(`SMOKE_FORCE_FAIL forced scenario "${name}" to fail`)
+          }
+        : runScenario
+    const result = await runScenarioWithTimeout(name, effectiveRunScenario, Math.max(smokeScenarioTimeoutMs, SMOKE_LONG_SCENARIO_TIMEOUT_MS[name] ?? 0))
     summary.scenarios.push({
       name,
       status: 'pass',
@@ -345,11 +453,17 @@ async function executeSmokeScenario(summary, name, runScenario) {
       error: serializeScenarioError(error)
     })
     writeSmokeSummary(summary)
-    throw error
+    if (smokeFailFast) {
+      throw error
+    }
+    return null
   }
 }
 
-async function waitForState(page, predicate, timeoutMs = 8000, description = 'state condition') {
+// 15s by default: a wait still needs its condition to become true, so a longer wait cannot pass a broken build;
+// it only stops scene transitions and page opens timing out on a loaded machine (2x software WebGL opens in 12s).
+// Checks that something happens within a time budget pass their own shorter timeout.
+async function waitForState(page, predicate, timeoutMs = 15000, description = 'state condition') {
   const startedAt = Date.now()
   let lastState = null
   while (Date.now() - startedAt < timeoutMs) {
@@ -589,8 +703,9 @@ async function runChargeShotScenario(name) {
     )
     const finalShots = Number(finalState.combatDebug?.player?.shotsFiredTotal ?? 0)
     const lastProjectile = finalState.combatDebug?.player?.lastProjectile
-    if (finalShots - baselineShots !== 1) {
-      throw new Error(`Expected one accepted charge input to spawn exactly one projectile; saw ${finalShots - baselineShots}.`)
+    // Prompt 05 §5.2 item 3: the pellet fires on press and the held charge fires on release.
+    if (finalShots - baselineShots !== 2) {
+      throw new Error(`Expected a held shot to spawn a pellet on press and one charge shot on release; saw ${finalShots - baselineShots}.`)
     }
     if (
       lastProjectile?.weaponId !== 'Buster' ||
@@ -791,17 +906,16 @@ async function runTitleControlsScenario(name) {
     })
     assert.equal(stageHeader.title.text,'WARDEN SELECT');assert.equal(stageHeader.caption.text,'8 WARDENS + OMEGA')
     assert.ok(stageHeader.title.x+stageHeader.title.width<stageHeader.caption.x,'stage title and descriptor must not overlap')
-    for(const text of [stageHeader.title,stageHeader.caption]) assert.ok(text.y+text.height<=stageHeader.progress.y,'stage descriptor must fit above progress')
+    for(const text of [stageHeader.title,stageHeader.caption]) assert.ok(text.y+text.height<=stageHeader.progress.y,`stage descriptor must fit above progress ('${text.text}' bottom ${text.y+text.height}, progress top ${stageHeader.progress.y}; font metrics differ by OS)`)
     await page.locator('canvas').screenshot({ path:path.join(scenarioDir,'shot-2-stage-select.png') })
     await tapKey(page,'Enter')
     await waitForState(page,state=>state.scene==='Game'&&state.newPlayer?.locomotion?.grounded===true)
     await waitForPageCheck(page,()=>!window.__phaserGame.scene.getScene('Game').cameras.main.fadeEffect.isRunning,2500,'entry fade to finish before HUD capture')
     const gameplayState=await readState(page)
-    const expectedPrivate=fs.existsSync('assets/private/runtime/private-sprite-overrides.manifest.json')&&process.env.VITE_PUBLIC_BUILD!=='1'
-    assert.equal(gameplayState.identity.devSkinEnabled,expectedPrivate)
-    assert.equal(gameplayState.identity.heroLabel,expectedPrivate?'MEGA MAN X':'WREN')
-    assert.equal(gameplayState.spriteManifest.manifestMode,expectedPrivate?'base+private':'base')
-    assert.equal(gameplayState.spriteManifest.privateOverrideEntries>0,expectedPrivate)
+    // The developer skin was retired in 05c (5.5): every build shows WREN from the base manifest alone.
+    assert.equal(gameplayState.identity.heroLabel,'WREN')
+    assert.equal('devSkinEnabled' in gameplayState.identity,false)
+    assert.equal('privateOverrideEntries' in (gameplayState.spriteManifest??{}),false)
     const dialogue=await page.evaluate(()=>window.__phaserGame.scene.getScene('Game').buildDialogueLines('tutorial_sentinel','boss_intro'))
     assert.ok(dialogue.some(line=>line.text.startsWith('WREN,')))
     assert.ok(dialogue.some(line=>line.speakerId==='hero'&&line.speakerName==='WREN'))
@@ -1094,6 +1208,36 @@ async function runBossRoomActivationScenario(name) {
   }
 }
 
+/** Prompt 05 §5.2 item 5: the death pose sampled during the 250ms freeze, then the trace after respawn. */
+async function sampleDeathPose(page) {
+  return page.evaluate(() => {
+    const scene = window.__phaserGame?.scene?.getScene?.('Game')
+    return {
+      animationKey: String(scene?.player?.anims?.currentAnim?.key ?? ''),
+      frameName: String(scene?.player?.frame?.name ?? ''),
+      trace: scene?.deathSequence?.trace ? { ...scene.deathSequence.trace } : null
+    }
+  })
+}
+
+async function assertDeathSequence(page, pose) {
+  const trace = await page.evaluate(() => {
+    const scene = window.__phaserGame?.scene?.getScene?.('Game')
+    return scene?.deathSequence?.trace ? { ...scene.deathSequence.trace } : null
+  })
+  if (pose.animationKey !== 'player_death' && !pose.frameName.includes('/death/')) {
+    throw new Error(`Expected a player_death sample during the freeze; saw ${pose.animationKey} ${pose.frameName}.`)
+  }
+  if (trace?.sfxKey !== 'player_death' || trace?.animationKey !== 'player_death' || Number(trace?.orbCount) !== 8) {
+    throw new Error(`Expected the death trace to record player_death and 8 orbs; saw ${JSON.stringify(trace)}.`)
+  }
+  const delay = Number(trace.respawnedAtMs) - Number(trace.diedAtMs)
+  if (!Number.isFinite(delay) || delay < 900) {
+    throw new Error(`Expected a respawn delay of at least 900ms; saw ${delay}.`)
+  }
+  return { pose, trace, respawnDelayMs: delay }
+}
+
 async function runCheckpointRespawnScenario(name) {
   const scenarioDir = path.join(outputDir, name)
   fs.rmSync(scenarioDir, { recursive: true, force: true })
@@ -1142,6 +1286,9 @@ async function runCheckpointRespawnScenario(name) {
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.forcePlayerDeath))
     await page.evaluate(() => window.stageDebug?.forcePlayerDeath?.())
+    const deathPose = await sampleDeathPose(page)
+    await advanceFrames(page, 22)
+    await page.screenshot({ path: path.join(scenarioDir, 'death-burst.png') })
 
     const respawnState = await waitForState(
       page,
@@ -1156,7 +1303,8 @@ async function runCheckpointRespawnScenario(name) {
     )
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
-    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(respawnState, null, 2))
+    const death = await assertDeathSequence(page, deathPose)
+    fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify({ ...respawnState, death }, null, 2))
 
     if (errors.length > 0) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
@@ -1210,7 +1358,9 @@ async function runEnemyStreamingScenario(name) {
     }
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.setPlayerX))
-    await page.evaluate(() => window.stageDebug?.setPlayerX?.(150))
+    // Heat Works (EVAL-P6-009): the intro mine streams in from x 170; by x 700 it has retired behind
+    // the hero and the teach slicer and rocket loader are live.
+    await page.evaluate(() => window.stageDebug?.setPlayerX?.(200))
 
     const midState = await waitForState(
       page,
@@ -1220,7 +1370,7 @@ async function runEnemyStreamingScenario(name) {
         Number(state.enemySpawner?.activeMarkers ?? 0) <= Number(state.enemySpawner?.totalMarkers ?? 0)
     )
 
-    await page.evaluate(() => window.stageDebug?.setPlayerX?.(250))
+    await page.evaluate(() => window.stageDebug?.setPlayerX?.(700))
 
     const finalState = await waitForState(
       page,
@@ -1340,7 +1490,7 @@ async function runWeaponSwitchAndEnergyScenario(name) {
     window.localStorage.setItem(
       'save.v1',
       JSON.stringify({
-        weaponsUnlocked: ['FlameSerpent'],
+        weaponsUnlocked: ['FlameSerpent', 'HydroLance', 'ThunderSpike', 'QuakeKnuckle', 'MagcutDisc', 'AcidGlob', 'AeroDarts', 'FrostShatter'],
         gameOverCounts: {},
         clearedBosses: [],
         tutorialCleared: false,
@@ -1409,6 +1559,8 @@ async function runWeaponSwitchAndEnergyScenario(name) {
     const arcState = await waitForState(page, state => state.combatDebug?.player?.lastProjectile?.weaponId === 'ArcSlash')
     if (arcState.combatDebug.player.shotsFiredTotal !== beforeArc.combatDebug.player.shotsFiredTotal + 1 || arcState.playerState.weapon !== 'FlameSerpent' || arcState.combatDebug.player.lastProjectile.energyCost !== 0) throw new Error('Arc release identity/count/energy contract failed.')
     fs.writeFileSync(path.join(scenarioDir,'arc-evidence.json'),JSON.stringify({beforeArc,heldArc,arcState},null,2))
+    // Prompt 07 phase 7.3 (EVAL-P7-004): one shot per warden weapon, its art, HUD icon and on-hit tag (weapons-evidence.json).
+    await runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames })
 
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
@@ -1658,8 +1810,16 @@ async function runUnifiedPlayerDamageScenario(name) {
     )
     const baselineHp = Number(baseline.playerState.hp)
 
+    const readPlayerX = () => page.evaluate(() => Number(window.__phaserGame?.scene?.getScene?.('Game')?.player?.x ?? NaN))
+    const beforeHitX = await readPlayerX()
     const first = await requestDebugDamage('damage_matrix_first')
     const repeated = await requestDebugDamage('damage_matrix_iframe_repeat')
+    // Prompt 05 §5.2 item 2: the hurt lock holds the knockback, so the hero visibly moves.
+    await advanceFrames(page, 20)
+    const knockbackDx = (await readPlayerX()) - beforeHitX
+    if (!(Math.abs(knockbackDx) >= 20)) {
+      throw new Error(`Expected at least 20px of knockback after a hit; saw ${knockbackDx}.`)
+    }
     const iframeState = await waitForState(
       page,
       (state) =>
@@ -1737,30 +1897,11 @@ async function runUnifiedPlayerDamageScenario(name) {
 
 async function runMovementFeelScenario(name) {
   const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
-  const sampleDash = async () => {
-    const trace = []
-    await page.keyboard.down('ArrowRight')
-    await page.keyboard.down('z')
-    for (let frame = 0; frame < 7; frame += 1) {
-      await advanceFrames(page, 1)
-      const state = await readState(page)
-      trace.push({
-        frame,
-        vx: Number(state?.player?.vx ?? 0),
-        x: Number(state?.player?.x ?? 0),
-        dashing: Boolean(state?.newPlayer?.locomotion?.dashing),
-        dashMs: Number(state?.newPlayer?.locomotion?.dashMs ?? 0),
-        locomotion: state?.newPlayer?.locomotion ?? null,
-        input: state?.newPlayer?.input ?? state?.input ?? null,
-        ticker: state?.ticker ?? null,
-        story: state?.story ?? null,
-        dialogue: state?.dialogue ?? null
-      })
-    }
-    await page.keyboard.up('z')
-    await page.keyboard.up('ArrowRight')
-    return trace
-  }
+  // Base/Speedster dash and the dash-jump trace (EVAL-P5-001, EVAL-P5-002) run from frame-exact
+  // input scripts (`stageDebug.replayInputs`, prompt 05 §5.1 item 9) instead of Playwright key
+  // timing; see scripts/smoke/inputs/*.json for the held-action rows and reference thresholds.
+  const dashScript = path.resolve('scripts/smoke/inputs/dash-basic.json')
+  const dashJumpScript = path.resolve('scripts/smoke/inputs/dash-jump.json')
 
   try {
     await waitForState(
@@ -1769,6 +1910,13 @@ async function runMovementFeelScenario(name) {
       8000,
       'grounded player before movement feel trace'
     )
+    // From here on every step is deterministic (`window.stepFrames`, via `stageDebug.replayInputs`).
+    // Sleeping Phaser's TimeStep now, once, keeps it asleep for the rest of this scenario: each
+    // `stepFrames` call below sees the loop already asleep and skips its own wake(), so no stray
+    // real animation frame (with an uncontrolled delta) can perturb the Arcade physics fixed-step
+    // accumulator between our page.evaluate calls. `advanceTime`/`waitForState` cannot run after
+    // this point (they need the real rAF loop), which is why the traces below no longer use them.
+    await page.evaluate(() => window.__phaserGame?.loop.sleep())
     const resetMovement = (speedster) =>
       page.evaluate((enableSpeedster) => {
         const scene = window.__phaserGame?.scene?.getScene?.('Game')
@@ -1798,12 +1946,14 @@ async function runMovementFeelScenario(name) {
         }
       }, speedster)
 
+    const near = (value, expected, tolerance = 2) => Math.abs(value - expected) <= tolerance
+
     const baseLimits = await resetMovement(false)
-    await advanceFrames(page, 2)
-    const baseTrace = await sampleDash()
+    const baseReplay = await replayInputs(page, dashScript)
+    await releaseReplayedInputs(page)
     const speedsterLimits = await resetMovement(true)
-    await advanceFrames(page, 2)
-    const speedsterTrace = await sampleDash()
+    const speedsterReplay = await replayInputs(page, dashScript)
+    await releaseReplayedInputs(page)
 
     const wallJump = await page.evaluate(() => {
       const scene = window.__phaserGame?.scene?.getScene?.('Game')
@@ -1850,32 +2000,107 @@ async function runMovementFeelScenario(name) {
       return result
     })
 
-    const peak = (trace) => Math.max(...trace.map((sample) => Math.abs(sample.vx)))
-    const basePeak = peak(baseTrace)
-    const speedsterPeak = peak(speedsterTrace)
+    const dragState = await page.evaluate(() => {
+      const body = window.__phaserGame?.scene?.getScene?.('Game')?.player?.body
+      return { dragX: Number(body?.drag?.x ?? Number.NaN), allowDrag: Boolean(body?.allowDrag) }
+    })
+    // Local (this scenario only): `replayInputs`/`releaseReplayedInputs` above cover the plain
+    // base/Speedster traces; the dash-jump and dash-recycle traces below need `trace: true`
+    // per-step samples (EVAL-P5-002 review, MERGED.md 2026-09-23-5.1b-replay), so they call
+    // `stageDebug.replayInputs` directly with rows/options instead.
+    const replayRows = (rows, options) => page.evaluate(({ r, o }) => window.stageDebug.replayInputs(r, o), { r: rows, o: options })
+    const replayScriptFile = async (scriptPath, options) => {
+      const parsed = JSON.parse(fs.readFileSync(path.resolve(scriptPath), 'utf8'))
+      return replayRows(Array.isArray(parsed) ? parsed : parsed.rows, options)
+    }
+
+    // Dash-recycle (5.1c review): a grounded dash release ends the dash immediately and starts its
+    // cooldown (PlayerMotor), so releasing after 2 dashing frames, waiting 5 more, then pressing
+    // again must start a second dash within 100ms (6 frames) of that second press. Runs here, before
+    // the dash-jump replay below, because dash-jump ends mid-air at the apex: resetMovement keeps
+    // the player's current y (it only re-centers x), so a reset after dash-jump would start this
+    // grounded-dash test still falling instead of grounded.
+    await resetMovement(false)
+    const dashRecycleRows = [
+      { frame: 0, held: [] },
+      { frame: 2, held: ['moveRight', 'dash'] },
+      { frame: 4, held: [] },
+      { frame: 10, held: ['moveRight', 'dash'] },
+      { frame: 18, held: [] }
+    ]
+    const recycleReplay = await replayRows(dashRecycleRows, { trace: true })
+    const recycleTrace = recycleReplay.trace ?? []
+    const secondPressFrame = 10
+    const recycleWindowFrames = Math.ceil(100 / (1000 / 60))
+    const firstDashReleased = recycleTrace.some((sample) => sample.frame >= 5 && sample.frame <= secondPressFrame && !sample.dashing)
+    const secondDashStarted = recycleTrace.find(
+      (sample) => sample.frame > secondPressFrame && sample.frame <= secondPressFrame + recycleWindowFrames && sample.dashing
+    )
+
+    await resetMovement(false)
+    // The wall-jump probe above left synthetic blocked/touching flags; dashJumpScript's leading 30
+    // idle deterministic frames both recompute real ground contact and let the respawn jump-
+    // suppression window (120ms) lapse before the dash+jump rows run.
+    const dashJumpReplay = await replayScriptFile(dashJumpScript, { trace: true })
+    // The dash carries vx=320 unchanged through takeoff and the whole flight in this motor (see
+    // scripts/smoke/inputs/dash-jump.json); takeoff is the first airborne sample, apex is the first
+    // airborne sample where vy reaches 0 (restored as separate reads per the 5.1b review).
+    const airborne = (dashJumpReplay.trace ?? []).filter((sample) => !sample.grounded)
+    const takeoff = airborne[0] ?? null
+    const apex = airborne.find((sample) => sample.vy >= 0) ?? null
+
     fs.writeFileSync(
       path.join(scenarioDir, 'dash-traces.json'),
-      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, playerAfter: (await readState(page))?.newPlayer ?? null }, null, 2)
-    )
-    if (baseLimits.maxVelocityX !== 320 || basePeak < 315 || basePeak > 321) {
-      throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} peak=${basePeak}.`)
-    }
-    if (speedsterLimits.maxVelocityX !== 368 || speedsterPeak < 363 || speedsterPeak > 369) {
-      throw new Error(
-        `Expected Speedster dash near 368, got cap=${speedsterLimits.maxVelocityX} peak=${speedsterPeak}.`
+      JSON.stringify(
+        { baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, takeoff, apex, recycleReplay, playerAfter: (await readState(page))?.newPlayer ?? null },
+        null,
+        2
       )
+    )
+    if (baseLimits.maxVelocityX !== 320 || baseReplay.finalPlayer.vx < 315 || baseReplay.finalPlayer.vx > 321) {
+      throw new Error(`Expected unclamped base dash near 320, got cap=${baseLimits.maxVelocityX} vx=${baseReplay.finalPlayer.vx}.`)
+    }
+    if (!near(baseReplay.finalPlayer.x, 212, 2)) {
+      throw new Error(`Expected the base dash to land near x=212 after 7 frames, got ${JSON.stringify(baseReplay.finalPlayer)}.`)
+    }
+    if (speedsterLimits.maxVelocityX !== 368 || speedsterReplay.finalPlayer.vx < 363 || speedsterReplay.finalPlayer.vx > 369) {
+      throw new Error(
+        `Expected Speedster dash near 368, got cap=${speedsterLimits.maxVelocityX} vx=${speedsterReplay.finalPlayer.vx}.`
+      )
+    }
+    if (!near(speedsterReplay.finalPlayer.x, 216.8, 2)) {
+      throw new Error(`Expected the Speedster dash to land near x=216.8 after 7 frames, got ${JSON.stringify(speedsterReplay.finalPlayer)}.`)
     }
     if (!wallJump.wallJumping || wallJump.jumpSource !== 'wall' || Math.abs(wallJump.vx + 353.28) > 0.01) {
       throw new Error(`Expected boosted Speedster wall-jump launch vx=-353.28, got ${JSON.stringify(wallJump)}.`)
+    }
+    if (dragState.dragX !== 0) {
+      throw new Error(`Expected the player body drag.x to be 0 (the motor owns X), got ${JSON.stringify(dragState)}.`)
+    }
+    if (!takeoff || takeoff.grounded || takeoff.vx < 315 || takeoff.vx > 321) {
+      throw new Error(`Expected the dash-jump to leave the ground near 320, got ${JSON.stringify(takeoff)}.`)
+    }
+    if (!apex || apex.grounded || apex.vx < 315 || apex.vx > 321) {
+      throw new Error(`Expected the dash-jump to hold near 320 at apex, got ${JSON.stringify(apex)}.`)
+    }
+    if (!near(apex.x, 265.33, 2) || !near(apex.y, 180.77, 2)) {
+      throw new Error(`Expected the dash-jump apex near x=265.33 y=180.77, got ${JSON.stringify(apex)}.`)
+    }
+    if (!firstDashReleased) {
+      throw new Error(`Expected the first grounded dash to release before the second press, got trace ${JSON.stringify(recycleTrace)}.`)
+    }
+    if (!secondDashStarted) {
+      throw new Error(`Expected a second dash to start within 100ms of the second press, got trace ${JSON.stringify(recycleTrace)}.`)
     }
 
     const finalState = await readState(page)
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
       path.join(scenarioDir, 'state-0.json'),
-      JSON.stringify({ baseLimits, baseTrace, speedsterLimits, speedsterTrace, wallJump, finalState }, null, 2)
+      JSON.stringify({ baseLimits, baseReplay, speedsterLimits, speedsterReplay, wallJump, dragState, dashJumpReplay, takeoff, apex, recycleReplay, finalState }, null, 2)
     )
   } finally {
+    await page.keyboard.up('Space').catch(() => {})
     await page.keyboard.up('z').catch(() => {})
     await page.keyboard.up('ArrowRight').catch(() => {})
     await closeGameplayPage(browser, scenarioDir, errors)
@@ -2310,6 +2535,21 @@ async function runPickupRecoveryScenario(name) {
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.damagePlayer && window.stageDebug?.spawnPickup))
     await page.evaluate(() => {
       window.stageDebug?.damagePlayer?.(3)
+    })
+    // The hurt lock carries the knockback (5.2) and the page also runs in real time between polls, so a
+    // fixed frame count spawned the capsules mid-flight (05b: the hero landed 30px away and never
+    // collected them). Wait until the hero is grounded and still, then drop them at his feet.
+    await waitForState(
+      page,
+      (state) =>
+        state.scene === 'Game' &&
+        state.newPlayer?.locomotion?.grounded === true &&
+        Math.abs(Number(state.player?.vx ?? 1)) < 1 &&
+        Number(state.newPlayer?.combat?.hitstunMs ?? 1) === 0,
+      8000,
+      'hero settled after the debug hit'
+    )
+    await page.evaluate(() => {
       window.stageDebug?.spawnPickup?.('health')
       window.stageDebug?.spawnPickup?.('ammo')
     })
@@ -2561,6 +2801,7 @@ async function runBossRoomRespawnScenario(name) {
 
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.forcePlayerDeath))
     await page.evaluate(() => window.stageDebug?.forcePlayerDeath?.())
+    const deathPose = await sampleDeathPose(page)
 
     const respawnState = await waitForState(
       page,
@@ -2578,7 +2819,7 @@ async function runBossRoomRespawnScenario(name) {
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(
       path.join(scenarioDir, 'state-0.json'),
-      JSON.stringify({ activeBossRoomState, respawnState }, null, 2)
+      JSON.stringify({ activeBossRoomState, respawnState, death: await assertDeathSequence(page, deathPose) }, null, 2)
     )
 
     if (errors.length > 0) {
@@ -2624,6 +2865,81 @@ async function runExtendedStageScenario(name) {
     await tapKey(page, 'Enter')
     await waitForState(page, (state) => state.scene === 'Game')
     await waitForPageCheck(page, () => Boolean(window.stageDebug?.crossNextCheckpoint))
+
+    // Camera follow trace (prompt 05 §5.3b, EVAL-P5-004 fix, review of commit 610fe2c): teleport
+    // at least one screen from both bounds first (the old scenario passed with the camera stuck at
+    // the left bound, which hid the bug), settle 30 frames, then read produced scroll from the
+    // `camera` automation payload (documented in TESTING.md) rather than a Phaser instance, so a
+    // render-scale skew like the one the review found would show up here.
+    await waitForState(
+      page,
+      (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true,
+      8000,
+      'grounded player before the camera trace'
+    )
+    const spawnState = await readState(page)
+    const boundsWidth = Number(spawnState.camera?.boundsWidth ?? 0)
+    const margin = 448 + 40
+    const midStageX = Math.min(Math.max(boundsWidth / 2, margin), Math.max(margin, boundsWidth - margin))
+    await page.evaluate((x) => window.stageDebug.setPlayerX(x), midStageX)
+    await advanceFrames(page, 30)
+
+    const before = await readState(page)
+    const rightReplay = await page.evaluate(() =>
+      window.stageDebug.replayInputs([
+        { frame: 0, held: ['moveRight'] },
+        { frame: 60, held: [] }
+      ])
+    )
+    const afterRight = await readState(page)
+    await page.screenshot({ path: path.join(scenarioDir, 'shot-lookahead.png') })
+
+    const heroScreenXRight = afterRight.player.x - afterRight.camera.scrollX
+    const leadRight = afterRight.camera.midPointX - afterRight.player.x
+    const verticalDriftPx = Math.abs(afterRight.camera.midPointY - before.camera.midPointY)
+
+    const leftReplay = await page.evaluate(() =>
+      window.stageDebug.replayInputs([
+        { frame: 0, held: ['moveLeft'] },
+        { frame: 30, held: [] }
+      ])
+    )
+    const afterLeft = await readState(page)
+    const leadLeft = afterLeft.camera.midPointX - afterLeft.player.x
+
+    fs.writeFileSync(
+      path.join(scenarioDir, 'state-lookahead.json'),
+      JSON.stringify(
+        { midStageX, before, afterRight, rightReplay, heroScreenXRight, leadRight, verticalDriftPx, afterLeft, leftReplay, leadLeft },
+        null,
+        2
+      )
+    )
+
+    if (!(afterRight.camera.scrollX > before.camera.scrollX)) {
+      throw new Error(`Camera did not scroll right: before ${before.camera.scrollX}, after ${afterRight.camera.scrollX}`)
+    }
+    if (
+      !(
+        afterRight.camera.scrollX > afterRight.camera.boundsX &&
+        afterRight.camera.scrollX < afterRight.camera.boundsX + afterRight.camera.boundsWidth - 448
+      )
+    ) {
+      throw new Error(`Camera scroll not strictly inside bounds: ${afterRight.camera.scrollX}`)
+    }
+    if (!(heroScreenXRight >= 0 && heroScreenXRight <= 448)) {
+      throw new Error(`Hero left the frame: screen x ${heroScreenXRight}`)
+    }
+    if (!(leadRight >= 24 && leadRight <= 48)) {
+      throw new Error(`Camera lead out of [24,48] after running right: ${leadRight}`)
+    }
+    if (!(leadLeft < 0)) {
+      throw new Error(`Camera lead did not go negative after running left: ${leadLeft}`)
+    }
+    if (verticalDriftPx > 4) {
+      throw new Error(`Camera vertical drift on flat ground exceeded 4px: ${verticalDriftPx}`)
+    }
+
     await page.evaluate(() => {
       window.stageDebug?.crossNextCheckpoint?.()
     })
@@ -2685,7 +3001,7 @@ async function openGameplayPage(name, targetUrl = url) {
   await page.goto(targetUrl, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(400)
   await page.evaluate(() => window.dispatchEvent(new Event('resize')))
-  await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
+  await waitForState(page, (state) => state.scene === 'StageSelect', 15000)
   await tapKey(page, 'Enter')
   try {
     await waitForState(page, (state) => state.scene === 'Game', 4000)
@@ -2694,7 +3010,7 @@ async function openGameplayPage(name, targetUrl = url) {
     if (retryState?.scene === 'StageSelect') {
       await tapKey(page, 'Enter')
     }
-    await waitForState(page, (state) => state.scene === 'Game', 8000)
+    await waitForState(page, (state) => state.scene === 'Game', 15000)
   }
 
   return { browser, page, scenarioDir, errors }
@@ -2740,6 +3056,28 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
       })
     })
     await advanceFrames(page, 2)
+    // Prompt 05 §5.2 item 1: a whiff emits no hit-stop; the hit-stop follows the recorded hit.
+    const readHitFeel = () =>
+      page.evaluate(() => {
+        const director = window.__phaserGame?.scene?.getScene?.('Game')?.cameraDirector
+        return { contactHits: [...(director?.contactHits ?? [])], hitstops: [...(director?.hitstops ?? [])] }
+      })
+    if (!moving) {
+      // Streamed enemies can walk in; clear them again so the swing is a true whiff.
+      await page.evaluate(() => {
+        const scene = window.__phaserGame?.scene?.getScene?.('Game')
+        scene?.enemies?.getChildren?.().forEach((child) => child?.disableBody?.(true, true))
+      })
+      const beforeWhiff = await readHitFeel()
+      await tapKey(page, 'c', 2)
+      await advanceFrames(page, 24)
+      const afterWhiff = await readHitFeel()
+      const newHits = afterWhiff.contactHits.length - beforeWhiff.contactHits.length
+      const newStops = afterWhiff.hitstops.length - beforeWhiff.hitstops.length
+      if (newStops !== newHits || newStops !== 0) {
+        throw new Error(`Expected no hit-stop from a whiffed slash; saw ${JSON.stringify(afterWhiff)}.`)
+      }
+    }
     await waitForPageCheck(page, () => Boolean(window.spawnEnemyDebug))
     if (moving) {
       await page.keyboard.down('ArrowRight')
@@ -2752,6 +3090,26 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
       window.spawnEnemyDebug?.('enemy_gunner_bot', x, y)
     }, moving ? 72 : 28)
     await advanceFrames(page, 8)
+    // The slash lasts about 13 frames; a real-time poll on a loaded machine can miss every one of them. Record
+    // the first frame that shows the east slash from inside the page, then check that recorded state.
+    await page.evaluate(() => {
+      const game = window.__phaserGame?.scene?.getScene?.('Game')
+      window.__eastSlashSeen = null
+      window.__eastSlashProbe = () => {
+        if (window.__eastSlashSeen) return
+        const state = JSON.parse(window.render_game_to_text())
+        const animationKey = String(state.newPlayer?.visuals?.animationKey ?? '')
+        const frameName = String(state.playerVisual?.frameName ?? '')
+        const validSlash =
+          (animationKey === 'player_slash_ground_e' && frameName.startsWith('player_main/slash_ground_e/')) ||
+          (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/'))
+        if (state.scene === 'Game' && validSlash && state.newPlayer?.visuals?.activeHitbox?.direction === 'e') window.__eastSlashSeen = state
+      }
+      game?.events.on('postupdate', window.__eastSlashProbe)
+      // Sampled for the blade, not for survival: without i-frames the gunner 28px ahead can touch the hero first
+      // on a loaded machine, and the hurt lock swallows the press.
+      game?.newPlayerRuntime?.resetForRespawn?.(600000)
+    })
     await tapKey(page, 'c', 2)
     const isEastSlashState = (state) => {
       if (state?.scene !== 'Game') {
@@ -2778,12 +3136,35 @@ async function runGroundSwordEnemyScenario(name, moving = false) {
       await captureScenarioState(page, scenarioDir, 0, movingHitState)
     } else {
       const immediateSlashState = await readState(page)
-      const slashState = isEastSlashState(immediateSlashState)
-        ? immediateSlashState
-        : await waitForState(page, isEastSlashState, 2500)
+      let slashState = isEastSlashState(immediateSlashState) ? immediateSlashState : null
+      for (let attempt = 0; !slashState && attempt < 3; attempt += 1) {
+        try {
+          await waitForPageCheck(page, () => Boolean(window.__eastSlashSeen), 5000, 'an east slash on any frame after the press')
+          slashState = await page.evaluate(() => window.__eastSlashSeen)
+        } catch (error) {
+          if (attempt === 2) throw error
+          await tapKey(page, 'c', 2)
+        }
+      }
+      if (!isEastSlashState(slashState)) throw new Error(`Expected the recorded east slash state; saw ${JSON.stringify(slashState?.newPlayer?.visuals ?? null)}.`)
       await captureScenarioState(page, scenarioDir, 0, slashState)
+      await waitForPageCheck(
+        page,
+        () => (window.__phaserGame?.scene?.getScene?.('Game')?.cameraDirector?.contactHits ?? []).some((hit) => String(hit.kind).startsWith('sword')),
+        2500,
+        'a recorded sword contact hit'
+      )
+      const hitFeel = await readHitFeel()
+      const swordHits = hitFeel.contactHits.filter((hit) => String(hit.kind).startsWith('sword'))
+      const firstSwordHitAt = Math.min(...swordHits.map((hit) => Number(hit.atMs)))
+      const early = hitFeel.hitstops.filter((stop) => Number(stop.atMs) < firstSwordHitAt || stop.kind === 'other')
+      if (early.length > 0 || !hitFeel.hitstops.some((stop) => String(stop.kind).startsWith('sword') && Number(stop.frames) >= 4)) {
+        throw new Error(`Expected hit-stop only after the recorded sword hit; saw ${JSON.stringify(hitFeel)}.`)
+      }
+      fs.writeFileSync(path.join(scenarioDir, 'hit-feel.json'), JSON.stringify(hitFeel, null, 2))
     }
   } finally {
+    await page.evaluate(() => { window.__phaserGame?.scene?.getScene?.('Game')?.events.off('postupdate', window.__eastSlashProbe) }).catch(() => {})
     if (moving) {
       await page.keyboard.up('ArrowRight').catch(() => {})
     }
@@ -2892,8 +3273,8 @@ async function runViewportAndEnergyEconomyScenario(name) {
       }
     })
     if (
-      pickupVisuals.health?.textureKey !== 'pickup_capsule_health' ||
-      pickupVisuals.weapon?.textureKey !== 'pickup_capsule_weapon'
+      !String(pickupVisuals.health?.frame).startsWith('pickups_v1/health_small/') ||
+      !String(pickupVisuals.weapon?.frame).startsWith('pickups_v1/energy_small/')
     ) {
       throw new Error(`Expected distinct capsule textures, got ${JSON.stringify(pickupVisuals)}.`)
     }
@@ -3259,6 +3640,66 @@ async function runTouchControlsScenario(name) {
       3000
     )
     await captureScenarioState(page, scenarioDir, 1, pausedState)
+
+    // Part 12i (EVAL-P8-005): real taps through Phaser input, in game pixels mapped onto the canvas.
+    const toPage = (gx, gy) => page.evaluate(({ gx, gy }) => {
+      const rect = window.__phaserGame.canvas.getBoundingClientRect()
+      return { x: rect.left + (gx * rect.width) / 448, y: rect.top + (gy * rect.height) / 252 }
+    }, { gx, gy })
+    const tapAt = async (gx, gy) => { const at = await toPage(gx, gy); await page.mouse.click(at.x, at.y) }
+    const touchButton = (id) => page.evaluate((id) => window.__phaserGame.scene.getScene('Game').touchControls.layoutSnapshot().find((b) => b.id === id), id)
+    const tapButton = async (id) => { const b = await touchButton(id); await tapAt(b.x, b.y) }
+    const tapRow = async (sceneKey, id, where = 'middle') => {
+      const plate = await page.evaluate(({ sceneKey, id }) => {
+        const scene = window.__phaserGame.scene.getScene(sceneKey)
+        const state = scene.getDebugState()
+        const index = (state.options ?? state.rows).findIndex((row) => row.id === id)
+        const rect = (scene.rowBackplates ?? scene.backplates)[index]
+        return rect ? { x: rect.x, y: rect.y, width: rect.width } : null
+      }, { sceneKey, id })
+      if (!plate) throw new Error(`No ${id} row plate in ${sceneKey}`)
+      await tapAt(where === 'right' ? plate.x + plate.width / 2 - 12 : plate.x, plate.y)
+    }
+    const running = (state) => state.scene === 'Game' && !state.activeScenes?.includes('SystemMenu') && !state.activeScenes?.includes('Options')
+
+    await tapRow('SystemMenu', 'resume')
+    await waitForState(page, running, 3000, 'tapping RESUME to close the pause menu')
+    await page.evaluate(() => { window.stageDebug?.grantWeapon?.('FlameSerpent'); window.stageDebug?.grantWeapon?.('HydroLance') })
+    await advanceFrames(page, 2)
+    const weaponBefore = (await readState(page)).playerState?.weapon
+    await tapButton('weaponNext')
+    const weaponNextState = await waitForState(page, (state) => running(state) && state.playerState?.weapon && state.playerState.weapon !== weaponBefore, 3000, 'the WPN > button to cycle the weapon')
+    await tapButton('weaponPrev')
+    const weaponPrevState = await waitForState(page, (state) => running(state) && state.playerState?.weapon === weaponBefore, 3000, 'the < WPN button to cycle back')
+
+    const right = await touchButton('right')
+    const rightAt = await toPage(right.x + right.width / 2 - 6, right.y)
+    await page.mouse.move(rightAt.x, rightAt.y)
+    await page.mouse.down()
+    await advanceFrames(page, 20)
+    const tappedRightState = await waitForState(page, (state) => running(state) && Number(state.player?.vx ?? 0) >= 30, 3000, 'a real press near the right edge of RIGHT to move right')
+    await page.mouse.up()
+    await advanceFrames(page, 6)
+
+    await tapButton('pause')
+    await waitForState(page, (state) => state.activeScenes?.includes('SystemMenu'), 3000, 'the pause button to open the pause menu')
+    await tapRow('SystemMenu', 'options')
+    await waitForState(page, (state) => state.activeScenes?.includes('Options'), 3000, 'tapping OPTIONS in the pause menu')
+    await tapRow('Options', 'touchControls', 'right')
+    await tapRow('Options', 'touchControls', 'right')
+    const toggled = await page.evaluate(() => ({
+      value: window.__phaserGame.scene.getScene('Options').getDebugState().rows.find((row) => row.id === 'touchControls')?.value,
+      stored: JSON.parse(window.localStorage.getItem('settings.v1') ?? '{}').touchControls,
+      layerVisible: window.__phaserGame.scene.getScene('Game').touchControls?.isVisible?.()
+    }))
+    if (toggled.value !== 'OFF' || toggled.stored !== 'off' || toggled.layerVisible !== false) {
+      throw new Error(`Expected two taps on TOUCH CONTROLS to reach OFF and hide the layer at once; saw ${JSON.stringify(toggled)}`)
+    }
+    await tapRow('Options', 'back')
+    await waitForState(page, (state) => !state.activeScenes?.includes('Options') && state.activeScenes?.includes('SystemMenu'), 3000, 'tapping BACK in Options')
+    await tapRow('SystemMenu', 'resume')
+    const hiddenState = await waitForState(page, (state) => running(state) && state.playerState?.virtualControlsVisible === false, 3000, 'the layer to stay hidden after resuming with TOUCH CONTROLS OFF')
+    await captureScenarioState(page, scenarioDir, 2, { weaponBefore, weaponNextState, weaponPrevState, tappedRightState, toggled, hiddenState })
   } finally {
     await page.mouse.up().catch(() => {})
     await closeGameplayPage(browser, scenarioDir, errors)
@@ -3370,7 +3811,8 @@ async function runBossSwordScenario(name) {
         const frameName = String(state.playerVisual?.frameName ?? '')
         const validSlash =
           (animationKey === 'player_slash_ground_e' && frameName.startsWith('player_main/slash_ground_e/')) ||
-          (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/'))
+          (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/')) ||
+          (animationKey === 'player_slash_air_spin' && frameName.startsWith('player_main/slash_air_spin/'))
         return validSlash && state.newPlayer?.visuals?.activeHitbox?.direction === 'e'
       },
       2500
@@ -3399,6 +3841,7 @@ async function main() {
 
   fs.rmSync(outputDir, { recursive: true, force: true })
   fs.mkdirSync(outputDir, { recursive: true })
+  linkStableRunDir(outputDir, smokeStableDir)
   const summary = createSmokeSummary()
   writeSmokeSummary(summary)
 
@@ -3407,7 +3850,13 @@ async function main() {
     stdio: 'pipe',
     cwd: process.cwd(),
     env: smokeServer.env,
-    shell: false
+    shell: false,
+    detached: process.platform !== 'win32'
+  })
+  // A detached group no longer gets the terminal's Ctrl-C, so pass it on instead of orphaning the server.
+  process.once('SIGINT', () => {
+    signalChildGroup(vite, 'SIGTERM')
+    process.exit(130)
   })
 
   let markReady = () => {}
@@ -3540,12 +3989,24 @@ async function main() {
     await executeSmokeScenario(summary, '34-prologue-flow', () => runPrologueFlowScenario('34-prologue-flow', storyDeps))
     await executeSmokeScenario(summary, '35-radio-ticker', () => runRadioTickerScenario('35-radio-ticker', storyDeps))
     await executeSmokeScenario(summary, '36-ending-flow', () => runEndingFlowScenario('36-ending-flow', storyDeps))
+    await executeSmokeScenario(summary, '42-mechanics-matrix', async () => (await import('./smoke/mechanics-matrix.mjs')).runMechanicsMatrixScenario('42-mechanics-matrix', { outputDir, url, readState, waitForState, advanceFrames, tapKey }))
+    await executeSmokeScenario(summary, '43-miniboss-custodian', async () => (await import('./smoke/miniboss-custodian.mjs')).runMinibossCustodianScenario('43-miniboss-custodian', storyDeps))
+    await executeSmokeScenario(summary, '49-tutorial-verbs', async () => (await import('./smoke/tutorial-verbs.mjs')).runTutorialVerbsScenario('49-tutorial-verbs', storyDeps))
+    await executeSmokeScenario(summary, '50-pyro-route', async () => (await import('./smoke/pyro-route.mjs')).runPyroRouteScenario('50-pyro-route', storyDeps))
+    await executeSmokeScenario(summary, '55-tide-route', async () => (await import('./smoke/tide-route.mjs')).runTideRouteScenario('55-tide-route', storyDeps))
+    await executeSmokeScenario(summary, '51-saber-combo', async () => (await import('./smoke/saber-combo.mjs')).runSaberComboScenario('51-saber-combo', { outputDir, url, readState, waitForState, advanceFrames }))
+    await executeSmokeScenario(summary, '52-boss-telegraphs', async () => (await import('./smoke/boss-telegraphs.mjs')).runBossTelegraphsScenario('52-boss-telegraphs', { outputDir, url, readState, waitForState }))
+    await executeSmokeScenario(summary, '53-boss-hazards', async () => (await import('./smoke/boss-hazards.mjs')).runBossHazardsScenario('53-boss-hazards', { outputDir, url, readState, waitForState }))
+    await executeSmokeScenario(summary, '44-boss-beats', async () => (await import('./smoke/boss-beats.mjs')).runBossBeatsScenario('44-boss-beats', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
+    await executeSmokeScenario(summary, '37b-story-triggers', async () => (await import('./smoke/story-surfaces.mjs')).runStoryTriggersScenario('37b-story-triggers', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }
     await executeSmokeScenario(summary, '38-options-persist', () => runOptionsPersistScenario('38-options-persist', pauseDeps))
     await executeSmokeScenario(summary, '38b-pause-weapon-select', () => runPauseWeaponSelectScenario('38b-pause-weapon-select', pauseDeps))
     await executeSmokeScenario(summary, '38c-title-continue-autosave', () => runTitleContinueScenario('38c-title-continue-autosave', pauseDeps))
+    await executeSmokeScenario(summary, '41-profiles', async () => (await import('./smoke/profiles.mjs')).runProfilesScenario('41-profiles', storyDeps))
     await executeSmokeScenario(summary, '13f-input-focus-loss', () => runInputFocusLossScenario('13f-input-focus-loss', { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }))
+    await executeSmokeScenario(summary, '46-gamepad-and-remap', async () => (await import('./smoke/gamepad-remap.mjs')).runGamepadRemapScenario('46-gamepad-and-remap', { outputDir, url, titleUrl, readState, waitForState, advanceFrames, tapKey }))
 
     await executeSmokeScenario(summary, '14-completion-return-flow', () =>
       runCompletionReturnScenario('14-completion-return-flow')
@@ -3617,10 +4078,10 @@ async function main() {
     if (smokeOnlyScenarios.size > 0 && summary.scenarios.every((scenario) => scenario.status === 'skipped')) {
       throw new Error(`SMOKE_ONLY=${[...smokeOnlyScenarios].join(',')} matched no scenario`)
     }
-    summary.status = 'pass'
+    summary.status = summary.scenarios.some((scenario) => scenario.status === 'fail') ? 'fail' : 'pass'
   } finally {
     if (!vite.killed) {
-      vite.kill('SIGTERM')
+      signalChildGroup(vite, 'SIGTERM')
     }
     if (summary.status === 'running') {
       summary.status = 'fail'
@@ -3631,6 +4092,16 @@ async function main() {
 
   const ran = summary.scenarios.filter((scenario) => scenario.status !== 'skipped').length
   console.log(`Smoke test complete: ${ran} ran, ${summary.scenarios.length - ran} skipped. Artifacts: ${outputDir}`)
+  // Name every failure in the log itself: CI keeps the summary only inside an artifact.
+  const failed = summary.scenarios.filter((scenario) => scenario.status === 'fail')
+  failed.forEach((scenario) => {
+    const error = scenario.error ?? {}
+    const where = String(error.stack ?? '').split('\n').find((line) => line.includes('/scripts/smoke')) ?? ''
+    console.log(`Smoke FAILED ${scenario.name}: ${String(error.message ?? error).split('\n')[0].slice(0, 300)} ${where.trim()}`)
+  })
+  if (failed.length > 0) {
+    process.exitCode = 1
+  }
 }
 
 main().catch((error) => {

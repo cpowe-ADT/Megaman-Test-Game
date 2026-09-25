@@ -21,11 +21,13 @@ const STAGE_TITLES = {
   gale_vixen: 'Weather District (Gale Vixen)', glacier_ronin: 'Public Archives (Glacier Ronin)',
   omega_fortress: 'Central Core (OMEGA CORE)'
 }
-const STAGE_TRIGGER_ORDER = ['stage_briefing', 'radio', 'miniboss_callout', 'boss_intro', 'boss_defeat', 'district_restored']
+const STAGE_TRIGGER_ORDER = ['stage_briefing', 'tutorial_coach', 'radio', 'capsule_pickup', 'miniboss_callout', 'boss_intro', 'warden_phase', 'boss_defeat', 'weapon_get', 'district_restored']
 const TRIGGER_LABELS = {
-  stage_briefing: 'Briefing (before control)', radio: 'Radio (mid-stage checkpoint, non-blocking)',
+  stage_briefing: 'Briefing (before control)', tutorial_coach: 'Coach (ticker as each teach lock arms, non-blocking)', radio: 'Radio (mid-stage checkpoint, non-blocking)',
   miniboss_callout: 'Mini-boss callout (gate lock, ticker)', boss_intro: 'Boss intro (blocking)',
-  boss_defeat: 'Boss defeat (blocking, before the weapon card)', district_restored: 'District restored (Stage Select tile)'
+  boss_defeat: 'Boss defeat (blocking, before the weapon card)', district_restored: 'District restored (Stage Select tile)',
+  capsule_pickup: 'Capsule cache log (capsule card, above the effect label)', warden_phase: 'Boss phase two (OMEGA, ticker)',
+  weapon_get: "Weapon get (Iona reads the registry; keyed by the weapon's source stage)"
 }
 
 function speakerLabel(content, line) {
@@ -79,8 +81,12 @@ export function buildScript(content) {
     }
   }
 
+  out.push('## Game over (over the Continue row, rotated by game-over count)', '')
+  renderLines(content, global('game_over'), out)
   out.push('## Epilogue', '')
   renderLines(content, global('epilogue'), out)
+  out.push('## Epilogue secret (all eight capsule caches; after the eighth card, before the close)', '')
+  renderLines(content, global('epilogue_secret'), out)
   out.push('## Credits (authored lines; asset credits follow from the generated file)', '')
   renderLines(content, global('credits'), out)
   return out.join('\n')

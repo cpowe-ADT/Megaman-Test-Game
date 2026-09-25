@@ -1,4 +1,5 @@
 import { EnemyDefinition } from './types'
+import { MINIBOSS_CATALOG } from './minibossCatalog'
 
 const defaultHitbox = {
   width: 18,
@@ -451,7 +452,9 @@ export const EnemyCatalog: Record<string, EnemyDefinition> = {
       hurt: 'enemy_fly_trap_hurt',
       death: 'enemy_fly_trap_death'
     }
-  })
+  }),
+  // The mini-bosses and their stage skins (EVAL-P6-005, 12c): src/enemy/minibossCatalog.ts.
+  ...MINIBOSS_CATALOG
 }
 
 export const EnemyTypeKeys = Object.keys(EnemyCatalog)

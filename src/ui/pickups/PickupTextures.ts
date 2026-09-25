@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { PICKUPS_ATLAS, PICKUP_ART_SCALE, PICKUP_BOB_MS, PICKUP_BOB_PX, PICKUP_FRAME_RATE, pickupAnimationKey, pickupFrame, type PickupArtGroup } from './pickupArt'
 
 export const PICKUP_TEXTURE_KEYS = {
   health: 'pickup_capsule_health',
@@ -63,4 +64,43 @@ export function ensurePickupTextures(scene: Phaser.Scene): void {
   createCapsuleTexture(scene, PICKUP_TEXTURE_KEYS.heartTank, 0x4a1822, 0xff6677, 14, 18)
   createCapsuleTexture(scene, PICKUP_TEXTURE_KEYS.subTank, 0x173d57, 0x58d8ff, 14, 18)
   createCoreTexture(scene)
+}
+
+/** The code-drawn capsule (and its scale) each group falls back to when the pickups atlas is missing. */
+const FALLBACK_ART: Record<PickupArtGroup, { key: string; scale: number }> = {
+  health_small: { key: PICKUP_TEXTURE_KEYS.health, scale: 1 },
+  health_large: { key: PICKUP_TEXTURE_KEYS.health, scale: 1.3 },
+  energy_small: { key: PICKUP_TEXTURE_KEYS.weapon, scale: 1 },
+  energy_large: { key: PICKUP_TEXTURE_KEYS.bonus, scale: 1.05 },
+  extra_life: { key: PICKUP_TEXTURE_KEYS.bonus, scale: 1 },
+  heart_tank: { key: PICKUP_TEXTURE_KEYS.heartTank, scale: 1 },
+  sub_tank: { key: PICKUP_TEXTURE_KEYS.subTank, scale: 1 },
+  capsule: { key: PICKUP_TEXTURE_KEYS.upgrade, scale: 1.08 }
+}
+
+/**
+ * Draws a pickup as its pickups_v1 group with the two frames looping, or as the code-drawn capsule when the
+ * atlas is missing, and fits its body to the art. `bob` floats a pickup without gravity (a stage's placed
+ * items); an enemy drop is a physics body that falls and rests, so it only animates.
+ */
+export function applyPickupArt(sprite: Phaser.Physics.Arcade.Sprite, group: PickupArtGroup, options: { bob?: boolean } = {}): void {
+  const scene = sprite.scene
+  if (scene.textures.exists(PICKUPS_ATLAS.key)) {
+    const key = pickupAnimationKey(group)
+    if (!scene.anims.exists(key)) {
+      const frames = [pickupFrame(group, 0), pickupFrame(group, 1)].map((frame) => ({ key: PICKUPS_ATLAS.key, frame }))
+      scene.anims.create({ key, frames, frameRate: PICKUP_FRAME_RATE, repeat: -1 })
+    }
+    sprite.setTexture(PICKUPS_ATLAS.key, pickupFrame(group)).setScale(PICKUP_ART_SCALE)
+    sprite.play(key)
+  } else {
+    ensurePickupTextures(scene)
+    sprite.anims?.stop()
+    sprite.setTexture(FALLBACK_ART[group].key).setScale(FALLBACK_ART[group].scale)
+  }
+  ;(sprite.body as Phaser.Physics.Arcade.Body | undefined)?.setSize()
+  if (options.bob) {
+    scene.tweens.killTweensOf(sprite)
+    scene.tweens.add({ targets: sprite, y: sprite.y - PICKUP_BOB_PX, duration: PICKUP_BOB_MS, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 })
+  }
 }

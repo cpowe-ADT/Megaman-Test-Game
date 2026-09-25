@@ -9,9 +9,13 @@
 export function musicKeysToEvict(
   residentKeys: readonly string[],
   playingKey: string | null | undefined,
-  requestedKey: string | null | undefined
+  requestedKey: string | null | undefined,
+  alsoKeep: readonly (string | null | undefined)[] = []
 ): string[] {
-  return residentKeys.filter((key) => key !== playingKey && key !== requestedKey)
+  // alsoKeep: a boss track's phase-two partner (decoded with it so the phase change is instant) and a
+  // track still fading out.
+  const keep = new Set([playingKey, requestedKey, ...alsoKeep].filter((key): key is string => Boolean(key)))
+  return residentKeys.filter((key) => !keep.has(key))
 }
 
 /** Bytes a decoded AudioBuffer holds (Float32 samples per channel). */

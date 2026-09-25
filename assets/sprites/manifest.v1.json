@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generatedAt": "2026-09-10",
+  "generatedAt": "2026-09-24",
   "entries": [
     {
       "id": "boss-sentinel-rook",
@@ -17,7 +17,8 @@
         "localImagePath": "assets/sprites/bosses/sentinel_rook.png",
         "localDataPath": "assets/sprites/bosses/sentinel_rook.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_sentinel_rook_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_sentinel_rook_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-pyro-maw",
@@ -34,7 +35,8 @@
         "localImagePath": "assets/sprites/bosses/pyro_maw.png",
         "localDataPath": "assets/sprites/bosses/pyro_maw.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_pyro_maw_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_pyro_maw_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-tide-reaver",
@@ -51,7 +53,8 @@
         "localImagePath": "assets/sprites/bosses/tide_reaver.png",
         "localDataPath": "assets/sprites/bosses/tide_reaver.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_tide_reaver_sheet_hf_v1_20260910_b.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_tide_reaver_sheet_hf_v1_20260910_b.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-volt-hopper",
@@ -68,7 +71,8 @@
         "localImagePath": "assets/sprites/bosses/volt_hopper.png",
         "localDataPath": "assets/sprites/bosses/volt_hopper.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_volt_hopper_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_volt_hopper_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-basalt-titan",
@@ -85,7 +89,8 @@
         "localImagePath": "assets/sprites/bosses/basalt_titan.png",
         "localDataPath": "assets/sprites/bosses/basalt_titan.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_basalt_titan_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_basalt_titan_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-ferro-blade",
@@ -102,7 +107,8 @@
         "localImagePath": "assets/sprites/bosses/ferro_blade.png",
         "localDataPath": "assets/sprites/bosses/ferro_blade.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_ferro_blade_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_ferro_blade_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-mire-wraith",
@@ -119,7 +125,8 @@
         "localImagePath": "assets/sprites/bosses/mire_wraith.png",
         "localDataPath": "assets/sprites/bosses/mire_wraith.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_mire_wraith_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_mire_wraith_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-gale-vixen",
@@ -136,7 +143,8 @@
         "localImagePath": "assets/sprites/bosses/gale_vixen.png",
         "localDataPath": "assets/sprites/bosses/gale_vixen.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_gale_vixen_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_gale_vixen_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-glacier-ronin",
@@ -153,7 +161,8 @@
         "localImagePath": "assets/sprites/bosses/glacier_ronin.png",
         "localDataPath": "assets/sprites/bosses/glacier_ronin.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_glacier_ronin_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_glacier_ronin_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-omega-core",
@@ -170,7 +179,8 @@
         "localImagePath": "assets/sprites/bosses/omega_core.png",
         "localDataPath": "assets/sprites/bosses/omega_core.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_omega_core_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_omega_core_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "enemies-enemy_gunner_bot",
@@ -202,7 +212,7 @@
         "localImagePath": "assets/sprites/player/main/player_main.png",
         "localDataPath": "assets/sprites/player/main/player_main.atlas.json"
       },
-      "notes": "Generated from source/player/player_full_combat_sheet_v1_20260207_201355.png via deterministic pose-window extraction."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from hero_sheet_v1_2026-09-24_a2_clean.png, hero_sheet_v1_2026-09-24_b2.png, hero_sheet_v1_2026-09-24_c2.png, hero_sheet_v1_2026-09-24_d3.png, hero_sheet_v1_2026-09-24_e1.png, hero_sheet_v1_2026-09-24_f4.png."
     },
     {
       "id": "enemies-enemy_rocket_bot",
@@ -365,6 +375,142 @@
       "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
+      "id": "enemies-custodian_walker",
+      "atlasKey": "atlas_custodian_walker",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/custodian_walker/custodian_walker.png",
+        "runtimeData": "/assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json",
+        "localImagePath": "assets/sprites/enemies/custodian_walker/custodian_walker.png",
+        "localDataPath": "assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json"
+      },
+      "notes": "Heat Works mini-boss (EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py: 18 frames of 64x64, feet on row 62, facing right. Loaded by Preload like the other enemy families (0.39MB decoded).",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-custodian_walker_basalt",
+      "atlasKey": "atlas_custodian_walker_basalt",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.png",
+        "runtimeData": "/assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.atlas.json",
+        "localImagePath": "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.png",
+        "localDataPath": "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.atlas.json"
+      },
+      "notes": "Basalt skin of the custodian walker (12c, EVAL-P6-005): palette swap of custodian_walker by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 64x64, feet on row 62. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-custodian_walker_glacier",
+      "atlasKey": "atlas_custodian_walker_glacier",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.png",
+        "runtimeData": "/assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.atlas.json",
+        "localImagePath": "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.png",
+        "localDataPath": "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.atlas.json"
+      },
+      "notes": "Glacier skin of the custodian walker (12c, EVAL-P6-005): palette swap of custodian_walker by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 64x64, feet on row 62. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-relay_turret_nest",
+      "atlasKey": "atlas_relay_turret_nest",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/relay_turret_nest/relay_turret_nest.png",
+        "runtimeData": "/assets/sprites/enemies/relay_turret_nest/relay_turret_nest.atlas.json",
+        "localImagePath": "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.png",
+        "localDataPath": "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.atlas.json"
+      },
+      "notes": "Tide mini-boss, the relay turret nest (12c, EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py (cbdac1e): 18 frames of 64x64, feet on row 62, facing right. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-relay_turret_nest_ferro",
+      "atlasKey": "atlas_relay_turret_nest_ferro",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.png",
+        "runtimeData": "/assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.atlas.json",
+        "localImagePath": "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.png",
+        "localDataPath": "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.atlas.json"
+      },
+      "notes": "Ferro skin of the relay turret nest (12c, EVAL-P6-005): palette swap of relay_turret_nest by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 64x64, feet on row 62. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-sentry_twin",
+      "atlasKey": "atlas_sentry_twin",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/sentry_twin/sentry_twin.png",
+        "runtimeData": "/assets/sprites/enemies/sentry_twin/sentry_twin.atlas.json",
+        "localImagePath": "assets/sprites/enemies/sentry_twin/sentry_twin.png",
+        "localDataPath": "assets/sprites/enemies/sentry_twin/sentry_twin.atlas.json"
+      },
+      "notes": "Volt mini-boss, one drone of the sentry twins (12c, EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py (cbdac1e): 18 frames of 48x48, feet on row 44, facing right. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-sentry_twin_gale",
+      "atlasKey": "atlas_sentry_twin_gale",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.png",
+        "runtimeData": "/assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.atlas.json",
+        "localImagePath": "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.png",
+        "localDataPath": "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.atlas.json"
+      },
+      "notes": "Gale skin of the sentry twin (12c, EVAL-P6-005): palette swap of sentry_twin by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 48x48, feet on row 44. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-drill_serpent",
+      "atlasKey": "atlas_drill_serpent",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/drill_serpent/drill_serpent.png",
+        "runtimeData": "/assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json",
+        "localImagePath": "assets/sprites/enemies/drill_serpent/drill_serpent.png",
+        "localDataPath": "assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json"
+      },
+      "notes": "Mire mini-boss, the drill serpent (12c, EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py (cbdac1e): 18 frames of 64x64, feet on row 62, facing right. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
       "id": "enemies-enemy_shield_drone",
       "atlasKey": "atlas_enemy_shield_drone",
       "frame": {
@@ -397,6 +543,23 @@
       "notes": "Generated from free-source pack inputs (RobotFree objects + OpenGameArt FX sheets)."
     },
     {
+      "id": "projectiles-projectiles_hero",
+      "atlasKey": "atlas_projectiles_hero",
+      "frame": {
+        "width": 32,
+        "height": 28
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/projectiles/projectiles_hero/projectiles_hero.png",
+        "runtimeData": "/assets/sprites/projectiles/projectiles_hero/projectiles_hero.atlas.json",
+        "localImagePath": "assets/sprites/projectiles/projectiles_hero/projectiles_hero.png",
+        "localDataPath": "assets/sprites/projectiles/projectiles_hero/projectiles_hero.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 buster pellet/mid/full, reflected shot, enemy orb/missile, muzzle x3, impact; cut by scripts/sprites/cut_vfx_sheet.py (vfx_hero_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene."
+    },
+    {
       "id": "effects-effects_core",
       "atlasKey": "atlas_effects_core",
       "frame": {
@@ -411,6 +574,142 @@
         "localDataPath": "assets/sprites/effects/effects_core/effects_core.atlas.json"
       },
       "notes": "Generated from free-source pack inputs (RobotFree muzzle frames + OpenGameArt explosion/ring/aura sheets)."
+    },
+    {
+      "id": "effects-effects_hero",
+      "atlasKey": "atlas_effects_hero",
+      "frame": {
+        "width": 48,
+        "height": 50
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/effects/effects_hero/effects_hero.png",
+        "runtimeData": "/assets/sprites/effects/effects_hero/effects_hero.atlas.json",
+        "localImagePath": "assets/sprites/effects/effects_hero/effects_hero.png",
+        "localDataPath": "assets/sprites/effects/effects_hero/effects_hero.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 saber arcs (slash_1/2/3, slash_air), hit_spark, deflect, charge_aura, explode; cut by scripts/sprites/cut_vfx_sheet.py (vfx_hero_effects_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene."
+    },
+    {
+      "id": "mechanics-mechanics_v1",
+      "atlasKey": "atlas_mechanics_v1",
+      "frame": {
+        "width": 58,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/mechanics/mechanics_v1/mechanics_v1.png",
+        "runtimeData": "/assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json",
+        "localImagePath": "assets/sprites/mechanics/mechanics_v1/mechanics_v1.png",
+        "localDataPath": "assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 stage mechanics: vent_nozzle, vent_flame, breakable_wall, crumble, slag_surface, slag_fill, energy_gate, scrap_gate (four frames each); cut by scripts/sprites/cut_vfx_sheet.py (mechanics_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by src/mechanics/adapters."
+    },
+    {
+      "id": "mechanics-mechanics_v2",
+      "atlasKey": "atlas_mechanics_v2",
+      "frame": {
+        "width": 56,
+        "height": 46
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/mechanics/mechanics_v2/mechanics_v2.png",
+        "runtimeData": "/assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json",
+        "localImagePath": "assets/sprites/mechanics/mechanics_v2/mechanics_v2.png",
+        "localDataPath": "assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 stage mechanics v2: conveyor, ice_tile (16x16), icicle, rockfall, power_rail, wind_gust, wind_lift, current, magnet_lift; cut by scripts/sprites/cut_vfx_sheet.py (mechanics_v2.json). Variable frame sizes, largest listed. Loaded by the Game scene."
+    },
+    {
+      "id": "effects-telegraphs_v1",
+      "atlasKey": "atlas_telegraphs_v1",
+      "frame": {
+        "width": 54,
+        "height": 40
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/effects/telegraphs_v1/telegraphs_v1.png",
+        "runtimeData": "/assets/sprites/effects/telegraphs_v1/telegraphs_v1.atlas.json",
+        "localImagePath": "assets/sprites/effects/telegraphs_v1/telegraphs_v1.png",
+        "localDataPath": "assets/sprites/effects/telegraphs_v1/telegraphs_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 boss attack tells: reticle, floor_marker, warning_flash, charge_glow (four frames each); cut by scripts/sprites/cut_vfx_sheet.py (telegraphs_v1.json). Loaded by the Game scene; drawn by the boss telegraph renderer (prompt 12 part 12f)."
+    },
+    {
+      "id": "effects-hazards_v1",
+      "atlasKey": "atlas_hazards_v1",
+      "frame": {
+        "width": 42,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/effects/hazards_v1/hazards_v1.png",
+        "runtimeData": "/assets/sprites/effects/hazards_v1/hazards_v1.atlas.json",
+        "localImagePath": "assets/sprites/effects/hazards_v1/hazards_v1.png",
+        "localDataPath": "assets/sprites/effects/hazards_v1/hazards_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 boss arena hazards: charge_mine, vapor_pod, ground_shockwave, stone_pillar, tornado_pillar, splash_pillar, burn_puddle, acid_trail (four frames each, bottom-aligned); cut by scripts/sprites/cut_vfx_sheet.py (hazards_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by the boss hazard spawners (prompt 12 part 12f wave 4)."
+    },
+    {
+      "id": "projectiles-weapons_v1",
+      "atlasKey": "atlas_weapons_v1",
+      "frame": {
+        "width": 46,
+        "height": 36
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/projectiles/weapons_v1/weapons_v1.png",
+        "runtimeData": "/assets/sprites/projectiles/weapons_v1/weapons_v1.atlas.json",
+        "localImagePath": "assets/sprites/projectiles/weapons_v1/weapons_v1.png",
+        "localDataPath": "assets/sprites/projectiles/weapons_v1/weapons_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 warden weapon shots (arc_slash, flame_serpent, hydro_lance, thunder_spike, quake_knuckle, magcut_disc, acid_glob, aero_darts, frost_shatter) and boss_orb, four frames each; cut by scripts/sprites/cut_vfx_sheet.py (weapons_v1.json). Loaded by the Game scene; wired by prompt 12 part 12f."
+    },
+    {
+      "id": "pickups-pickups_v1",
+      "atlasKey": "atlas_pickups_v1",
+      "frame": {
+        "width": 38,
+        "height": 38
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/pickups/pickups_v1/pickups_v1.png",
+        "runtimeData": "/assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json",
+        "localImagePath": "assets/sprites/pickups/pickups_v1/pickups_v1.png",
+        "localDataPath": "assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 pickups (health_small, health_large, energy_small, energy_large, extra_life, heart_tank, sub_tank, capsule), two frames each (the second glows); cut by scripts/sprites/cut_vfx_sheet.py (pickups_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by src/ui/pickups (prompt 12 part 12h)."
+    },
+    {
+      "id": "ui-hud_icons_v1",
+      "atlasKey": "atlas_hud_icons_v1",
+      "frame": {
+        "width": 18,
+        "height": 18
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.png",
+        "runtimeData": "/assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json",
+        "localImagePath": "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.png",
+        "localDataPath": "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 HUD icons (buster, the nine warden weapons, saber, shield, heart, sub_tank, capsule, key_card; 16px art in 18px cells); cut by scripts/sprites/cut_vfx_sheet.py (hud_icons_v1.json); provenance assets/ui/source/ui_v1.prompts.md. Game-scene resident: the HUD weapon icon (prompt 12 part 12f wave 3)."
     }
   ]
 }

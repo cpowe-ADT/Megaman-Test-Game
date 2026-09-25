@@ -1,0 +1,85 @@
+{
+ "meta": {
+  "stage": "tutorial_sentinel",
+  "spawn": "x 900 on the ground, the shaft room armed, the dash gate open behind",
+  "purpose": "49-tutorial-verbs: one attempt, no warp: 30 idle frames, walk right under the hanging left wall to the right wall face, then 14 jump taps (6 frames held, 14-frame period) while holding right climb the channel by wall kicks, clear the right wall top (y -136), drop to the floor and walk past the shaft gate at x 1344. Probed 2026-09-24: peak y about -225, ten wall kicks, end x about 1482; start offsets 96 to 108 give the same result."
+ },
+ "rows": [{ "frame": 0, "held": []
+  },
+  { "frame": 30, "held": ["moveRight" ]
+  },
+  { "frame": 100, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 106, "held": ["moveRight" ]
+  },
+  { "frame": 114, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 120, "held": ["moveRight" ]
+  },
+  { "frame": 128, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 134, "held": ["moveRight" ]
+  },
+  { "frame": 142, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 148, "held": ["moveRight" ]
+  },
+  { "frame": 156, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 162, "held": ["moveRight" ]
+  },
+  { "frame": 170, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 176, "held": ["moveRight" ]
+  },
+  { "frame": 184, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 190, "held": ["moveRight" ]
+  },
+  { "frame": 198, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 204, "held": ["moveRight" ]
+  },
+  { "frame": 212, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 218, "held": ["moveRight" ]
+  },
+  { "frame": 226, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 232, "held": ["moveRight" ]
+  },
+  { "frame": 240, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 246, "held": ["moveRight" ]
+  },
+  { "frame": 254, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 260, "held": ["moveRight" ]
+  },
+  { "frame": 268, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 274, "held": ["moveRight" ]
+  },
+  { "frame": 282, "held": ["moveRight",
+    "jump" ]
+  },
+  { "frame": 288, "held": ["moveRight" ]
+  },
+  { "frame": 356, "held": ["moveRight" ]
+  },
+  { "frame": 357, "held": []
+  } ]
+}

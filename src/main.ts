@@ -12,16 +12,21 @@ import { ControlsScene } from './scenes/ControlsScene'
 import { ProgressionSummaryScene } from './scenes/ProgressionSummaryScene'
 import GameOverScene from './scenes/GameOverScene'
 import { OptionsScene } from './scenes/OptionsScene'
+import { ProfileScene } from './scenes/ProfileScene'
 import { EndingScene } from './scenes/EndingScene'
 import { PrologueScene } from './scenes/PrologueScene'
 import { Settings } from './systems/Settings'
-import { Save } from './systems/Save'
+import { Profiles, Save } from './systems/Save'
 import { AUTOMATION } from './config/automation'
 import { GAME_HEIGHT, GAME_WIDTH, STRICT_PIXEL_RENDER_POLICY } from './config/renderPolicy'
 import { describeRenderView, installHdRendering, resolveRenderScale } from './config/hdRender'
+import { WORLD_GRAVITY_Y } from './player/config'
 import { resolvePlayerFeatureFlags } from './player/featureFlags'
 import { summarizeSpriteKinematics } from './tools/debug/StateSnapshot'
 import { getStageContentRetentionReport } from './content/campaign'
+import { ROOM_LOCK_DATA_KEY } from './mechanics/adapters/RoomLockAdapter'
+import { STAGE_MECHANICS_DATA_KEY } from './mechanics/adapters/StageMechanicsAdapter'
+import { stepGameFrames, type StepGameFramesOptions } from './config/frameStepping'
 
 const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
 const rendererType = query?.get('renderer') === 'canvas' ? Phaser.CANVAS : Phaser.AUTO
@@ -56,12 +61,12 @@ const config: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { x: 0, y: 800 },
+      gravity: { x: 0, y: WORLD_GRAVITY_Y },
       debug: false
     }
   },
   pixelArt: STRICT_PIXEL_RENDER_POLICY.pixelArt,
-  scene: [Boot, Preload, Title, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, GameOverScene, PrologueScene, EndingScene, OptionsScene]
+  scene: [Boot, Preload, Title, ProfileScene, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, GameOverScene, PrologueScene, EndingScene, OptionsScene]
 }
 
 ;(config as any).resolution = runtimeResolution
@@ -78,6 +83,8 @@ type DebugWindow = Window & {
   __phaserGame?: Phaser.Game
   render_game_to_text?: () => string
   advanceTime?: (ms: number) => Promise<void>
+  stepFrames?: (frames: number, options?: StepGameFramesOptions) => number
+  stepFramesActive?: boolean
 }
 
 function installDevCrashOverlay(enable: boolean): void {
@@ -236,7 +243,6 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     ready: true,
     view: describeRenderView(targetGame, scene),
     identity: { title: IDENTITY.GAME_TITLE, heroCallsign: IDENTITY.HERO_CALLSIGN,
-      devSkinEnabled: IDENTITY.DEV_SKIN.enabled,
       heroLabel: (scene as any).hud?.tPlayer?.text ?? null },
     spriteManifest: scene.registry.get('sprite_manifest_summary') ?? null,
     timeMs: Math.round(scene.time?.now ?? 0)
@@ -256,6 +262,7 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     gameCompleted: saveState.gameCompleted,
     hasActiveRun: Boolean(saveState.activeRun)
   }
+  payload.profiles = { ...Profiles.debugState(), screen: (activeScenes.find((active) => active.scene.key === 'Profiles') as any)?.getDebugState?.() ?? null }
   if (scene.scene.key === 'Prologue') payload.prologue = (scene as any).getDebugState?.() ?? null
   const systemMenu = activeScenes.find((active) => active.scene.key === 'SystemMenu') as any
   if (systemMenu) payload.systemMenu = systemMenu.getDebugState?.() ?? null
@@ -288,6 +295,20 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
 
   if (scene.scene.key === 'Game') {
     payload.player = summarizeSpriteKinematics(scene.player)
+    {
+      const camera = scene.cameras.main
+      const cameraBounds = camera.getBounds()
+      payload.camera = {
+        scrollX: camera.scrollX,
+        scrollY: camera.scrollY,
+        midPointX: camera.midPoint.x,
+        midPointY: camera.midPoint.y,
+        boundsX: cameraBounds.x,
+        boundsY: cameraBounds.y,
+        boundsWidth: cameraBounds.width,
+        boundsHeight: cameraBounds.height
+      }
+    }
     payload.playerState = {
       hp: scene.playerHp ?? null,
       maxHp: scene.playerMaxHp ?? null,
@@ -353,6 +374,11 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     payload.stageIntro = (scene as any).storyDirector?.getDebugState?.().intro ?? { phase: 'idle', active: false, cardRemainingMs: 0 }
     payload.story = (scene as any).storyDirector?.getDebugState?.() ?? null
     payload.ticker = (scene as any).toastLane?.getDebugState?.() ?? null
+    payload.mechanics = {
+      roomLocks: scene.data?.get?.(ROOM_LOCK_DATA_KEY)?.getDebugState?.() ?? [],
+      verticalSegments: scene.data?.get?.(ROOM_LOCK_DATA_KEY)?.getSegmentDebugState?.() ?? [],
+      ...(scene.data?.get?.(STAGE_MECHANICS_DATA_KEY)?.getDebugState?.() ?? {})
+    }
     payload.projectiles = {
       playerActive: scene.playerBullets?.getTotalUsed?.() ?? 0,
       bossActive: scene.bossBullets?.getTotalUsed?.() ?? 0
@@ -417,8 +443,17 @@ function installDebugHooks(targetGame: Phaser.Game): void {
   }
   if (AUTOMATION.enabled) {
     debugWindow.__phaserGame = targetGame
+    debugWindow.stepFrames = (frames: number, options?: StepGameFramesOptions) => {
+      debugWindow.stepFramesActive = true
+      const stepped = stepGameFrames(targetGame, frames, options)
+      debugWindow.stepFramesActive = false
+      return stepped
+    }
+    debugWindow.stepFramesActive = false
   } else {
     delete debugWindow.__phaserGame
+    delete debugWindow.stepFrames
+    delete debugWindow.stepFramesActive
   }
 }
 

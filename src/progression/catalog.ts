@@ -87,7 +87,9 @@ function makePickupLocation(
     }
   }
 
-  const position = positions[category]
+  // A stage's hand-placed anchor wins (Heat Works); the ids stay the same, so saves are unaffected.
+  const anchor = category === 'boss_clear' ? undefined : stage.arena.locationAnchors?.[category]
+  const position = anchor ?? positions[category]
   return {
     id: getLocationCheckId(stageId, category),
     stageId,
@@ -109,7 +111,7 @@ export const PROGRESSION_LOCATIONS: ProgressionLocationDefinition[] = [
     makePickupLocation(stage.id as CampaignStageId, 'sub_tank', `${stage.title} Sub Tank`),
     makePickupLocation(stage.id as CampaignStageId, 'pickup_bonus', `${stage.title} Bonus Pickup`)
   ]),
-  makePickupLocation(FINAL_STAGE_ID, 'boss_clear', 'Omega Fortress Boss Clear')
+  makePickupLocation(FINAL_STAGE_ID, 'boss_clear', 'Central Core Boss Clear')
 ]
 
 export const NON_FINAL_PROGRESSION_LOCATIONS = PROGRESSION_LOCATIONS.filter(

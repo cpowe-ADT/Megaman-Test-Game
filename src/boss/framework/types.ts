@@ -1,3 +1,5 @@
+import type { TelegraphSpec } from '../../bosses/types'
+
 export type BossState =
   | 'INTRO'
   | 'THINK'
@@ -28,6 +30,10 @@ export interface AttackTelegraphSpec {
   animationName?: string
   sfxName?: string
   vfxName?: string
+  /** The authored wind-up tell (`src/bosses/roster.ts`); required by `validateBossDefinition`, drawn by the Game scene. */
+  warningFx?: TelegraphSpec['warningFx']
+  /** Where the tell appears relative to the boss; required with `warningFx`. */
+  anchor?: TelegraphSpec['anchor']
 }
 
 export interface AttackParams {
@@ -65,7 +71,20 @@ export interface BossAttackDefinition {
   }
 }
 
+export interface AttackTimingOverride {
+  windupTime?: number
+  cooldown?: number
+}
+
 export interface BossPhaseDefinition {
+  /** HUD name for phases the blueprint's `phases` list does not hold (desperation). */
+  name?: string
+  /** The 20%-HP phase: its own attack, a palette flash and the arena change (prompt 07 phase 7.2). */
+  desperation?: boolean
+  /** The phase kit's `enabled` flip: an attack mapped to false never starts in this phase. */
+  attackEnabled?: Record<string, boolean>
+  /** The phase kit's retimes: the attack's wind-up and cooldown in this phase. */
+  attackTiming?: Record<string, AttackTimingOverride>
   threshold: number
   speedMultiplier?: number
   thinkTimeMultiplier?: number
@@ -120,6 +139,15 @@ export interface DamageEvent {
   knockback?: { x: number; y: number }
   hitstopFrames?: number
   iFrameMs?: number
+  /**
+   * A weakness hit breaks the boss (`src/boss/bossBreak.ts`): it cancels the running attack whatever its lifecycle,
+   * and the boss is knocked back and held in its recoil pose for `stunMs` instead of the definition's `hurtStunMs`.
+   */
+  breaks?: boolean
+  /** The break's stun (`BOSS_BREAK.stunMs`, 450 ms, when absent). */
+  stunMs?: number
+  /** After a break, later breaking hits only damage (plain stun, nothing cancelled) for this long. */
+  stunLockoutMs?: number
 }
 
 export interface HitResult {
@@ -130,6 +158,10 @@ export interface HitResult {
   nextHP: number
   hitstopFrames: number
   reason?: 'invuln' | 'zero-damage' | 'dead'
+  /** The attack this hit's break cancelled (wind-up, active or recovery). */
+  interruptedAttackId?: string
+  /** The hit broke the boss: false for plain hits, and for weakness hits inside the lockout. */
+  broke?: boolean
 }
 
 export interface IAttack {
@@ -171,5 +203,8 @@ export interface BossEventHooks {
   onAttackResolved?: (attack: BossAttackDefinition) => void
   onDamageApplied?: (event: DamageEvent, result: HitResult) => void
   onPhaseChanged?: (phaseIndex: number, phase: BossPhaseDefinition) => void
+  onAttackInterrupted?: (attack: BossAttackDefinition) => void
+  /** A break landed (after `onAttackInterrupted` for the attack it cancelled, if any): play the knockback and the pose. */
+  onBroken?: (info: { stunMs: number; interruptedAttack?: BossAttackDefinition }) => void
   onDied?: () => void
 }

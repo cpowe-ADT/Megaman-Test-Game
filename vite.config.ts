@@ -1,20 +1,18 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { relative, resolve } from 'path'
 import { defineConfig, type Plugin } from 'vite'
 
-const privateSpriteManifestPath = resolve(__dirname, 'assets/private/runtime/private-sprite-overrides.manifest.json')
-const privateSpriteManifestData = existsSync(privateSpriteManifestPath)
-  ? JSON.parse(readFileSync(privateSpriteManifestPath, 'utf8'))
-  : null
 const smokeWatchIgnored = process.env.VITE_SMOKE === '1' ? ['**/*'] : undefined
 const smokeServerActive = process.env.VITE_SMOKE === '1'
 // Source maps are for debugging a build; the dev server has its own. Phaser's map alone is 10MB.
-const buildSourcemap = process.env.BUILD_SOURCEMAP === '1'
+// 'hidden' still writes .map files next to the bundle but omits the //# sourceMappingURL comment,
+// so a browser (or an end user) never auto-loads them; upload them to a crash reporter by hand.
+const buildSourcemap = process.env.BUILD_SOURCEMAP === '1' ? 'hidden' : false
 
 function copyRuntimeAssetsPlugin(): Plugin {
   const sourceRoot = resolve(__dirname, 'assets')
   const targetRoot = resolve(__dirname, 'dist/assets')
-  const ownedRuntimeDirs = ['audio', 'backgrounds', 'sprites', 'private']
+  const ownedRuntimeDirs = ['audio', 'backgrounds', 'fonts', 'sprites', 'ui']
 
   return {
     name: 'copy-runtime-assets',
@@ -37,10 +35,13 @@ function copyRuntimeAssetsPlugin(): Plugin {
           if (fileName === '.DS_Store') {
             return false
           }
-          if (assetPath === 'sprites/source' || assetPath.startsWith('sprites/source/')) {
+          // Generator sheets (Higgsfield sources, prompts, variants) live in a `source` folder beside the
+          // runtime files they were cut into (sprites/source, backgrounds/source, ui/source): never ship them.
+          if (/(^|\/)source(\/|$)/.test(assetPath)) {
             return false
           }
-          if (assetPath === 'private/source' || assetPath.startsWith('private/source/')) {
+          // The developer-only skin was retired in 05c (5.5); never ship anything left in assets/private.
+          if (assetPath === 'private' || assetPath.startsWith('private/')) {
             return false
           }
 
@@ -51,17 +52,38 @@ function copyRuntimeAssetsPlugin(): Plugin {
   }
 }
 
+/** Production builds ship the sprite manifest without its human notes and local source paths (prompt 09 `jsGzipKB`). */
+function stripSpriteManifestDocsPlugin(): Plugin {
+  return {
+    name: 'strip-sprite-manifest-docs',
+    enforce: 'pre',
+    apply: 'build',
+    transform(code, id) {
+      if (!id.endsWith('/assets/sprites/manifest.v1.json')) return null
+      const manifest = JSON.parse(code) as { entries?: Array<{ notes?: unknown; source?: Record<string, unknown> }> }
+      for (const entry of manifest.entries ?? []) {
+        delete entry.notes
+        if (entry.source) {
+          delete entry.source.localImagePath
+          delete entry.source.localDataPath
+        }
+      }
+      return { code: JSON.stringify(manifest), map: null }
+    }
+  }
+}
+
 export default defineConfig(({ command }) => ({
-  plugins: [copyRuntimeAssetsPlugin()],
+  plugins: [stripSpriteManifestDocsPlugin(), copyRuntimeAssetsPlugin()],
+  // Production builds fetch the dialogue lines and the enemy catalog in Preload instead of bundling them
+  // (src/content/dialogue/index.ts, src/content/enemies/catalog.ts), and ship the sprite manifest without its notes.
+  define: command === 'build' ? { __FETCH_CONTENT__: 'true' } : {},
   server: {
     open: !smokeServerActive,
     hmr: smokeServerActive ? false : undefined,
     watch: smokeWatchIgnored ? { ignored: smokeWatchIgnored } : undefined
   },
   preview: { open: false },
-  define: {
-    __PRIVATE_SPRITE_MANIFEST_DATA__: JSON.stringify(privateSpriteManifestData)
-  },
   build: {
     sourcemap: buildSourcemap,
     rollupOptions: {

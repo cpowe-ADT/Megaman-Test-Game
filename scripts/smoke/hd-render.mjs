@@ -5,12 +5,25 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { chromium } from 'playwright'
 
+// Swaps (or adds) `renderer=webgl` on a smoke URL that otherwise carries `renderer=canvas`, so the 2x
+// page in this scenario exercises the WebGL path while the 1x page stays on Canvas.
+function withRenderer(url, renderer) {
+  if (/[?&]renderer=/.test(url)) {
+    return url.replace(/([?&]renderer=)[^&]*/, `$1${renderer}`)
+  }
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}renderer=${renderer}`
+}
+
 function scenarioDir(outputDir, name) {
   const dir = path.join(outputDir, name)
   fs.rmSync(dir, { recursive: true, force: true })
   fs.mkdirSync(dir, { recursive: true })
   return dir
 }
+
+// Page opens and scene transitions only (not feel timing): a 2x software-WebGL page took 12s to open under load.
+const SCENE_WAIT_MS = 20000
 
 async function openGame(browser, { url, waitForState, tapKey, advanceFrames }, viewport, errors) {
   const page = await browser.newPage({ viewport })
@@ -23,19 +36,42 @@ async function openGame(browser, { url, waitForState, tapKey, advanceFrames }, v
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
   await page.goto(url, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(300)
-  await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
+  await waitForState(page, (state) => state.scene === 'StageSelect', SCENE_WAIT_MS)
   await tapKey(page, 'Enter')
-  await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 8000)
+  await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, SCENE_WAIT_MS)
   await advanceFrames(page, 30)
   return page
 }
 
-// Read canvas pixels in game units: (x, y) at scale s samples canvas pixel (x*s, y*s).
+// Read canvas pixels in game units: (x, y) at scale s samples canvas pixel (x*s, y*s). A WebGL-backed
+// canvas cannot also expose a 2D context (getContext('2d') returns null once 'webgl' was requested
+// first), so fall back to Phaser's own renderer.snapshot, which reads the framebuffer into an <img>;
+// draw that into an offscreen 2D canvas and sample it the same way.
 async function samplePixels(page, points, scale) {
   return page.evaluate(({ points, scale }) => {
+    const sample = (context) =>
+      points.map(([x, y]) => Array.from(context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data).slice(0, 3))
+
     const canvas = document.querySelector('canvas')
     const context = canvas.getContext('2d')
-    return points.map(([x, y]) => Array.from(context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data).slice(0, 3))
+    if (context) {
+      return sample(context)
+    }
+
+    return new Promise((resolve, reject) => {
+      window.__phaserGame.renderer.snapshot((image) => {
+        if (!image) {
+          reject(new Error('renderer.snapshot produced no image'))
+          return
+        }
+        const offscreen = document.createElement('canvas')
+        offscreen.width = image.width
+        offscreen.height = image.height
+        const offscreenContext = offscreen.getContext('2d')
+        offscreenContext.drawImage(image, 0, 0)
+        resolve(sample(offscreenContext))
+      })
+    })
   }, { points, scale })
 }
 
@@ -70,15 +106,15 @@ async function assertMenusInsideFrame(browser, { url, waitForState, tapKey }, di
   const report = {}
   try {
     await page.goto(url.replace('&startScene=StageSelect', ''), { waitUntil: 'domcontentloaded' })
-    await waitForState(page, (state) => state.scene === 'Title', 8000)
+    await waitForState(page, (state) => state.scene === 'Title', SCENE_WAIT_MS)
     report.title = await textOutsideFrame(page)
     await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-title-2x.png') })
     await tapKey(page, 'o')
-    await waitForState(page, (state) => state.scene === 'Options' || state.options, 8000)
+    await waitForState(page, (state) => state.scene === 'Options' || state.options, SCENE_WAIT_MS)
     report.options = await textOutsideFrame(page)
     await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-options-2x.png') })
     await page.goto(url, { waitUntil: 'domcontentloaded' })
-    await waitForState(page, (state) => state.scene === 'StageSelect', 8000)
+    await waitForState(page, (state) => state.scene === 'StageSelect', SCENE_WAIT_MS)
     report.stageSelect = await textOutsideFrame(page)
     await page.locator('canvas').screenshot({ path: path.join(dir, 'menu-stage-select-2x.png') })
   } finally {
@@ -97,8 +133,10 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
   const errors = []
   try {
     const deps = { url, waitForState, tapKey, advanceFrames }
+    // The 2x page (and the 2x menu pages below) render through WebGL; the 1x page stays on Canvas.
+    const hdDeps = { ...deps, url: withRenderer(url, 'webgl') }
     const base = await openGame(browser, deps, { width: 448, height: 252 }, errors)
-    const hd = await openGame(browser, deps, { width: 896, height: 504 }, errors)
+    const hd = await openGame(browser, hdDeps, { width: 896, height: 504 }, errors)
 
     const baseState = await readState(base)
     const hdState = await readState(hd)
@@ -131,9 +169,15 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     for (let y = 238; y <= 250; y += 4) for (let x = 2; x < 350; x += 6) points.push([x, y])
     for (let y = 1; y <= 45; y += 4) for (let x = 1; x <= 7; x += 2) points.push([x, y])
     const baseA = await samplePixels(base, points, 1)
+    const cameraAtSampleBase = (await readState(base)).camera
     await advanceFrames(base, 12)
     const baseB = await samplePixels(base, points, 1)
     const hdPixels = await samplePixels(hd, points, 2)
+    const cameraAtSampleHd = (await readState(hd)).camera
+    fs.writeFileSync(
+      path.join(dir, 'camera-at-sample.json'),
+      JSON.stringify({ cameraAtSampleBase, cameraAtSampleHd }, null, 2)
+    )
     const equal = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
     const staticIndices = points.map((_, index) => index).filter((index) => equal(baseA[index], baseB[index]))
     let same = 0
@@ -150,6 +194,80 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     assert.ok(staticIndices.length >= points.length * 0.6, `too few static sample points (${staticIndices.length}/${points.length})`)
     assert.ok(ratio >= 0.98, `only ${(ratio * 100).toFixed(1)}% of static world/HUD pixels match between 1x and 2x: ${JSON.stringify(diffs)}`)
 
+    // HUD chrome at 2x (05c playtest fix): the points above sit left of the panels, so they passed while
+    // every baked panel and bar was missing under WebGL (Phaser 3.90's DynamicTexture.setSize leaves its
+    // render target at 1x1). Sample inside the player bar (hudLayout playerBar: x 19..177, y 20..30):
+    // at 2x it must not be the bare HUD band, and most points must match the 1x Canvas page (cell edges are
+    // anti-aliased at 1x and solid at 2x, so about 8 of 38 legitimately differ).
+    const barPoints = []
+    for (const y of [23, 27]) for (let x = 24; x <= 168; x += 8) barPoints.push([x, y])
+    const bandPoint = [[4, 26]]
+    const [baseBar, hdBar, hdBand] = [
+      await samplePixels(base, barPoints, 1),
+      await samplePixels(hd, barPoints, 2),
+      (await samplePixels(hd, bandPoint, 2))[0]
+    ]
+    const barSame = barPoints.filter((_, index) => equal(baseBar[index], hdBar[index])).length
+    const barDrawn = hdBar.filter((pixel) => !equal(pixel, hdBand)).length
+    fs.writeFileSync(
+      path.join(dir, 'hud-bar-compare.json'),
+      JSON.stringify({ points: barPoints.length, barSame, barDrawn, hdBand, baseBar: baseBar.slice(0, 6), hdBar: hdBar.slice(0, 6) }, null, 2)
+    )
+    assert.ok(barDrawn >= barPoints.length * 0.5, `2x HUD player bar not drawn: ${barDrawn}/${barPoints.length} points differ from the band`)
+    assert.ok(barSame >= barPoints.length * 0.7, `2x HUD player bar differs from 1x: ${barSame}/${barPoints.length} points match`)
+
+    // Hero-in-frame at 2x (prompt 05 §5.3b, EVAL-P5-004 fix): this is where the review found the
+    // hero outside the frame (commit 610fe2c, shot-0.png at scale 2), because the old deadzone math
+    // read canvas pixels once a render scale applied. `camera` (render_game_to_text, documented in
+    // TESTING.md) is game pixels regardless of scale, so a regression here fails the same way.
+    // Runs after the pixel-identity comparison above, which needs `hd` at its just-settled scroll.
+    // Start mid-stage, at least one screen from both bounds, as scenario 18 does: from spawn the
+    // camera sits clamped at the left bound and the lead reads as the clamp, not the look-ahead.
+    const hdSpawn = await readState(hd)
+    const hdBoundsWidth = Number(hdSpawn.camera?.boundsWidth ?? 0)
+    const hdMargin = 448 + 40
+    // Leave room for the 60-frame run (about 260px at 220px/s): from mid-stage an unhurt hero reaches Pyro's
+    // boss room at x 928 and the camera locks to it.
+    const hdMidStageX = Math.max(hdMargin, Math.min(hdBoundsWidth / 2, hdBoundsWidth - hdMargin) - 260)
+    await hd.evaluate((x) => window.stageDebug.setPlayerX(x), hdMidStageX)
+    await advanceFrames(hd, 30)
+    // Read the state in the same evaluate as the replay (05c): a separate read let the live loop run a
+    // few frames after the release, the hero decelerated (vx 17 to 37 against 174) and the eased lead
+    // shrank to 18, which failed the check under load at df941b3's code.
+    // The run crosses Pyro's flame vent and a drone at x 700 to 790: a contact hit's knockback (5.2) cut the
+    // run to 62px in one sample. The hero is invulnerable for the measurement, as in the sweep's boss sample.
+    // The replay is frame-exact (trace: x 692 at vx 220 on frame 60), but waking the loop lets real frames run
+    // before any read; under load (load average 80 to 250 on 2026-09-24) that was several frames of braking and
+    // a lead of 18 to 22. Keep the run held through the read, then release: the lead is read at full speed.
+    const { hdRun, hdCameraState } = await hd.evaluate(async () => {
+      window.__phaserGame.scene.getScene('Game').newPlayerRuntime?.resetForRespawn?.(60000)
+      const run = await window.stageDebug.replayInputs(
+        [
+          { frame: 0, held: ['moveRight'] },
+          { frame: 60, held: ['moveRight'] }
+        ],
+        { keepHeld: true }
+      )
+      const state = JSON.parse(window.render_game_to_text())
+      window.stageDebug.replayInputs([{ frame: 0, held: [] }])
+      return { hdRun: run, hdCameraState: state }
+    })
+    const hdHeroX = hdCameraState.player.x
+    const hdHeroScreenX = hdHeroX - hdCameraState.camera.scrollX
+    const hdLead = hdCameraState.camera.midPointX - hdHeroX
+    fs.writeFileSync(
+      path.join(dir, 'camera-2x.json'),
+      JSON.stringify({ hdRun, camera: hdCameraState.camera, hdHeroX, hdHeroScreenX, hdLead }, null, 2)
+    )
+    await hd.locator('canvas').screenshot({ path: path.join(dir, 'shot-2x-lookahead.png') })
+    assert.ok(hdHeroScreenX >= 0 && hdHeroScreenX <= 448, `hero left the 2x frame: screen x ${hdHeroScreenX}`)
+    assert.ok(hdLead >= 24 && hdLead <= 48, `2x camera lead ${hdLead} outside [24,48]`)
+    assert.ok(
+      hdCameraState.camera.scrollX > hdCameraState.camera.boundsX &&
+        hdCameraState.camera.scrollX < hdCameraState.camera.boundsX + hdCameraState.camera.boundsWidth - 448,
+      `2x scroll not strictly inside bounds: ${hdCameraState.camera.scrollX}`
+    )
+
     // Resizing the 2x window down to 1x must shrink the canvas and cameras back.
     await hd.setViewportSize({ width: 448, height: 252 })
     await hd.evaluate(() => window.dispatchEvent(new Event('resize')))
@@ -159,7 +277,7 @@ export async function runHdRenderScenario(name, { outputDir, url, readState, wai
     assert.equal(shrunk.view.cameraZoom, 1)
     assert.equal(shrunk.view.textResolution, 1)
 
-    await assertMenusInsideFrame(browser, deps, dir, errors)
+    await assertMenusInsideFrame(browser, hdDeps, dir, errors)
 
     assert.equal(errors.length, 0, JSON.stringify(errors))
   } finally {

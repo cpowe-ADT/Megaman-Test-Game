@@ -51,7 +51,8 @@ test('dialogue v2 covers the required trigger table exactly once per stage', () 
   assert.ok(DIALOGUE_REGISTRY.getGlobalSequence('epilogue'))
   assert.ok(DIALOGUE_REGISTRY.getGlobalSequence('credits'))
   for (const phase of [1, 2, 3] as const) assert.ok(DIALOGUE_REGISTRY.getFinalePhase(phase), `finale phase ${phase}`)
-  assert.equal(DIALOGUE_REGISTRY.getSequences().length, 10 * 4 + 8 * 2 + 3 + 3)
+  // 7.6 B (12g) adds three warden-stage triggers (capsule log, phase two, weapon registry) and two globals.
+  assert.equal(DIALOGUE_REGISTRY.getSequences().length, 10 * 4 + 8 * 5 + 3 + 3 + 1 + 2)
   for (const stageId of ROBOT_MASTER_STAGE_IDS) {
     const defeat = DIALOGUE_REGISTRY.getStageSequence(stageId, 'boss_defeat')
     assert.ok(defeat?.lines.some((line) => line.text.includes('{rewardLabel}')), `${stageId} defeat acknowledges the reward`)
@@ -186,6 +187,48 @@ test('validator: finale phases, epilogue cards, narration, and stageId placement
   assert.ok(errorsOf(cardElsewhere).some((e) => e.includes('may not carry a district card')))
 })
 
+test('validator: tutorial_coach is Rook only, tutorial only, one line per lock, exactly once', () => {
+  const coachOf = (content: any) => content.sequences.find((sequence: any) => sequence.trigger === 'tutorial_coach')
+  assert.equal(coachOf(cloneContent())?.stageId, TUTORIAL_STAGE_ID)
+  assert.equal(coachOf(cloneContent())?.lines.length, 5, 'one recorded prompt per teach lock')
+
+  const wrongSpeaker = cloneContent()
+  coachOf(wrongSpeaker).lines[2].speakerId = 'director_iona'
+  assert.ok(errorsOf(wrongSpeaker).some((error) => /lines\[2\] must be spoken by sentinel_rook/.test(error)))
+
+  const wrongStage = cloneContent()
+  coachOf(wrongStage).stageId = 'pyro_maw'
+  const stageErrors = errorsOf(wrongStage)
+  assert.ok(stageErrors.some((error) => /stageId must be one of the stages tutorial_coach covers/.test(error)))
+  assert.ok(stageErrors.some((error) => /coverage tutorial_sentinel:tutorial_coach must appear exactly once/.test(error)))
+
+  const tooShort = cloneContent()
+  coachOf(tooShort).lines = coachOf(tooShort).lines.slice(0, 3)
+  assert.ok(errorsOf(tooShort).some((error) => /must contain 5 to 5 lines/.test(error)), 'the line bound is the tutorial lock count')
+
+  const fourLines = cloneContent()
+  coachOf(fourLines).lines = coachOf(fourLines).lines.slice(0, 4)
+  assert.ok(errorsOf(fourLines).some((error) => /must contain 5 to 5 lines/.test(error)))
+  const sixLines = cloneContent()
+  coachOf(sixLines).lines.push({ ...coachOf(sixLines).lines[4] })
+  assert.ok(errorsOf(sixLines).some((error) => /must contain 5 to 5 lines/.test(error)), 'a sixth line that never plays is refused')
+
+  const swapped = cloneContent()
+  const [first, second] = coachOf(swapped).lines
+  coachOf(swapped).lines[0] = second
+  coachOf(swapped).lines[1] = first
+  assert.ok(errorsOf(swapped).some((error) => /lines\[0\]\.lock must be jump/.test(error)))
+  assert.deepEqual(coachOf(cloneContent()).lines.map((line: any) => line.lock), ['jump', 'dash', 'wall_jump', 'charge', 'saber'])
+
+  const strayLock = cloneContent()
+  strayLock.sequences.find((sequence: any) => sequence.trigger === 'radio').lines[0].lock = 'dash'
+  assert.ok(errorsOf(strayLock).some((error) => /lock belongs only to tutorial_coach/.test(error)))
+
+  const duplicated = cloneContent()
+  duplicated.sequences.push({ ...coachOf(duplicated), id: 'tutorial_sentinel_coach_copy' })
+  assert.ok(errorsOf(duplicated).some((error) => /coverage tutorial_sentinel:tutorial_coach must appear exactly once \(found 2\)/.test(error)))
+})
+
 test('validator: milestone kinds, counts, and speakers', () => {
   const noWeakness = cloneContent()
   noWeakness.milestones = noWeakness.milestones.filter((m: any) => m.kind !== 'first_weakness')
@@ -197,9 +240,16 @@ test('validator: milestone kinds, counts, and speakers', () => {
   assert.ok(driftErrors.some((e) => e.includes('1, 4, or 8')))
   assert.ok(driftErrors.some((e) => e.includes('once each')))
 
-  const speaker = cloneContent()
-  speaker.milestones[0].lines[0].speakerId = 'omega_core'
-  assert.ok(errorsOf(speaker).some((e) => e.includes('order-independent operator or hero speaker')))
+  // Flipped in 12g (7.6 B.12): OMEGA answers Iona once at the fourth milestone, so it is order-independent; a warden is not.
+  const omega = cloneContent()
+  omega.milestones[0].lines[0].speakerId = 'omega_core'
+  assert.deepEqual(errorsOf(omega), [])
+  const warden = cloneContent()
+  warden.milestones[0].lines[0].speakerId = 'pyro_maw'
+  assert.ok(errorsOf(warden).some((e) => e.includes('must use an order-independent speaker')))
+  const four = DIALOGUE_REGISTRY.getMilestone(4)?.lines ?? []
+  assert.deepEqual(four.map((line) => line.speakerId), ['director_iona', 'director_iona', 'omega_core', 'hero'])
+  assert.equal(four[2].text, 'You wrote it to ask, Director. I taught it to hold.')
 
   const duplicate = cloneContent()
   duplicate.sequences[1].id = duplicate.sequences[0].id

@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "stage": "any (13d-movement-feel spawn platform, grounded)",
+    "spawn": "player reset to x=180 via scene.newPlayerRuntime.resetForRespawn() before replay",
+    "purpose": "base and Speedster dash trace: 2 idle frames to settle after the reset (folded into this one replay call so no real animation frame can sneak in between a separate settle step and the dash, since `window.stepFrames` re-arms the loop between top-level calls), then hold moveRight+dash for 7 frames. A fresh input edge takes one frame to reach the body, so only 6 of the 7 held frames move at top speed; the final vx is the dash's top speed and the final x (6 frames' worth of travel) is asserted within 2px of a recorded reference."
+  },
+  "rows": [
+    { "frame": 0, "held": [] },
+    { "frame": 2, "held": ["moveRight", "dash"] },
+    { "frame": 9, "held": ["moveRight", "dash"] }
+  ]
+}

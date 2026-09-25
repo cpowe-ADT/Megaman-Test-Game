@@ -4,9 +4,20 @@ import {
   REQUIRED_BOSS_IDS,
   REQUIRED_ENEMY_TYPE_KEYS,
   REQUIRED_MANIFEST_ENTRY_IDS,
-  buildSpriteCoverageReport
+  buildSpriteCoverageReport,
+  getRequiredPlayerGroups
 } from '../src/assets/coverageRequirements'
 import type { SpriteSheetManifestV1 } from '../src/assets/types'
+
+function makeFullPlayerAtlasFrameNames(): string[] {
+  const names: string[] = []
+  getRequiredPlayerGroups().forEach(({ group, minCount }) => {
+    for (let i = 0; i < minCount; i += 1) {
+      names.push(`player_main/${group}/${String(i).padStart(3, '0')}`)
+    }
+  })
+  return names
+}
 
 function makeEntry(id: string) {
   return {
@@ -32,17 +43,19 @@ function makeCompleteManifest(): SpriteSheetManifestV1 {
   }
 }
 
-test('buildSpriteCoverageReport passes when required ids, groups, and source sheets exist', () => {
+test('buildSpriteCoverageReport passes when required ids, groups, source sheets, and hero groups exist', () => {
   const manifest = makeCompleteManifest()
   const enemySourceFiles = REQUIRED_ENEMY_TYPE_KEYS.map((id) => `${id}_sheet_v1_20260213_120000.png`)
   const bossSourceFiles = REQUIRED_BOSS_IDS.map((id) => `${id}_actions_sheet_v1_20260213_120000.png`)
+  const playerAtlasFrameNames = makeFullPlayerAtlasFrameNames()
 
-  const report = buildSpriteCoverageReport(manifest, enemySourceFiles, bossSourceFiles)
+  const report = buildSpriteCoverageReport(manifest, enemySourceFiles, bossSourceFiles, playerAtlasFrameNames)
   assert.equal(report.valid, true)
   assert.equal(report.missingManifestIds.length, 0)
   assert.equal(report.missingEnemySourceSheets.length, 0)
   assert.equal(report.missingBossSourceSheets.length, 0)
   assert.equal(report.missingPrefixGroups.length, 0)
+  assert.equal(report.missingPlayerGroups.length, 0)
 })
 
 test('buildSpriteCoverageReport reports missing required entries and source sheets', () => {
@@ -56,11 +69,41 @@ test('buildSpriteCoverageReport reports missing required entries and source shee
   const bossSourceFiles = REQUIRED_BOSS_IDS
     .filter((id) => id !== 'pyro_maw')
     .map((id) => `${id}_actions_sheet_v1_20260213_120000.png`)
+  const playerAtlasFrameNames = makeFullPlayerAtlasFrameNames()
 
-  const report = buildSpriteCoverageReport(manifest, enemySourceFiles, bossSourceFiles)
+  const report = buildSpriteCoverageReport(manifest, enemySourceFiles, bossSourceFiles, playerAtlasFrameNames)
   assert.equal(report.valid, false)
   assert.ok(report.missingManifestIds.includes('enemies-enemy_drone'))
   assert.ok(report.missingPrefixGroups.includes('projectiles'))
   assert.ok(report.missingEnemySourceSheets.includes('enemy_drone'))
   assert.ok(report.missingBossSourceSheets.includes('pyro_maw'))
+  assert.equal(report.missingPlayerGroups.length, 0)
 })
+
+test('buildSpriteCoverageReport fails when a hero group is missing from the player atlas', () => {
+  const manifest = makeCompleteManifest()
+  const enemySourceFiles = REQUIRED_ENEMY_TYPE_KEYS.map((id) => `${id}_sheet_v1_20260213_120000.png`)
+  const bossSourceFiles = REQUIRED_BOSS_IDS.map((id) => `${id}_actions_sheet_v1_20260213_120000.png`)
+  const playerAtlasFrameNames = makeFullPlayerAtlasFrameNames().filter((name) => !name.startsWith('player_main/idle/'))
+
+  const report = buildSpriteCoverageReport(manifest, enemySourceFiles, bossSourceFiles, playerAtlasFrameNames)
+  assert.equal(report.valid, false)
+  assert.ok(report.missingPlayerGroups.some((entry) => entry.startsWith('idle ')))
+})
+
+test('hero minimum counts come from the bindings, and the Preload check names a short group (5.5 review)', async () => {
+  const { getRequiredPlayerGroups, findMissingPlayerGroups } = await import('../src/assets/coverageRequirements.ts')
+  const need = Object.fromEntries(getRequiredPlayerGroups().map(({ group, minCount }) => [group, minCount]))
+  assert.equal(need.idle, 4)
+  assert.equal(need.run, 6)
+  assert.equal(need.death, 2)
+  assert.equal(need.respawn, 3)
+  assert.equal(need.slash_ground_n, 4)
+  const full = getRequiredPlayerGroups().flatMap(({ group, minCount }) =>
+    Array.from({ length: minCount }, (_, i) => `player_main/${group}/${String(i).padStart(3, '0')}`)
+  )
+  assert.deepEqual(findMissingPlayerGroups(full), [])
+  const short = full.filter((name) => name !== 'player_main/death/001')
+  assert.deepEqual(findMissingPlayerGroups(short), [{ group: 'death', minCount: 2 }])
+})
+

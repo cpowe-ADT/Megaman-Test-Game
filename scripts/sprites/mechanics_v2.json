@@ -1,0 +1,17 @@
+{
+  "_note": "Stage mechanic art v2 (2026-09-25): the seven mechanics prompt 06 phase 6.2 still needs. Higgsfield gpt_image_2 sheets in assets/sprites/source/mechanics/hf_v1/ (mechanics_hf_v1.prompts.md). 4x4 cells, row-major from 0. ice_tile uses pad 0 so it tiles.",
+  "key": "mechanics_v2",
+  "outDir": "assets/sprites/mechanics/mechanics_v2",
+  "atlasWidth": 256,
+  "groups": [
+    { "name": "conveyor", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_objects_a.png", "cells": [0, 1, 2, 3], "scale": 0.25 },
+    { "name": "ice_tile", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_objects_a.png", "cells": [4, 5], "scale": 0.09, "pad": 0, "inset": 0.12, "size": [16, 16] },
+    { "name": "icicle", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_objects_a.png", "cells": [6, 7], "scale": 0.16 },
+    { "name": "rockfall", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_objects_a.png", "cells": [8, 9, 10, 11], "scale": 0.16 },
+    { "name": "power_rail", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_objects_a.png", "cells": [12, 13, 14, 15], "scale": 0.25 },
+    { "name": "wind_gust", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_forces_a.png", "cells": [0, 1, 2, 3], "scale": 0.2 },
+    { "name": "wind_lift", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_forces_a.png", "cells": [4, 5, 6, 7], "scale": 0.2 },
+    { "name": "current", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_forces_a.png", "cells": [8, 9, 10, 11], "scale": 0.2 },
+    { "name": "magnet_lift", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_v2_forces_a.png", "cells": [12, 13, 14, 15], "scale": 0.2 }
+  ]
+}

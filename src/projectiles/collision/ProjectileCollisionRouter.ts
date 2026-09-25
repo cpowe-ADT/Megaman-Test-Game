@@ -6,6 +6,9 @@ import {
   type ProjectileTrackingSprite,
   type ProjectileTrackingTarget
 } from './projectileHitTracking'
+import { WEAPON_TUNING } from '../../content/weapons'
+import { corrodeTickDelays, resolveChainTargets } from '../weaponEffects'
+import { weaponOnHitEffects } from './weaponOnHitEffects'
 
 type CombatSource = 'player' | 'enemy' | 'boss' | 'hazard' | 'system'
 type CombatTarget = 'player' | 'enemy' | 'boss' | 'environment'
@@ -22,6 +25,19 @@ type EnemyHitResult = {
   accepted: boolean
   defeated: boolean
   recycleBullet: boolean
+}
+
+/** Extra fields an on-hit tag adds to an enemy hit (FrostShatter: a 1.5s hitstun and no knockback). */
+export type EnemyHitExtras = { hitstunMs?: number; knockback?: undefined }
+
+/** The last on-hit tag the router applied (smoke 12 and the combat debug read it). */
+export type OnHitRecord = {
+  tag: string
+  target: 'enemy' | 'boss'
+  weaponId: string | null
+  /** What the tag did: `chain:2` (enemies it jumped to), `corrode:3` (ticks scheduled), `freeze:1500`, `burn`, ... */
+  applied: string
+  atMs: number
 }
 
 type EnemyBulletDamageMeta = {
@@ -41,7 +57,11 @@ type ProjectileCollisionRouterOptions = {
   getFacing: () => 1 | -1
   damageBoss: (damage: number, meta: BulletDamageMeta) => void
   damagePlayer: (damage: number, meta: EnemyBulletDamageMeta) => { accepted: boolean }
-  damageEnemy: (enemy: Phaser.Physics.Arcade.Sprite, damage: number) => EnemyHitResult
+  damageEnemy: (enemy: Phaser.Physics.Arcade.Sprite, damage: number, extras?: EnemyHitExtras) => EnemyHitResult
+  /** Live enemies, for ThunderSpike's chain (optional: without it a charged spike does not chain). */
+  getEnemies?: () => Phaser.Physics.Arcade.Sprite[] | undefined
+  /** Runs `fn` after `delayMs` of scene time (AcidGlob's ticks); defaults to the target's scene clock. */
+  schedule?: (delayMs: number, fn: () => void) => void
   recycleBullet: (a: any, b: any) => void
   recordCombatHit: (
     source: CombatSource,
@@ -94,6 +114,10 @@ function resolveBulletFromOverlap(
 }
 
 export class ProjectileCollisionRouter {
+  /** The last on-hit tag applied, and how many times each tag has fired this scene. */
+  lastOnHit: OnHitRecord | null = null
+  readonly onHitCounts: Record<string, number> = {}
+
   constructor(private readonly options: ProjectileCollisionRouterOptions) {}
 
   handlePlayerBulletHitsBoss(
@@ -136,6 +160,10 @@ export class ProjectileCollisionRouter {
       kind: 'bullet'
     })
     this.options.devLogOverlap?.('PB->B', bullet, target, true, 'owner is player')
+    // Bosses take the weakness table, not status tags; a flame still leaves its puddle where it hit.
+    const tag = String(bullet.data?.get?.('onHitTag') ?? 'none')
+    if (tag !== 'none') this.record(tag, 'boss', bullet, tag === 'burn' ? 'burn' : 'none')
+    bullet.data?.set?.('hitTarget', 'boss')
     this.options.recycleBullet(bullet, target)
   }
 
@@ -267,7 +295,11 @@ export class ProjectileCollisionRouter {
       return
     }
 
-    const result = this.options.damageEnemy(enemy, damage)
+    const tag = String(bullet.data.get('onHitTag') ?? 'none')
+    const result =
+      tag === 'freeze'
+        ? this.options.damageEnemy(enemy, damage, { hitstunMs: WEAPON_TUNING.freeze.durationMs, knockback: undefined })
+        : this.options.damageEnemy(enemy, damage)
     this.options.recordCombatHit(
       'player',
       'enemy',
@@ -276,6 +308,8 @@ export class ProjectileCollisionRouter {
       result.accepted,
       result.defeated ? 'defeat' : result.accepted ? 'hit' : 'rejected'
     )
+
+    if (result.accepted && tag !== 'none') this.applyEnemyOnHit(tag, bullet, enemy, damage, result.defeated)
 
     if (
       result.recycleBullet &&
@@ -286,8 +320,58 @@ export class ProjectileCollisionRouter {
         this.options.getFacing()
       )
     ) {
+      bullet.data.set('hitTarget', 'enemy')
+      const enemyBody = enemy.body as Phaser.Physics.Arcade.Body | undefined
+      if (enemyBody && typeof enemyBody.bottom === 'number') bullet.data.set('hitFloorY', enemyBody.bottom)
       this.options.recycleBullet(bullet, enemy)
     }
+  }
+
+  /**
+   * On-hit tags on an enemy (prompt 07 phase 7.3): `chain` jumps to the nearest enemies (one per charge level),
+   * `corrode` sticks and ticks, `freeze` cased the enemy in ice (its hitstun was set on the hit itself). `burn`,
+   * `quake` and `bounce` act where the shot ends (ProjectileSystem); `pierce` and `magnet` act in flight.
+   */
+  private applyEnemyOnHit(tag: string, bullet: Phaser.Physics.Arcade.Sprite, enemy: Phaser.Physics.Arcade.Sprite, damage: number, defeated: boolean): void {
+    if (tag === 'chain') {
+      const jumps = Number(bullet.data?.get?.('chainJumps') ?? 0)
+      const candidates = (this.options.getEnemies?.() ?? []).filter((other) => other !== enemy && other.active && (other.body as Phaser.Physics.Arcade.Body | undefined)?.enable !== false)
+      const targets = jumps > 0 ? resolveChainTargets(enemy, candidates, jumps) : []
+      let from: Phaser.Physics.Arcade.Sprite = enemy
+      for (const next of targets) {
+        const hit = this.options.damageEnemy(next, damage)
+        this.options.recordCombatHit('player', 'enemy', damage, 'chain', hit.accepted, hit.defeated ? 'defeat' : 'chain')
+        weaponOnHitEffects.chainArc(from, next, WEAPON_TUNING.chain.arcMs)
+        from = next
+      }
+      this.record(tag, 'enemy', bullet, `chain:${targets.length}`)
+      return
+    }
+    if (tag === 'corrode' && !defeated) {
+      const delays = corrodeTickDelays()
+      const schedule = this.options.schedule ?? ((delayMs: number, fn: () => void) => (enemy.scene as Phaser.Scene | undefined)?.time?.delayedCall(delayMs, fn))
+      for (const delay of delays) {
+        schedule(delay, () => {
+          if (!enemy.active) return
+          const tick = this.options.damageEnemy(enemy, WEAPON_TUNING.corrode.damage)
+          this.options.recordCombatHit('player', 'enemy', WEAPON_TUNING.corrode.damage, 'corrode', tick.accepted, tick.defeated ? 'defeat' : 'corrode-tick')
+        })
+      }
+      weaponOnHitEffects.stickGlob(enemy, delays[delays.length - 1] ?? 0)
+      this.record(tag, 'enemy', bullet, `corrode:${delays.length}`)
+      return
+    }
+    if (tag === 'freeze' && !defeated) {
+      weaponOnHitEffects.freeze(enemy, this.options.getPlayer(), WEAPON_TUNING.freeze.durationMs)
+      this.record(tag, 'enemy', bullet, `freeze:${WEAPON_TUNING.freeze.durationMs}`)
+      return
+    }
+    this.record(tag, 'enemy', bullet, defeated && (tag === 'corrode' || tag === 'freeze') ? 'defeated' : tag)
+  }
+
+  private record(tag: string, target: OnHitRecord['target'], bullet: Phaser.Physics.Arcade.Sprite, applied: string): void {
+    this.onHitCounts[tag] = (this.onHitCounts[tag] ?? 0) + 1
+    this.lastOnHit = { tag, target, weaponId: (bullet.data?.get?.('weaponId') as string | undefined) ?? null, applied, atMs: this.options.getNow() }
   }
 
   private resolveProjectileClash(

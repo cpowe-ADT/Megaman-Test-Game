@@ -1,4 +1,5 @@
 import { IDENTITY } from '../content/identity'
+import { pixelFont } from '../ui/menu/menuTheme'
 import { openNewCampaign } from './NewCampaignScene'
 import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
 import { countClearedRobotMasters } from '../content/campaign'
@@ -15,10 +16,13 @@ import {
 import { DEBUG_UI } from '../config/debug'
 import { showToast } from '../core/navigation'
 import InputActions from '../input/InputActions'
-import { Save, SaveData } from '../systems/Save'
+import { Profiles, Save, SaveData } from '../systems/Save'
+import { formatBestTime } from '../progression/profiles'
 import { DIALOGUE_REGISTRY, resolveDialogueText } from '../content/dialogue/index'
 import { shouldPlayStory } from '../narrative/storyFlags'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
+import { PORTRAIT_ATLAS_KEY, portraitForSpeaker } from '../ui/dialoguePortraits'
+import { queuePortraitAtlas } from '../ui/portraitAtlasLoader'
 import { currentStoryPolicy, resolvePlaybackLines } from './game/StoryDirector'
 import { DebugOverlay } from '../ui/DebugOverlay'
 import {
@@ -66,14 +70,14 @@ const ROWS = 3
 const PAGE_SIZE = COLUMNS * ROWS
 
 const FONT = {
-  title: '13px monospace',
-  subtitle: '8px monospace',
-  slotTitle: '8px monospace',
-  slotMeta: '7px monospace',
-  panelTitle: '9px monospace',
-  panelName: '13px monospace',
-  panelBody: '8px monospace',
-  footer: '7px monospace'
+  title: pixelFont(2),
+  subtitle: pixelFont(1),
+  slotTitle: pixelFont(1),
+  slotMeta: pixelFont(1),
+  panelTitle: pixelFont(1),
+  panelName: pixelFont(2),
+  panelBody: pixelFont(1),
+  footer: pixelFont(1)
 }
 
 const COLOR = {
@@ -141,6 +145,10 @@ export class StageSelect extends Phaser.Scene {
 
   constructor() {
     super('StageSelect')
+  }
+
+  preload(): void {
+    queuePortraitAtlas(this)
   }
 
   create(): void {
@@ -243,7 +251,9 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.headerRect.x + 8, layout.headerRect.y + 1, `${IDENTITY.WARDEN_TERM} SELECT`, {
         font: FONT.title,
         color: COLOR.text,
-        letterSpacing: 1
+        letterSpacing: 1,
+        // The 16px pixel-font em, so the box never depends on how an OS rasterises the metrics string.
+        fixedHeight: 16
       })
       .setOrigin(0, 0).setName('identity-stage-title')
 
@@ -252,10 +262,11 @@ export class StageSelect extends Phaser.Scene {
       { font: FONT.subtitle, color: COLOR.textMuted }).setOrigin(1, 0).setName('identity-stage-caption')
 
     this.headerProgress = this.add
-      .text(layout.headerRect.centerX, layout.headerRect.bottom - 3, '', {
+      .text(layout.headerRect.centerX, layout.headerRect.bottom - 1, '', {
         font: FONT.subtitle,
         color: COLOR.textMuted,
-        align: 'center'
+        align: 'center',
+        fixedHeight: 8
       })
       .setOrigin(0.5, 1)
   }
@@ -315,7 +326,8 @@ export class StageSelect extends Phaser.Scene {
 
         const portrait = this.add.rectangle(x - layout.slotWidth / 2 + 20, y - layout.slotHeight / 2 + 20, 32, 32).setStrokeStyle(1, COLOR.borderMuted).setFillStyle(0x07142a, .5)
         const portraitSprite = this.add.image(portrait.x, portrait.y, 'px').setVisible(false)
-        const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted })
+        // A fixed 8px box: Linux's monospace fallback measures 9px and crossed the selection outline (CI run 36099719476).
+        const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted, fixedHeight: 8 })
         this.slots.push(new Phaser.Math.Vector2(x, y))
         this.slotEntries.push({ rect, name, meta, badge, portrait, portraitSprite, weakness, stageIndex: null })
       }
@@ -326,7 +338,7 @@ export class StageSelect extends Phaser.Scene {
     const r = this.layout!.previewRect
     this.add.rectangle(r.centerX, r.centerY, r.width, r.height, COLOR.panel, .9).setStrokeStyle(1, COLOR.border)
     this.infoText = this.add.text(r.x + 5, r.y + 3, '', { font: FONT.panelBody, color: COLOR.text, wordWrap: { width: r.width - 10 }, lineSpacing: 0 })
-    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: '7px monospace', color: COLOR.textMuted })
+    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: pixelFont(1), color: COLOR.textMuted })
   }
 
   private createFooter(): void {
@@ -340,7 +352,9 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.footerRect.centerX, layout.footerRect.y + 1, 'ARROWS MOVE · L/R CHECKPOINT · ENTER DEPLOY · ESC MENU', {
         font: FONT.footer,
         color: COLOR.textMuted,
-        align: 'center'
+        align: 'center',
+        // A fixed box: Linux's monospace fallback measures taller and crossed the footer (CI run 36103408364).
+        fixedHeight: 8
       })
       .setOrigin(0.5, 0)
 
@@ -348,20 +362,21 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.footerRect.centerX, layout.footerRect.y + 10, '', {
         font: FONT.footer,
         color: COLOR.textAccent,
-        align: 'center'
+        align: 'center',
+        // A fixed box: Linux's monospace fallback measures taller and crossed the footer (CI run 36103408364).
+        fixedHeight: 8
       })
       .setOrigin(0.5, 0)
   }
 
-  /** The 32x32 slot shows the boss atlas idle frame until prompt 03 supplies portraits; locked stages show a silhouette. */
+  /** The 32x32 slot shows the boss's 48x48 dialogue portrait, scaled down; locked stages tint it to a silhouette. */
   private bindPortrait(sprite: Phaser.GameObjects.Image, bossId: string, accessible: boolean, cleared: boolean): void {
-    const atlasKey = `atlas_${bossId}`
-    const frame = `${bossId}/idle/000`
-    if (!this.textures.exists(atlasKey) || !this.textures.get(atlasKey).has(frame)) {
+    const frame = portraitForSpeaker(bossId)
+    if (!frame || !this.textures.exists(PORTRAIT_ATLAS_KEY) || !this.textures.get(PORTRAIT_ATLAS_KEY).has(frame)) {
       sprite.setVisible(false)
       return
     }
-    sprite.setTexture(atlasKey, frame)
+    sprite.setTexture(PORTRAIT_ATLAS_KEY, frame)
     const fit = 30 / Math.max(sprite.width, sprite.height, 1)
     sprite.setScale(Math.min(1, fit)).setVisible(true)
     if (!accessible) sprite.setTint(0x1a2a4a)
@@ -399,7 +414,7 @@ export class StageSelect extends Phaser.Scene {
       const checkProgress = this.getStageCheckProgress(stage.id)
       slot.name.setText(stage.selectLabel)
       slot.name.setColor(cleared ? COLOR.textCleared : COLOR.text)
-      slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
+      slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? formatBestTime(Profiles.active()?.stageBests[stageId]) ?? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
       slot.weakness.setText(stage.id === FINAL_STAGE_ID ? `${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(this.saveData)}/8` : `WEAK: ${getBossWeaknessLabel(this.saveData, stage.bossId)}`)
       slot.meta.setColor(cleared ? '#8793ad' : '#9ec2ff')
       slot.badge.setVisible(false)
@@ -702,7 +717,7 @@ export class StageSelect extends Phaser.Scene {
       clearedCount,
       remainingCount: Math.max(0, 8 - clearedCount)
     })
-    this.dialogueOverlay = new DialogueOverlayController(this)
+    this.dialogueOverlay = new DialogueOverlayController(this, 'bottom')
     this.dialogueOverlay.play(lines, () => {})
   }
 

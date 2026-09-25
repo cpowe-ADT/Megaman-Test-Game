@@ -1,8 +1,6 @@
-import { IDENTITY } from '../content/identity'
 import Phaser from 'phaser'
 import spriteManifestData from '../../assets/sprites/manifest.v1.json'
 import { getLoadableAtlasEntries } from '../assets/manifest'
-import { countSpriteManifestOverrides, mergeSpriteManifest } from '../assets/privateSpriteManifest'
 import type { SpriteSheetManifestV1 } from '../assets/types'
 import { validateSpriteManifest } from '../assets/validateManifest'
 import { getSfxAssetEntries } from '../audio/sfxLibrary'
@@ -10,11 +8,26 @@ import { residentBackgroundAssets } from './game/stageBackgroundLoading'
 import { AnimationManifest, type AnimationManifestEntry } from '../player/AnimationManifest'
 import { resolvePlayerAtlasBinding } from '../player/PlayerAtlasBindings'
 import { ensureGameplayTextures } from '../ui/gameplay/GameplayTextures'
+import { findMissingPlayerGroups } from '../assets/coverageRequirements'
+import dialogueUrl from '../content/dialogue/dialogue.v2.json?url'
+import { dialogueContentInstalled, installDialogueContent } from '../content/dialogue/index'
+import enemyCatalogUrl from '../content/enemies/enemy_catalog.generated.json?url'
+import { enemyCatalogInstalled, installEnemyCatalog } from '../content/enemies/catalog'
+import { PIXEL_FONT_FAMILY } from '../ui/menu/menuTheme'
 
 const PLAYER_ATLAS_KEY = 'atlas_player_main'
 const PLAYER_SWORD_FX_ATLAS_KEY = 'atlas_player_sword_fx'
 const PROJECTILES_ATLAS_KEY = 'atlas_projectiles_core'
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
+/** Production builds fetch the dialogue lines instead of bundling them (`src/content/dialogue/index.ts`). */
+const DIALOGUE_JSON_KEY = 'dialogue_v2'
+const ENEMY_CATALOG_JSON_KEY = 'enemy_catalog'
+
+function pixelFontLoaded(): boolean {
+  let loaded = false
+  if (typeof document !== 'undefined') document.fonts?.forEach((face) => { loaded ||= face.family === PIXEL_FONT_FAMILY && face.status === 'loaded' })
+  return loaded
+}
 
 type AtlasAnimationOptions = {
   start?: number
@@ -27,20 +40,15 @@ export class Preload extends Phaser.Scene {
   }
 
   preload(): void {
-    const mergedManifest = mergeSpriteManifest(
-      spriteManifestData as SpriteSheetManifestV1,
-      IDENTITY.DEV_SKIN.enabled ? __PRIVATE_SPRITE_MANIFEST_DATA__ : null
-    )
-    const manifestValidation = validateSpriteManifest(mergedManifest)
+    const manifestValidation = validateSpriteManifest(spriteManifestData as SpriteSheetManifestV1)
     if (!manifestValidation.valid) {
       throw new Error(`[sprites] Manifest invalid: ${manifestValidation.errors.join('; ')}`)
     }
 
+    if (!dialogueContentInstalled()) this.load.json(DIALOGUE_JSON_KEY, dialogueUrl)
+    if (!enemyCatalogInstalled()) this.load.json(ENEMY_CATALOG_JSON_KEY, enemyCatalogUrl)
+
     const atlasEntries = getLoadableAtlasEntries(manifestValidation.manifest)
-    const privateOverrideEntries = countSpriteManifestOverrides(
-      spriteManifestData as SpriteSheetManifestV1,
-      manifestValidation.manifest
-    )
     atlasEntries.forEach((entry) => {
       if (!this.textures.exists(entry.atlasKey)) {
         this.load.atlas(entry.atlasKey, entry.runtimeImage, entry.runtimeData)
@@ -63,21 +71,30 @@ export class Preload extends Phaser.Scene {
       }
     })
 
+    // Part 12i (EVAL-P8-003): the bundled pixel font. Phaser's FontFile loads it through the FontFace API and the
+    // loader waits for it, so Title (the first scene with text) never measures a fallback. The BMFont is the key the
+    // HUD and room-lock labels already branch on. Both are a few KB and stay resident.
+    if (!pixelFontLoaded()) this.load.font(PIXEL_FONT_FAMILY, 'assets/fonts/omega-pixel.woff', 'woff')
+    if (!this.cache.bitmapFont.exists('font')) this.load.bitmapFont('font', 'assets/fonts/omega-pixel.png', 'assets/fonts/omega-pixel.xml')
+
     this.registry.set('sprite_manifest_summary', {
       valid: true,
       entries: manifestValidation.manifest.entries.length,
       readyAtlases: atlasEntries.length,
-      backgroundImages: residentBackgroundAssets().length,
-      privateOverrideEntries,
-      manifestMode: privateOverrideEntries > 0 ? 'base+private' : 'base'
+      backgroundImages: residentBackgroundAssets().length
     })
   }
 
   create(): void {
+    if (!dialogueContentInstalled()) installDialogueContent(this.cache.json.get(DIALOGUE_JSON_KEY))
+    if (!enemyCatalogInstalled()) installEnemyCatalog(this.cache.json.get(ENEMY_CATALOG_JSON_KEY))
     ensureGameplayTextures(this)
     this.assertAtlasLoaded(PLAYER_ATLAS_KEY)
     this.assertAtlasLoaded(PROJECTILES_ATLAS_KEY)
     this.assertAtlasLoaded(EFFECTS_ATLAS_KEY)
+    if (import.meta.env?.DEV) {
+      this.assertPlayerGroupsCovered()
+    }
 
     this.createAtlasAnimation('player-idle', PLAYER_ATLAS_KEY, ['player_main/idle/'], 6, -1, {
       start: 0,
@@ -145,6 +162,19 @@ export class Preload extends Phaser.Scene {
   private assertAtlasLoaded(atlasKey: string): void {
     if (!this.textures.exists(atlasKey)) {
       throw new Error(`[Preload] Missing required atlas '${atlasKey}'`)
+    }
+  }
+
+  // Dev-only: catches a hero atlas that is missing a required group (e.g. a stale or partial cut)
+  // before any scene tries to play an animation from it. Production builds skip this so a base atlas
+  // that already shipped never throws at runtime; `npm run sprites:validate` covers the same ground
+  // for CI.
+  private assertPlayerGroupsCovered(): void {
+    const frameNames = this.textures.get(PLAYER_ATLAS_KEY).getFrameNames().filter((name) => name !== '__BASE')
+    const missing = findMissingPlayerGroups(frameNames)
+    if (missing.length > 0) {
+      const detail = missing.map(({ group, minCount }) => `${group} (need ${minCount})`).join(', ')
+      throw new Error(`[Preload] '${PLAYER_ATLAS_KEY}' is missing required hero groups: ${detail}`)
     }
   }
 

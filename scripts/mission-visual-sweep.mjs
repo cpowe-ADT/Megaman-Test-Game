@@ -7,8 +7,13 @@ import { provenance } from './lib/provenance.mjs'
 const host = '127.0.0.1'
 const port = Number(process.env.SWEEP_PORT ?? 4173)
 const url = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off&startScene=StageSelect`
-const outputRoot = path.resolve('output/mission-visual-sweep')
+const sweepStableDir = path.resolve('output/mission-visual-sweep')
+const outputRoot = process.env.SWEEP_OUTPUT_DIR
+  ? path.resolve(process.env.SWEEP_OUTPUT_DIR)
+  : path.resolve('output/sweep-runs', new Date().toISOString().replace(/[:.]/g, '-'))
 const visualSweepSummaryPath = path.join(outputRoot, 'summary.json')
+// SWEEP_FAIL_FAST=1 restores stop-at-first-mission-failure; default continues and exits 1 if any failed.
+const sweepFailFast = String(process.env.SWEEP_FAIL_FAST ?? '') === '1'
 const STAGE_SELECT_STATE_TIMEOUT_MS = 10_000
 const GAME_TRANSITION_TIMEOUT_MS = 10_000
 // CI runners can take longer than 5s to close Chromium after every artifact is written (2026-09-23).
@@ -30,6 +35,22 @@ const robotMasterSlots = missionSlots.filter((slot) => !slot.direct)
 const unlockedStageIds = missionSlots.map((slot) => slot.stageId)
 
 const indexByBossId = new Map(robotMasterSlots.map((slot, index) => [slot.bossId, index]))
+
+function linkStableRunDir(target, linkPath) {
+  try {
+    const stat = fs.lstatSync(linkPath)
+    if (stat.isDirectory() && !stat.isSymbolicLink()) {
+      fs.rmSync(linkPath, { recursive: true, force: true })
+    } else {
+      fs.rmSync(linkPath, { force: true })
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error
+    }
+  }
+  fs.symlinkSync(target, linkPath, 'dir')
+}
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -142,6 +163,7 @@ function createVisualSweepSummary() {
     startedAt: new Date().toISOString(),
     ...provenance(),
     outputDir: outputRoot,
+    runDir: outputRoot,
     missions: []
   }
 }
@@ -171,6 +193,17 @@ async function runWithTimeout(task, label, timeoutMs = CLEANUP_TIMEOUT_MS, class
   })
 }
 
+// `npm run dev` starts Vite as a grandchild; on Linux, signalling npm alone leaves Vite holding the pipes, so
+// the dev server runs in its own process group and the whole group is signalled (2026-09-23 CI browser-gates).
+function signalChildGroup(child, signal) {
+  try {
+    if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal)
+    else child.kill(signal)
+  } catch {
+    child.kill(signal)
+  }
+}
+
 async function stopChildProcess(child, label, timeoutMs = CLEANUP_TIMEOUT_MS) {
   if (!child || child.killed || child.exitCode !== null) {
     return
@@ -178,7 +211,7 @@ async function stopChildProcess(child, label, timeoutMs = CLEANUP_TIMEOUT_MS) {
 
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      child.kill('SIGKILL')
+      signalChildGroup(child, 'SIGKILL')
       const error = new Error(`${label} did not exit within ${timeoutMs}ms`)
       error.name = 'CleanupTimeoutError'
       error.classification = 'hung_after_artifacts'
@@ -191,7 +224,7 @@ async function stopChildProcess(child, label, timeoutMs = CLEANUP_TIMEOUT_MS) {
       resolve()
     })
 
-    child.kill('SIGTERM')
+    signalChildGroup(child, 'SIGTERM')
   })
 }
 
@@ -515,6 +548,10 @@ async function captureMission(browser, slot, summary) {
       }
       window.bossDebug?.unlockIntro?.()
       window.stageDebug?.skipDialogue?.()
+      // The sweep measures the boss, not the hero: since 5.2 a hit carries the hero into the room's
+      // hazards and two deaths in the sample window ended the scene (Tide Reaver, 2026-09-24), so the
+      // stationary hero is invulnerable while the boss is sampled.
+      window.__phaserGame?.scene?.getScenes(true)?.[0]?.newPlayerRuntime?.resetForRespawn?.(60000)
     })
 
     const bossRoomState = await waitForState(
@@ -579,6 +616,7 @@ async function captureMission(browser, slot, summary) {
 async function main() {
   fs.rmSync(outputRoot, { recursive: true, force: true })
   fs.mkdirSync(outputRoot, { recursive: true })
+  linkStableRunDir(outputRoot, sweepStableDir)
   const summary = createVisualSweepSummary()
   writeVisualSweepSummary(summary)
 
@@ -594,7 +632,13 @@ async function main() {
         VITE_AUTOMATION: '1',
         VITE_SMOKE: '1'
       },
-      shell: false
+      shell: false,
+      detached: process.platform !== 'win32'
+    })
+    // A detached group no longer gets the terminal's Ctrl-C, so pass it on instead of orphaning the server.
+    process.once('SIGINT', () => {
+      signalChildGroup(vite, 'SIGTERM')
+      process.exit(130)
     })
     vite.stdout.on('data', (chunk) => process.stdout.write(`[vite] ${chunk}`))
     vite.stderr.on('data', (chunk) => process.stderr.write(`[vite] ${chunk}`))
@@ -608,9 +652,19 @@ async function main() {
 
   try {
     for (const slot of missionSlots) {
-      await captureMission(browser, slot, summary)
+      try {
+        await captureMission(browser, slot, summary)
+      } catch (error) {
+        if (sweepFailFast) {
+          throw error
+        }
+      }
     }
-    summary.status = 'pass'
+    summary.status = summary.missions.some(
+      (mission) => mission.status === 'fail' || mission.status === 'hung_after_artifacts'
+    )
+      ? 'fail'
+      : 'pass'
   } finally {
     let cleanupError = null
     try {
@@ -641,6 +695,9 @@ async function main() {
   }
 
   console.log(`Mission visual sweep complete. Artifacts: ${outputRoot}`)
+  if (summary.missions.some((mission) => mission.status === 'fail' || mission.status === 'hung_after_artifacts')) {
+    process.exitCode = 1
+  }
 }
 
 main().catch((error) => {

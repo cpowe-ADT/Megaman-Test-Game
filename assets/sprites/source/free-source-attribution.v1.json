@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "generatedAt": "2026-03-10T18:00:00-05:00",
+  "generatedAt": "2026-09-24",
   "entries": [
     {
       "id": "enemy-platformer-security-robot",
@@ -127,13 +127,8 @@
       "license": "CC0",
       "attribution": "OpenGameArt: Mech Designs by AntumDeluge / contributors as listed on the source page.",
       "localSourcePath": "assets/sprites/source/bosses/boss_roster_sheet_free_v1_20260310_180000.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/*.png",
-        "assets/sprites/bosses/*.json",
-        "assets/sprites/enemies/*/*.png",
-        "assets/sprites/enemies/*/*.atlas.json"
-      ],
-      "notes": "Composite free roster sheet built from downloaded mech GIFs and palette-shifted per-slot variants for deterministic atlas generation."
+      "runtimeOutputs": [],
+      "notes": "Composite free roster sheet built from downloaded mech GIFs and palette-shifted per-slot variants for deterministic atlas generation. Since 2026-09-24 (6.P) six enemy families use original art (entry enemies-relay-rogue-hf-v1); the glob here still covers the other six. Since 2026-09-24 every enemy family uses original art; the CC0 roster sheet is kept as source history only."
     },
     {
       "id": "projectile-robotfree-objects",
@@ -193,11 +188,8 @@
       "license": "original-generated",
       "attribution": "Original Tide Reaver art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_tide_reaver_sheet_hf_v1_20260910_b.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/tide_reaver.png",
-        "assets/sprites/bosses/tide_reaver.json"
-      ],
-      "notes": "Variant a kept beside it as an alternate. Cut with scripts/sprites/hf_sheet_to_atlas.py. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Variant a kept beside it as an alternate. Cut with scripts/sprites/hf_sheet_to_atlas.py. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-sentinel-rook-hf-v1",
@@ -206,11 +198,8 @@
       "license": "original-generated",
       "attribution": "Original Sentinel Rook art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_sentinel_rook_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/sentinel_rook.png",
-        "assets/sprites/bosses/sentinel_rook.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 2e7dbc9b-9959-4c8d-b657-c33aca77f4c8. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 2e7dbc9b-9959-4c8d-b657-c33aca77f4c8. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-pyro-maw-hf-v1",
@@ -219,11 +208,8 @@
       "license": "original-generated",
       "attribution": "Original Pyro Maw art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_pyro_maw_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/pyro_maw.png",
-        "assets/sprites/bosses/pyro_maw.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 17b82743-3547-487c-b71f-2a58e08fd872. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 17b82743-3547-487c-b71f-2a58e08fd872. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Superseded 2026-09-24 by boss-pyro-maw-hf-v2 (source kept)."
     },
     {
       "id": "boss-volt-hopper-hf-v1",
@@ -232,11 +218,8 @@
       "license": "original-generated",
       "attribution": "Original Volt Hopper art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_volt_hopper_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/volt_hopper.png",
-        "assets/sprites/bosses/volt_hopper.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 756a25cf-96db-4ad2-8de8-d88df727c625. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 756a25cf-96db-4ad2-8de8-d88df727c625. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-basalt-titan-hf-v1",
@@ -245,11 +228,8 @@
       "license": "original-generated",
       "attribution": "Original Basalt Titan art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_basalt_titan_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/basalt_titan.png",
-        "assets/sprites/bosses/basalt_titan.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b9ff4612-9409-4462-a736-1db6b01270d5. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b9ff4612-9409-4462-a736-1db6b01270d5. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-ferro-blade-hf-v1",
@@ -258,11 +238,8 @@
       "license": "original-generated",
       "attribution": "Original Ferro Blade art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_ferro_blade_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/ferro_blade.png",
-        "assets/sprites/bosses/ferro_blade.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 1c731281-78f6-485b-afd8-7d1841a141e2. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 1c731281-78f6-485b-afd8-7d1841a141e2. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-mire-wraith-hf-v1",
@@ -271,11 +248,8 @@
       "license": "original-generated",
       "attribution": "Original Mire Wraith art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_mire_wraith_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/mire_wraith.png",
-        "assets/sprites/bosses/mire_wraith.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job ca5cb1d7-b07c-4b15-bd9d-8b8065383049. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job ca5cb1d7-b07c-4b15-bd9d-8b8065383049. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-gale-vixen-hf-v1",
@@ -284,11 +258,8 @@
       "license": "original-generated",
       "attribution": "Original Gale Vixen art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_gale_vixen_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/gale_vixen.png",
-        "assets/sprites/bosses/gale_vixen.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 925e5d54-7062-47a3-ba15-922c529ea51f. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 925e5d54-7062-47a3-ba15-922c529ea51f. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-glacier-ronin-hf-v1",
@@ -297,11 +268,8 @@
       "license": "original-generated",
       "attribution": "Original Glacier Ronin art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_glacier_ronin_sheet_hf_v1_20260910.png",
-      "runtimeOutputs": [
-        "assets/sprites/bosses/glacier_ronin.png",
-        "assets/sprites/bosses/glacier_ronin.json"
-      ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b239060e-ed9c-49fd-a141-e570bc4f902a. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job b239060e-ed9c-49fd-a141-e570bc4f902a. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
     },
     {
       "id": "boss-omega-core-hf-v1",
@@ -310,11 +278,429 @@
       "license": "original-generated",
       "attribution": "Original Omega Core art, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/sprites/source/bosses/boss_omega_core_sheet_hf_v1_20260910.png",
+      "runtimeOutputs": [],
+      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 91be13e3-4710-49ba-9add-a362db9ce859. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md). Runtime outputs moved to bosses-hf-v2 on 2026-09-24."
+    },
+    {
+      "id": "player-wren-hf-v1",
+      "family": "player",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original WREN hero art (design C2), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/player/hero_sheet_v1_2026-09-24_a2_clean.png",
+      "sourceSheets": [
+        "assets/sprites/source/player/hero_sheet_v1_2026-09-24_a2_clean.png",
+        "assets/sprites/source/player/hero_sheet_v1_2026-09-24_b2.png",
+        "assets/sprites/source/player/hero_sheet_v1_2026-09-24_c2.png",
+        "assets/sprites/source/player/hero_sheet_v1_2026-09-24_d3.png",
+        "assets/sprites/source/player/hero_sheet_v1_2026-09-24_e1.png"
+      ],
       "runtimeOutputs": [
+        "assets/sprites/player/main/player_main.png",
+        "assets/sprites/player/main/player_main.atlas.json"
+      ],
+      "notes": "Reference image: the C2 turnaround (job 986ea4a5-dcfd-4cc8-b1f9-7bc5d22e949c, assets/sprites/source/player/hero_turnaround_v1_2026-09-24_c2.png). Prompts, job ids, result URLs and the picks in assets/sprites/source/player/hero_sheets_v1_2026-09-24.prompts.md; cut by scripts/sprites/cut_hero_v1.sh with scripts/sprites/hf_sheet_to_atlas.py --category player. Replaces the February generated base sheet and the retired developer skin (05c, 2026-09-24)."
+    },
+    {
+      "id": "tiles-relay-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Drill Hangar tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_relay_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/relay/tiles_relay.png",
+        "assets/sprites/tiles/relay/tiles_relay.atlas.json"
+      ],
+      "notes": "Prompt, job ids and result URLs in assets/sprites/source/tiles/tiles_relay_v1.prompts.md; cut to 16px tiles by scripts/sprites/cut_tileset.py (phase 6.P)."
+    },
+    {
+      "id": "enemies-relay-rogue-hf-v1",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original rogue enemy robots (gunner, hopper, drone, dozer, shield drone, rocket trooper), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/enemies/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.png",
+        "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.png",
+        "assets/sprites/enemies/enemy_drone/enemy_drone.png",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.png",
+        "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.png",
+        "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.png",
+        "assets/sprites/enemies/enemy_gunner_bot/enemy_gunner_bot.atlas.json",
+        "assets/sprites/enemies/enemy_shock_hopper/enemy_shock_hopper.atlas.json",
+        "assets/sprites/enemies/enemy_drone/enemy_drone.atlas.json",
+        "assets/sprites/enemies/enemy_armored_bot/enemy_armored_bot.atlas.json",
+        "assets/sprites/enemies/enemy_shield_drone/enemy_shield_drone.atlas.json",
+        "assets/sprites/enemies/enemy_rocket_bot/enemy_rocket_bot.atlas.json"
+      ],
+      "notes": "Prompts, job ids, URLs and picks in assets/sprites/source/enemies/hf_v1/enemies_hf_v1.prompts.md; cut by scripts/sprites/cut_enemy_sheet.py, which keeps each atlas's frame names, frame size and feet row (phase 6.P). The other six enemy families still use the CC0 roster entry."
+    },
+    {
+      "id": "tiles-pyro-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Heat Works tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_pyro_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/pyro/tiles_pyro.png",
+        "assets/sprites/tiles/pyro/tiles_pyro.atlas.json"
+      ],
+      "notes": "Prompt and jobs in assets/sprites/source/tiles/tiles_pyro_v1.prompts.md; cut by scripts/sprites/cut_tileset.py --brighten 1.15 (finish plan, Pyro Maw)."
+    },
+    {
+      "id": "enemies-pyro-rogue-hf-v1",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original rogue enemy robots (mine bot, slicer, bouncer), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/enemies/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.png",
+        "assets/sprites/enemies/enemy_mine_bot/enemy_mine_bot.atlas.json",
+        "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.png",
+        "assets/sprites/enemies/enemy_slicer_bot/enemy_slicer_bot.atlas.json",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.png",
+        "assets/sprites/enemies/enemy_bouncer/enemy_bouncer.atlas.json"
+      ],
+      "notes": "Prompts and jobs in assets/sprites/source/enemies/hf_v1/enemies_hf_v1.prompts.md; cut by scripts/sprites/cut_enemy_sheet.py (mine bot and bouncer with --fill-height)."
+    },
+    {
+      "id": "boss-pyro-maw-hf-v2",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original Pyro Maw art (second design), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/hf_v2/boss_pyro_maw_v2_b.png",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/pyro_maw.png",
+        "assets/sprites/bosses/pyro_maw.json"
+      ],
+      "notes": "Replaces boss-pyro-maw-hf-v1 (read as a shapeless blob at 64px). Prompt and jobs in assets/sprites/source/bosses/hf_v2/boss_hf_v2.prompts.md; cut by scripts/sprites/cut_enemy_sheet.py --layout boss --mirror --cells shoot=8,10,10,11."
+    },
+    {
+      "id": "tiles-tide-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original tide district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_tide_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/tide/tiles_tide.png",
+        "assets/sprites/tiles/tide/tiles_tide.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "tiles-volt-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original volt district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_volt_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/volt/tiles_volt.png",
+        "assets/sprites/tiles/volt/tiles_volt.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "tiles-basalt-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original basalt district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_basalt_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/basalt/tiles_basalt.png",
+        "assets/sprites/tiles/basalt/tiles_basalt.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "tiles-ferro-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original ferro district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_ferro_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/ferro/tiles_ferro.png",
+        "assets/sprites/tiles/ferro/tiles_ferro.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "tiles-mire-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original mire district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_mire_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/mire/tiles_mire.png",
+        "assets/sprites/tiles/mire/tiles_mire.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "tiles-gale-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original gale district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_gale_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/gale/tiles_gale.png",
+        "assets/sprites/tiles/gale/tiles_gale.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "tiles-glacier-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original glacier district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_glacier_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/glacier/tiles_glacier.png",
+        "assets/sprites/tiles/glacier/tiles_glacier.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "tiles-omega-hf-v1",
+      "family": "tiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original omega district tileset, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/tiles/tiles_omega_v1_a.png",
+      "runtimeOutputs": [
+        "assets/sprites/tiles/omega/tiles_omega.png",
+        "assets/sprites/tiles/omega/tiles_omega.atlas.json"
+      ],
+      "notes": "assets/sprites/source/tiles/tiles_biomes_v1.prompts.md; scripts/sprites/cut_biomes_v1.sh"
+    },
+    {
+      "id": "bosses-hf-v2",
+      "family": "bosses",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original warden art (second designs: Sentinel Rook, Tide Reaver, Volt Hopper, Basalt Titan, Ferro Blade, Mire Wraith, Gale Vixen, Glacier Ronin, Omega Core), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/bosses/hf_v2/",
+      "runtimeOutputs": [
+        "assets/sprites/bosses/sentinel_rook.png",
+        "assets/sprites/bosses/sentinel_rook.json",
+        "assets/sprites/bosses/tide_reaver.png",
+        "assets/sprites/bosses/tide_reaver.json",
+        "assets/sprites/bosses/volt_hopper.png",
+        "assets/sprites/bosses/volt_hopper.json",
+        "assets/sprites/bosses/basalt_titan.png",
+        "assets/sprites/bosses/basalt_titan.json",
+        "assets/sprites/bosses/ferro_blade.png",
+        "assets/sprites/bosses/ferro_blade.json",
+        "assets/sprites/bosses/mire_wraith.png",
+        "assets/sprites/bosses/mire_wraith.json",
+        "assets/sprites/bosses/gale_vixen.png",
+        "assets/sprites/bosses/gale_vixen.json",
+        "assets/sprites/bosses/glacier_ronin.png",
+        "assets/sprites/bosses/glacier_ronin.json",
         "assets/sprites/bosses/omega_core.png",
         "assets/sprites/bosses/omega_core.json"
       ],
-      "notes": "Cut with scripts/sprites/hf_sheet_to_atlas.py (4x3 grid, 64px cells, baseline 60). Job 91be13e3-4710-49ba-9add-a362db9ce859. Prompt in assets/sprites/source/bosses/boss_sheets_hf_v1_20260910.prompts.md (Tide Reaver: boss_tide_reaver_sheet_hf_v1_20260910.prompt.md)."
+      "notes": "assets/sprites/source/bosses/hf_v2/boss_hf_v2.prompts.md; supersedes the v1 entries' runtime outputs (sources kept)."
+    },
+    {
+      "id": "enemies-rogue-hf-v1-last-three",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original rogue enemy robots (cryo turret, laser eye, snap trap drone), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/enemies/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.png",
+        "assets/sprites/enemies/enemy_frost_turret/enemy_frost_turret.atlas.json",
+        "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.png",
+        "assets/sprites/enemies/enemy_laser_eye/enemy_laser_eye.atlas.json",
+        "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.png",
+        "assets/sprites/enemies/enemy_fly_trap/enemy_fly_trap.atlas.json"
+      ],
+      "notes": "assets/sprites/source/enemies/hf_v1/enemies_hf_v1.prompts.md"
+    },
+    {
+      "id": "ui-portraits-title-hf-v1",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original speaker portraits and title key art, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [
+        "assets/ui/portraits/portraits.png",
+        "assets/ui/portraits/portraits.atlas.json",
+        "assets/ui/title/title_keyart.png"
+      ],
+      "notes": "assets/ui/source/ui_v1.prompts.md; scripts/sprites/cut_portraits.py"
+    },
+    {
+      "id": "vfx-hero-combat-hf-v1",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original buster shots, saber combo arcs and hit effects, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/projectiles_hero/projectiles_hero.png",
+        "assets/sprites/projectiles/projectiles_hero/projectiles_hero.atlas.json",
+        "assets/sprites/effects/effects_hero/effects_hero.png",
+        "assets/sprites/effects/effects_hero/effects_hero.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; scripts/sprites/cut_vfx_sheet.py with vfx_hero_v1.json and vfx_hero_effects_v1.json"
+    },
+    {
+      "id": "miniboss-custodian-walker-hf-v1",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original custodian walker mini-boss, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/minibosses/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/custodian_walker/custodian_walker.png",
+        "assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json"
+      ],
+      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut with scripts/sprites/cut_enemy_sheet.py (64px frames, feet row 62, from a template atlas); not wired to a runtime family yet (EVAL-P6-005)"
+    },
+    {
+      "id": "mechanics-hf-v1",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original stage mechanic art (flame vents, slag, breakable walls, crumbling catwalks, room gates), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/mechanics/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/mechanics/mechanics_v1/mechanics_v1.png",
+        "assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/mechanics/hf_v1/mechanics_hf_v1.prompts.md; scripts/sprites/cut_vfx_sheet.py with mechanics_v1.json"
+    },
+    {
+      "id": "mechanics-v2-hf",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original stage mechanic art v2 (conveyors, ice, icicles, rockfall, power rails, wind, currents, magnet lifts), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/mechanics/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/mechanics/mechanics_v2/mechanics_v2.png",
+        "assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json"
+      ],
+      "notes": "assets/sprites/source/mechanics/hf_v1/mechanics_hf_v1.prompts.md; cut_vfx_sheet.py with mechanics_v2.json; drawn by the part 12b mechanics"
+    },
+    {
+      "id": "telegraphs-v1-hf",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original boss attack tells (reticle, floor marker, warning flash, charge glow), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/effects/telegraphs_v1/telegraphs_v1.png",
+        "assets/sprites/effects/telegraphs_v1/telegraphs_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with telegraphs_v1.json; drawn by the boss telegraph renderer since part 12f wave 1"
+    },
+    {
+      "id": "hazards-v1-hf",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original boss arena hazards (floor mine, steam pod, ground shockwave, stone column, tornado, water geyser, fire and acid puddles), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/effects/hazards_v1/hazards_v1.png",
+        "assets/sprites/effects/hazards_v1/hazards_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with hazards_v1.json; drawn by the boss hazard spawners (part 12f wave 4)"
+    },
+    {
+      "id": "minibosses-v1-hf",
+      "family": "enemies",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original mini-bosses (relay turret nest, sentry twin, drill serpent), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/minibosses/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.png",
+        "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.atlas.json",
+        "assets/sprites/enemies/sentry_twin/sentry_twin.png",
+        "assets/sprites/enemies/sentry_twin/sentry_twin.atlas.json",
+        "assets/sprites/enemies/drill_serpent/drill_serpent.png",
+        "assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json",
+        "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.png",
+        "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.atlas.json",
+        "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.png",
+        "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.atlas.json",
+        "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.png",
+        "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.atlas.json",
+        "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.png",
+        "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.atlas.json"
+      ],
+      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut_enemy_sheet.py from template atlases; wired by part 12c (src/enemy/minibossCatalog.ts, the miniboss_lab stage); palette skins by scripts/sprites/palette_skin.py (custodian walker basalt and glacier, turret nest ferro, sentry twin gale)"
+    },
+    {
+      "id": "weapons-v1-hf",
+      "family": "projectiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original warden weapon shots and the boss energy orb, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/weapons_v1/weapons_v1.png",
+        "assets/sprites/projectiles/weapons_v1/weapons_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with weapons_v1.json; wired by prompt 12 part 12f"
+    },
+    {
+      "id": "pickups-v1-hf",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original pickups (energy capsules, extra life, heart tank, sub tank, upgrade capsule), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [
+        "assets/sprites/pickups/pickups_v1/pickups_v1.png",
+        "assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json"
+      ],
+      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with pickups_v1.json; drawn by src/ui/pickups/pickupArt.ts since part 12h"
+    },
+    {
+      "id": "hud-icons-v1-hf",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original HUD icons (buster, warden weapons, saber, shield, heart, sub tank, capsule, key card), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [
+        "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.png",
+        "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json"
+      ],
+      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with hud_icons_v1.json; the HUD weapon icon since part 12f wave 3 (src/ui/HUD.ts)"
+    },
+    {
+      "id": "font-omega-pixel-v1",
+      "family": "ui",
+      "sourceUrl": "original",
+      "license": "original",
+      "attribution": "OmegaPixel, an original pixel font drawn as a glyph table for this project and built with scripts/fonts/build-pixel-font.py",
+      "localSourcePath": "assets/fonts/source/omega-pixel.glyphs.txt",
+      "runtimeOutputs": [
+        "assets/fonts/omega-pixel.woff",
+        "assets/fonts/omega-pixel.png",
+        "assets/fonts/omega-pixel.xml"
+      ],
+      "notes": "Part 12i (EVAL-P8-003). Author: the OMEGA Relay agents (Claude Code) for Craig. Generator: scripts/fonts/build-pixel-font.py (fontTools 4.66.0, Pillow); rebuild with .venv/bin/python scripts/fonts/build-pixel-font.py and verify with --check. Loaded by src/scenes/Preload.ts; per-surface use in docs/architecture/rendering.md."
     }
   ]
 }

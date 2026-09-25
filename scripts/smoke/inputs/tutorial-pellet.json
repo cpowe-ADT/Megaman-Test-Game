@@ -1,0 +1,1 @@
+{ "meta": { "stage": "tutorial_sentinel", "purpose": "49-tutorial-verbs: one shoot tap (an uncharged pellet), the wrong verb for the charge and saber locks." }, "rows": [ { "frame": 0, "held": [] }, { "frame": 4, "held": ["shoot"] }, { "frame": 6, "held": [] }, { "frame": 30, "held": [] } ] }

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getHudLayout, type HudRect } from '../src/ui/hudLayout'
+import { formatDistrictLabel, getHudLayout, type HudRect } from '../src/ui/hudLayout'
 
 function assertContained(inner: HudRect, outer: HudRect, minimumInset: number): void {
   assert.ok(inner.x >= outer.x + minimumInset)
@@ -32,4 +32,16 @@ test('the lives readout sits in the HUD band under the boss panel, off the playf
   assert.ok(label.y >= layout.bossPanel.y + layout.bossPanel.height + 2, 'below the boss panel')
   assert.ok(label.y + 12 <= layout.height, 'inside the 58px HUD band')
   assert.ok(label.x > 448 / 2, 'on the right, mirroring the weapon row')
+})
+
+test('the district label wraps to a second line only when the whole name does not fit one', () => {
+  assert.equal(formatDistrictLabel('Drill Hangar'), 'DRILL\nHANGAR')
+  assert.equal(formatDistrictLabel('Heat Works'), 'HEAT WORKS\n')
+  assert.equal(formatDistrictLabel('Central Core'), 'CENTRAL\nCORE')
+})
+
+test('the district label always breaks into exactly two lines, matching the fixed label box', () => {
+  for (const district of ['Drill Hangar', 'Heat Works', 'Medicine District', 'Central Core']) {
+    assert.equal(formatDistrictLabel(district).split('\n').length, 2)
+  }
 })

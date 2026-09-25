@@ -2,18 +2,19 @@ import Phaser from 'phaser'
 import { GAME_WIDTH, GAME_HEIGHT, GAME_SIZE } from '../config/renderPolicy'
 import AudioService from '../audio'
 import { AUTOMATION } from '../config/automation'
-import { getCampaignStage } from '../content/campaign'
+import { TUTORIAL_STAGE_ID, getCampaignStage } from '../content/campaign'
 import { ASSET_CREDITS } from '../content/credits.generated'
 import { DIALOGUE_REGISTRY } from '../content/dialogue/index'
 import { IDENTITY } from '../content/identity'
 import InputActions from '../input/InputActions'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { Save, type SaveData } from '../systems/Save'
-import { addMenuBackdrop, addMenuPanel, MENU_COLORS, MENU_FONT_CODE, MENU_FONT_DISPLAY } from '../ui/menu/menuTheme'
-import { resolvePlaybackLines, currentStoryPolicy } from './game/StoryDirector'
+import { addMenuBackdrop, addMenuPanel, MENU_COLORS, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
+import { resolvePlaybackLines, currentStoryPolicy, epilogueSecret } from './game/StoryDirector'
 
 export type EndingPhase = 'cards' | 'close' | 'record' | 'credits' | 'done'
-export type EndingSnapshot = { phase: EndingPhase; page: number; pageCount: number }
+/** `card`: the stage whose district card is on screen (cards phase only). */
+export type EndingSnapshot = { phase: EndingPhase; page: number; pageCount: number; card: string | null }
 
 type CardPage = { kind: 'card'; stageId: string; text: string }
 type LinePage = { kind: 'line'; line: DialoguePlaybackLine }
@@ -36,7 +37,9 @@ export function buildCampaignRecord(save: SaveData): string[] {
 
 /**
  * The epilogue: one card per district, the close, the campaign record, the credits, then Title.
- * With the automation story switch off it opens on the record so smoke can still assert completion.
+ * With all eight capsule caches collected, the secret adds a Drill Hangar card after the eighth and Iona's
+ * line opens the close. With the automation story switch off it opens on the record so smoke can still
+ * assert completion.
  */
 export class EndingScene extends Phaser.Scene {
   private phase: EndingPhase = 'cards'
@@ -70,6 +73,11 @@ export class EndingScene extends Phaser.Scene {
         else this.closeLines.push(resolved[index])
       })
     }
+    const secret = epilogueSecret(Save.load().collectedChecks ?? [], values)
+    if (secret) {
+      cards.push({ kind: 'card', stageId: TUTORIAL_STAGE_ID, text: secret.card })
+      this.closeLines.unshift(secret.line)
+    }
     this.pages = cards
     Save.markStorySeen('epilogue', 'credits')
     AudioService.playMusic(this, 'completion')
@@ -81,17 +89,17 @@ export class EndingScene extends Phaser.Scene {
     this.cardBox = this.add.rectangle(width / 2, ENDING_CARD_HEIGHT / 2 + 6, width - 24, ENDING_CARD_HEIGHT - 4, MENU_COLORS.panel, 0.9)
       .setStrokeStyle(1, MENU_COLORS.cyan, 0.7)
     this.cardLabel = this.add.text(width / 2, ENDING_CARD_HEIGHT / 2 + 6, '', {
-      fontFamily: MENU_FONT_DISPLAY, fontSize: '14px', color: '#f5f8ff'
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color: '#f5f8ff'
     }).setOrigin(0.5)
     this.speakerText = this.add.text(width / 2, ENDING_CARD_HEIGHT + 14, '', {
-      fontFamily: MENU_FONT_CODE, fontSize: '9px', color: '#7de8ff', letterSpacing: 2
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff', letterSpacing: 2
     }).setOrigin(0.5)
     this.bodyText = this.add.text(width / 2, ENDING_CARD_HEIGHT + 48, '', {
       fontFamily: 'monospace', fontSize: '11px', color: '#f4f8ff', align: 'center', lineSpacing: 3,
       wordWrap: { width: width - 72, useAdvancedWrap: true }
     }).setOrigin(0.5)
     this.footer = this.add.text(width / 2, height - 14, '', {
-      fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#8faed8', letterSpacing: 1
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#8faed8', letterSpacing: 1
     }).setOrigin(0.5)
 
     const actions = InputActions.forScene(this)
@@ -109,7 +117,8 @@ export class EndingScene extends Phaser.Scene {
 
   getDebugState(): EndingSnapshot {
     const pageCount = this.phase === 'cards' ? this.pages.length : this.phase === 'close' ? this.closeLines.length : 1
-    return { phase: this.phase, page: this.page, pageCount }
+    const card = this.phase === 'cards' ? (this.pages[this.page] as CardPage | undefined)?.stageId ?? null : null
+    return { phase: this.phase, page: this.page, pageCount, card }
   }
 
   advance(): void {
@@ -177,7 +186,7 @@ export class EndingScene extends Phaser.Scene {
       const authored = DIALOGUE_REGISTRY.getGlobalSequence('credits')?.lines.map((line) => line.text) ?? []
       const lines = [...authored, '', ...ASSET_CREDITS, '', IDENTITY.GAME_TITLE, IDENTITY.GAME_SUBTITLE]
       this.creditsText = this.add.text(width / 2, height + 8, lines.join('\n'), {
-        fontFamily: 'monospace', fontSize: '9px', color: '#dbeafe', align: 'center', lineSpacing: 6,
+        fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#dbeafe', align: 'center', lineSpacing: 6,
         wordWrap: { width: width - 60, useAdvancedWrap: true }
       }).setOrigin(0.5, 0)
       // The shortest line stays readable for at least 2.5s at this speed (prompt 04 tunes it against real credits).

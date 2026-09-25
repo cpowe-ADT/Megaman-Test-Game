@@ -1,0 +1,12 @@
+{
+  "_note": "Boss attack tells v1 (2026-09-25, prompt 07 phase 7.1): Higgsfield gpt_image_2 sheet assets/sprites/source/vfx/hf_v1/telegraphs_a.png (vfx_hf_v1.prompts.md). Rows: reticle lock-on, floor danger marker, warning flash, charge glow.",
+  "key": "telegraphs_v1",
+  "outDir": "assets/sprites/effects/telegraphs_v1",
+  "atlasWidth": 256,
+  "groups": [
+    { "name": "reticle", "sheet": "assets/sprites/source/vfx/hf_v1/telegraphs_a.png", "cells": [0, 1, 2, 3], "scale": 0.16 },
+    { "name": "floor_marker", "sheet": "assets/sprites/source/vfx/hf_v1/telegraphs_a.png", "cells": [4, 5, 6, 7], "scale": 0.25 },
+    { "name": "warning_flash", "sheet": "assets/sprites/source/vfx/hf_v1/telegraphs_a.png", "cells": [8, 9, 10, 11], "scale": 0.16 },
+    { "name": "charge_glow", "sheet": "assets/sprites/source/vfx/hf_v1/telegraphs_a.png", "cells": [12, 13, 14, 15], "scale": 0.16 }
+  ]
+}

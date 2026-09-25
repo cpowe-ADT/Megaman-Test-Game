@@ -2,8 +2,10 @@ import {
   FINAL_STAGE_ID,
   ROBOT_MASTER_STAGE_IDS,
   TUTORIAL_STAGE_ID,
+  getCampaignStage,
   type CampaignStageId
 } from '../campaign'
+import { getWeaponDisplayName } from '../weapons'
 import {
   DIALOGUE_INTERPOLATION_TOKENS,
   DIALOGUE_LINE_LIMITS,
@@ -34,7 +36,8 @@ const CAMPAIGN_STAGE_IDS: readonly CampaignStageId[] = [
 const WARDEN_STAGE_IDS: readonly CampaignStageId[] = [...ROBOT_MASTER_STAGE_IDS]
 const ALL_TRIGGERS: readonly DialogueTrigger[] = [...STAGE_DIALOGUE_TRIGGERS, ...GLOBAL_DIALOGUE_TRIGGERS]
 const SPEAKER_ROLES = ['operator', 'protagonist', 'warden', 'antagonist'] as const
-const ORDER_INDEPENDENT_MILESTONE_SPEAKERS = ['director_iona', 'hero'] as const
+/** Milestones play by count alone: Iona, WREN, and OMEGA's one answer at the fourth (prompt 07 section 7.6 B.12). */
+const ORDER_INDEPENDENT_MILESTONE_SPEAKERS = ['director_iona', 'hero', 'omega_core'] as const
 const TOKEN_PATTERN = /\{([^{}]+)\}/g
 /** A defeat line acknowledges a reward; it never performs the grant. */
 const DEFEAT_FORBIDDEN_VERBS = /\b(grant|grants|granted|granting|unlock|unlocks|unlocked|unlocking|receive|receives|received|receiving)\b/i
@@ -46,8 +49,15 @@ export const STAGE_TRIGGER_COVERAGE: Record<StageDialogueTrigger, readonly Campa
   miniboss_callout: WARDEN_STAGE_IDS,
   boss_intro: CAMPAIGN_STAGE_IDS,
   boss_defeat: CAMPAIGN_STAGE_IDS,
-  district_restored: WARDEN_STAGE_IDS
+  district_restored: WARDEN_STAGE_IDS,
+  tutorial_coach: [TUTORIAL_STAGE_ID],
+  capsule_pickup: WARDEN_STAGE_IDS,
+  weapon_get: WARDEN_STAGE_IDS,
+  warden_phase: WARDEN_STAGE_IDS
 }
+
+/** The global triggers every campaign ships exactly once (finale phases are counted per phase). */
+const REQUIRED_GLOBAL_TRIGGERS = ['prologue', 'epilogue', 'credits', 'game_over', 'epilogue_secret'] as const
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -135,6 +145,50 @@ function mentionsOtherWarden(
     if (lower.includes(warden.name.toLowerCase())) return warden.name
   }
   return null
+}
+
+/**
+ * Speaker rules for the 7.6 B triggers: a capsule log is the stage's own warden, a registry line is Iona naming
+ * the weapon its stage keys, a phase-two line is OMEGA, the game-over rotation is three OMEGA lines and one of
+ * Iona's with no warden named (it plays in any stage), and the secret is the Drill Hangar card then Iona.
+ */
+function validateTriggerSpeakers(
+  trigger: DialogueTrigger,
+  stageId: CampaignStageId | undefined,
+  lines: DialogueLineDefinition[],
+  path: string,
+  wardens: Array<{ id: string; name: string }>,
+  errors: string[]
+): void {
+  const requireSpeaker = (speakerId: string, why: string) => lines.forEach((line, lineIndex) => {
+    if (line.speakerId !== speakerId) errors.push(`${path}.lines[${lineIndex}] must be spoken by ${speakerId} (${why})`)
+  })
+  const isWardenStage = Boolean(stageId && WARDEN_STAGE_IDS.includes(stageId))
+  if (trigger === 'capsule_pickup' && isWardenStage) requireSpeaker(stageId as string, "the stage warden's recorded cache log")
+  if (trigger === 'warden_phase') requireSpeaker('omega_core', 'the phase-two intrusion')
+  if (trigger === 'weapon_get' && isWardenStage) {
+    requireSpeaker('director_iona', 'the district registry')
+    const weaponId = getCampaignStage(stageId as CampaignStageId).rewardWeaponId
+    const weaponName = weaponId ? getWeaponDisplayName(weaponId) : 'the stage weapon'
+    lines.forEach((line, lineIndex) => {
+      if (!line.text.toLowerCase().includes(weaponName.toLowerCase())) {
+        errors.push(`${path}.lines[${lineIndex}] must name ${weaponName}, the weapon this registry entry is keyed to`)
+      }
+    })
+  }
+  if (trigger === 'game_over') {
+    const omega = lines.filter((line) => line.speakerId === 'omega_core').length
+    const iona = lines.filter((line) => line.speakerId === 'director_iona').length
+    if (omega !== 3 || iona !== 1) errors.push(`${path} must be three omega_core lines and one director_iona line (found ${omega} and ${iona})`)
+    lines.forEach((line, lineIndex) => {
+      const other = mentionsOtherWarden(line.text, null, wardens)
+      if (other) errors.push(`${path}.lines[${lineIndex}] names a warden (${other}); the game-over rotation plays in any stage`)
+    })
+  }
+  if (trigger === 'epilogue_secret') {
+    if (lines[0]?.speakerId !== undefined) errors.push(`${path}.lines[0] must be narration (the Drill Hangar card)`)
+    if (lines[1] && lines[1].speakerId !== 'director_iona') errors.push(`${path}.lines[1] must be spoken by director_iona`)
+  }
 }
 
 export function validateDialogueContent(value: unknown): DialogueContentValidationResult {
@@ -233,7 +287,8 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
           globalCoverage.set(trigger, (globalCoverage.get(trigger) ?? 0) + 1)
         }
       }
-      const limits = DIALOGUE_LINE_LIMITS[trigger]
+      const coachLines = (getCampaignStage(TUTORIAL_STAGE_ID).arena.roomLocks ?? []).length
+      const limits = trigger === 'tutorial_coach' ? { min: coachLines, max: coachLines } : DIALOGUE_LINE_LIMITS[trigger]
       const rules: LineRules = {
         min: limits.min,
         max: limits.max,
@@ -252,6 +307,21 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
           }
         })
       }
+      if (trigger === 'tutorial_coach') {
+        const lockOrder = (getCampaignStage(TUTORIAL_STAGE_ID).arena.roomLocks ?? []).map((lock) => lock.requiredInput)
+        lines.forEach((line, lineIndex) => {
+          if (line.speakerId !== 'sentinel_rook') {
+            errors.push(`${path}.lines[${lineIndex}] must be spoken by sentinel_rook (the recorded intake prompts)`)
+          }
+          if (line.lock !== lockOrder[lineIndex]) {
+            errors.push(`${path}.lines[${lineIndex}].lock must be ${lockOrder[lineIndex] ?? 'absent'} (the tutorial's room lock order)`)
+          }
+        })
+      } else {
+        lines.forEach((line, lineIndex) => {
+          if (line.lock !== undefined) errors.push(`${path}.lines[${lineIndex}].lock belongs only to tutorial_coach`)
+        })
+      }
       if (trigger === 'boss_defeat') {
         lines.forEach((line, lineIndex) => {
           if (DEFEAT_FORBIDDEN_VERBS.test(line.text)) {
@@ -259,6 +329,7 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
           }
         })
       }
+      validateTriggerSpeakers(trigger, stageId, lines, path, wardens, errors)
       if (trigger === 'epilogue') {
         const cards = lines.map((line) => line.card).filter((card): card is CampaignStageId => Boolean(card))
         for (const warden of WARDEN_STAGE_IDS) {
@@ -281,7 +352,7 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
       if (count !== 1) errors.push(`Dialogue coverage ${key} must appear exactly once (found ${count})`)
     }
   }
-  for (const trigger of ['prologue', 'epilogue', 'credits'] as const) {
+  for (const trigger of REQUIRED_GLOBAL_TRIGGERS) {
     const count = globalCoverage.get(trigger) ?? 0
     if (count !== 1) errors.push(`Dialogue coverage ${trigger} must appear exactly once (found ${count})`)
   }
@@ -327,7 +398,7 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
       if (!validateLines(milestone.lines, `${path}.lines`, registeredSpeakers, rules, errors)) return
       ;(milestone.lines as DialogueLineDefinition[]).forEach((line, lineIndex) => {
         if (!ORDER_INDEPENDENT_MILESTONE_SPEAKERS.includes(line.speakerId as any)) {
-          errors.push(`${path}.lines[${lineIndex}] must use an order-independent operator or hero speaker`)
+          errors.push(`${path}.lines[${lineIndex}] must use an order-independent speaker (director_iona, hero or omega_core)`)
         }
         const other = mentionsOtherWarden(line.text, null, wardens)
         if (other) errors.push(`${path}.lines[${lineIndex}] names a warden (${other}); milestones must stay order-independent`)

@@ -3,6 +3,25 @@ import AudioService from '../audio'
 import type { PlayerRuntimeEvent } from './types'
 import { GAMEPLAY_TEXTURE_KEYS } from '../ui/gameplay/GameplayTextures'
 import { resolveSwordTrailPose } from './SwordTrailProfile'
+import { SHAKES, resolveChargeAuraFrequencyMs } from './hitFeel'
+import { FEEL_FRAME_MS, LANDING_SQUASH_FRAMES } from './config'
+import { explosionFlashStyle, Settings } from '../systems/Settings'
+import {
+  CHARGE_AURA,
+  CHARGE_AURA_BY_LEVEL,
+  HERO_EFFECTS_ATLAS,
+  HERO_PROJECTILES_ATLAS,
+  SLASH_ARC_OVERLAYS,
+  SLASH_ARC_ROTATION,
+  muzzleAnchor,
+  muzzleFrameForLevel,
+  slashArcFlipX,
+  type ChargeLevel,
+  type MuzzlePose
+} from '../combat/heroCombatVisuals'
+import { ensureStripAnimation, playStripOnce } from '../combat/heroFxPlayer'
+import { PLAYER_GAMEPLAY_CONFIG, type Direction8 } from './config'
+import type { SlashMove } from './types'
 
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
 
@@ -12,10 +31,20 @@ const VFX_FRAMES = {
   spark: ['effects_core/core/011', 'effects_core/core/019', 'effects_core/core/003']
 } as const
 
+/** Death burst orbs (the atlas's round aura frames) and the respawn beam-in. */
+const DEATH_ORB_COUNT = 8
+const DEATH_ORB_RADIUS_PX = 56
+const DEATH_ORB_MS = 600
+const BEAM_IN_MS = 180
+
 export class VfxSfxRouter {
   private readonly ownedResources = new Set<{ destroy: () => void }>()
   private readonly ownedTimers = new Set<Phaser.Time.TimerEvent>()
   private destroyed = false
+  private scaleTween?: Phaser.Tweens.Tween
+  private baseScale?: { x: number; y: number }
+  private chargeAura?: Phaser.GameObjects.Sprite
+  private chargeAuraLevel: ChargeLevel = 0
 
   constructor(private readonly scene: Phaser.Scene, private readonly player: Phaser.GameObjects.Sprite) {}
 
@@ -39,6 +68,8 @@ export class VfxSfxRouter {
       return
     }
     this.destroyed = true
+    this.scaleTween?.stop()
+    this.scaleTween = undefined
     this.ownedTimers.forEach((timer) => timer.remove(false))
     this.ownedTimers.clear()
     this.ownedResources.forEach((resource) => resource.destroy())
@@ -59,21 +90,111 @@ export class VfxSfxRouter {
     this.ownedTimers.add(timer)
   }
 
+  /**
+   * The visible charge tell: `charge_aura` on the hero, tinted and scaled by level (0 hides it). Called
+   * every frame by NewPlayerRuntime with the charge level while the button is held.
+   */
+  updateChargeAura(level: ChargeLevel): void {
+    if (this.destroyed) {
+      return
+    }
+    if (level === 0) {
+      this.chargeAura?.setVisible(false)
+      this.chargeAuraLevel = 0
+      return
+    }
+    if (!this.chargeAura) {
+      const animKey = ensureStripAnimation(this.scene, 'charge_aura', CHARGE_AURA, -1)
+      if (!animKey) {
+        return
+      }
+      this.chargeAura = this.own(this.scene.add.sprite(this.player.x, this.player.y, HERO_EFFECTS_ATLAS.key, CHARGE_AURA.frames[0]))
+      this.chargeAura.setBlendMode(Phaser.BlendModes.ADD)
+      this.chargeAura.play(animKey)
+    }
+    const aura = this.chargeAura
+    // Behind the hero so the body stays readable inside the ring (at depth + 1 it washed the sprite out).
+    aura.setPosition(this.player.x, this.player.y).setDepth(this.player.depth - 1).setVisible(true)
+    if (level !== this.chargeAuraLevel) {
+      const style = CHARGE_AURA_BY_LEVEL[level]
+      aura.setTint(style.tint).setScale(style.scale).setAlpha(Settings.get().reducedFlashing ? style.alpha * 0.6 : style.alpha)
+      aura.anims.timeScale = style.frameRate / CHARGE_AURA.frameRate
+      this.chargeAuraLevel = level
+    }
+  }
+
+  getChargeAuraDebug(): { visible: boolean; level: number; frame: string | null } {
+    const aura = this.chargeAura
+    return { visible: Boolean(aura?.visible), level: this.chargeAuraLevel, frame: aura?.visible ? String(aura.frame?.name ?? '') : null }
+  }
+
+  /** `fx_slash_arc_<move>_<dir>`: the hit's arc, centred on its box and riding with the hero. */
+  private spawnSlashArc(spec: string): void {
+    const cut = spec.lastIndexOf('_')
+    const move = spec.slice(0, cut) as SlashMove
+    const direction = spec.slice(cut + 1) as Direction8
+    const overlay = SLASH_ARC_OVERLAYS[move]
+    if (!overlay) {
+      return
+    }
+    const horizontal = direction === 'e' || direction === 'w'
+    const aimed = move === 'air_spin' ? PLAYER_GAMEPLAY_CONFIG.sword.windows.air[direction] : PLAYER_GAMEPLAY_CONFIG.sword.windows.ground[direction]
+    const anchor = horizontal
+      ? { x: overlay.anchor.x * (direction === 'w' ? -1 : 1), y: overlay.anchor.y }
+      : { x: aimed?.hitbox.offsetX ?? 0, y: aimed?.hitbox.offsetY ?? 0 }
+    const player = this.player
+    // Not owned: the arc destroys itself when its strip ends or the scene shuts down.
+    playStripOnce(this.scene, `slash_${move}`, overlay, player.x + anchor.x, player.y + anchor.y, {
+      flipX: slashArcFlipX(direction),
+      rotation: SLASH_ARC_ROTATION[direction] ?? 0,
+      depth: player.depth + 2,
+      follow: () => ({ x: player.x + anchor.x, y: player.y + anchor.y })
+    })
+  }
+
+  /** `fx_muzzle_lv<level>_<pose>`: flash at the cannon tip for the pose; false when the art is not loaded. */
+  private spawnMuzzle(key: string): boolean {
+    const match = /^fx_muzzle_lv([0-4])_(stand|run|air|dash)$/.exec(key)
+    if (!match || !this.scene.textures.exists(HERO_PROJECTILES_ATLAS.key)) {
+      return false
+    }
+    const level = Number(match[1]) as ChargeLevel
+    const facing: 1 | -1 = this.player.flipX ? 1 : -1
+    const at = muzzleAnchor(match[2] as MuzzlePose, facing)
+    const flash = this.own(this.scene.add.sprite(this.player.x + at.x, this.player.y + at.y, HERO_PROJECTILES_ATLAS.key, muzzleFrameForLevel(level)))
+    flash.setOrigin(facing === 1 ? 0 : 1, 0.5).setFlipX(facing === -1).setDepth(this.player.depth + 2).setBlendMode(Phaser.BlendModes.ADD)
+    this.scene.tweens.add({ targets: flash, alpha: 0, delay: 40 + level * 10, duration: 60 })
+    this.destroyLater(flash, 110 + level * 10)
+    return true
+  }
+
   private spawnVfx(key: string): void {
+    if (key.startsWith('fx_slash_arc_')) {
+      this.spawnSlashArc(key.slice('fx_slash_arc_'.length))
+      return
+    }
+    if (key.startsWith('fx_muzzle_lv')) {
+      if (!this.spawnMuzzle(key)) this.spawnVfx('fx_muzzle_small')
+      return
+    }
+    // The drawn arcs (fx_slash_arc_*) replace the procedural trail when the hero effects atlas is loaded.
+    if (key.startsWith('fx_sword_trail_dir_') && this.scene.textures.exists(HERO_EFFECTS_ATLAS.key)) {
+      return
+    }
     if (!this.scene.textures.exists(EFFECTS_ATLAS_KEY)) {
       return
     }
 
     if (key === 'fx_shake_camera_light') {
-      this.scene.events.emit('camera.shake', { intensity: 0.005, duration: 100 })
+      this.scene.events.emit('camera.shake', { ...SHAKES.light })
       return
     }
     if (key === 'fx_shake_camera_medium') {
-      this.scene.events.emit('camera.shake', { intensity: 0.012, duration: 180 })
+      this.scene.events.emit('camera.shake', { ...SHAKES.medium })
       return
     }
     if (key === 'fx_shake_camera_heavy') {
-      this.scene.events.emit('camera.shake', { intensity: 0.025, duration: 300 })
+      this.scene.events.emit('camera.shake', { ...SHAKES.heavy })
       return
     }
 
@@ -101,7 +222,7 @@ export class VfxSfxRouter {
           follow: this.player,
           lifespan: 360 + level * 45,
           quantity: 3 + level,
-          frequency: 42,
+          frequency: resolveChargeAuraFrequencyMs(Settings.get().reducedFlashing),
           speed: { min: 22 + level * 5, max: 52 + level * 8 },
           radial: true,
           tint: color,
@@ -125,7 +246,38 @@ export class VfxSfxRouter {
         this.destroyLater(ring, 470 + level * 40)
         break
       }
+      case 'fx_land_squash': {
+        this.tweenPlayerScale(1.18, 0.78, LANDING_SQUASH_FRAMES * FEEL_FRAME_MS)
+        break
+      }
+      case 'fx_beam_in': {
+        this.tweenPlayerScale(0.2, 1.8, BEAM_IN_MS)
+        break
+      }
+      case 'fx_death_orbs': {
+        // The hero's death burst is the explosion reduced flashing dims (prompt 04 §4.3).
+        const burst = explosionFlashStyle(Settings.get().reducedFlashing)
+        for (let index = 0; index < DEATH_ORB_COUNT; index += 1) {
+          const angle = (index / DEATH_ORB_COUNT) * Math.PI * 2
+          const frame = VFX_FRAMES.aura[index % VFX_FRAMES.aura.length]
+          const orb = this.own(this.scene.add.sprite(this.player.x, this.player.y, EFFECTS_ATLAS_KEY, frame))
+          orb.setDepth(this.player.depth + 2)
+          if (burst.additive) orb.setBlendMode(Phaser.BlendModes.ADD)
+          orb.setScale(1.4).setAlpha(burst.alphaScale)
+          this.scene.tweens.add({
+            targets: orb,
+            x: this.player.x + Math.cos(angle) * DEATH_ORB_RADIUS_PX,
+            y: this.player.y + Math.sin(angle) * DEATH_ORB_RADIUS_PX,
+            alpha: 0.2,
+            duration: DEATH_ORB_MS,
+            ease: 'Quad.Out'
+          })
+          this.destroyLater(orb, DEATH_ORB_MS + 40)
+        }
+        break
+      }
       case 'fx_hit_spark':
+      case 'fx_land_dust':
       case 'dash_dust': {
         const frames = key === 'dash_dust' ? VFX_FRAMES.spark : VFX_FRAMES.spark
         const emitter = this.own(this.scene.add.particles(this.player.x, this.player.y + 8, EFFECTS_ATLAS_KEY, {
@@ -196,36 +348,37 @@ export class VfxSfxRouter {
           swordRoot.setRotation(pose.sweepStart)
           swordRoot.setScale(0.82)
 
+          // WREN's cutter is amber, the hero accent (docs/art/hero-brief.md); the green beam was the retired skin's.
           const swordGlow = this.scene.add.graphics()
           swordGlow.setBlendMode(Phaser.BlendModes.ADD)
-          swordGlow.lineStyle(10, 0x0ac797, 0.24)
+          swordGlow.lineStyle(10, 0xb8741c, 0.24)
           swordGlow.beginPath()
           swordGlow.arc(0, 0, 30, -1.02, 1.02, false)
           swordGlow.strokePath()
 
           const swordBlade = this.scene.add.graphics()
           swordBlade.setBlendMode(Phaser.BlendModes.ADD)
-          swordBlade.fillStyle(0x25e6ae, 0.24)
+          swordBlade.fillStyle(0xf2a93b, 0.24)
           swordBlade.fillTriangle(2, -5, 35, 0, 2, 5)
-          swordBlade.fillStyle(0xa6ffe6, 0.82)
+          swordBlade.fillStyle(0xffd27a, 0.82)
           swordBlade.fillTriangle(5, -2, 34, 0, 5, 2)
-          swordBlade.lineStyle(5, 0x45f6c2, 0.94)
+          swordBlade.lineStyle(5, 0xf2a93b, 0.94)
           swordBlade.beginPath()
           swordBlade.arc(0, 0, 29, -1, 1, false)
           swordBlade.strokePath()
-          swordBlade.lineStyle(2, 0xf4fffb, 1)
+          swordBlade.lineStyle(2, 0xfff4d6, 1)
           swordBlade.beginPath()
           swordBlade.arc(0, 0, 27, -0.94, 0.94, false)
           swordBlade.strokePath()
-          swordBlade.fillStyle(0xf4fffb, 0.96)
+          swordBlade.fillStyle(0xfff4d6, 0.96)
           swordBlade.fillCircle(34, 0, 2)
-          swordBlade.fillStyle(0x75ffd5, 0.72)
+          swordBlade.fillStyle(0xffd27a, 0.72)
           swordBlade.fillCircle(29, -10, 1.5)
           swordBlade.fillCircle(30, 9, 1.5)
 
           const swordEcho = this.scene.add.graphics()
           swordEcho.setBlendMode(Phaser.BlendModes.ADD)
-          swordEcho.lineStyle(2, 0x8dffe0, 0.38)
+          swordEcho.lineStyle(2, 0xffd27a, 0.38)
           swordEcho.beginPath()
           swordEcho.arc(0, 0, 35, -0.88, 0.88, false)
           swordEcho.strokePath()
@@ -251,6 +404,24 @@ export class VfxSfxRouter {
         break
       }
     }
+  }
+
+  /** Squash or beam-in: set a scale relative to the resting scale and tween back; never compounds. */
+  private tweenPlayerScale(fromX: number, fromY: number, durationMs: number): void {
+    this.scaleTween?.stop()
+    const base = this.baseScale ?? { x: this.player.scaleX, y: this.player.scaleY }
+    this.baseScale = base
+    this.player.setScale(base.x * fromX, base.y * fromY)
+    this.scaleTween = this.scene.tweens.add({
+      targets: this.player,
+      scaleX: base.x,
+      scaleY: base.y,
+      duration: durationMs,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        this.scaleTween = undefined
+      }
+    })
   }
 
   private playSfx(key: string): void {

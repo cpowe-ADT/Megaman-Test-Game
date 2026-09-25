@@ -1,9 +1,12 @@
 import { IDENTITY } from '../content/identity'
+import { PIXEL_FONT, PIXEL_FONT_PX } from './pixelFont'
 import { GAME_WIDTH } from '../config/renderPolicy'
 import Phaser from 'phaser'
 import { getHudLayout } from './hudLayout'
+export { formatDistrictLabel } from './hudLayout'
 import { BakedGraphics, type BakeBounds } from './BakedGraphics'
 import { getRenderScale } from '../config/hdRender'
+import { HUD_ICONS_ATLAS, weaponHudIconFrame } from '../projectiles/weaponArt'
 
 export class HUD {
   private scene: Phaser.Scene
@@ -13,17 +16,23 @@ export class HUD {
   private gPlayer: BakedGraphics
   private gWeapon: BakedGraphics
   private gBoss: BakedGraphics
+  /** The boss panel background and its red accent, baked apart from gChrome so the whole panel can hide as one unit. */
+  private gBossChrome: BakedGraphics
   private tPlayer: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tWeapon: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
+  /** The equipped weapon's `hud_icons_v1` icon at the right end of the WEAPON row (prompt 07 phase 7.3). */
+  private weaponIcon?: Phaser.GameObjects.Image
   private tBoss: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private tLives: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text
   private playerSnapshot = { current: 0, max: 1 }
   private weaponSnapshot = { current: 0, max: 1 }
   private bossSnapshot = { current: 0, max: 1 }
-  private bossBarVisible = true
+  /** Hidden until beginBossCombat calls setBossBarVisible(true): no boss framing before the fight starts. */
+  private bossBarVisible = false
   private playerName = 'PLAYER'
   private weaponName = 'BUSTER'
   private bossName = 'BOSS • ???'
+  private bossTarget = '???'
   private weaponColor = 0x58d8ff
   /** What each bar last baked (values and render scale); the boss bar was rebuilt every frame with an unchanged value. */
   private drawnBars = new WeakMap<BakedGraphics, string>()
@@ -35,6 +44,12 @@ export class HUD {
     this.gChrome = new BakedGraphics(scene, 'hud-baked-chrome')
     this.drawChrome()
     this.root.add(this.gChrome.image)
+
+    this.gBossChrome = new BakedGraphics(scene, 'hud-baked-boss-chrome')
+    this.drawBossChrome()
+    this.root.add(this.gBossChrome.image)
+    this.gBossChrome.image.setVisible(this.bossBarVisible)
+
     // A lost and restored WebGL context empties every DynamicTexture; bake the panels and bars again.
     const rebake = () => {
       this.drawnBars = new WeakMap()
@@ -48,7 +63,7 @@ export class HUD {
       x: number,
       y: number,
       s: string,
-      size = 12,
+      size = PIXEL_FONT_PX,
       originX = 0,
       originY = 0
     ) => {
@@ -71,7 +86,7 @@ export class HUD {
 
       const text = this.scene
         .add.text(x, y, s, {
-          fontFamily: 'monospace',
+          fontFamily: PIXEL_FONT,
           fontSize: `${size}px`,
           color: '#cfe8ff',
           stroke: strokeColor,
@@ -94,25 +109,33 @@ export class HUD {
 
     this.gBoss = new BakedGraphics(scene, 'hud-baked-boss-bar')
     this.root.add(this.gBoss.image)
+    this.gBoss.image.setVisible(this.bossBarVisible)
 
     const layout = getHudLayout(GAME_WIDTH)
-    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.DEV_SKIN.enabled ? IDENTITY.DEV_SKIN.heroLabel : IDENTITY.HERO_CALLSIGN, 9)
+    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.HERO_CALLSIGN, PIXEL_FONT_PX)
     this.root.add(this.tPlayer)
 
-    this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', 9)
+    this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', PIXEL_FONT_PX)
     this.root.add(this.tWeapon)
+    if (scene.textures.exists(HUD_ICONS_ATLAS.key)) {
+      const icon = hudWeaponIconPlacement(layout)
+      this.weaponIcon = scene.add.image(icon.x, icon.y, HUD_ICONS_ATLAS.key, weaponHudIconFrame('Buster')).setDisplaySize(icon.size, icon.size)
+      this.root.add(this.weaponIcon)
+    }
 
-    this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', 9, 1, 0)
+    this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', PIXEL_FONT_PX, 1, 0)
+    this.tBoss.setVisible(this.bossBarVisible)
     this.root.add(this.tBoss)
 
     // In the HUD band under the boss panel: on the floor it covered the boss spawn point in most rooms.
-    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'RETRY ×03', 10, 1, 0)
+    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'RETRY ×03', PIXEL_FONT_PX, 1, 0)
     this.root.add(this.tLives)
   }
 
   setNames(playerName: string, bossName: string): void {
     this.playerName = this.truncateLabel(playerName.toUpperCase(), 16)
-    this.bossName = `BOSS • ${this.truncateLabel(bossName.toUpperCase(), 16)}`
+    this.bossTarget = this.truncateLabel(bossName.toUpperCase(), 16)
+    this.bossName = this.bossLabelText()
     this.tPlayer.setText(this.playerName)
     this.tBoss.setText(this.bossName)
   }
@@ -120,6 +143,24 @@ export class HUD {
   setWeaponName(weaponName: string): void {
     this.weaponName = `WEAPON • ${this.truncateLabel(weaponName.toUpperCase(), 16)}`
     this.tWeapon.setText(this.weaponName)
+  }
+
+  /** Shows the weapon's HUD icon (the Buster's for an unknown id). */
+  setWeaponIcon(weaponId: string): void {
+    const frame = weaponHudIconFrame(weaponId)
+    if (this.weaponIcon && this.scene.textures.get(HUD_ICONS_ATLAS.key).has(frame)) this.weaponIcon.setFrame(frame)
+  }
+
+  /** Where the weapon icon is and which frame it draws (smoke 12 reads it). */
+  getWeaponIconState(): { frame: string; x: number; y: number; size: number; labelRight: number } | null {
+    if (!this.weaponIcon) return null
+    return {
+      frame: String(this.weaponIcon.frame?.name ?? ''),
+      x: this.weaponIcon.x,
+      y: this.weaponIcon.y,
+      size: Math.round(this.weaponIcon.displayWidth),
+      labelRight: Math.round(this.tWeapon.x + this.tWeapon.width)
+    }
   }
 
   setWeaponColor(color?: number): void {
@@ -197,26 +238,45 @@ export class HUD {
   updateBossHp(cur: number, max: number): void {
     this.bossSnapshot = { current: cur, max }
     const bar = getHudLayout(GAME_WIDTH).bossBar
-    this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, max > 0 ? cur / max : 0, 0xff6677)
+    const ratio = max > 0 ? cur / max : 0
+    this.drawBar(this.gBoss, bar.x, bar.y, bar.width, bar.height, this.bossBarFill === null ? ratio : Math.min(ratio, this.bossBarFill), 0xff6677)
     this.gBoss.image.setVisible(this.bossBarVisible)
-    this.tBoss.setVisible(true)
+    this.tBoss.setVisible(this.bossBarVisible)
   }
 
+  /** The intro's bar fill (prompt 07 phase 7.2 item 4): a fraction caps the drawn bar; null draws the HP. `bossSnapshot` stays the HP. */
+  private bossBarFill: number | null = null
+
+  setBossBarFill(fraction: number | null): void {
+    this.bossBarFill = fraction === null ? null : Math.max(0, Math.min(1, fraction))
+    this.updateBossHp(this.bossSnapshot.current, this.bossSnapshot.max)
+  }
+
+  /** The whole boss panel (background, red accent, bar and name) hides as one unit until the fight starts. */
   setBossBarVisible(visible: boolean): void {
     this.bossBarVisible = visible
+    this.gBossChrome.image.setVisible(visible)
     this.gBoss.image.setVisible(visible)
-    // Keep the mission target named before the arena seals; an empty HUD panel
-    // reads like missing UI and makes the stage goal less clear.
-    this.tBoss.setVisible(true)
+    this.bossName = this.bossLabelText()
+    this.tBoss.setText(this.bossName)
+    this.tBoss.setVisible(visible)
+  }
+
+  private bossLabelText(): string {
+    return `BOSS • ${this.bossTarget}`
   }
 
   resize(): void {
     this.drawChrome()
+    this.drawBossChrome()
+    this.gBossChrome.image.setVisible(this.bossBarVisible)
     const layout = getHudLayout(GAME_WIDTH)
     this.tBoss.setPosition(layout.bossLabel.x, layout.bossLabel.y)
     this.tLives.setPosition(layout.livesLabel.x, layout.livesLabel.y)
     this.tPlayer.setPosition(layout.playerLabel.x, layout.playerLabel.y)
     this.tWeapon.setPosition(layout.weaponLabel.x, layout.weaponLabel.y)
+    const icon = hudWeaponIconPlacement(layout)
+    this.weaponIcon?.setPosition(icon.x, icon.y)
     this.tPlayer.setText(this.playerName)
     this.tWeapon.setText(this.weaponName)
     this.tBoss.setText(this.bossName)
@@ -242,18 +302,40 @@ export class HUD {
     chrome.fillStyle(0x050d18, 0.88)
     chrome.fillRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
     chrome.fillRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
-    chrome.fillRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
     chrome.lineStyle(1, 0x2b5c88, 0.72)
     chrome.strokeRoundedRect(layout.playerPanel.x, layout.playerPanel.y, layout.playerPanel.width, layout.playerPanel.height, 3)
     chrome.strokeRoundedRect(layout.centerPanel.x, layout.centerPanel.y, layout.centerPanel.width, layout.centerPanel.height, 3)
-    chrome.strokeRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
     chrome.fillStyle(0x63ff88, 0.9)
     chrome.fillRect(layout.playerPanel.x, 10, 3, 19)
     chrome.fillStyle(this.weaponColor, 0.9)
     chrome.fillRect(layout.playerPanel.x, 34, 3, 17)
-    chrome.fillStyle(0xff6677, 0.9)
-    chrome.fillRect(layout.bossPanel.x + layout.bossPanel.width - 3, 10, 3, 19)
     const bounds: BakeBounds = { x: 0, y: 0, width, height: layout.height }
     this.gChrome.bake(bounds)
   }
+
+  /** The boss panel background and its red accent: baked apart from drawChrome so setBossBarVisible can hide it as one unit. */
+  private drawBossChrome(): void {
+    const layout = getHudLayout(GAME_WIDTH)
+    const chrome = this.gBossChrome.graphics
+    chrome.clear()
+    chrome.fillStyle(0x050d18, 0.88)
+    chrome.fillRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.lineStyle(1, 0x2b5c88, 0.72)
+    chrome.strokeRoundedRect(layout.bossPanel.x, layout.bossPanel.y, layout.bossPanel.width, layout.bossPanel.height, 3)
+    chrome.fillStyle(0xff6677, 0.9)
+    chrome.fillRect(layout.bossPanel.x + layout.bossPanel.width - 3, 10, 3, 19)
+    const bounds: BakeBounds = {
+      x: layout.bossPanel.x - 2,
+      y: layout.bossPanel.y - 2,
+      width: layout.bossPanel.width + 4,
+      height: layout.bossPanel.height + 4
+    }
+    this.gBossChrome.bake(bounds)
+  }
+}
+
+/** The weapon icon: 12 game px (an 18px cell), right-aligned to the weapon bar, between the WEAPON label row and the bar. */
+export function hudWeaponIconPlacement(layout: Pick<ReturnType<typeof getHudLayout>, 'weaponBar' | 'weaponLabel'>): { x: number; y: number; size: number } {
+  const size = 12
+  return { x: layout.weaponBar.x + layout.weaponBar.width - size / 2, y: layout.weaponBar.y - size / 2 - 0.5, size }
 }

@@ -6,7 +6,7 @@ import { DIALOGUE_REGISTRY } from '../content/dialogue/index'
 import InputActions from '../input/InputActions'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { Save } from '../systems/Save'
-import { addMenuBackdrop, MENU_FONT_CODE } from '../ui/menu/menuTheme'
+import { addMenuBackdrop, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 import { resolvePlaybackLines } from './game/StoryDirector'
 import { GAME_SIZE } from '../config/renderPolicy'
 
@@ -48,14 +48,14 @@ export class PrologueScene extends Phaser.Scene {
       this.drift = this.add.tileSprite(width / 2, height / 2 + 20, width, height, 'bg_dock_0').setAlpha(0.22)
     }
     this.speakerText = this.add.text(width / 2, 74, '', {
-      fontFamily: MENU_FONT_CODE, fontSize: '9px', color: '#7de8ff', letterSpacing: 2
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff', letterSpacing: 2
     }).setOrigin(0.5)
     this.bodyText = this.add.text(width / 2, 118, '', {
       fontFamily: 'monospace', fontSize: '12px', color: '#f4f8ff', align: 'center', lineSpacing: 4,
       wordWrap: { width: width - 96, useAdvancedWrap: true }
     }).setOrigin(0.5)
     this.counterText = this.add.text(width / 2, height - 22, '', {
-      fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#8faed8', letterSpacing: 1
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#8faed8', letterSpacing: 1
     }).setOrigin(0.5)
 
     const actions = InputActions.forScene(this)

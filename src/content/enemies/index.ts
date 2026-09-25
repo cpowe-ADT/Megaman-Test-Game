@@ -1,7 +1,7 @@
 import enemyGunnerBotJson from './enemy_gunner_bot.json'
 import { validatePilotEnemyConfig } from './validatePilotEnemyConfig'
 import type { PilotEnemyConfig } from './types'
-export { getGeneratedEnemyDefinition, getGeneratedEnemyDefinitions, getGeneratedEnemyCount } from './catalog'
+export { enemyCatalogInstalled, getGeneratedEnemyDefinition, getGeneratedEnemyDefinitions, getGeneratedEnemyCount, installEnemyCatalog } from './catalog'
 
 const pilotConfigs: Record<string, PilotEnemyConfig> = {}
 

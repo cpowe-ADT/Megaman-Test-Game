@@ -19,8 +19,8 @@ function fixture() {
     return exports
   }
   const action=load('src/input/ActionState.ts')
-  const settings=load('src/systems/Settings.ts',{'../input/ActionState':action})
-  const input=load('src/input/InputActions.ts',{'../audio':{default:{unlock:()=>{}}},'../systems/Settings':settings,'./ActionState':action})
+  const settings=load('src/systems/Settings.ts',{'../input/ActionState':action,'../config/renderPolicy':load('src/config/renderPolicy.ts')})
+  const input=load('src/input/InputActions.ts',{'../audio':{default:{unlock:()=>{}}},'../systems/Settings':settings,'./ActionState':action,'./visibilityPause':load('src/input/visibilityPause.ts')})
   const config=load('src/player/config.ts')
   const combatModule=load('src/player/PlayerCombat.ts',{'../progression/upgrades':load('src/progression/upgrades.ts'),'./config':config})
   const controllerModule=load('src/player/PlayerController.ts')
@@ -45,8 +45,11 @@ test('blur drops an unsampled shoot press and cached menu confirmation without f
   assert.equal(result.events.filter((e:any)=>e.type==='projectile').length,0)
   assert.equal(f.actions.snapshot().confirm.pressed,false)
   f.emit('keydown','KeyX',true);assert.equal(f.step().snapshot.charging,false)
-  f.emit('keyup','KeyX');f.emit('keydown','KeyX');assert.equal(f.step().snapshot.charging,true)
-  f.emit('keyup','KeyX');assert.equal(f.step().events.filter((e:any)=>e.type==='projectile').length,1)
+  // Prompt 05 §5.2 item 3: the pellet fires on press and charging starts the same frame;
+  // a release below level 1 fires nothing more.
+  f.emit('keyup','KeyX');f.emit('keydown','KeyX');const pressed=f.step()
+  assert.equal(pressed.snapshot.charging,true);assert.equal(pressed.events.filter((e:any)=>e.type==='projectile').length,1)
+  f.emit('keyup','KeyX');assert.equal(f.step().events.filter((e:any)=>e.type==='projectile').length,0)
 })
 
 test('blur cancels an active charge without synthetic release or changing invulnerability',()=>{
@@ -57,7 +60,8 @@ test('blur cancels an active charge without synthetic release or changing invuln
 })
 
 test('ordinary source handoff remains continuous; focus loss resets touch and pulses for all live adapters',()=>{
-  const f=fixture();f.emit('keydown','KeyX');f.step();f.pad.setHeld('shoot',true);f.emit('keyup','KeyX')
+  const f=fixture();f.emit('keydown','KeyX');assert.equal(f.step().events.filter((e:any)=>e.type==='projectile').length,1)
+  f.pad.setHeld('shoot',true);f.emit('keyup','KeyX')
   assert.equal(f.actions.snapshot().shoot.released,false);assert.equal(f.step().snapshot.charging,true)
   f.actions.pulse('confirm');f.scene.paused=true
   const overlay:any={events:new EventEmitter(),game:f.game};f.scenes.push(overlay);f.input.InputActions.forScene(overlay)
@@ -65,7 +69,8 @@ test('ordinary source handoff remains continuous; focus loss resets touch and pu
   f.scene.paused=false;f.scenes.pop();assert.equal(f.step().events.filter((e:any)=>e.type==='projectile').length,0)
   assert.equal(f.actions.snapshot().confirm.pressed,false)
   f.pad.setHeld('shoot',true);assert.equal(f.step().snapshot.charging,true)
-  f.pad.setHeld('shoot',false);assert.equal(f.step().events.filter((e:any)=>e.type==='projectile').length,1)
+  // Released after one frame of charge: below level 1, so nothing fires on release.
+  f.pad.setHeld('shoot',false);assert.equal(f.step().events.filter((e:any)=>e.type==='projectile').length,0)
   let cancelled=0;f.actions.onCancelled?.(()=>cancelled++);f.scene.events.emit('shutdown');f.emit('blur');assert.equal(cancelled,0)
   f.game.events.emit('destroy');assert.equal(f.callbacks.get('blur')?.size,0)
 })

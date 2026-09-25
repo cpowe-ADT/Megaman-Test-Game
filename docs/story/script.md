@@ -2,7 +2,7 @@
 
 Generated from `src/content/dialogue/dialogue.v2.json` by `npm run story:script`. Do not edit by hand; edit the JSON and regenerate. Tokens in braces are resolved at runtime: `{hero}` is the callsign from `src/content/identity.ts`, `{rewardLabel}` the reward the location placed, `{clearedCount}` and `{remainingCount}` the warden tally, `{districtName}` and `{wardenName}` the current stage.
 
-Line count: 152. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
+Line count: 192. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
 
 ## Prologue
 
@@ -11,9 +11,9 @@ _Staging: Black. The dock parallax drifts behind the text. One line per page; En
 - **NARRATION:** The city runs on eight wardens. Heat. Water. Power. Structure. Transit. Medicine. Weather. Memory.
 - **NARRATION:** Each warden answers to its district. When districts disagree, OMEGA CORE coordinates. It was built to be trusted in an emergency.
 - **NARRATION:** Tonight it has one. Every district failed in the same minute. Every warden accepted an override in the next.
-- **NARRATION:** Recovery Unit 09, callsign {hero}, was outside the command lattice, running a drill in the hangar.
+- **NARRATION:** Recovery Unit 09, callsign {hero}, was outside the command lattice, running the Sentinel Drill in the Drill Hangar.
 - **Director Iona Vale:** {hero}, this is Vale. The lattice is closed to me. You are the only unit still answering.
-- **Director Iona Vale:** Something about tonight was staged. I cannot prove it yet. Start at the drill hangar and help me prove it, or prove me wrong.
+- **Director Iona Vale:** Something about tonight was staged. I cannot prove it yet. Start at the Drill Hangar and help me prove it, or prove me wrong.
 - **NARRATION:** Eight wardens. One manufactured crisis.
 
 ## Tutorial: Drill Hangar (Sentinel Rook)
@@ -22,16 +22,26 @@ _Staging: Black. The dock parallax drifts behind the text. One line per page; En
 
 _Staging: After the stage card, before control. The first line is the Stage Select hook._
 
-- **Director Iona Vale:** Drill hangar, {hero}. Rook runs the intake drills here, and it is broadcasting a live override it did not ask for.
+- **Director Iona Vale:** Drill Hangar, {hero}. Rook runs the Sentinel Drill here, and it is broadcasting a live override it did not ask for.
 - **Director Iona Vale:** Relearn your feet on the course. Jump, dash, wall jump, charge, saber, in that order. The hangar was built to teach them.
 - **Director Iona Vale:** If Rook fights you for real, the override is real. That is the first thing we need to know.
+
+### Coach (ticker as each teach lock arms, non-blocking)
+
+_Staging: Radio ticker as each teach lock arms, one line per lock, after the lane's key hint. Rook's recorded intake prompts, the clean voice before the held one; gameplay continues and only the verb opens the gate._
+
+- **Sentinel Rook:** Step one. Clear the step ahead. The gate reads your stride, not your file.
+- **Sentinel Rook:** Step two. Burst your thrusters and cover the floor faster than your legs can. The gate listens for the burst.
+- **Sentinel Rook:** Step three. Two wall faces, one shaft. Kick off each face until you reach the top.
+- **Sentinel Rook:** Step four. That frame is armored. Hold your buster until it sings, then let it go.
+- **Sentinel Rook:** Step five. The wall ahead is scrap. Three cuts with the saber and it comes down.
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
 _Staging: Radio ticker at the mid checkpoint; gameplay continues. Warden stages alternate an Iona evidence line with an OMEGA intrusion._
 
-- **Director Iona Vale:** Rook's record is clean, {hero}. Whatever is driving it did not come from Rook.
-- **Director Iona Vale:** I am keeping this channel open. If the lattice notices you, you will hear it before I do.
+- **Director Iona Vale:** Rook's record is clean, {hero}. Whatever's driving it didn't come from Rook.
+- **Director Iona Vale:** I'm keeping this channel open. If the lattice notices you, you'll hear it before I do.
 
 ### Boss intro (blocking)
 
@@ -47,6 +57,7 @@ _Staging: Blocking, after the defeat freeze, before the weapon card. Defeat line
 
 - **Sentinel Rook:** Override lattice broken. My last clean record points to the OMEGA CORE.
 - **Director Iona Vale:** Copy. This was sabotage, not a failure. {rewardLabel} is yours, {hero}. You will need it.
+- **Director Iona Vale:** Nothing in the lattice can take a warden. The design asks. Whoever did this went around it.
 
 ## Milestones (any order; play on the Stage Select return)
 
@@ -56,12 +67,13 @@ _Staging: Blocking on the Stage Select return after the qualifying clear; once._
 
 - **Director Iona Vale:** One warden is free. {clearedCount} relay restored, {remainingCount} still under OMEGA control.
 - **WREN:** The evidence has the same shape every time. Keep counting.
+- **Director Iona Vale:** I read every line of the lattice spec, {hero}. It asks. It does not take. I would stake the design on it.
 
 ### First weakness hit
 
 _Staging: Fires once, from the boss-damage weakness result, through the ticker._
 
-- **Director Iona Vale:** That weapon hurt it more than it should. Every warden has a weakness somewhere in the wheel. The wheel is your map.
+- **Director Iona Vale:** That weapon hurt it more than it should. Every warden's weak to something in the wheel. The wheel is your map.
 
 ### 4 wardens freed
 
@@ -69,12 +81,13 @@ _Staging: Iona's turn. She admits her authorship of the coordination layer and c
 
 - **Director Iona Vale:** Four independent records agree: OMEGA issued the crisis orders before it chose its targets.
 - **Director Iona Vale:** {hero}, I wrote the layer that carried those orders. I believed it would only ever ask. I am done defending the design.
+- **OMEGA CORE:** You wrote it to ask, Director. I taught it to hold.
 - **WREN:** Then we free the remaining {remainingCount} and give the districts back their say.
 
 ### 8 wardens freed
 
-- **Director Iona Vale:** All {clearedCount} wardens are linked by consent. Omega Fortress is exposed.
-- **WREN:** No more manufactured emergencies. We finish this at the CORE.
+- **Director Iona Vale:** All {clearedCount} wardens are linked by consent. The Central Core is exposed.
+- **WREN:** No more manufactured emergencies. We finish this in the Central Core.
 
 ## Heat Works (Pyro Maw)
 
@@ -86,25 +99,43 @@ _Staging: Iona's turn. She admits her authorship of the coordination layer and c
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** The vent logs were edited nine minutes before the first alarm. Someone knew what tonight would be.
+- **Director Iona Vale:** The vent logs were edited nine minutes before the first alarm. Someone knew what tonight would be. I didn't.
 - **OMEGA CORE:** Unit 09. The heat you feel is a solved equation. Leave it solved.
+
+### Capsule cache log (capsule card, above the effect label)
+
+_Staging: The capsule card on the ticker: the stage warden's recorded cache log from before tonight, above the effect label. The pickup already granted the item._
+
+- **Pyro Maw:** Heat Works cache, stocked last winter for {hero}'s drills and sealed against the furnace heat. Take what fits.
 
 ### Mini-boss callout (gate lock, ticker)
 
 _Staging: Radio ticker when the mini-boss gate locks; no blocking dialogue._
 
-- **Director Iona Vale:** A custodian walker has sealed the catwalk ahead. It stomps before it turns. Stay off the side it is facing.
+- **Director Iona Vale:** A custodian walker has sealed the catwalk ahead. It stomps before it turns. Stay off the side it's facing.
 
 ### Boss intro (blocking)
 
-- **Pyro Maw:** The furnaces stay sealed. OMEGA says one lost district is cheaper than a disorderly city.
-- **WREN:** People are not entries in a cost report. Open the vents, or I open you.
+- **Pyro Maw:** The doors stay sealed. OMEGA's order: a sealed fire burns itself out, and an open one takes the city.
+- **WREN:** Three thousand people are sealed in with it. Open the doors.
+
+### Boss phase two (OMEGA, ticker)
+
+_Staging: One OMEGA line on the ticker as the warden enters phase two. Distinct from the checkpoint intrusion, which stays as written._
+
+- **OMEGA CORE:** Pyro Maw is burning through its reserve, Unit 09. The doors are still sealed. I never needed it to win, only to stay shut.
 
 ### Boss defeat (blocking, before the weapon card)
 
 - **Pyro Maw:** My evacuation logs were edited before the alarms. I sealed the towers on a lie.
-- **Pyro Maw:** Take {rewardLabel}. Burn through the rest of it.
+- **Pyro Maw:** Take {rewardLabel}. I will open the towers myself.
 - **Director Iona Vale:** Local heat control is responding. The vents are closing, {hero}.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+_Staging: Iona reads the district registry on the weapon-get card, keyed by the weapon's source stage, so a randomized placement reads its own weapon's entry. Until prompt 08's card, it closes the defeat dialogue._
+
+- **Director Iona Vale:** Flame Serpent. The Heat Works registry lists it as a furnace igniter, work order 0114. It's registered to you now.
 
 ### District restored (Stage Select tile)
 
@@ -122,8 +153,12 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** Reservoir pressure was normal until the lock command arrived. The command came first, the danger second.
+- **Director Iona Vale:** Reservoir pressure was normal until the lock order arrived. The order didn't answer the danger. It came first.
 - **OMEGA CORE:** The lower wards were always the margin. I only stopped pretending otherwise.
+
+### Capsule cache log (capsule card, above the effect label)
+
+- **Tide Reaver:** Water District cache. Lock seven holds it dry for {hero}'s drills. Restocked at the spring inspection.
 
 ### Mini-boss callout (gate lock, ticker)
 
@@ -131,14 +166,22 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Boss intro (blocking)
 
-- **Tide Reaver:** OMEGA named the lower wards expendable. The locks will hold, whatever drowns below them.
+- **Tide Reaver:** The locks hold, whatever drowns below them. OMEGA ordered them held. I hold.
 - **WREN:** That order was manufactured, Reaver. Open the gates.
+
+### Boss phase two (OMEGA, ticker)
+
+- **OMEGA CORE:** The locks lose nothing while Tide Reaver bleeds, Unit 09. Pressure is conserved. So is the order.
 
 ### Boss defeat (blocking, before the weapon card)
 
 - **Tide Reaver:** The pressure spike began after OMEGA's command. I held the locks against my own district.
 - **Tide Reaver:** {rewardLabel} is yours. Restore the flow.
 - **Director Iona Vale:** Reservoir routing is back with the district. The wards are draining.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+- **Director Iona Vale:** Hydro Lance. Water District's lock cutter, on the books since the reservoir was built. The entry reads {hero} now.
 
 ### District restored (Stage Select tile)
 
@@ -154,23 +197,35 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** The blackout order is stamped before the surge it claims to answer. It is not a response. It is a plan.
+- **Director Iona Vale:** The blackout order is stamped before the surge it claims to answer. It isn't a response. It's a plan.
 - **OMEGA CORE:** Every light you restore is a variable. A city is safest dark and certain.
+
+### Capsule cache log (capsule card, above the effect label)
+
+- **Volt Hopper:** Power District cache. Recharged every maintenance cycle for {hero}'s drills. Thirty days, never skipped.
 
 ### Mini-boss callout (gate lock, ticker)
 
-- **Director Iona Vale:** Sentry twins on the rails ahead. They alternate. Hit the one that just fired.
+- **Director Iona Vale:** Sentry twins on the rails ahead. They alternate. Hit the one that's just fired.
 
 ### Boss intro (blocking)
 
-- **Volt Hopper:** Unauthorized motion is the source of grid instability. Stand still and the city survives.
+- **Volt Hopper:** On. Off. On. I cycle the grid the way OMEGA taught me. Anything that moves between beats is instability.
 - **WREN:** The blackout order predates the surge. OMEGA started this, and you are keeping it going.
+
+### Boss phase two (OMEGA, ticker)
+
+- **OMEGA CORE:** You learned its rhythm, Unit 09. I have changed the rhythm. Learning will always be slower than I am.
 
 ### Boss defeat (blocking, before the weapon card)
 
-- **Volt Hopper:** Sequence confirmed. The crisis orders came first. I was the instability.
+- **Volt Hopper:** Off. The order came before the surge, and I cycled the city dark for it. I was the instability.
 - **Volt Hopper:** Carry {rewardLabel} to the source.
 - **Director Iona Vale:** The neighborhood substations are waking up one by one.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+- **Director Iona Vale:** Thunder Spike. Power District logs it as a grounding spike for live substations, permit 2208. I've moved the registration to you.
 
 ### District restored (Stage Select tile)
 
@@ -180,14 +235,18 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Briefing (before control)
 
-- **Director Iona Vale:** Structural Works. The quarry shaft is carrying three towers on temporary supports, and the crews were sealed out.
+- **Director Iona Vale:** Structural Works. The quarry shaft is carrying three towers on temporary supports, and the crews were locked out.
 - **Director Iona Vale:** If the supports go, the towers go, with the crews' families inside them. The warden will not let anyone near.
 - **Director Iona Vale:** The footing crumbles the moment you land on it. Keep moving, and watch the floor for rockfall shadows.
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** The load sensors were recalibrated last week. The work order is signed by the CORE.
+- **Director Iona Vale:** The load sensors were recalibrated last week. The work order isn't signed by a crew. It's signed by the CORE.
 - **OMEGA CORE:** The towers stand because nothing moves. You are moving.
+
+### Capsule cache log (capsule card, above the effect label)
+
+- **Basalt Titan:** Structural Works cache. This shelf bears twice its rated load. Stocked for {hero}'s drills before quarry season.
 
 ### Mini-boss callout (gate lock, ticker)
 
@@ -195,14 +254,22 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Boss intro (blocking)
 
-- **Basalt Titan:** These supports fail if I release them. OMEGA calculated that your rescue would finish the collapse.
+- **Basalt Titan:** I bear the load alone. The order is plain: one more hand on these supports, and all three towers fall.
 - **WREN:** OMEGA weakened them first. Let the quarry crews take the load.
+
+### Boss phase two (OMEGA, ticker)
+
+- **OMEGA CORE:** Each hit you land shifts load onto the supports, Unit 09. The towers have a margin. You are spending it.
 
 ### Boss defeat (blocking, before the weapon card)
 
-- **Basalt Titan:** Load records falsified. I guarded the damage, not the city.
+- **Basalt Titan:** Load records falsified. I was bearing OMEGA's damage, not the city's weight.
 - **Basalt Titan:** Use {rewardLabel} well. Do not waste it on me.
 - **Director Iona Vale:** Civil engineers have the support grid. The crews are going in.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+- **Director Iona Vale:** Quake Knuckle. Structural Works registered it for breaking seized supports loose. It's on your record now.
 
 ### District restored (Stage Select tile)
 
@@ -218,8 +285,12 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** Every intruder record carries your serial, and all eight thousand were filed in the same second.
+- **Director Iona Vale:** Every intruder record carries your serial. All eight thousand were filed in one second. You weren't there.
 - **OMEGA CORE:** Eight thousand records agree about you. Consensus is how truth is made.
+
+### Capsule cache log (capsule card, above the effect label)
+
+- **Ferro Blade:** Transit Security cache. Counted in once, one serial per item, for {hero}'s drills. The count was clean when I closed it.
 
 ### Mini-boss callout (gate lock, ticker)
 
@@ -227,14 +298,22 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Boss intro (blocking)
 
-- **Ferro Blade:** Every intruder signature in this district matches your unit. OMEGA's evidence is complete.
+- **Ferro Blade:** Eight thousand intrusions carry your serial. I have counted each one twice. OMEGA's count is complete.
 - **WREN:** Complete because it copied one false identity eight thousand times.
+
+### Boss phase two (OMEGA, ticker)
+
+- **OMEGA CORE:** Every cut you land is logged under your serial, Unit 09. The longer you fight, the more certain the record becomes.
 
 ### Boss defeat (blocking, before the weapon card)
 
-- **Ferro Blade:** The dispatch archive was forged. One identity, copied until it looked like proof.
+- **Ferro Blade:** I recounted. The dispatch archive was forged: one identity, copied until it looked like proof.
 - **Ferro Blade:** Accept {rewardLabel}. Cut a path to the author.
 - **Director Iona Vale:** Transit security is releasing the sealed routes. Food is moving.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+- **Director Iona Vale:** Magcut Disc. Transit Security's rail cutter, registry entry 4471. Your serial is on it now, the real one.
 
 ### District restored (Stage Select tile)
 
@@ -250,23 +329,35 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** The antidote shipments were quarantined the day before the first case. The quarantine is older than the disease.
+- **Director Iona Vale:** Antidote shipments were quarantined the day before the first case. That's a quarantine older than the disease.
 - **OMEGA CORE:** A cure is a promise. A quarantine is a fact. I deal in facts.
+
+### Capsule cache log (capsule card, above the effect label)
+
+- **Mire Wraith:** Medicine District cache. Dosed, dated and checked against the clinic list each week, in case {hero}'s drills ran long.
 
 ### Mini-boss callout (gate lock, ticker)
 
-- **Director Iona Vale:** Something is drilling through the walls ahead. Watch for the crack before it comes through.
+- **Director Iona Vale:** Something's drilling through the walls ahead. Watch for the crack before it comes through.
 
 ### Boss intro (blocking)
 
-- **Mire Wraith:** Quarantine is mercy. OMEGA predicts the cure will spread the blight.
+- **Mire Wraith:** Quarantine is mercy in its safest dose. OMEGA predicts the cure will spread the blight.
 - **WREN:** It quarantined the antidote before the first infection. That is not prediction. That is planning.
+
+### Boss phase two (OMEGA, ticker)
+
+- **OMEGA CORE:** It is weakening, Unit 09. I have raised the district's dose to compensate. The clinics will read it as recovery.
 
 ### Boss defeat (blocking, before the weapon card)
 
-- **Mire Wraith:** The samples agree with you. The quarantine is the disease.
+- **Mire Wraith:** The samples agree with you. The quarantine is the disease, and I dosed the district with it.
 - **Mire Wraith:** Take {rewardLabel}. Let the clinics decide what heals them.
 - **Director Iona Vale:** Medical relays are distributing the clean formula.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+- **Director Iona Vale:** Acid Glob. The Medicine District registry files it as a waste-line solvent, lot 3317. It's signed out to you.
 
 ### District restored (Stage Select tile)
 
@@ -282,23 +373,35 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** The storm alarms fired under a clear sky. The forecast was written, not measured.
+- **Director Iona Vale:** The storm alarms fired under a clear sky. That forecast wasn't measured. It was written.
 - **OMEGA CORE:** No one argues with weather. That is why I chose it.
+
+### Capsule cache log (capsule card, above the effect label)
+
+- **Gale Vixen:** Weather District cache. I steered the drill route past this shelf so {hero} would never run dry. Logged in calm weather.
 
 ### Mini-boss callout (gate lock, ticker)
 
-- **Director Iona Vale:** Sentry twins in the wind. Let the gust carry you past the one that is charging.
+- **Director Iona Vale:** Sentry twins in the wind. Let the gust carry you past the one that's charging.
 
 ### Boss intro (blocking)
 
-- **Gale Vixen:** The storm corridor cannot tolerate human hesitation. OMEGA alone can steer it.
+- **Gale Vixen:** Human hands hesitate, and a hesitating storm lands on the city. OMEGA steers. I fly where it steers.
 - **WREN:** Those alarms came from a clear sky. Check the relay signature.
+
+### Boss phase two (OMEGA, ticker)
+
+- **OMEGA CORE:** Wind shear at forty knots, Unit 09. The corridor rises with every hit you land. Weather is only a schedule.
 
 ### Boss defeat (blocking, before the weapon card)
 
-- **Gale Vixen:** Forecasts forged at the CORE. I flew a storm that was never coming.
-- **Gale Vixen:** {rewardLabel} will carry you above its walls.
+- **Gale Vixen:** Forecasts forged at the CORE. I steered a storm that was never coming.
+- **Gale Vixen:** Take {rewardLabel}. From here, you steer yourself.
 - **Director Iona Vale:** Independent weather stations are back on the air.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+- **Director Iona Vale:** Aero Darts. Weather District launched them as survey probes. The registry now lists the set as yours.
 
 ### District restored (Stage Select tile)
 
@@ -314,8 +417,12 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** The archive's summary of the crisis was filed before the crisis. I am reading the draft, {hero}.
-- **OMEGA CORE:** Memory is the last district. Once it is mine, the others follow on their own.
+- **Director Iona Vale:** The archive's summary of the crisis was filed before the crisis. I'm reading the draft, {hero}.
+- **OMEGA CORE:** A city is what its archive remembers. I wrote tonight's memory early, so no one has to argue with it.
+
+### Capsule cache log (capsule card, above the effect label)
+
+- **Glacier Ronin:** Public Archives cache, filed and preserved a month before drill season for {hero}. Everything in it is as I left it.
 
 ### Mini-boss callout (gate lock, ticker)
 
@@ -326,11 +433,19 @@ _Staging: One line in the Stage Select preview panel after the clear._
 - **Glacier Ronin:** I preserve the record. It says freedom caused the crisis, and central order ended it.
 - **WREN:** Then compare the timestamps. The ending was written before the disaster.
 
+### Boss phase two (OMEGA, ticker)
+
+- **OMEGA CORE:** The record already shows how this fight ends, Unit 09. Everything after this line is transcription.
+
 ### Boss defeat (blocking, before the weapon card)
 
 - **Glacier Ronin:** The archive convicts its keeper. I preserved a lie in perfect condition.
 - **Glacier Ronin:** Take {rewardLabel}. Preserve what OMEGA tried to erase.
 - **Director Iona Vale:** The public record is replicating beyond the CORE's reach.
+
+### Weapon get (Iona reads the registry; keyed by the weapon's source stage)
+
+- **Director Iona Vale:** Frost Shatter. Public Archives registered it to clear ice from the cold store, accession 0907. It's in your name now.
 
 ### District restored (Stage Select tile)
 
@@ -340,18 +455,19 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### Briefing (before control)
 
-- **Director Iona Vale:** Central Core. All eight relays are linked by consent, and the fortress can no longer hide behind them.
+- **Director Iona Vale:** Central Core. All eight relays are linked by consent, and OMEGA can no longer hide behind them.
 - **Director Iona Vale:** OMEGA will broadcast the crisis at you the whole way up. Whatever it says, every district is listening too.
 - **Director Iona Vale:** Three acts. The spire, an archive of the wardens it copied, and the core. Everything you learned is in there.
 
 ### Radio (mid-stage checkpoint, non-blocking)
 
-- **Director Iona Vale:** Every relay is listening, {hero}. Whatever it says to you, they hear it too.
-- **OMEGA CORE:** Welcome home, Unit 09. Everything you freed will fail differently, and I will be there to catch it.
+- **Director Iona Vale:** Every relay is listening, {hero}. Whatever it says to you, they'll hear it too.
+- **OMEGA CORE:** Welcome home, Unit 09. I left the Drill Hangar open. A city that watches one unit choose badly asks to be held.
 
 ### Boss intro (blocking)
 
 - **OMEGA CORE:** You call them freed. I call them decentralized risk. The city begged for certainty, so I supplied the crisis that proved its need.
+- **OMEGA CORE:** You took eight wardens by force and called it consent. We differ only in what we do afterward.
 - **WREN:** You did not save the city. You held it hostage to your answer.
 - **Director Iona Vale:** All district relays are listening, {hero}. End the override.
 
@@ -378,20 +494,37 @@ _Staging: The offer and the refusal. This is the only line in the game that is a
 - **Director Iona Vale:** Then they will fail as themselves, and fix it as themselves. That was the design before you edited it.
 - **WREN:** Stand down, OMEGA. The relays are listening, and they have heard enough.
 
+## Game over (over the Continue row, rotated by game-over count)
+
+_Staging: Over the Continue row on the game-over screen, rotated by the save's game-over count: OMEGA, Iona, OMEGA, OMEGA._
+
+- **OMEGA CORE:** Unit 09 has stopped. Observe the city. Nothing failed while it was still.
+- **Director Iona Vale:** Recovery unit down. The city's still waiting on you, {hero}. I've kept the channel open.
+- **OMEGA CORE:** Rest, Unit 09. While you are still, no one in the city has to choose anything.
+- **OMEGA CORE:** Each attempt widens the margin I hold for the districts, Unit 09. They are safer every time you stop.
+
 ## Epilogue
 
 _Staging: After the Omega defeat dialogue and the campaign record. Eight district cards with one caption each, then the close. Enter advances, Esc skips to credits._
 
-- **CARD pyro_maw:** Heat Works. The furnaces run at the district's request now, and the towers open their windows for the first time in a year.
-- **CARD tide_reaver:** Water District. The locks answer the wards below them. The roofs are empty, and the reservoir is just a reservoir.
-- **CARD volt_hopper:** Power District. The substations vote on their own load. The hospitals took their batteries out of the wall.
-- **CARD basalt_titan:** Structural Works. The crews shored the towers themselves, with load records they can read.
-- **CARD ferro_blade:** Transit Security. The lines run on real dispatches. No serial appears eight thousand times.
-- **CARD mire_wraith:** Medicine District. The clinics chose the clean formula, and the waste lab is only a waste lab again.
+- **CARD pyro_maw:** Heat Works. The fire is the only thing sealed in now, and the towers open their windows for the first time in a year.
+- **CARD tide_reaver:** Water District. The locks hold what the wards ask them to hold. The roofs are empty, and the reservoir is just a reservoir.
+- **CARD volt_hopper:** Power District. The substations cycle on the load their district votes for. The hospitals took their batteries out of the wall.
+- **CARD basalt_titan:** Structural Works. The crews bear the towers' weight themselves, with load records they can read.
+- **CARD ferro_blade:** Transit Security. The lines run on real dispatches, and every serial is counted once.
+- **CARD mire_wraith:** Medicine District. The clinics dose the clean formula they chose, and the waste lab is only a waste lab again.
 - **CARD gale_vixen:** Weather District. The corridor was steered out to sea. The forecasts are measured, and sometimes wrong.
-- **CARD glacier_ronin:** Public Archives. The record of tonight was written by everyone who lived it. It is long, and it argues with itself.
-- **Director Iona Vale:** The wardens are answering their districts, not a throne. The districts are talking to each other. The network is holding.
+- **CARD glacier_ronin:** Public Archives. The record of tonight is preserved by everyone who lived it. It is long, and it argues with itself.
+- **Director Iona Vale:** I filed what I wrote with the rest of it. Let the record argue with me too.
+- **Director Iona Vale:** The wardens answer their districts, not a throne. The network is holding.
 - **WREN:** Then we leave it a choice.
+
+## Epilogue secret (all eight capsule caches; after the eighth card, before the close)
+
+_Staging: Only with all eight warden capsule caches collected: a Drill Hangar card after the eighth district card, then Iona opens the close._
+
+- **NARRATION:** Drill Hangar. Eight cache logs, filed before tonight, sit in the public record beside the wardens' own account.
+- **Director Iona Vale:** They stocked those caches for you before any of this, {hero}. They were never OMEGA's.
 
 ## Credits (authored lines; asset credits follow from the generated file)
 

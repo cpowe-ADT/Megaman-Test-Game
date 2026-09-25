@@ -1,0 +1,661 @@
+{
+  "frames": {
+    "hazards_v1/charge_mine/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 22
+      }
+    },
+    "hazards_v1/charge_mine/001": {
+      "frame": {
+        "x": 28,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 22
+      }
+    },
+    "hazards_v1/charge_mine/002": {
+      "frame": {
+        "x": 56,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 22
+      }
+    },
+    "hazards_v1/charge_mine/003": {
+      "frame": {
+        "x": 84,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 22
+      }
+    },
+    "hazards_v1/vapor_pod/000": {
+      "frame": {
+        "x": 112,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 28
+      }
+    },
+    "hazards_v1/vapor_pod/001": {
+      "frame": {
+        "x": 138,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 28
+      }
+    },
+    "hazards_v1/vapor_pod/002": {
+      "frame": {
+        "x": 164,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 28
+      }
+    },
+    "hazards_v1/vapor_pod/003": {
+      "frame": {
+        "x": 190,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 28
+      }
+    },
+    "hazards_v1/ground_shockwave/000": {
+      "frame": {
+        "x": 216,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 12
+      }
+    },
+    "hazards_v1/ground_shockwave/001": {
+      "frame": {
+        "x": 0,
+        "y": 28,
+        "w": 26,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 12
+      }
+    },
+    "hazards_v1/ground_shockwave/002": {
+      "frame": {
+        "x": 26,
+        "y": 28,
+        "w": 26,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 12
+      }
+    },
+    "hazards_v1/ground_shockwave/003": {
+      "frame": {
+        "x": 52,
+        "y": 28,
+        "w": 26,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 12
+      }
+    },
+    "hazards_v1/stone_pillar/000": {
+      "frame": {
+        "x": 78,
+        "y": 28,
+        "w": 40,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 50
+      }
+    },
+    "hazards_v1/stone_pillar/001": {
+      "frame": {
+        "x": 118,
+        "y": 28,
+        "w": 40,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 50
+      }
+    },
+    "hazards_v1/stone_pillar/002": {
+      "frame": {
+        "x": 158,
+        "y": 28,
+        "w": 40,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 50
+      }
+    },
+    "hazards_v1/stone_pillar/003": {
+      "frame": {
+        "x": 198,
+        "y": 28,
+        "w": 40,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 50
+      }
+    },
+    "hazards_v1/tornado_pillar/000": {
+      "frame": {
+        "x": 0,
+        "y": 78,
+        "w": 30,
+        "h": 62
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 62
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 62
+      }
+    },
+    "hazards_v1/tornado_pillar/001": {
+      "frame": {
+        "x": 30,
+        "y": 78,
+        "w": 30,
+        "h": 62
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 62
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 62
+      }
+    },
+    "hazards_v1/tornado_pillar/002": {
+      "frame": {
+        "x": 60,
+        "y": 78,
+        "w": 30,
+        "h": 62
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 62
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 62
+      }
+    },
+    "hazards_v1/tornado_pillar/003": {
+      "frame": {
+        "x": 90,
+        "y": 78,
+        "w": 30,
+        "h": 62
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 62
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 62
+      }
+    },
+    "hazards_v1/splash_pillar/000": {
+      "frame": {
+        "x": 120,
+        "y": 78,
+        "w": 42,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 64
+      }
+    },
+    "hazards_v1/splash_pillar/001": {
+      "frame": {
+        "x": 162,
+        "y": 78,
+        "w": 42,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 64
+      }
+    },
+    "hazards_v1/splash_pillar/002": {
+      "frame": {
+        "x": 204,
+        "y": 78,
+        "w": 42,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 64
+      }
+    },
+    "hazards_v1/splash_pillar/003": {
+      "frame": {
+        "x": 0,
+        "y": 142,
+        "w": 42,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 64
+      }
+    },
+    "hazards_v1/burn_puddle/000": {
+      "frame": {
+        "x": 42,
+        "y": 142,
+        "w": 34,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 18
+      }
+    },
+    "hazards_v1/burn_puddle/001": {
+      "frame": {
+        "x": 76,
+        "y": 142,
+        "w": 34,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 18
+      }
+    },
+    "hazards_v1/burn_puddle/002": {
+      "frame": {
+        "x": 110,
+        "y": 142,
+        "w": 34,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 18
+      }
+    },
+    "hazards_v1/burn_puddle/003": {
+      "frame": {
+        "x": 144,
+        "y": 142,
+        "w": 34,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 18
+      }
+    },
+    "hazards_v1/acid_trail/000": {
+      "frame": {
+        "x": 178,
+        "y": 142,
+        "w": 32,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 18
+      }
+    },
+    "hazards_v1/acid_trail/001": {
+      "frame": {
+        "x": 210,
+        "y": 142,
+        "w": 32,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 18
+      }
+    },
+    "hazards_v1/acid_trail/002": {
+      "frame": {
+        "x": 0,
+        "y": 206,
+        "w": 32,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 18
+      }
+    },
+    "hazards_v1/acid_trail/003": {
+      "frame": {
+        "x": 32,
+        "y": 206,
+        "w": 32,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 18
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "hazards_v1.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 256,
+      "h": 224
+    },
+    "scale": "1",
+    "source": [
+      "assets/sprites/source/vfx/hf_v1/hazards_a2.png",
+      "assets/sprites/source/vfx/hf_v1/hazards_b1.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "scripts/sprites/hazards_v1.json"
+  }
+}

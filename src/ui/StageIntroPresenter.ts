@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import type { DialogueOverlayController } from './DialogueOverlayController'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { StageIntroSequence, type StageIntroSnapshot } from '../scenes/game/StageIntroSequence'
-import { MENU_FONT_CODE, MENU_FONT_DISPLAY } from './menu/menuTheme'
+import { PIXEL_FONT, pixelFontSize } from './menu/menuTheme'
 import { GAME_SIZE } from '../config/renderPolicy'
 
 export type StageIntroPresenterOptions = {
@@ -28,10 +28,10 @@ export class StageIntroPresenter {
     const black = scene.add.rectangle(width / 2, height / 2, width, height, 0x02050c, 1)
     const band = scene.add.rectangle(width / 2, height / 2, width, 44, 0x07142a, 0.98).setStrokeStyle(1, 0x62b6ff, 0.9)
     this.calloutText = scene.add.text(width / 2, height / 2 - 12, '', {
-      fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#7de8ff', letterSpacing: 2
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff', letterSpacing: 2
     }).setOrigin(0.5)
     this.titleText = scene.add.text(width / 2, height / 2 + 6, '', {
-      fontFamily: MENU_FONT_DISPLAY, fontSize: '16px', color: '#f5f8ff'
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color: '#f5f8ff'
     }).setOrigin(0.5)
     this.cover = scene.add.container(0, 0, [black, band, this.calloutText, this.titleText])
     this.cover.setScrollFactor(0).setDepth(19000).setVisible(false)

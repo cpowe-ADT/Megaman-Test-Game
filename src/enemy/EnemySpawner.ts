@@ -6,6 +6,7 @@ import { EnemyDebugOverlay } from './EnemyDebugOverlay'
 import { DamageEvent, EnemyDefinition, EnemyLevelMarker, EnemyRuntimeContext, EnemySpawnWave } from './types'
 import { getGeneratedEnemyDefinition, getPilotEnemyConfigById } from '../content/enemies'
 import { applyPilotEnemyOverride } from './EnemyDefinitionAdapters'
+import { minibossDefeatDrop } from './minibossCatalog'
 
 export type EnemySpawnerOptions = {
   enableAI: boolean
@@ -137,6 +138,16 @@ export class EnemySpawner {
   getEntityBySprite(sprite: Phaser.Physics.Arcade.Sprite): EnemyEntity | undefined {
     const id = sprite.data?.get?.('enemyFrameworkId') as string | undefined
     return id ? this.enemies.get(id) : undefined
+  }
+
+  /** The drop a defeat forces (a mini-boss's large health capsule), or undefined for the usual roll. */
+  defeatDropFor(sprite: Phaser.Physics.Arcade.Sprite): 'health_large' | undefined {
+    return minibossDefeatDrop(this.getEntityBySprite(sprite)?.definition)
+  }
+
+  /** Level markers gone for good this run (defeated, fallen out, or passed); a defeat room lock reads it. */
+  getClearedMarkerIds(): ReadonlySet<string> {
+    return this.retiredMarkerIds
   }
 
   getEntities(): EnemyEntity[] {

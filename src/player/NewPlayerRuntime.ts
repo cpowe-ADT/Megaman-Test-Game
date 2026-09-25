@@ -4,15 +4,24 @@ import { type SceneInputActions } from '../input/InputActions'
 import type { DigitalButtonPad } from '../input/DigitalButtonPad'
 import { AnimationManifest } from './AnimationManifest'
 import { PlayerAnimator } from './PlayerAnimator'
-import { applyPlayerBodyProfile, resolvePlayerBodyProfileKey, type PlayerBodyProfileKey } from './PlayerBodyProfiles'
+import {
+  applyPlayerBodyProfile,
+  PLAYER_BODY_PROFILES,
+  resolvePlayerBodyProfileKey,
+  type PlayerBodyProfileKey
+} from './PlayerBodyProfiles'
 import { PlayerCombat } from './PlayerCombat'
 import { PlayerController } from './PlayerController'
 import { PlayerDebug } from './PlayerDebug'
 import { PlayerMotor } from './PlayerMotor'
+import { createSolidPlatformProbe } from './SolidPlatformProbe'
+import { iFrameBlinkAlpha } from './hitFeel'
 import { PlayerStateMachine } from './PlayerStateMachine'
 import { VfxSfxRouter } from './VfxSfxRouter'
 import { PLAYER_GAMEPLAY_CONFIG, resolveSwordVisualFacing, shouldFlipPlayerSpriteForFacing } from './config'
 import type { PlayerFeatureFlags } from './featureFlags'
+import type { RoomLockVerbSample } from '../mechanics/roomLock'
+import type { PlayerEnvironment } from './environment'
 import type {
   CombatSnapshot,
   HitTier,
@@ -23,14 +32,16 @@ import type {
   PlayerRuntimeEvent,
   ProjectileSpawnReceipt,
   ResolvedHitbox,
-  SpawnProjectileRequest
+  SpawnProjectileRequest,
+  PlayerIntent
 } from './types'
 
 type RuntimeHooks = {
   setAnimation: (key: string) => void
   spawnProjectile: (request: SpawnProjectileRequest) => ProjectileSpawnReceipt | null
   canChargeProjectile: () => boolean
-  applySwordHitbox: (hitbox: ResolvedHitbox) => void
+  /** Called on every active sword frame; `claim` is true the first time a target is claimed in this combo hit. */
+  applySwordHitbox: (hitbox: ResolvedHitbox, claim: (target: unknown) => boolean) => void
   applyDamage: (damage: number) => void
 }
 
@@ -50,6 +61,26 @@ export class NewPlayerRuntime {
   private readonly debug: PlayerDebug
 
   private activeHitbox: ResolvedHitbox | undefined
+  private readonly claimSwordHit = (target: unknown): boolean => this.combat.claimSwordHit(target)
+  private latchedPresses = { slash: false, jump: false }
+
+  /**
+   * Hit-stop freezes the scene update, and a saber or jump press made during it used to vanish (a combo
+   * press landing in hit 1's freeze never reached hit 2). Game calls this on frozen frames; the presses
+   * are replayed on the first frame after.
+   */
+  latchPressesDuringHitstop(): void {
+    const intent = this.controller.sampleIntent(this.motor.getFacing())
+    this.latchedPresses.slash ||= intent.slashPressed
+    this.latchedPresses.jump ||= intent.jumpPressed
+  }
+
+  private takeLatchedPresses(intent: PlayerIntent): PlayerIntent {
+    const latched = this.latchedPresses
+    if (!latched.slash && !latched.jump) return intent
+    this.latchedPresses = { slash: false, jump: false }
+    return { ...intent, slashPressed: intent.slashPressed || latched.slash, jumpPressed: intent.jumpPressed || latched.jump }
+  }
   private lastMotorSnapshot?: MotorSnapshot
   private lastCombatSnapshot?: CombatSnapshot
   private currentAnimationKey = 'player_idle'
@@ -63,11 +94,17 @@ export class NewPlayerRuntime {
   private lastLandingSpeed = 0
   private lastJumpSource: MotorSnapshot['jumpSource'] = 'none'
   private lastDashStartedAtMs = 0
+  /** Saber swings that reached `active` (room-lock saber hits count these; a swing cancelled in startup is not a hit). */
+  private slashesStarted = 0
   private lastDashEndedAtMs = 0
   private lastDamageSource = 'none'
   private lastDamageTier: HitTier | 'none' = 'none'
   private lastKnockback = { x: 0, y: 0 }
   private destroyed = false
+  /** Set by `playDeath` until `resetForRespawn`: the runtime stops driving the hero. */
+  private deathActive = false
+  private iFrameElapsedMs = 0
+  private blinking = false
   private removeDebugInput?: () => void
   private removeCancelledInput?: () => void
   private readonly debugToggleHandler = () => this.debug.toggle()
@@ -82,6 +119,7 @@ export class NewPlayerRuntime {
   ) {
     this.controller = new PlayerController(scene, actions)
     this.motor = new PlayerMotor(player, PLAYER_GAMEPLAY_CONFIG.movement, PLAYER_GAMEPLAY_CONFIG.dash)
+    this.motor.setTerrainProbe(createSolidPlatformProbe(scene, player), PLAYER_BODY_PROFILES.stand.height)
     this.combat = new PlayerCombat(
       player,
       flags,
@@ -100,7 +138,7 @@ export class NewPlayerRuntime {
         if (eventName === 'hitbox.enable') {
           const request = this.activeHitbox
           if (request) {
-            this.hooks.applySwordHitbox(request)
+            this.hooks.applySwordHitbox(request, this.claimSwordHit)
           }
         }
         if (eventName === 'fx.spawn') {
@@ -121,8 +159,16 @@ export class NewPlayerRuntime {
   }
 
   update(now: number, deltaMs: number): void {
-    const intent = this.controller.sampleIntent(this.motor.getFacing())
-    const motorSnapshot = this.motor.update(intent, deltaMs, this.flags.enableAirDash && this.modifiers.allowAirDash)
+    if (this.deathActive) {
+      return
+    }
+    const intent = this.takeLatchedPresses(this.controller.sampleIntent(this.motor.getFacing()))
+    const motorSnapshot = this.motor.update(
+      intent,
+      deltaMs,
+      this.flags.enableAirDash && this.modifiers.allowAirDash,
+      this.combat.getHitstunRemainingMs()
+    )
 
     const combatResult = this.combat.update(
       intent,
@@ -131,14 +177,26 @@ export class NewPlayerRuntime {
       motorSnapshot.facing,
       motorSnapshot.grounded,
       motorSnapshot.dashing,
-      this.hooks.canChargeProjectile()
+      this.hooks.canChargeProjectile(),
+      { justJumped: motorSnapshot.justJumped }
     )
 
     this.consumeCombatEvents(combatResult.events)
+    // The sword tests its box on every active frame, not only the first (targets that step in late are hit).
+    const swordHitbox = combatResult.snapshot.swordHitbox
+    if (swordHitbox) {
+      this.activeHitbox = swordHitbox
+      this.hooks.applySwordHitbox(swordHitbox, this.claimSwordHit)
+    }
+    this.vfxSfx.updateChargeAura(combatResult.snapshot.charging ? combatResult.snapshot.chargeLevel : 0)
+    this.updateIFrameBlink(deltaMs, combatResult.snapshot.iFramesRemainingMs)
     if (motorSnapshot.justJumped) {
       this.lastJumpSource = motorSnapshot.jumpSource
     }
     this.dispatchLocomotionSfx(now, motorSnapshot)
+    const slashPhase = combatResult.snapshot.slashPhase
+    const prevSlashPhase = this.lastCombatSnapshot?.slashPhase
+    if (slashPhase === 'active' && prevSlashPhase !== 'active') this.slashesStarted += 1
     this.lastMotorSnapshot = motorSnapshot
     this.lastCombatSnapshot = combatResult.snapshot
 
@@ -230,7 +288,39 @@ export class NewPlayerRuntime {
     return this.motor.getFacing()
   }
 
+  /** Stage mechanics under and around the hero (12b: belt carry, ice, wind, current); the motor applies it from its next update. */
+  setEnvironment(environment: Partial<PlayerEnvironment> | null): void {
+    this.motor.setEnvironment(environment)
+  }
+
+  /** Death beat 1 (`DeathSequence`): the hero stops updating and plays `player_death` with its sfx. */
+  playDeath(): void {
+    this.deathActive = true
+    this.combat.cancelPendingCharge()
+    this.activeHitbox = undefined
+    this.blinking = false
+    this.player.setAlpha(1)
+    this.currentAnimationKey = 'player_death'
+    this.hooks.setAnimation('player_death')
+    this.vfxSfx.dispatch([{ type: 'sfx', key: 'player_death' }])
+  }
+
+  /** Death beat 2: eight orbs from the effects atlas and a heavy (capped) shake. */
+  playDeathBurst(): void {
+    this.vfxSfx.dispatch([
+      { type: 'vfx', key: 'fx_death_orbs' },
+      { type: 'vfx', key: 'fx_shake_camera_heavy' }
+    ])
+  }
+
+  /** Respawn: the hero beams in (a scale tween back to the resting scale). */
+  playBeamIn(): void {
+    this.vfxSfx.dispatch([{ type: 'vfx', key: 'fx_beam_in' }])
+  }
+
   resetForRespawn(iFrameMs = PLAYER_GAMEPLAY_CONFIG.damage.iFramesMs): void {
+    this.deathActive = false
+    this.iFrameElapsedMs = 0
     this.controller.suppressJumpFor(120)
     this.motor.resetForRespawn()
     this.combat.resetForRespawn()
@@ -255,6 +345,25 @@ export class NewPlayerRuntime {
     this.hooks.setAnimation('player-idle')
   }
 
+  /** The room-lock verbs' per-frame read (prompt 05 §5.7): typed, no debug surface. */
+  getVerbSample(): RoomLockVerbSample | null {
+    const motor = this.lastMotorSnapshot
+    const combat = this.lastCombatSnapshot
+    if (!motor || !combat) return null
+    const body = this.player.body as Phaser.Physics.Arcade.Body | undefined
+    return {
+      grounded: motor.grounded,
+      velocityY: body?.velocity.y ?? motor.velocityY,
+      lastJumpSource: this.lastJumpSource,
+      dashStartedAtMs: this.lastDashStartedAtMs,
+      wallJumping: motor.wallJumping,
+      projectileSpawnMs: this.lastProjectileSpawnMs,
+      projectileChargeLevel: this.lastProjectile?.chargeLevel ?? 0,
+      slashesStarted: this.slashesStarted,
+      hurtLocked: combat.hitstunRemainingMs > 0
+    }
+  }
+
   getDebugState(): Record<string, unknown> | null {
     if (!this.lastMotorSnapshot || !this.lastCombatSnapshot) {
       return null
@@ -277,7 +386,8 @@ export class NewPlayerRuntime {
         lastJumpSource: this.lastJumpSource,
         lastLandingSpeed: this.lastLandingSpeed,
         dashMs: Math.round(this.lastMotorSnapshot.dashRemainingMs),
-        dashCooldownMs: Math.round(this.lastMotorSnapshot.dashCooldownRemainingMs)
+        dashCooldownMs: Math.round(this.lastMotorSnapshot.dashCooldownRemainingMs),
+        environment: this.motor.getEnvironmentState()
       },
       combat: {
         shotFired: this.lastCombatSnapshot.shotFired,
@@ -339,7 +449,6 @@ export class NewPlayerRuntime {
         this.dispatchProjectile(event.request)
       } else if (event.type === 'hitbox') {
         this.activeHitbox = event.request
-        this.hooks.applySwordHitbox(event.request)
       }
     }
 
@@ -363,17 +472,17 @@ export class NewPlayerRuntime {
     }
 
     if (motorSnapshot.justLanded) {
-      const lastVelocityY = this.lastMotorSnapshot?.velocityY ?? 0
-      this.lastLandingSpeed = Math.max(0, Math.round(lastVelocityY))
-      if (lastVelocityY > 400) {
-        this.vfxSfx.dispatch([
-          { type: 'sfx', key: 'land' },
-          { type: 'vfx', key: 'fx_shake_camera_light' },
-          { type: 'hitstop', frames: 3 }
-        ])
-      } else {
-        this.vfxSfx.dispatch([{ type: 'sfx', key: 'land' }])
-      }
+      this.lastLandingSpeed = motorSnapshot.landingSpeed ?? 0
+      // A hard landing squashes and puffs dust (the motor applies the lag); no hit-stop, nothing was hit.
+      this.vfxSfx.dispatch(
+        motorSnapshot.hardLanding
+          ? [
+              { type: 'sfx', key: 'land' },
+              { type: 'vfx', key: 'fx_land_dust' },
+              { type: 'vfx', key: 'fx_land_squash' }
+            ]
+          : [{ type: 'sfx', key: 'land' }]
+      )
     }
 
     const lastDashMs = this.lastMotorSnapshot?.dashRemainingMs ?? 0
@@ -400,6 +509,19 @@ export class NewPlayerRuntime {
 
     if (!motorSnapshot.wallSliding) {
       this.nextWallSlideFxAt = now
+    }
+  }
+
+  /** Hurt blink: alpha toggles every 4 frames while i-frames remain, then returns to 1. */
+  private updateIFrameBlink(deltaMs: number, iFramesRemainingMs: number): void {
+    if (iFramesRemainingMs > 0) {
+      this.iFrameElapsedMs += Math.max(0, deltaMs)
+      this.blinking = true
+      this.player.setAlpha(iFrameBlinkAlpha(this.iFrameElapsedMs, iFramesRemainingMs))
+    } else if (this.blinking) {
+      this.blinking = false
+      this.iFrameElapsedMs = 0
+      this.player.setAlpha(1)
     }
   }
 

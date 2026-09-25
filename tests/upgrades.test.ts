@@ -28,12 +28,14 @@ test('combat applies every quick-charge threshold and caps held/released levels 
   for (const arms of [false,true]) {
     for (let i=0;i<4;i++) {
       const {c,player}=combat(['chip_quick_charge',...(arms?['armor_arms']:[])])
-      c.update(intent({shootPressed:true,shootHeld:true}),0,0,1,true,false)
+      // Prompt 05 §5.2 item 3: the pellet fires on press and the charge clock is accumulated frame time.
+      const pressed=c.update(intent({shootPressed:true,shootHeld:true}),0,0,1,true,false)
+      assert.equal(pressed.events.find(e=>e.type==='projectile')?.request.type,'pellet')
       const t=PLAYER_GAMEPLAY_CONFIG.blaster.chargeThresholdsMs[i]*.7
       player.scene.time.now=t-1
-      assert.equal(c.update(intent({shootHeld:true}),t-1,0,1,true,false).snapshot.chargeLevel,Math.min(i,arms?4:3))
+      assert.equal(c.update(intent({shootHeld:true}),t-1,t-1,1,true,false).snapshot.chargeLevel,Math.min(i,arms?4:3))
       player.scene.time.now=t
-      assert.equal(c.update(intent({shootHeld:true}),t,0,1,true,false).snapshot.chargeLevel,Math.min(i+1,arms?4:3))
+      assert.equal(c.update(intent({shootHeld:true}),t,1,1,true,false).snapshot.chargeLevel,Math.min(i+1,arms?4:3))
       const release=c.update(intent({shootReleased:true}),t,0,1,true,false)
       assert.equal(release.events.find(e=>e.type==='projectile')?.request.chargeLevel,Math.min(i+1,arms?4:3))
     }

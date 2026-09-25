@@ -27,10 +27,18 @@ export async function resolve(specifier, context, defaultResolve) {
       throw error
     }
 
-    const candidateUrl = new URL(`${specifier}.ts`, parentURL)
+    const fileCandidateUrl = new URL(`${specifier}.ts`, parentURL)
     try {
-      await access(fileURLToPath(candidateUrl))
-      return { url: candidateUrl.href, shortCircuit: true }
+      await access(fileURLToPath(fileCandidateUrl))
+      return { url: fileCandidateUrl.href, shortCircuit: true }
+    } catch {
+      // fall through to the directory-index candidate below
+    }
+
+    const indexCandidateUrl = new URL(`${specifier}/index.ts`, parentURL)
+    try {
+      await access(fileURLToPath(indexCandidateUrl))
+      return { url: indexCandidateUrl.href, shortCircuit: true }
     } catch {
       throw error
     }

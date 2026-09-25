@@ -6,7 +6,8 @@ import { ArenaController } from '../boss/framework/ArenaController'
 import { BossBase } from '../boss/framework/BossBase'
 import { BossDefinition, DamageEvent, HitResult } from '../boss/framework/types'
 import { clampBossXToBounds, type MovementBounds } from '../content/stageArenaLayout'
-import { toAttackPatternFromDefinition, toBossDefinition } from '../boss/framework/bossDefinitionMapper'
+import { normalizedId, resolveAttackDamage, toAttackPatternFromDefinition, toBossDefinition } from '../boss/framework/bossDefinitionMapper'
+import { defaultBossBodyPlan, resolveBossBodies, type BossBodyBoxes, type BossContactAttack } from './bossBodies'
 import { getBossJumpInterval, getBossMotionProfile } from './bossMotionProfile'
 import {
   BOSS_COMBAT_PROFILES,
@@ -16,6 +17,8 @@ import {
   getBossAttackCombatProfile
 } from './bossCombatProfiles'
 import { BossMotionController } from './BossMotionController'
+import { bossDeathTimeline, paletteFlashColor, resolveDesperationArena, type DesperationArenaChange } from '../boss/fightBeats'
+import { bossRecoilFrame, breakDirection, breakKnockbackOffset, breakKnockbackX, type BossBreakStyle } from '../boss/bossBreak'
 
 export interface BossControllerConfig {
   spawn: Phaser.Math.Vector2
@@ -23,6 +26,10 @@ export interface BossControllerConfig {
   runtimeDefinition?: BossDefinition
   movementBounds?: MovementBounds
   getActiveHazardCount?: () => number
+  /** The Game scene's live attack telegraph, reported by getDebugState (`bossState.runtime.telegraph`). */
+  telegraphProbe?: () => unknown
+  /** The Game scene's live boss hazards, reported by getDebugState (`bossState.runtime.hazards`). */
+  hazardProbe?: () => unknown
 }
 
 interface BossPhaseView {
@@ -30,10 +37,21 @@ interface BossPhaseView {
   threshold: number
 }
 
+/** The last break, for `getDebugState().break` (smoke 44): where the knockback started and ended. */
+interface BossBreakRecord {
+  atMs: number
+  heroX: number
+  direction: 'west' | 'east'
+  style: BossBreakStyle
+  interruptedAttackId: string | null
+  fromX: number | null
+  toX: number | null
+}
+
 interface BossRuntimeTrace {
   sequence: number
   atMs: number
-  event: 'attack_started' | 'phase_changed' | 'motion_started' | 'landed' | 'attack_resolved'
+  event: 'attack_started' | 'phase_changed' | 'motion_started' | 'landed' | 'attack_resolved' | 'attack_interrupted'
   attackId: string | null
   lifecycle: BossAttackLifecyclePhase
   motion: BossMotionIntentKind
@@ -84,12 +102,27 @@ export class BossController extends Phaser.GameObjects.Container {
   private lastLifecyclePhase: BossAttackLifecyclePhase = 'done'
   private lastMotionIntent: BossMotionIntentKind = 'hold'
   private lastGroundY = 0
+  private readonly telegraphProbe?: () => unknown
+  private readonly hazardProbe?: () => unknown
+  /** Each attack's id, authored contact hitbox and hit damage, for `getBodyBoxes`. */
+  private readonly contactAttacks: BossContactAttack[]
   /** Feet row relative to the container origin, measured from the idle frame. */
   private readonly contactOffsetY: number
   private traceSequence = 0
   private readonly runtimeTraces: BossRuntimeTrace[] = []
   private awaitingActionLanding = false
   private landingPresentationUntilMs = 0
+  /** Prompt 07 phase 7.2: attacks started per phase index (the phase-kit trace), intro, desperation and defeat. */
+  private readonly startedByPhase: Record<string, Record<string, number>> = {}
+  private introPresenting = false
+  private defeatStartedAtMs: number | null = null
+  private whiteFlashUntilMs = 0
+  private paletteFlashStartedAtMs: number | null = null
+  private desperationArena: DesperationArenaChange | null = null
+  private interrupts = { count: 0, lastAttackId: null as string | null }
+  /** A break's knockback in flight: it starts on the first boss frame after the hit-stop (part 12f wave 5). */
+  private breakKnockback: { direction: -1 | 1; style: BossBreakStyle; grounded: boolean; elapsedMs: number; fromX: number | null; fromY: number | null } | null = null
+  private breaks: { count: number; last: BossBreakRecord | null } = { count: 0, last: null }
 
   private readonly enforceRoomBoundsAfterPhysics = (): void => {
     const clampedX = clampBossXToBounds(this.x, this.getSafeMovementBounds())
@@ -117,6 +150,13 @@ export class BossController extends Phaser.GameObjects.Container {
       maxX: GAME_WIDTH - 16
     }
     this.getActiveHazardCount = config.getActiveHazardCount ?? (() => 0)
+    this.telegraphProbe = config.telegraphProbe
+    this.hazardProbe = config.hazardProbe
+    this.contactAttacks = [...blueprint.attacks, ...(blueprint.desperation ? [blueprint.desperation.attack] : [])].map((attack) => ({
+      id: normalizedId(attack.name),
+      hitbox: attack.hitbox,
+      damage: resolveAttackDamage(attack)
+    }))
 
     this.atlasKey = `atlas_${blueprint.id}`
     if (!scene.textures.exists(this.atlasKey)) {
@@ -131,8 +171,9 @@ export class BossController extends Phaser.GameObjects.Container {
       throw new Error(`[BossController] Boss atlas '${this.atlasKey}' has no frames`)
     }
     this.groupedAtlasFrames = this.buildGroupedAtlasFrames()
+    const idleFrame = this.groupedAtlasFrames.idle?.[0] ?? this.atlasFrames[0]
 
-    this.sprite = scene.add.sprite(0, 0, this.atlasKey, this.atlasFrames[0])
+    this.sprite = scene.add.sprite(0, 0, this.atlasKey, idleFrame)
     this.sprite.setOrigin(blueprint.spritePlan.origin.x, blueprint.spritePlan.origin.y)
     this.add(this.sprite)
     scene.add.existing(this)
@@ -152,7 +193,7 @@ export class BossController extends Phaser.GameObjects.Container {
     const body = this.body
     // The body bottom must sit on the drawn feet, otherwise the art floats above the floor the
     // body is standing on. See bossBodyAlignment.ts for the container/offset math.
-    this.contactOffsetY = measureContactOffset(scene.textures, this.atlasKey, this.atlasFrames[0], this.sprite.originY)
+    this.contactOffsetY = measureContactOffset(scene.textures, this.atlasKey, idleFrame, this.sprite.originY)
     const bodyOffset = computeBossBodyOffset({
       bodyWidth: blueprint.spritePlan.frame.x,
       bodyHeight: blueprint.spritePlan.frame.y,
@@ -178,6 +219,8 @@ export class BossController extends Phaser.GameObjects.Container {
 
     this.bossBrain = new BossBase(this.runtimeDefinition, {
       onAttackStarted: (attack) => {
+        const phaseLog = (this.startedByPhase[String(this.bossBrain.currentPhaseIndex)] ??= {})
+        phaseLog[attack.id] = (phaseLog[attack.id] ?? 0) + 1
         this.lastFiredAttackId = attack.id
         this.lastFiredAttackAtMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
         const playerX = (this.scene.registry.get('player_x') as number | undefined) ?? this.x
@@ -224,9 +267,10 @@ export class BossController extends Phaser.GameObjects.Container {
       },
       onPhaseChanged: (phaseIndex, phase) => {
         this.phaseView = {
-          name: this.blueprint.phases[phaseIndex]?.name ?? makePhaseName(phaseIndex),
+          name: this.blueprint.phases[phaseIndex]?.name ?? phase.name ?? makePhaseName(phaseIndex),
           threshold: phase.threshold
         }
+        if (phase.desperation) this.enterDesperation()
         this.scene.events.emit('boss-phase-change', {
           id: this.runtimeDefinition.boss_id,
           phase: this.phaseView,
@@ -242,13 +286,28 @@ export class BossController extends Phaser.GameObjects.Container {
           hp: this.bossBrain.hpSnapshot
         })
       },
+      onAttackInterrupted: (attack) => {
+        this.interrupts = { count: this.interrupts.count + 1, lastAttackId: attack.id }
+        this.motionController?.finishAttack()
+        this.awaitingActionLanding = false
+        this.lastLifecyclePhase = 'done'
+        this.lastMotionIntent = 'hold'
+        this.pushRuntimeTrace('attack_interrupted')
+        this.scene.events.emit('boss-attack-interrupted', {
+          id: this.runtimeDefinition.boss_id,
+          attackId: attack.id,
+          attackName: attack.displayName ?? attack.id
+        })
+      },
+      onBroken: ({ interruptedAttack }) => this.beginBreak(interruptedAttack?.id ?? null),
       onDied: () => {
         this.arenaController.onBossDeath()
+        // destroy() waits for the defeat frames and the chained explosion (prompt 07 phase 7.2 item 5).
+        this.beginDefeat()
         this.scene.events.emit('boss-defeated', {
           id: this.runtimeDefinition.boss_id,
           reward: this.blueprint.weaponReward
         })
-        this.destroy()
       }
     })
 
@@ -261,12 +320,117 @@ export class BossController extends Phaser.GameObjects.Container {
     }
   }
 
+  /** The phase the brain is in (0 for phase one; desperation counts after the authored phases). */
+  get phaseIndex(): number {
+    return this.bossBrain.currentPhaseIndex
+  }
+
+  /**
+   * The hurtbox and the contact hitbox this frame (prompt 07 phase 7.0, EVAL-P7-010): placed from the floor body's
+   * feet and the drawn facing; an active attack with an authored `hitbox` swaps in its box and damage.
+   */
+  getBodyBoxes(): BossBodyBoxes {
+    const body = this.body
+    return resolveBossBodies({
+      plan: this.blueprint.bodies ?? defaultBossBodyPlan(this.blueprint.spritePlan.frame),
+      contactDamage: this.blueprint.baseStats.contactDamage,
+      feet: { x: body?.center?.x ?? this.x, y: body?.bottom ?? this.y },
+      facing: this.sprite.flipX ? -1 : 1,
+      activeAttackId: this.bossBrain.activeAttackId ?? null,
+      lifecycle: this.bossBrain.activeAttackLifecycle ?? null,
+      attacks: this.contactAttacks
+    })
+  }
+
   get currentPhase(): BossPhaseView {
     return this.phaseView
   }
 
   get hp(): { current: number; max: number } {
     return this.bossBrain.hpSnapshot
+  }
+
+  /** The encounter began: the INTRO state plays the intro frames once and holds the last. */
+  beginIntroPresentation(): void {
+    this.introPresenting = true
+  }
+
+  /**
+   * The death presentation: the body stops colliding, the defeat frames play once, and the container is
+   * destroyed when the chained explosion ends (`bossDeathTimeline().explosionEndMs`). Safe to call twice.
+   */
+  beginDefeat(): void {
+    if (this.defeatStartedAtMs !== null) return
+    this.defeatStartedAtMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
+    this.motionController?.finishAttack()
+    this.breakKnockback = null
+    if (this.body) {
+      this.body.setVelocity(0, 0)
+      this.body.setAllowGravity(false)
+      this.body.enable = false
+    }
+    this.sprite.clearTint()
+    this.sprite.setScale(1).setAngle(0).setAlpha(1)
+    this.playFrameGroup('defeat', 0)
+    this.scene.time.delayedCall(bossDeathTimeline().explosionEndMs, () => {
+      if (this.active) this.destroy()
+    })
+  }
+
+  /** A weakness hit's white flash: the sprite fills white until `durationMs` has passed. */
+  flashWhite(durationMs: number): void {
+    this.whiteFlashUntilMs = this.scene.time.now + durationMs
+    this.sprite.setTintFill(0xffffff)
+  }
+
+  /**
+   * A break landed (part 12f wave 5): whatever the boss was doing stops (the interrupted attack's motion, a passive
+   * jump, a walk), and the knockback starts away from the hero. Grounded and hybrid bosses hop; aerial ones bob.
+   */
+  private beginBreak(interruptedAttackId: string | null): void {
+    const heroX = (this.scene.registry.get('player_x') as number | undefined) ?? this.x
+    const direction = breakDirection(this.x, heroX, this.sprite.flipX ? -1 : 1)
+    const style: BossBreakStyle = this.combatProfile?.locomotion === 'aerial' ? 'hover' : 'hop'
+    const grounded = this.body?.onFloor?.() || this.body?.blocked?.down || false
+    this.motionController?.finishAttack()
+    this.awaitingActionLanding = false
+    this.landingPresentationUntilMs = 0
+    this.lastLifecyclePhase = 'done'
+    this.lastMotionIntent = 'hold'
+    this.airborneVelocityX = 0
+    this.body?.setVelocity(0, 0)
+    this.body?.setAllowGravity(false)
+    this.breakKnockback = { direction, style, grounded, elapsedMs: 0, fromX: null, fromY: null }
+    const atMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
+    const record: BossBreakRecord = { atMs, heroX: Math.round(heroX), direction: direction === -1 ? 'west' : 'east', style, interruptedAttackId, fromX: null, toX: null }
+    this.breaks = { count: this.breaks.count + 1, last: record }
+    // The recoil pose shows at once, so the weakness hit-stop freezes the boss in it rather than in its attack pose.
+    this.sprite.setFlipX(heroX < this.x)
+    this.playAnimationForState()
+  }
+
+  /**
+   * The knockback, scripted in boss time from where the boss stood when the hit-stop let go: out along the curve,
+   * clamped to the safe bounds, gravity off until it ends; then gravity lands it.
+   */
+  private stepBreakKnockback(delta: number): void {
+    const knockback = this.breakKnockback
+    if (!knockback) return
+    if (knockback.fromX === null || knockback.fromY === null) {
+      knockback.fromX = this.x
+      knockback.fromY = this.y
+      if (this.breaks.last) this.breaks.last.fromX = Math.round(this.x)
+    }
+    knockback.elapsedMs += Math.max(0, delta)
+    const offset = breakKnockbackOffset(knockback.elapsedMs, knockback.style, knockback.grounded)
+    this.x = breakKnockbackX(knockback.fromX, knockback.direction, offset.dx, this.getSafeMovementBounds())
+    this.y = knockback.fromY + offset.dy
+    this.body.setVelocity(0, 0)
+    this.body.setAllowGravity(offset.done)
+    if (offset.done) {
+      this.breakKnockback = null
+      if (this.breaks.last) this.breaks.last.toX = Math.round(this.x)
+    }
   }
 
   get isInvulnerable(): boolean {
@@ -294,10 +458,25 @@ export class BossController extends Phaser.GameObjects.Container {
       combatIdentity: this.combatProfile?.identity ?? null,
       roomDynamics: this.combatProfile?.room ?? null,
       activeHazardCount: this.getActiveHazardCount(),
+      phaseKit: this.getPhaseKitDebug(),
+      intro: { presenting: this.introPresenting },
+      defeat: { startedAtMs: this.defeatStartedAtMs, destroyAtMs: this.defeatStartedAtMs === null ? null : this.defeatStartedAtMs + bossDeathTimeline().explosionEndMs },
+      interrupts: { ...this.interrupts },
+      break: {
+        broken: this.bossBrain.isBroken,
+        lockoutRemainingMs: Math.round(this.bossBrain.breakLockoutRemainingMs),
+        knockback: this.breakKnockback ? { style: this.breakKnockback.style, elapsedMs: Math.round(this.breakKnockback.elapsedMs) } : null,
+        count: this.breaks.count,
+        last: this.breaks.last ? { ...this.breaks.last } : null
+      },
+      activeAttackLifecycle: this.bossBrain.activeAttackLifecycle ?? null,
       traceCount: this.runtimeTraces.length,
       traceTail: this.runtimeTraces.slice(-8),
       grounded: this.body?.onFloor?.() || this.body?.blocked?.down || false,
       ground: this.getGroundReport(),
+      telegraph: this.telegraphProbe?.() ?? null,
+      bodies: this.getBodyBoxes(),
+      hazards: this.hazardProbe?.() ?? null,
       velocity: { x: Math.round(this.body?.velocity?.x ?? 0), y: Math.round(this.body?.velocity?.y ?? 0) },
       invulnerable: this.isInvulnerable,
       facing: this.sprite.flipX ? 'west' : 'east',
@@ -348,6 +527,14 @@ export class BossController extends Phaser.GameObjects.Container {
     const speed = (this.runtimeDefinition.moveSpeed ?? this.blueprint.baseStats.moveSpeed) * 0.9
     const grounded = this.body.onFloor() || this.body.blocked.down
     if (grounded) this.lastGroundY = this.y
+
+    if (this.breakKnockback) {
+      // The break owns the body until its knockback ends: no attack motion, walk or passive jump.
+      this.stepBreakKnockback(delta)
+      this.sprite.setFlipX(playerX < this.x)
+      this.playAnimationForState()
+      return
+    }
 
     const motionFrame = this.motionController?.update({
       nowMs: this.scene.time.now,
@@ -484,6 +671,19 @@ export class BossController extends Phaser.GameObjects.Container {
     return this.attackFacing
   }
 
+  /** The feet line the boss last stood on (the arena floor); its current y before it first lands. */
+  getGroundY(): number {
+    return this.lastGroundY || this.y
+  }
+
+  /**
+   * The floor the boss stands on: the last ground line plus the floor body's bottom offset. `getGroundY` is the
+   * container's y, a few pixels above the body bottom the hero and the boss actually stand on.
+   */
+  getFloorY(): number {
+    return this.getGroundY() + ((this.body?.bottom ?? this.y) - this.y)
+  }
+
   getRoomHazardCap(): number {
     return this.combatProfile?.room.maxActiveHazards ?? 3
   }
@@ -503,12 +703,10 @@ export class BossController extends Phaser.GameObjects.Container {
       }
     }
 
+    // An unauthored slam quakes (the short_quake spawner). A dash spawns nothing: its authored hitbox rides the
+    // boss while it is active (`getBodyBoxes`), so no stand-in bullet is injected (prompt 07 phase 7.1 item 3).
     if (attack.type === 'hazard' || attack.type === 'slam') {
       pattern.spawns = ['ground_slam_hazard']
-    }
-
-    if (attack.type === 'dash') {
-      pattern.spawns = ['dash_strike']
     }
 
     return pattern
@@ -531,7 +729,53 @@ export class BossController extends Phaser.GameObjects.Container {
     }
   }
 
+  private getPhaseKitDebug(): Record<string, unknown> {
+    const phase = this.runtimeDefinition.phases[this.bossBrain.currentPhaseIndex]
+    return {
+      phaseIndex: this.bossBrain.currentPhaseIndex,
+      desperation: Boolean(phase?.desperation),
+      retired: Object.entries(phase?.attackEnabled ?? {}).filter(([, enabled]) => !enabled).map(([id]) => id),
+      timing: { ...(phase?.attackTiming ?? {}) },
+      startedByPhase: JSON.parse(JSON.stringify(this.startedByPhase)),
+      arena: this.desperationArena,
+      paletteFlashActive: this.paletteFlashStartedAtMs !== null && this.currentPaletteColor() !== null
+    }
+  }
+
+  /** Desperation (prompt 07 phase 7.2 item 2): the palette flash, and anchor rooms shift their anchors. */
+  private enterDesperation(): void {
+    this.paletteFlashStartedAtMs = this.scene.time.now
+    this.desperationArena = this.combatProfile ? resolveDesperationArena(this.combatProfile.room) : null
+    if (this.desperationArena?.kind === 'anchors_shifting') {
+      this.motionController?.setAnchorFractions(this.desperationArena.anchorFractions)
+    }
+  }
+
+  private currentPaletteColor(): number | null {
+    if (this.paletteFlashStartedAtMs === null) return null
+    return paletteFlashColor(this.scene.time.now - this.paletteFlashStartedAtMs, this.blueprint.desperation?.flashPalette ?? [0xffffff])
+  }
+
+  /**
+   * Boss animations are global but the boss atlas is stage-scoped (evicted and reloaded on a revisit): an animation
+   * still bound to the old texture's frames is rebuilt, or `play` reads a destroyed frame.
+   */
+  private ensureAnimation(key: string, config: () => Phaser.Types.Animations.Animation): void {
+    const existing = this.scene.anims.get(key)
+    const texture = this.scene.textures.get(this.atlasKey)
+    if (existing && existing.frames.every((entry) => entry.frame?.texture === texture)) return
+    if (existing) this.scene.anims.remove(key)
+    this.scene.anims.create(config())
+  }
+
+  private playFrameGroup(group: 'intro' | 'phase' | 'defeat', repeat: number): void {
+    const animKey = `${this.blueprint.id}_${group}`
+    this.ensureAnimation(animKey, () => ({ key: animKey, frames: this.resolveGroupedFrames(group), frameRate: 8, repeat }))
+    if (this.sprite.anims.currentAnim?.key !== animKey) this.sprite.play(animKey)
+  }
+
   private playAnimationForState(): void {
+    if (this.defeatStartedAtMs !== null) return
     const runtimeState = this.bossBrain.state
     const attackProfile = this.lastFiredAttackId
       ? getBossAttackCombatProfile(this.blueprint.id as BossId, this.lastFiredAttackId)
@@ -547,36 +791,37 @@ export class BossController extends Phaser.GameObjects.Container {
       ? attackProfile.animation[animationPhase] ?? attackProfile.animation.recovery
       : null
     const landingPresentation = this.scene.time.now < this.landingPresentationUntilMs
-    const stateKey =
-      (runtimeState === 'ATTACKING' || landingPresentation) && actionKey
+    // A break holds its recoil pose (the first defeat frame) for the whole stun; a plain hit's flinch stays idle.
+    const stateKey = this.bossBrain.isBroken
+      ? 'recoil'
+      : (runtimeState === 'ATTACKING' || landingPresentation) && actionKey
         ? actionKey
         : runtimeState === 'MOVE_TO_RANGE'
           ? 'move'
           : runtimeState === 'HURT_INVULN'
             ? 'idle'
             : runtimeState === 'PHASE_TRANSITION'
-              ? 'special'
-              : 'idle'
+              ? 'phase'
+              : runtimeState === 'INTRO' && this.introPresenting
+                ? 'intro'
+                : 'idle'
 
     const animKey = `${this.blueprint.id}_${stateKey}`
     const frameRate = this.resolveFrameRate(stateKey)
-    const repeat = runtimeState === 'ATTACKING' || landingPresentation ? 0 : -1
-    if (!this.scene.anims.exists(animKey)) {
-      const frames = this.resolveGroupedFrames(stateKey)
-      this.scene.anims.create({
-        key: animKey,
-        frames,
-        frameRate,
-        repeat
-      })
-    }
+    const repeat = runtimeState === 'ATTACKING' || landingPresentation || stateKey === 'intro' || stateKey === 'phase' ? 0 : -1
+    this.ensureAnimation(animKey, () => ({ key: animKey, frames: this.resolveGroupedFrames(stateKey), frameRate, repeat }))
 
-    this.sprite.play(animKey, true)
+    // Intro and phase poses play once and hold their last frame (a finished anim would otherwise restart).
+    const holdsLastFrame = (stateKey === 'intro' || stateKey === 'phase') && this.sprite.anims.currentAnim?.key === animKey
+    if (!holdsLastFrame) this.sprite.play(animKey, true)
     this.applyActionPresentation(
       landingPresentation ? 'ATTACKING' : runtimeState,
       this.lastLifecyclePhase,
       attackProfile?.motion.kind
     )
+    const paletteColor = this.currentPaletteColor()
+    if (paletteColor !== null) this.sprite.setTint(paletteColor)
+    if (this.scene.time.now < this.whiteFlashUntilMs) this.sprite.setTintFill(0xffffff)
   }
 
   private buildGroupedAtlasFrames(): Record<string, string[]> {
@@ -615,7 +860,12 @@ export class BossController extends Phaser.GameObjects.Container {
       : stateKey.includes('idle')
         ? 'idle'
         : 'shoot'
+    const recoil = bossRecoilFrame(this.groupedAtlasFrames, this.atlasFrames)
     const groupMap: Record<string, string[]> = {
+      recoil: recoil ? [recoil] : [],
+      intro: this.groupedAtlasFrames.intro ?? this.groupedAtlasFrames.idle ?? [],
+      phase: this.groupedAtlasFrames.phase ?? this.groupedAtlasFrames.special ?? [],
+      defeat: this.groupedAtlasFrames.defeat ?? this.groupedAtlasFrames.idle ?? [],
       idle: this.groupedAtlasFrames.idle ?? [],
       move: this.groupedAtlasFrames.move ?? this.groupedAtlasFrames.run ?? [],
       shoot: this.groupedAtlasFrames.shoot ?? this.groupedAtlasFrames.attack ?? [],

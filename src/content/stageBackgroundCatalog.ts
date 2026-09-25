@@ -12,6 +12,149 @@ const INDUSTRIAL_SOURCE_URL = 'https://opengameart.org/content/industrial-parall
 const ADMURIN_SOURCE_URL = 'https://opengameart.org/content/parallax-backgrounds'
 
 export const STAGE_BACKGROUND_ASSETS: StageBackgroundAsset[] = [
+  // Relay biome (the tutorial's Drill Hangar), original art for phase 6.P: Higgsfield gpt_image_2 layers cut to one
+  // seamless period by scripts/sprites/cut_background_layer.py (provenance: assets/backgrounds/source/relay/).
+  {
+    key: 'bg_relay_far',
+    path: 'assets/backgrounds/relay/relay_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  // Every district's own parallax (finish plan, 2026-09-24): scripts/sprites/cut_biomes_v1.sh.
+  {
+    key: 'bg_tide_far',
+    path: 'assets/backgrounds/tide/tide_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_tide_mid',
+    path: 'assets/backgrounds/tide/tide_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_volt_far',
+    path: 'assets/backgrounds/volt/volt_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_volt_mid',
+    path: 'assets/backgrounds/volt/volt_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_basalt_far',
+    path: 'assets/backgrounds/basalt/basalt_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_basalt_mid',
+    path: 'assets/backgrounds/basalt/basalt_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_ferro_far',
+    path: 'assets/backgrounds/ferro/ferro_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_ferro_mid',
+    path: 'assets/backgrounds/ferro/ferro_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_mire_far',
+    path: 'assets/backgrounds/mire/mire_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_mire_mid',
+    path: 'assets/backgrounds/mire/mire_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_gale_far',
+    path: 'assets/backgrounds/gale/gale_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_gale_mid',
+    path: 'assets/backgrounds/gale/gale_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_glacier_far',
+    path: 'assets/backgrounds/glacier/glacier_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_glacier_mid',
+    path: 'assets/backgrounds/glacier/glacier_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_omega_far',
+    path: 'assets/backgrounds/omega/omega_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_omega_mid',
+    path: 'assets/backgrounds/omega/omega_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_pyro_far',
+    path: 'assets/backgrounds/pyro/pyro_far.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_pyro_mid',
+    path: 'assets/backgrounds/pyro/pyro_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
+  {
+    key: 'bg_relay_mid',
+    path: 'assets/backgrounds/relay/relay_mid.png',
+    license: 'original-generated',
+    sourceUrl: 'generated',
+    credit: 'Original art generated with Higgsfield (gpt_image_2) for this project'
+  },
   {
     key: 'bg_industrial_bg',
     path: 'assets/backgrounds/opengameart/industrial/industrial_0003_bg.png',
@@ -307,32 +450,86 @@ function snowBackground(baseColor: string, tint: number): StageBackgroundDefinit
 export function getStageBackgroundDefinition(stageId: string): StageBackgroundDefinition {
   switch (stageId) {
     case 'tutorial_sentinel':
-      return dockBackground('#0d1a2b', 0x7dafff, 0xb0d1ff)
+      // Drill Hangar (6.P): far skyline 192px tall and drill rigs 144px tall, both bottom-aligned on the 252px
+      // frame and tinted well below the tiles (STOP 6.P captures: navy on navy hid the ledges and catwalks).
+      return {
+        baseColor: '#0E1622',
+        layers: [
+          { key: 'bg_relay_far', scrollFactorX: 0.08, y: 60, tint: 0x6f7b96 },
+          { key: 'bg_relay_mid', scrollFactorX: 0.28, y: 108, tint: 0x55607c }
+        ]
+      }
     case 'pyro_maw':
-      return industrialBackground('#22100d', 0xff7f4f, 0xffb066)
+      // Heat Works (finish plan): smokestack skyline and foundry gantries, tinted well below the tiles.
+      return {
+        baseColor: '#180D0B',
+        layers: [
+          { key: 'bg_pyro_far', scrollFactorX: 0.08, y: 60, tint: 0x8a7a72 },
+          { key: 'bg_pyro_mid', scrollFactorX: 0.28, y: 108, tint: 0x6e5c56 }
+        ]
+      }
     case 'tide_reaver':
-      return dockBackground('#07192a', 0x76c8ff, 0x9fe3ff)
+      return {
+        baseColor: '#081622',
+        layers: [
+          { key: 'bg_tide_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_tide_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
+        ]
+      }
     case 'volt_hopper':
-      return dockBackground('#0b1126', 0x85a0ff, 0xa2bdff)
+      return {
+        baseColor: '#0C1020',
+        layers: [
+          { key: 'bg_volt_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_volt_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
+        ]
+      }
     case 'basalt_titan':
-      return caveBackground('#140f0b', 0xc49a6c)
+      return {
+        baseColor: '#15100C',
+        layers: [
+          { key: 'bg_basalt_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_basalt_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
+        ]
+      }
     case 'ferro_blade':
-      return industrialBackground('#111620', 0x7d95bb, 0x9db4d4)
+      return {
+        baseColor: '#12131A',
+        layers: [
+          { key: 'bg_ferro_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_ferro_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
+        ]
+      }
     case 'mire_wraith':
-      return deadForestBackground('#0a130f', 0x5ea871)
+      return {
+        baseColor: '#0D140F',
+        layers: [
+          { key: 'bg_mire_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_mire_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
+        ]
+      }
     case 'gale_vixen':
-      return plainsBackground('#0c1725', 0x9ac4ff)
+      return {
+        baseColor: '#0D1520',
+        layers: [
+          { key: 'bg_gale_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_gale_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
+        ]
+      }
     case 'glacier_ronin':
-      return snowBackground('#0c1526', 0xb2d0ff)
+      return {
+        baseColor: '#0C1420',
+        layers: [
+          { key: 'bg_glacier_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_glacier_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
+        ]
+      }
     case 'omega_fortress':
       return {
-        baseColor: '#140d1f',
+        baseColor: '#100B18',
         layers: [
-          { key: 'bg_dock_0', scrollFactorX: 0.01, y: 36, tint: 0xa37dff },
-          { key: 'bg_dock_2', scrollFactorX: 0.08, y: 36, tint: 0xc4a6ff, alpha: 0.84 },
-          { key: 'bg_industrial_far', scrollFactorX: 0.14, y: 110, tint: 0x8c7bff, alpha: 0.72 },
-          { key: 'bg_industrial_buildings', scrollFactorX: 0.2, y: 102, tint: 0xb89cff, alpha: 0.9 },
-          { key: 'bg_dock_7', scrollFactorX: 0.28, y: 36, tint: 0x6a5fc9, alpha: 0.96 }
+          { key: 'bg_omega_far', scrollFactorX: 0.08, y: 60, tint: 0x8c8c98 },
+          { key: 'bg_omega_mid', scrollFactorX: 0.28, y: 108, tint: 0x6c6c78 }
         ]
       }
     default:

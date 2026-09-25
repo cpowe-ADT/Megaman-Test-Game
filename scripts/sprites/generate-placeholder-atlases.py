@@ -161,7 +161,7 @@ def build_atlas(entry: Dict):
     atlas = {
         "frames": frames,
         "meta": {
-            "app": "megaman-placeholder-generator",
+            "app": "omega-relay-placeholder-generator",
             "version": "1.0.0",
             "image": png_path.name,
             "format": "RGBA8888",
