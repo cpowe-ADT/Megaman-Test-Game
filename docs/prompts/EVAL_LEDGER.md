@@ -113,3 +113,12 @@ Complete; rows moved verbatim to `docs/prompts/archive/EVAL_LEDGER-09.md` on 202
 | EVAL-P11-006 | gate | a quiet gate wrapper keeps full logs in `output/gates/` and prints one result line per script | PASS | `npm run -s gate -- test agents:check` -> `PASS test (11s): # pass 291 ... # fail 0 (output/gates/test.log)` and `PASS agents:check (0s): agents:check: 0 errors, 5 legacy warnings ...` | `67d2d34` |
 | EVAL-P11-007 | gate | (11b) `run-seats.sh --diff` through Codex with `CODEX_MODEL`, merged green | PENDING | | |
 | EVAL-P11-008 | review | (11b) 05 exit retro compares Tokens per seat with the 2026-09-22 audit and proposes at most one budget change | PENDING | | |
+
+## Prompt 12: Finish the game
+
+| Id | Kind | What passes | Status | Evidence | Commit |
+| --- | --- | --- | --- | --- | --- |
+| EVAL-P12-001 | gate | CI runs smoke and sweep on every pull request, not only by hand | PENDING | | |
+| EVAL-P12-002 | gate | saves migrate forward: a versioned migrate step with fixture tests | PENDING | | |
+| EVAL-P12-003 | gate | version and changelog: package version bumps with a CHANGELOG entry per release | PENDING | | |
+| EVAL-P12-004 | gate | a sound for every new action (combo hits, air spin, reflect, vents, slag, walls, crumbles, gates, mini-bosses); unknown SFX keys throw in development | PENDING | | |
