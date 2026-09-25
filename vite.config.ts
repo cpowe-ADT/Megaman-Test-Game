@@ -52,10 +52,32 @@ function copyRuntimeAssetsPlugin(): Plugin {
   }
 }
 
+/** Production builds ship the sprite manifest without its human notes and local source paths (prompt 09 `jsGzipKB`). */
+function stripSpriteManifestDocsPlugin(): Plugin {
+  return {
+    name: 'strip-sprite-manifest-docs',
+    enforce: 'pre',
+    apply: 'build',
+    transform(code, id) {
+      if (!id.endsWith('/assets/sprites/manifest.v1.json')) return null
+      const manifest = JSON.parse(code) as { entries?: Array<{ notes?: unknown; source?: Record<string, unknown> }> }
+      for (const entry of manifest.entries ?? []) {
+        delete entry.notes
+        if (entry.source) {
+          delete entry.source.localImagePath
+          delete entry.source.localDataPath
+        }
+      }
+      return { code: JSON.stringify(manifest), map: null }
+    }
+  }
+}
+
 export default defineConfig(({ command }) => ({
-  plugins: [copyRuntimeAssetsPlugin()],
-  // Production builds fetch the dialogue lines in Preload instead of bundling them (src/content/dialogue/index.ts).
-  define: command === 'build' ? { __FETCH_DIALOGUE__: 'true' } : {},
+  plugins: [stripSpriteManifestDocsPlugin(), copyRuntimeAssetsPlugin()],
+  // Production builds fetch the dialogue lines and the enemy catalog in Preload instead of bundling them
+  // (src/content/dialogue/index.ts, src/content/enemies/catalog.ts), and ship the sprite manifest without its notes.
+  define: command === 'build' ? { __FETCH_CONTENT__: 'true' } : {},
   server: {
     open: !smokeServerActive,
     hmr: smokeServerActive ? false : undefined,

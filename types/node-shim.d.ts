@@ -10,5 +10,5 @@ declare module '*?url' {
   export default url
 }
 
-/** Defined as `true` by `vite build` only (vite.config.ts): production fetches the dialogue lines. */
-declare const __FETCH_DIALOGUE__: boolean | undefined
+/** Defined as `true` by `vite build` only (vite.config.ts): production fetches the dialogue lines and the enemy catalog. */
+declare const __FETCH_CONTENT__: boolean | undefined
