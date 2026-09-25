@@ -37,7 +37,8 @@ import {
   type RockfallState
 } from '../rockfall'
 import { railCycleAt, resolveRailGroup, type RailPhase, type ResolvedRail, type ResolvedRailGroup } from '../timedRailGroup'
-import { mechanicsFrameName, mechanicsV2ArtReady, playMechanicHit, setMechanicsV2Frame, type MechanicsFrame } from './mechanicsArt'
+import { mechanicsFrameName, mechanicsV2ArtReady, playMechanicHit, playMechanicSfx, setMechanicsV2Frame, type MechanicsFrame } from './mechanicsArt'
+import { areaAroundCentres, railPhaseSfx } from '../../audio/mechanicsSfx'
 
 export type HazardMechanicsDeps = {
   scene: Phaser.Scene
@@ -165,7 +166,9 @@ export class HazardMechanicsAdapter {
   private syncRails(clockMs: number): void {
     for (const entry of this.railGroups) {
       const cycle = railCycleAt(entry.group.timing, clockMs)
+      const arcSfx = railPhaseSfx(entry.phase, cycle.phase)
       entry.phase = cycle.phase
+      if (arcSfx) playMechanicSfx(this.deps.scene, areaAroundCentres(entry.group.rails), arcSfx)
       entry.untilArcMs = cycle.untilArcMs
       const look = railFrame(cycle.phase, clockMs)
       for (const railEntry of entry.rails) {
@@ -189,7 +192,7 @@ export class HazardMechanicsAdapter {
       const amount = Math.max(1, Math.round(rock.def.damage ?? ROCKFALL_DEFAULT_DAMAGE))
       this.deps.damagePlayer({ amount, tier: amount >= 2 ? 'heavy' : 'light', sourceType: 'hazard', sourceId: rock.def.id, direction: heroDirection(frame.hero, rock.def.x) })
     }
-    if (broke) playMechanicHit(this.deps.scene, rock.def.x, rock.state.y, 'enemy_hit')
+    if (broke) playMechanicHit(this.deps.scene, rock.def.x, rock.state.y, 'rockfall')
   }
 
   private stepIcicleEntry(icicle: IcicleEntry, frame: MechanicsFrame): void {
@@ -200,7 +203,7 @@ export class HazardMechanicsAdapter {
       const amount = Math.max(1, Math.round(icicle.def.damage ?? ICICLE_DEFAULT_DAMAGE))
       this.deps.damagePlayer({ amount, tier: amount >= 2 ? 'heavy' : 'light', sourceType: 'hazard', sourceId: icicle.def.id, direction: heroDirection(frame.hero, icicle.def.x) })
     }
-    if (shattered) playMechanicHit(this.deps.scene, icicle.def.x, icicle.def.y + icicle.state.dropY + ICICLE_LENGTH, 'enemy_hit')
+    if (shattered) playMechanicHit(this.deps.scene, icicle.def.x, icicle.def.y + icicle.state.dropY + ICICLE_LENGTH, 'icicle_shatter')
   }
 
   private drawRock(rock: RockEntry, clockMs: number): void {

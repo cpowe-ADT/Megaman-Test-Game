@@ -36,7 +36,8 @@ import {
   mechanicsFrame,
   scrapGateFrameIndex
 } from '../mechanicsVisuals'
-import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, setMechanicsFrame } from './mechanicsArt'
+import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, playMechanicSfx, setMechanicsFrame } from './mechanicsArt'
+import { roomLockPhaseSfx } from '../../audio/mechanicsSfx'
 
 /** A verb gate's world-space sign: key and verb from the live bindings (`C  SLASH`), shown near the closed gate. */
 type GateSign = { container: Phaser.GameObjects.Container; panel: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text }
@@ -223,7 +224,9 @@ export class RoomLockAdapter {
     this.clockMs += Math.min(Math.max(0, delta || 0), 100)
     const index = findRoomIndex(this.locks, player.x)
     if (index >= 0 && this.states[index].phase === 'dormant') {
-      this.states[index] = armRoomLock(this.states[index])
+      const armed = armRoomLock(this.states[index])
+      playMechanicSfx(this.deps.scene, null, roomLockPhaseSfx(this.states[index].phase, armed.phase))
+      this.states[index] = armed
       this.prevSample = null
       const lock = this.locks[index]
       if (lock.requiredInput) this.deps.onArmed(index, roomLockKeyHint(lock.requiredInput, Settings.get().bindings))
@@ -260,6 +263,7 @@ export class RoomLockAdapter {
    */
   private commit(index: number, next: RoomLockState): void {
     if (next === this.states[index]) return
+    playMechanicSfx(this.deps.scene, null, roomLockPhaseSfx(this.states[index].phase, next.phase))
     this.states[index] = next
     const gate = this.gates[index]
     const art = this.gateArt[index]

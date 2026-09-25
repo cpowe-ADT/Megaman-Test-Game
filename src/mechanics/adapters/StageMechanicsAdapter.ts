@@ -51,7 +51,8 @@ import {
   wallTileLayout
 } from '../mechanicsVisuals'
 import { HazardMechanicsAdapter } from './HazardMechanicsAdapter'
-import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, setMechanicsFrame, type MechanicsFrame } from './mechanicsArt'
+import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, playMechanicSfx, setMechanicsFrame, type MechanicsFrame } from './mechanicsArt'
+import { breakableWallHitSfx, crumblePhaseSfx, risingLiquidPhaseSfx, ventPhaseSfx } from '../../audio/mechanicsSfx'
 import { MotionMechanicsAdapter } from './MotionMechanicsAdapter'
 import type { PlayerEnvironment } from '../../player/environment'
 
@@ -365,7 +366,7 @@ export class StageMechanicsAdapter {
         vent.jet.setVisible(flameIndex !== null)
         if (flameIndex !== null) setMechanicsFrame(vent.jet, 'vent_flame', flameIndex)
         vent.flame.fillAlpha = 0
-        if (force || cycle.phase !== vent.phase) vent.phase = cycle.phase
+        this.setVentPhase(vent, cycle.phase, force)
         continue
       }
       // Arming flash: the nozzle blinks and a low flame flickers for the 300ms before it fires.
@@ -378,8 +379,17 @@ export class StageMechanicsAdapter {
         nozzle.fillColor = blink ? ARM_FLASH_COLOR : NOZZLE_COLOR
       }
       vent.flame.fillAlpha = cycle.phase === 'firing' ? 0.9 : cycle.phase === 'arming' ? (blink ? 0.35 : 0.15) : 0
-      if (force || cycle.phase !== vent.phase) vent.phase = cycle.phase
+      this.setVentPhase(vent, cycle.phase, force)
     }
+  }
+
+  /** A vent's arm and fire sounds play on its phase changes while it is on screen (not on the forced first sync). */
+  private setVentPhase(vent: VentEntry, phase: VentPhase, force: boolean): void {
+    if (!force && phase !== vent.phase) {
+      const bounds = vent.flame.getBounds()
+      playMechanicSfx(this.deps.scene, { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom }, ventPhaseSfx(vent.phase, phase))
+    }
+    if (force || phase !== vent.phase) vent.phase = phase
   }
 
   private onRespawn(): void {
@@ -397,7 +407,9 @@ export class StageMechanicsAdapter {
     this.prevHeroX = heroX
     for (const liquid of this.liquids) {
       if (dying) continue
+      const before = liquid.state.phase
       liquid.state = stepRisingLiquid(liquid.def, liquid.state, { heroX, prevHeroX, deltaMs: delta })
+      playMechanicSfx(this.deps.scene, null, risingLiquidPhaseSfx(before, liquid.state.phase))
       this.drawLiquid(liquid)
       if (liquid.state.phase !== 'dormant' && isInsideLiquid(liquid.def, liquid.state.surfaceY, hero)) {
         this.deps.damagePlayer({ amount: LETHAL_DAMAGE, tier: 'heavy', sourceType: 'hazard', sourceId: liquid.def.id, bypassIFrames: true })
@@ -427,6 +439,7 @@ export class StageMechanicsAdapter {
         { heroStanding: isStandingOn(hero, crumble.box, grounded), heroOverlapping: boxesOverlap(hero, crumble.box), deltaMs: delta },
         crumble.timing
       )
+      playMechanicSfx(this.deps.scene, crumble.box, crumblePhaseSfx(before, crumble.state.phase))
       const visual = crumble.visual
       if (!visual) continue
       const body = staticBodyOf(visual)
@@ -493,7 +506,7 @@ export class StageMechanicsAdapter {
     wall.state = next
     this.drawCracks(wall)
     const { top, bottom } = wall.box
-    playMechanicHit(this.deps.scene, sparkX, Math.min(Math.max(sparkY, top + 6), bottom - 6), hit.kind === 'saber' ? 'sword_hit' : 'enemy_hit')
+    playMechanicHit(this.deps.scene, sparkX, Math.min(Math.max(sparkY, top + 6), bottom - 6), breakableWallHitSfx(next.phase === 'broken'))
     if (next.phase !== 'broken' || !wall.visual) return
     const body = staticBodyOf(wall.visual)
     if (body) body.enable = false

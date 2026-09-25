@@ -1,9 +1,16 @@
 import type Phaser from 'phaser'
 import { Settings, VOLUME_STEPS, type SettingsData } from '../systems/Settings'
-import { MUSIC_ASSETS, getMusicAssetEntries, type MusicCueId } from './musicLibrary'
+import { getMusicAssetEntries, resolveMusicTrack, type MusicAssetDefinition, type MusicContext, type MusicCueId, type ResolvedMusicTrack } from './musicLibrary'
 import { MusicTrackLoader } from './MusicTrackLoader'
 import { musicKeysToEvict } from './musicResidency'
-import { SFX_ASSETS, type SfxAssetKey } from './sfxLibrary'
+import { SFX_ASSETS, resolveSfxKey, type SfxAssetKey } from './sfxLibrary'
+
+/** Development builds (and smoke, which runs the dev server) throw on an SFX key with no sound. */
+const STRICT_SFX_KEYS = Boolean(import.meta.env?.DEV)
+/** Boss phase changes crossfade between the boss track and its phase-two track over this long. */
+export const MUSIC_PHASE_CROSSFADE_MS = 600
+
+type MusicSound = Phaser.Sound.BaseSound & { setVolume?: (value: number) => unknown; seek?: number }
 
 type SfxSequenceStep = {
   freq: number
@@ -22,6 +29,10 @@ export class PlaceholderAudioService {
   private currentMusic?: Phaser.Sound.BaseSound
   private currentMusicCue?: MusicCueId
   private requestedMusicCue?: MusicCueId
+  private currentTrack?: ResolvedMusicTrack
+  private requestedTrack?: ResolvedMusicTrack
+  private fadingMusic?: Phaser.Sound.BaseSound
+  private musicPhase: 1 | 2 = 1
   private musicScene?: Phaser.Scene
   private musicGame?: Phaser.Game
   private game?: Phaser.Game
@@ -96,8 +107,8 @@ export class PlaceholderAudioService {
       return
     }
 
-    const normalized = this.normalizeKey(key)
-    if (normalized === 'none') {
+    const normalized = resolveSfxKey(key, STRICT_SFX_KEYS)
+    if (!normalized) {
       return
     }
 
@@ -272,12 +283,17 @@ export class PlaceholderAudioService {
     this.activeNodes.clear()
   }
 
-  playMusic(scene: Phaser.Scene, cue: MusicCueId): void {
+  /**
+   * Plays a cue's track. `context` picks the stage's or boss's own track (musicLibrary.resolveMusicTrack);
+   * without it the cue plays its shared track.
+   */
+  playMusic(scene: Phaser.Scene, cue: MusicCueId, context?: MusicContext): void {
     this.musicScene = scene
     this.musicGame = scene.game
     this.requestedMusicCue = cue
+    this.requestedTrack = resolveMusicTrack(cue, context)
     // Decode now even while audio is locked, so the track is ready the moment the player unlocks it.
-    this.ensureMusicLoaded(cue)
+    this.ensureMusicLoaded(this.requestedTrack)
     if (!this.unlocked) {
       return
     }
@@ -287,16 +303,83 @@ export class PlaceholderAudioService {
   stopMusic(): void {
     this.requestedMusicCue = undefined
     this.currentMusicCue = undefined
+    this.requestedTrack = undefined
+    this.currentTrack = undefined
+    this.musicPhase = 1
+    this.releaseSound(this.fadingMusic)
+    this.fadingMusic = undefined
     if (!this.currentMusic) {
       return
     }
+    this.releaseSound(this.currentMusic)
+    this.currentMusic = undefined
+  }
+
+  /**
+   * The boss phase change: crossfades (MUSIC_PHASE_CROSSFADE_MS) from the boss track to its phase-two track
+   * at the same point in the song, or back for phase 1. No-op when the playing track has no phase-two track.
+   */
+  setMusicPhase(phase: 1 | 2): void {
+    const track = this.currentTrack
+    const scene = this.musicScene
+    const current = this.currentMusic as MusicSound | undefined
+    if (!track?.phaseTwo || !scene || !current || this.musicPhase === phase) {
+      return
+    }
+    const target: MusicAssetDefinition = phase === 2 ? track.phaseTwo : track
+    if (!scene.cache.audio.exists(target.key)) {
+      return
+    }
+    const duration = Number(current.duration) || 0
+    const seek = duration > 0 ? (Number(current.seek) || 0) % duration : 0
+    let next: MusicSound
     try {
-      this.currentMusic.stop()
-      this.currentMusic.destroy()
+      next = scene.sound.add(target.key, { loop: true, volume: 0 }) as MusicSound
+      next.play({ seek, loop: true, volume: 0 })
+    } catch {
+      return
+    }
+    this.musicPhase = phase
+    this.releaseSound(this.fadingMusic)
+    this.fadingMusic = current
+    this.currentMusic = next
+    const fromVolume = this.currentMusicBaseVolume * this.musicVolumeScale
+    this.currentMusicBaseVolume = target.volume
+    const finish = () => {
+      if (this.fadingMusic === current) {
+        this.fadingMusic = undefined
+      }
+      this.releaseSound(current)
+      next.setVolume?.(this.currentMusicBaseVolume * this.musicVolumeScale)
+    }
+    const tweens = (scene as Partial<Phaser.Scene>).tweens
+    if (!tweens) {
+      finish()
+      return
+    }
+    tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: MUSIC_PHASE_CROSSFADE_MS,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0
+        current.setVolume?.(fromVolume * (1 - t))
+        next.setVolume?.(this.currentMusicBaseVolume * this.musicVolumeScale * t)
+      },
+      onComplete: finish
+    })
+  }
+
+  private releaseSound(sound: Phaser.Sound.BaseSound | undefined): void {
+    if (!sound) {
+      return
+    }
+    try {
+      sound.stop()
+      sound.destroy()
     } catch {
       // Ignore Phaser sound teardown failures during scene transitions.
     }
-    this.currentMusic = undefined
   }
 
   onSceneShutdown(scene: Phaser.Scene): void {
@@ -339,16 +422,16 @@ export class PlaceholderAudioService {
       .filter((key) => game.cache.audio.exists(key))
   }
 
-  private ensureMusicLoaded(cue: MusicCueId): void {
+  private ensureMusicLoaded(track: ResolvedMusicTrack): void {
     const game = this.musicGame
-    const asset = MUSIC_ASSETS[cue]
-    if (!game || !asset || game.cache.audio.exists(asset.key)) {
+    const missing = trackAssets(track).filter((asset) => !game?.cache.audio.exists(asset.key))
+    if (!game || missing.length === 0) {
       return
     }
     // Free tracks nothing will play before decoding another one.
     this.evictIdleMusic()
-    void this.musicLoader.load(game, asset).then((loaded) => {
-      if (loaded && this.unlocked && this.requestedMusicCue === cue) {
+    void Promise.all(missing.map((asset) => this.musicLoader.load(game, asset))).then((loaded) => {
+      if (loaded.every(Boolean) && this.unlocked && this.requestedTrack?.key === track.key) {
         this.startRequestedMusic()
       } else {
         // The cue moved on while this track decoded (a boss dies mid-load): do not keep it resident.
@@ -363,34 +446,9 @@ export class PlaceholderAudioService {
       return
     }
     const playingKey = this.currentMusic?.key ?? null
-    const requestedKey = this.requestedMusicCue ? MUSIC_ASSETS[this.requestedMusicCue]?.key ?? null : null
-    musicKeysToEvict(this.residentMusicKeys(), playingKey, requestedKey).forEach((key) => this.musicLoader.evict(game, key))
-  }
-
-  private normalizeKey(key: string): SfxAssetKey | 'none' {
-    if (key === 'shot_charge_lv1' || key === 'shot_charge_lv2' || key === 'shot_charge_lv3' || key === 'shot_charge_lv4')
-      return key
-    if (
-      key === 'jump' ||
-      key === 'land' ||
-      key === 'dash' ||
-      key === 'sword_swing' ||
-      key === 'sword_hit' ||
-      key === 'charge_start' ||
-      key === 'charge_loop'
-    ) {
-      return key
-    }
-    if (key === 'shot_basic') return key
-    if (key === 'ui_confirm' || key === 'ui_cancel' || key === 'ui_move') return key
-    if (key === 'pickup_health' || key === 'pickup_ammo' || key === 'pickup_bonus') return key
-    if (key === 'pause_open' || key === 'pause_resume') return key
-    if (key === 'boss_activate' || key === 'stage_clear' || key === 'game_over') return key
-    if (key.includes('boss') && key.includes('hit')) return 'boss_hit'
-    if (key.includes('enemy') && key.includes('hit')) return 'enemy_hit'
-    if (key.includes('hurt') || key.includes('damage')) return 'player_hit'
-    if (key.includes('enemy_windup') || key.includes('enemy_spawn') || key.startsWith('sfx_')) return 'ui_move'
-    return 'none'
+    const requestedKey = this.requestedTrack?.key ?? null
+    const alsoKeep = [this.fadingMusic?.key, this.currentTrack?.key, this.currentTrack?.phaseTwo?.key, this.requestedTrack?.phaseTwo?.key]
+    musicKeysToEvict(this.residentMusicKeys(), playingKey, requestedKey, alsoKeep).forEach((key) => this.musicLoader.evict(game, key))
   }
 
   private playLoadedSfx(key: SfxAssetKey): boolean {
@@ -450,29 +508,27 @@ export class PlaceholderAudioService {
 
   private startRequestedMusic(): void {
     const cue = this.requestedMusicCue
+    const asset = this.requestedTrack
     const scene = this.musicScene
-    if (!cue || !scene || !this.enabled) {
+    if (!cue || !asset || !scene || !this.enabled) {
       return
     }
-
-    const asset = MUSIC_ASSETS[cue]
-    if (!asset) {
-      return
-    }
-    if (!scene.cache.audio.exists(asset.key)) {
+    if (trackAssets(asset).some((entry) => !scene.cache.audio.exists(entry.key))) {
       // Not decoded yet: the previous track keeps playing and this cue starts when its load resolves.
       this.musicGame = scene.game
-      this.ensureMusicLoaded(cue)
+      this.ensureMusicLoaded(asset)
       return
     }
 
-    if (this.currentMusicCue === cue && this.currentMusic?.isPlaying) {
+    if (this.currentMusicCue === cue && this.currentTrack?.key === asset.key && this.currentMusic?.isPlaying) {
       return
     }
 
     this.stopMusic()
     this.requestedMusicCue = cue
+    this.requestedTrack = asset
     this.currentMusicCue = cue
+    this.currentTrack = asset
 
     try {
       this.currentMusicBaseVolume = asset.volume
@@ -588,3 +644,8 @@ export class PlaceholderAudioService {
 
 export const AudioService = new PlaceholderAudioService()
 export default AudioService
+
+/** The files a track needs decoded before it starts: the track, and a boss track's phase-two partner. */
+function trackAssets(track: ResolvedMusicTrack): MusicAssetDefinition[] {
+  return track.phaseTwo ? [track, track.phaseTwo] : [track]
+}

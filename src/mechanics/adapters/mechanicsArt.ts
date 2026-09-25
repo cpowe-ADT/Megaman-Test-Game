@@ -2,6 +2,7 @@ import type Phaser from 'phaser'
 import AudioService from '../../audio'
 import { HERO_EFFECTS_ATLAS, HERO_HIT_FX } from '../../combat/heroCombatVisuals'
 import type { SfxAssetKey } from '../../audio/sfxLibrary'
+import { isAreaAudible, type SfxArea } from '../../audio/mechanicsSfx'
 import { MECHANICS_ATLAS, MECHANICS_V2_ATLAS, mechanicsFrame, type FrameIndex, type MechanicsGroup } from '../mechanicsVisuals'
 import { mechanicsV2Frame, type MechanicsV2Group } from '../mechanicsV2Visuals'
 
@@ -60,6 +61,17 @@ export function playMechanicHit(scene: Phaser.Scene, x: number, y: number, sfx: 
     },
     onComplete: () => spark.destroy()
   })
+}
+
+/**
+ * A mechanic's state-change sound (src/audio/mechanicsSfx.ts), played only while `area` is on screen;
+ * `null` area plays it wherever the hero is (the triggers the hero causes).
+ */
+export function playMechanicSfx(scene: Phaser.Scene, area: SfxArea | null, sfx: SfxAssetKey | null): void {
+  if (!sfx) return
+  const view = scene.cameras?.main?.worldView
+  if (area && view && !isAreaAudible(area, view)) return
+  AudioService.playSfx(sfx)
 }
 
 /**

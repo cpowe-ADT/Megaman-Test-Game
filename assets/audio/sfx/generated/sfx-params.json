@@ -1,0 +1,131 @@
+{
+  "$comment": "Parameter sets for scripts/audio/sfx-synth.mjs (part 12h). Each sound is one or more voices: wave (square|saw|triangle|sine|noise), freq Hz (noise: hold rate), slide octaves/s, arp [{at s, ratio}], repeat s, vibrato {depth semitones, rate Hz}, duty, am {rate Hz, depth 0..1}, lpf/hpf Hz, lpfSlide octaves/s, attack/sustain/decay s, punch, curve, delay s, gain. The seed drives the noise. Re-render: node scripts/audio/sfx-synth.mjs [names]. Original work, credited in assets/audio/credits/README.md.",
+  "generator": "scripts/audio/sfx-synth.mjs",
+  "oggQuality": 4,
+  "sounds": {
+    "jump": { "file": "assets/audio/sfx/jump.wav", "rate": 22050, "seed": 12001, "peakDb": -3, "voices": [
+      { "wave": "square", "duty": 0.5, "freq": 340, "slide": 2.4, "attack": 0.002, "sustain": 0.03, "decay": 0.075, "curve": 1.2 }
+    ] },
+    "land": { "file": "assets/audio/sfx/land.wav", "rate": 22050, "seed": 12002, "peakDb": -3, "voices": [
+      { "wave": "triangle", "freq": 170, "slide": -2.5, "attack": 0.001, "sustain": 0.015, "decay": 0.07 },
+      { "wave": "noise", "freq": 3000, "lpf": 900, "attack": 0.001, "sustain": 0.005, "decay": 0.05, "gain": 0.6 }
+    ] },
+    "dash": { "file": "assets/audio/sfx/dash.wav", "rate": 22050, "seed": 12003, "peakDb": -3, "voices": [
+      { "wave": "noise", "freq": 11000, "lpf": 4200, "lpfSlide": -3, "hpf": 500, "attack": 0.004, "sustain": 0.012, "decay": 0.04, "gain": 0.8 },
+      { "wave": "square", "duty": 0.25, "freq": 420, "slide": 1.2, "attack": 0.002, "sustain": 0.015, "decay": 0.035, "gain": 0.5 }
+    ] },
+    "sword_swing": { "file": "assets/audio/sfx/sword_swing.wav", "rate": 22050, "seed": 12004, "peakDb": -3, "voices": [
+      { "wave": "noise", "freq": 11000, "hpf": 1400, "lpf": 6000, "lpfSlide": -4, "attack": 0.004, "sustain": 0.015, "decay": 0.05, "gain": 0.9 },
+      { "wave": "saw", "freq": 520, "slide": -5, "lpf": 3000, "attack": 0.002, "sustain": 0.01, "decay": 0.05, "gain": 0.4 }
+    ] },
+    "sword_hit": { "file": "assets/audio/sfx/sword_hit.wav", "rate": 22050, "seed": 12005, "peakDb": -3, "voices": [
+      { "wave": "noise", "freq": 16000, "hpf": 2400, "attack": 0.001, "sustain": 0.006, "decay": 0.03, "gain": 0.9 },
+      { "wave": "square", "duty": 0.5, "freq": 180, "slide": -3, "attack": 0.001, "sustain": 0.01, "decay": 0.05, "gain": 0.7 }
+    ] },
+    "charge_start": { "file": "assets/audio/sfx/charge_start.wav", "rate": 22050, "seed": 12006, "peakDb": -3, "voices": [
+      { "wave": "triangle", "freq": 200, "slide": 3.2, "attack": 0.01, "sustain": 0.05, "decay": 0.05 },
+      { "wave": "square", "duty": 0.125, "freq": 400, "slide": 3.2, "attack": 0.01, "sustain": 0.05, "decay": 0.05, "gain": 0.25 }
+    ] },
+    "charge_loop": { "file": "assets/audio/sfx/charge_loop.wav", "rate": 22050, "seed": 12007, "peakDb": -3, "voices": [
+      { "wave": "triangle", "freq": 460, "vibrato": { "depth": 0.6, "rate": 30 }, "attack": 0.005, "sustain": 0.035, "decay": 0.02 },
+      { "wave": "square", "duty": 0.125, "freq": 920, "attack": 0.005, "sustain": 0.03, "decay": 0.02, "gain": 0.2 }
+    ] },
+    "player_death": { "file": "assets/audio/sfx/generated/player_death.ogg", "seed": 12008, "peakDb": -2, "voices": [
+      { "wave": "square", "duty": 0.5, "freq": 660, "slide": -1.4, "vibrato": { "depth": 0.8, "rate": 9 }, "attack": 0.002, "sustain": 0.25, "decay": 0.45, "gain": 0.6 },
+      { "wave": "noise", "freq": 9000, "lpf": 2500, "attack": 0.001, "sustain": 0.03, "decay": 0.2, "gain": 0.5 }
+    ] },
+    "saber_combo_1": { "file": "assets/audio/sfx/generated/saber_combo_1.ogg", "seed": 12101, "peakDb": -2, "voices": [
+      { "wave": "noise", "freq": 16000, "hpf": 1600, "lpf": 7000, "lpfSlide": -3, "attack": 0.004, "sustain": 0.02, "decay": 0.07 },
+      { "wave": "saw", "freq": 900, "slide": -4, "lpf": 3500, "attack": 0.002, "sustain": 0.015, "decay": 0.07, "gain": 0.35 }
+    ] },
+    "saber_combo_2": { "file": "assets/audio/sfx/generated/saber_combo_2.ogg", "seed": 12102, "peakDb": -2, "voices": [
+      { "wave": "noise", "freq": 16000, "hpf": 1300, "lpf": 6000, "lpfSlide": -3, "attack": 0.004, "sustain": 0.025, "decay": 0.08 },
+      { "wave": "saw", "freq": 760, "slide": -4, "lpf": 3200, "attack": 0.002, "sustain": 0.02, "decay": 0.08, "gain": 0.35 }
+    ] },
+    "saber_combo_3": { "file": "assets/audio/sfx/generated/saber_combo_3.ogg", "seed": 12103, "peakDb": -1.5, "voices": [
+      { "wave": "noise", "freq": 16000, "hpf": 900, "lpf": 5500, "lpfSlide": -2.5, "attack": 0.006, "sustain": 0.04, "decay": 0.12 },
+      { "wave": "square", "duty": 0.25, "freq": 560, "slide": -3, "attack": 0.002, "sustain": 0.03, "decay": 0.1, "gain": 0.35 },
+      { "wave": "triangle", "freq": 150, "slide": -3, "attack": 0.001, "sustain": 0.02, "decay": 0.1, "gain": 0.8 }
+    ] },
+    "saber_air_spin": { "file": "assets/audio/sfx/generated/saber_air_spin.ogg", "seed": 12104, "peakDb": -2, "voices": [
+      { "wave": "noise", "freq": 16000, "hpf": 1000, "lpf": 5000, "am": { "rate": 24, "depth": 0.7 }, "attack": 0.01, "sustain": 0.12, "decay": 0.12 },
+      { "wave": "saw", "freq": 620, "slide": -1, "vibrato": { "depth": 2, "rate": 24 }, "lpf": 3000, "attack": 0.01, "sustain": 0.1, "decay": 0.12, "gain": 0.3 }
+    ] },
+    "saber_reflect": { "file": "assets/audio/sfx/generated/saber_reflect.ogg", "seed": 12105, "peakDb": -2, "voices": [
+      { "wave": "square", "duty": 0.25, "freq": 1760, "slide": 0.4, "attack": 0.001, "sustain": 0.02, "decay": 0.14, "gain": 0.5 },
+      { "wave": "sine", "freq": 2790, "attack": 0.001, "sustain": 0.01, "decay": 0.16, "gain": 0.6 },
+      { "wave": "noise", "freq": 18000, "hpf": 5000, "attack": 0.001, "sustain": 0.004, "decay": 0.02, "gain": 0.5 }
+    ] },
+    "vent_arm": { "file": "assets/audio/sfx/generated/vent_arm.ogg", "seed": 12201, "peakDb": -3, "voices": [
+      { "wave": "noise", "freq": 14000, "lpf": 1800, "lpfSlide": 4, "hpf": 300, "attack": 0.02, "sustain": 0.08, "decay": 0.08, "gain": 0.8 },
+      { "wave": "square", "duty": 0.125, "freq": 300, "slide": 3, "attack": 0.005, "sustain": 0.03, "decay": 0.04, "gain": 0.3 }
+    ] },
+    "vent_fire": { "file": "assets/audio/sfx/generated/vent_fire.ogg", "seed": 12202, "peakDb": -2, "voices": [
+      { "wave": "noise", "freq": 14000, "lpf": 3200, "lpfSlide": -1.5, "hpf": 120, "attack": 0.005, "sustain": 0.08, "punch": 0.5, "decay": 0.22 },
+      { "wave": "triangle", "freq": 95, "slide": -1, "attack": 0.002, "sustain": 0.06, "decay": 0.15, "gain": 0.7 }
+    ] },
+    "slag_rise": { "file": "assets/audio/sfx/generated/slag_rise.ogg", "seed": 12203, "peakDb": -2, "voices": [
+      { "wave": "triangle", "freq": 72, "vibrato": { "depth": 1.5, "rate": 7 }, "attack": 0.06, "sustain": 0.2, "decay": 0.22 },
+      { "wave": "noise", "freq": 6000, "lpf": 700, "am": { "rate": 11, "depth": 0.8 }, "attack": 0.05, "sustain": 0.2, "decay": 0.2, "gain": 0.6 }
+    ] },
+    "wall_crack": { "file": "assets/audio/sfx/generated/wall_crack.ogg", "seed": 12204, "peakDb": -2, "voices": [
+      { "wave": "noise", "freq": 16000, "hpf": 900, "lpf": 7000, "attack": 0.001, "sustain": 0.01, "decay": 0.05 },
+      { "wave": "square", "duty": 0.5, "freq": 240, "slide": -4, "attack": 0.001, "sustain": 0.015, "decay": 0.06, "gain": 0.6 }
+    ] },
+    "wall_break": { "file": "assets/audio/sfx/generated/wall_break.ogg", "seed": 12205, "peakDb": -1.5, "voices": [
+      { "wave": "noise", "freq": 14000, "lpf": 5000, "lpfSlide": -2.5, "attack": 0.002, "sustain": 0.06, "punch": 0.4, "decay": 0.3 },
+      { "wave": "triangle", "freq": 120, "slide": -2.2, "attack": 0.001, "sustain": 0.04, "decay": 0.2, "gain": 0.9 },
+      { "wave": "noise", "freq": 18000, "hpf": 4000, "delay": 0.06, "attack": 0.001, "sustain": 0.02, "decay": 0.12, "gain": 0.35 }
+    ] },
+    "crumble_shake": { "file": "assets/audio/sfx/generated/crumble_shake.ogg", "seed": 12206, "peakDb": -4, "voices": [
+      { "wave": "noise", "freq": 9000, "lpf": 1400, "hpf": 150, "am": { "rate": 28, "depth": 0.9 }, "attack": 0.01, "sustain": 0.14, "decay": 0.08 }
+    ] },
+    "crumble_fall": { "file": "assets/audio/sfx/generated/crumble_fall.ogg", "seed": 12207, "peakDb": -2, "voices": [
+      { "wave": "noise", "freq": 12000, "lpf": 2600, "lpfSlide": -2.5, "attack": 0.003, "sustain": 0.05, "decay": 0.22 },
+      { "wave": "triangle", "freq": 150, "slide": -2.5, "attack": 0.002, "sustain": 0.03, "decay": 0.15, "gain": 0.8 }
+    ] },
+    "gate_open": { "file": "assets/audio/sfx/generated/gate_open.ogg", "seed": 12208, "peakDb": -3, "voices": [
+      { "wave": "square", "duty": 0.125, "freq": 190, "slide": 1.6, "am": { "rate": 18, "depth": 0.6 }, "attack": 0.01, "sustain": 0.2, "decay": 0.06, "gain": 0.6 },
+      { "wave": "noise", "freq": 8000, "lpf": 900, "delay": 0.24, "attack": 0.001, "sustain": 0.02, "decay": 0.08, "gain": 0.7 }
+    ] },
+    "gate_close": { "file": "assets/audio/sfx/generated/gate_close.ogg", "seed": 12209, "peakDb": -2, "voices": [
+      { "wave": "square", "duty": 0.125, "freq": 360, "slide": -1.8, "am": { "rate": 18, "depth": 0.6 }, "attack": 0.01, "sustain": 0.14, "decay": 0.04, "gain": 0.55 },
+      { "wave": "triangle", "freq": 110, "slide": -2, "delay": 0.17, "attack": 0.001, "sustain": 0.02, "decay": 0.12 },
+      { "wave": "noise", "freq": 8000, "lpf": 1200, "delay": 0.17, "attack": 0.001, "sustain": 0.02, "decay": 0.1, "gain": 0.6 }
+    ] },
+    "rail_arc": { "file": "assets/audio/sfx/generated/rail_arc.ogg", "seed": 12210, "peakDb": -4, "voices": [
+      { "wave": "saw", "freq": 110, "vibrato": { "depth": 3, "rate": 55 }, "lpf": 5000, "attack": 0.005, "sustain": 0.18, "decay": 0.08, "gain": 0.5 },
+      { "wave": "noise", "freq": 18000, "hpf": 2500, "am": { "rate": 45, "depth": 0.9 }, "attack": 0.005, "sustain": 0.18, "decay": 0.08, "gain": 0.6 }
+    ] },
+    "rockfall": { "file": "assets/audio/sfx/generated/rockfall.ogg", "seed": 12211, "peakDb": -1.5, "voices": [
+      { "wave": "noise", "freq": 12000, "lpf": 1600, "lpfSlide": -1.8, "attack": 0.003, "sustain": 0.08, "punch": 0.5, "decay": 0.3 },
+      { "wave": "triangle", "freq": 95, "slide": -2.5, "attack": 0.001, "sustain": 0.05, "decay": 0.22 }
+    ] },
+    "icicle_shatter": { "file": "assets/audio/sfx/generated/icicle_shatter.ogg", "seed": 12212, "peakDb": -2, "voices": [
+      { "wave": "noise", "freq": 18000, "hpf": 3200, "attack": 0.001, "sustain": 0.01, "decay": 0.08, "gain": 0.7 },
+      { "wave": "sine", "freq": 3300, "attack": 0.001, "sustain": 0.005, "decay": 0.14, "gain": 0.45 },
+      { "wave": "sine", "freq": 4190, "delay": 0.02, "attack": 0.001, "sustain": 0.005, "decay": 0.12, "gain": 0.4 },
+      { "wave": "sine", "freq": 5270, "delay": 0.045, "attack": 0.001, "sustain": 0.005, "decay": 0.1, "gain": 0.35 }
+    ] },
+    "wind_gust": { "file": "assets/audio/sfx/generated/wind_gust.ogg", "seed": 12213, "peakDb": -4, "voices": [
+      { "wave": "noise", "freq": 12000, "lpf": 700, "lpfSlide": 1.2, "hpf": 200, "am": { "rate": 4, "depth": 0.3 }, "attack": 0.18, "sustain": 0.14, "decay": 0.24, "curve": 1 }
+    ] },
+    "miniboss_stomp": { "file": "assets/audio/sfx/generated/miniboss_stomp.ogg", "seed": 12301, "peakDb": -1.5, "voices": [
+      { "wave": "triangle", "freq": 120, "slide": -3, "attack": 0.001, "sustain": 0.03, "punch": 0.6, "decay": 0.2 },
+      { "wave": "noise", "freq": 8000, "lpf": 500, "attack": 0.001, "sustain": 0.02, "decay": 0.12, "gain": 0.8 }
+    ] },
+    "miniboss_shockwave": { "file": "assets/audio/sfx/generated/miniboss_shockwave.ogg", "seed": 12302, "peakDb": -2, "voices": [
+      { "wave": "saw", "freq": 70, "slide": -1, "lpf": 900, "am": { "rate": 14, "depth": 0.5 }, "attack": 0.01, "sustain": 0.15, "decay": 0.3, "gain": 0.7 },
+      { "wave": "noise", "freq": 12000, "lpf": 1400, "lpfSlide": -2, "attack": 0.005, "sustain": 0.1, "decay": 0.32, "gain": 0.8 }
+    ] },
+    "boss_hit_weak": { "file": "assets/audio/sfx/generated/boss_hit_weak.ogg", "seed": 12303, "peakDb": -2, "voices": [
+      { "wave": "square", "duty": 0.25, "freq": 990, "arp": [{ "at": 0.035, "ratio": 1.5 }], "attack": 0.001, "sustain": 0.05, "decay": 0.09, "gain": 0.6 },
+      { "wave": "noise", "freq": 18000, "hpf": 3000, "attack": 0.001, "sustain": 0.005, "decay": 0.03, "gain": 0.6 },
+      { "wave": "triangle", "freq": 220, "slide": -3, "attack": 0.001, "sustain": 0.02, "decay": 0.06, "gain": 0.6 }
+    ] },
+    "boss_warning": { "file": "assets/audio/sfx/generated/boss_warning.ogg", "seed": 12304, "peakDb": -3, "voices": [
+      { "wave": "square", "duty": 0.5, "freq": 440, "repeat": 0.24, "arp": [{ "at": 0.12, "ratio": 1.335 }], "attack": 0.01, "sustain": 0.8, "decay": 0.1, "curve": 1, "gain": 0.6 },
+      { "wave": "square", "duty": 0.125, "freq": 880, "repeat": 0.24, "arp": [{ "at": 0.12, "ratio": 1.335 }], "attack": 0.01, "sustain": 0.8, "decay": 0.1, "curve": 1, "gain": 0.25 }
+    ] }
+  }
+}

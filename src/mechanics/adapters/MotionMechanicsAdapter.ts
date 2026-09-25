@@ -27,7 +27,8 @@ import {
   windLiftFrameIndex
 } from '../mechanicsV2Visuals'
 import { resolveWindZone, windCycleAt, type ResolvedWindZone, type WindPhase } from '../windZone'
-import { mechanicsFrameName, mechanicsV2ArtReady, setMechanicsV2Frame, type MechanicsFrame } from './mechanicsArt'
+import { mechanicsFrameName, mechanicsV2ArtReady, playMechanicSfx, setMechanicsV2Frame, type MechanicsFrame } from './mechanicsArt'
+import { windPhaseSfx } from '../../audio/mechanicsSfx'
 
 export type MotionMechanicsDeps = {
   scene: Phaser.Scene
@@ -172,8 +173,12 @@ export class MotionMechanicsAdapter {
   update(frame: MechanicsFrame | null, clockMs: number): void {
     for (const wind of this.winds) {
       const cycle = windCycleAt(wind.zone, clockMs)
+      // Timed gusts only: lifts and untimed zones blow all the time.
+      const gustSfx = wind.zone.kind === 'gust' && wind.zone.timing ? windPhaseSfx(wind.phase, cycle.phase) : null
       wind.phase = cycle.phase
       wind.untilBlowMs = cycle.untilBlowMs
+      const { rect } = wind.zone
+      if (gustSfx) playMechanicSfx(this.deps.scene, { left: rect.x, right: rect.x + rect.width, top: rect.y, bottom: rect.y + rect.height }, gustSfx)
     }
     this.draw(clockMs)
     if (!frame || !this.active) return
