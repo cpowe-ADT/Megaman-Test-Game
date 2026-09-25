@@ -54,6 +54,8 @@ function copyRuntimeAssetsPlugin(): Plugin {
 
 export default defineConfig(({ command }) => ({
   plugins: [copyRuntimeAssetsPlugin()],
+  // Production builds fetch the dialogue lines in Preload instead of bundling them (src/content/dialogue/index.ts).
+  define: command === 'build' ? { __FETCH_DIALOGUE__: 'true' } : {},
   server: {
     open: !smokeServerActive,
     hmr: smokeServerActive ? false : undefined,

@@ -9,3 +9,6 @@ declare module '*?url' {
   const url: string
   export default url
 }
+
+/** Defined as `true` by `vite build` only (vite.config.ts): production fetches the dialogue lines. */
+declare const __FETCH_DIALOGUE__: boolean | undefined
