@@ -13,6 +13,7 @@ import dialogueUrl from '../content/dialogue/dialogue.v2.json?url'
 import { dialogueContentInstalled, installDialogueContent } from '../content/dialogue/index'
 import enemyCatalogUrl from '../content/enemies/enemy_catalog.generated.json?url'
 import { enemyCatalogInstalled, installEnemyCatalog } from '../content/enemies/catalog'
+import { PIXEL_FONT_FAMILY } from '../ui/menu/menuTheme'
 
 const PLAYER_ATLAS_KEY = 'atlas_player_main'
 const PLAYER_SWORD_FX_ATLAS_KEY = 'atlas_player_sword_fx'
@@ -21,6 +22,12 @@ const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
 /** Production builds fetch the dialogue lines instead of bundling them (`src/content/dialogue/index.ts`). */
 const DIALOGUE_JSON_KEY = 'dialogue_v2'
 const ENEMY_CATALOG_JSON_KEY = 'enemy_catalog'
+
+function pixelFontLoaded(): boolean {
+  let loaded = false
+  if (typeof document !== 'undefined') document.fonts?.forEach((face) => { loaded ||= face.family === PIXEL_FONT_FAMILY && face.status === 'loaded' })
+  return loaded
+}
 
 type AtlasAnimationOptions = {
   start?: number
@@ -63,6 +70,12 @@ export class Preload extends Phaser.Scene {
         this.load.image(entry.key, entry.path)
       }
     })
+
+    // Part 12i (EVAL-P8-003): the bundled pixel font. Phaser's FontFile loads it through the FontFace API and the
+    // loader waits for it, so Title (the first scene with text) never measures a fallback. The BMFont is the key the
+    // HUD and room-lock labels already branch on. Both are a few KB and stay resident.
+    if (!pixelFontLoaded()) this.load.font(PIXEL_FONT_FAMILY, 'assets/fonts/omega-pixel.woff', 'woff')
+    if (!this.cache.bitmapFont.exists('font')) this.load.bitmapFont('font', 'assets/fonts/omega-pixel.png', 'assets/fonts/omega-pixel.xml')
 
     this.registry.set('sprite_manifest_summary', {
       valid: true,

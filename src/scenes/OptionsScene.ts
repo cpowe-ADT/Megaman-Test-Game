@@ -4,7 +4,7 @@ import InputActions from '../input/InputActions'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
 import { Save } from '../systems/Save'
 import { Settings } from '../systems/Settings'
-import { addMenuBackdrop, addMenuPanel, MENU_COLORS, MENU_FONT_BODY, MENU_FONT_CODE, MENU_FONT_DISPLAY, styleMenuHeading } from '../ui/menu/menuTheme'
+import { addMenuBackdrop, addMenuPanel, MENU_COLORS, styleMenuHeading, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 import { applyDisplayOptionChange, DISPLAY_OPTION_HINTS, displayOptionsRows, isDisplayOptionId, withDisplayRows, type DisplayOptionsRow, type FullscreenState } from '../ui/menu/displayOptions'
 import { advanceDeleteConfirmation, applyOptionsChange, DELETE_WORD, optionsRows, type OptionsRow } from './menu/optionsModel'
 import { selectMenuIndex } from './menu/systemMenuSelector'
@@ -57,8 +57,8 @@ export class OptionsScene extends Phaser.Scene {
     this.add.rectangle(panelX, panelY, width, height, 0x000000, 0.6)
     addMenuBackdrop(this, 0.34)
     addMenuPanel(this, panelX, panelY, panelWidth, panelHeight)
-    this.add.text(panelX, panelY - panelHeight / 2 + 8, 'DEVICE AND CAMPAIGN', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#5de1ff', letterSpacing: 2 }).setOrigin(0.5, 0)
-    styleMenuHeading(this.add.text(panelX, panelY - panelHeight / 2 + 17, 'OPTIONS', { fontFamily: MENU_FONT_DISPLAY, fontSize: '16px', color: '#f5f8ff' }).setOrigin(0.5, 0))
+    this.add.text(panelX, panelY - panelHeight / 2 + 8, 'DEVICE AND CAMPAIGN', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#5de1ff', letterSpacing: 2 }).setOrigin(0.5, 0)
+    styleMenuHeading(this.add.text(panelX, panelY - panelHeight / 2 + 17, 'OPTIONS', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color: '#f5f8ff' }).setOrigin(0.5, 0))
     this.rows = this.currentRows()
     const rowStartY = panelY - panelHeight / 2 + 47
     // Eleven rows share the space eight had: 15px apart with 13px plates.
@@ -67,10 +67,10 @@ export class OptionsScene extends Phaser.Scene {
     this.rows.forEach((row, idx) => {
       const y = rowStartY + idx * rowSpacing
       this.backplates.push(this.add.rectangle(panelX, y, panelWidth - 20, rowSpacing - 2, MENU_COLORS.panelBright, 0.2))
-      this.labels.push(this.add.text(panelX - panelWidth / 2 + 22, y, row.label.toUpperCase(), { fontFamily: MENU_FONT_BODY, fontSize: '10px', fontStyle: 'bold', color: '#f5f8ff' }).setOrigin(0, 0.5))
-      this.values.push(this.add.text(panelX + panelWidth / 2 - 22, y, row.value, { fontFamily: MENU_FONT_CODE, fontSize: '10px', color: '#7de8ff' }).setOrigin(1, 0.5))
+      this.labels.push(this.add.text(panelX - panelWidth / 2 + 22, y, row.label.toUpperCase(), { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#f5f8ff' }).setOrigin(0, 0.5))
+      this.values.push(this.add.text(panelX + panelWidth / 2 - 22, y, row.value, { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff' }).setOrigin(1, 0.5))
     })
-    this.hint = this.add.text(panelX, panelY + panelHeight / 2 - 10, '', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#8faed8' }).setOrigin(0.5)
+    this.hint = this.add.text(panelX, panelY + panelHeight / 2 - 10, '', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#8faed8' }).setOrigin(0.5)
     this.renderRows()
 
     const actions = InputActions.forScene(this)

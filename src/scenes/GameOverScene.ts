@@ -9,7 +9,7 @@ import { IDENTITY } from '../content/identity'
 import { totalGameOvers } from '../content/dialogue/storyTriggers'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { Save } from '../systems/Save'
-import { addMenuBackdrop, addMenuPanel, MENU_COLORS, MENU_FONT_BODY, MENU_FONT_CODE, MENU_FONT_DISPLAY, styleMenuHeading } from '../ui/menu/menuTheme'
+import { addMenuBackdrop, addMenuPanel, MENU_COLORS, styleMenuHeading, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 import { GAME_OVER_AUTO_CONTINUE_MS, gameOverChoices, resolveContinueCheckpoint, type GameOverChoice } from './game/gameOverLogic'
 import { gameOverLine } from './game/StoryDirector'
 import { selectMenuIndex } from './menu/systemMenuSelector'
@@ -48,16 +48,16 @@ export default class GameOverScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050913')
     addMenuBackdrop(this, 0.5)
     addMenuPanel(this, width / 2, height / 2, 300, line ? 184 : 150)
-    styleMenuHeading(this.add.text(width / 2, line ? 50 : 68, 'GAME OVER', { fontFamily: MENU_FONT_DISPLAY, fontSize: '22px', color: '#f5f8ff' }).setOrigin(0.5))
+    styleMenuHeading(this.add.text(width / 2, line ? 50 : 68, 'GAME OVER', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(3), color: '#f5f8ff' }).setOrigin(0.5))
     const difficulty = Save.load().difficulty
     const target = resolveContinueCheckpoint(difficulty, data.checkpointId)
     this.add.text(width / 2, line ? 72 : 96, target ? 'CONTINUE FROM THE LAST CHECKPOINT' : `CONTINUE FROM THE STAGE START (${difficulty.toUpperCase()})`, {
-      fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#a9c9f2', letterSpacing: 1
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#a9c9f2', letterSpacing: 1
     }).setOrigin(0.5)
     this.line = null
     let rowsTop = 122
     if (line) {
-      this.add.text(width / 2, 84, line.speakerName.toUpperCase(), { fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#7de8ff', letterSpacing: 1 }).setOrigin(0.5, 0)
+      this.add.text(width / 2, 84, line.speakerName.toUpperCase(), { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff', letterSpacing: 1 }).setOrigin(0.5, 0)
       const body = this.add.text(width / 2, 95, line.text, {
         fontFamily: 'monospace', fontSize: '9px', color: '#f4f8ff', align: 'center', lineSpacing: 2, wordWrap: { width: 272, useAdvancedWrap: true }
       }).setOrigin(0.5, 0)
@@ -66,9 +66,9 @@ export default class GameOverScene extends Phaser.Scene {
       rowsTop = bottom + 14
     }
     this.rows = gameOverChoices().map((choice, idx) =>
-      this.add.text(width / 2, rowsTop + idx * 20, choice.label.toUpperCase(), { fontFamily: MENU_FONT_BODY, fontSize: '11px', fontStyle: 'bold', color: '#c8dcf8' }).setOrigin(0.5)
+      this.add.text(width / 2, rowsTop + idx * 20, choice.label.toUpperCase(), { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#c8dcf8' }).setOrigin(0.5)
     )
-    this.countdown = this.add.text(width / 2, rowsTop + 50, '', { fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#7de8ff' }).setOrigin(0.5)
+    this.countdown = this.add.text(width / 2, rowsTop + 50, '', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff' }).setOrigin(0.5)
     this.remainingMs = GAME_OVER_AUTO_CONTINUE_MS
     this.render()
 

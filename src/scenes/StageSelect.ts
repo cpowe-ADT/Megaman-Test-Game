@@ -1,4 +1,5 @@
 import { IDENTITY } from '../content/identity'
+import { pixelFont } from '../ui/menu/menuTheme'
 import { openNewCampaign } from './NewCampaignScene'
 import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
 import { countClearedRobotMasters } from '../content/campaign'
@@ -69,14 +70,14 @@ const ROWS = 3
 const PAGE_SIZE = COLUMNS * ROWS
 
 const FONT = {
-  title: '13px monospace',
-  subtitle: '8px monospace',
-  slotTitle: '8px monospace',
-  slotMeta: '7px monospace',
-  panelTitle: '9px monospace',
-  panelName: '13px monospace',
-  panelBody: '8px monospace',
-  footer: '7px monospace'
+  title: pixelFont(2),
+  subtitle: pixelFont(1),
+  slotTitle: pixelFont(1),
+  slotMeta: pixelFont(1),
+  panelTitle: pixelFont(1),
+  panelName: pixelFont(2),
+  panelBody: pixelFont(1),
+  footer: pixelFont(1)
 }
 
 const COLOR = {
@@ -250,7 +251,9 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.headerRect.x + 8, layout.headerRect.y + 1, `${IDENTITY.WARDEN_TERM} SELECT`, {
         font: FONT.title,
         color: COLOR.text,
-        letterSpacing: 1
+        letterSpacing: 1,
+        // The 16px pixel-font em, so the box never depends on how an OS rasterises the metrics string.
+        fixedHeight: 16
       })
       .setOrigin(0, 0).setName('identity-stage-title')
 
@@ -262,7 +265,8 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.headerRect.centerX, layout.headerRect.bottom - 1, '', {
         font: FONT.subtitle,
         color: COLOR.textMuted,
-        align: 'center'
+        align: 'center',
+        fixedHeight: 8
       })
       .setOrigin(0.5, 1)
   }
@@ -334,7 +338,7 @@ export class StageSelect extends Phaser.Scene {
     const r = this.layout!.previewRect
     this.add.rectangle(r.centerX, r.centerY, r.width, r.height, COLOR.panel, .9).setStrokeStyle(1, COLOR.border)
     this.infoText = this.add.text(r.x + 5, r.y + 3, '', { font: FONT.panelBody, color: COLOR.text, wordWrap: { width: r.width - 10 }, lineSpacing: 0 })
-    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: '7px monospace', color: COLOR.textMuted })
+    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: pixelFont(1), color: COLOR.textMuted })
   }
 
   private createFooter(): void {

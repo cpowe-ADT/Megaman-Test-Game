@@ -14,7 +14,7 @@ import {
   type NameEntryState,
   type ProfileSlot
 } from '../progression/profiles'
-import { addMenuBackdrop, addMenuPanel, MENU_COLORS, MENU_FONT_BODY, MENU_FONT_CODE, MENU_FONT_DISPLAY, styleMenuHeading } from '../ui/menu/menuTheme'
+import { addMenuBackdrop, addMenuPanel, MENU_COLORS, styleMenuHeading, PIXEL_FONT, pixelFontSize, pixelScaleFor } from '../ui/menu/menuTheme'
 import { openNewCampaign } from './NewCampaignScene'
 import { resumeActiveSlot } from './Title'
 
@@ -188,8 +188,8 @@ export class ProfileScene extends Phaser.Scene {
     input.click()
   }
 
-  private text(x: number, y: number, value: string, size: number, color: string, font = MENU_FONT_CODE): Phaser.GameObjects.Text {
-    const text = this.add.text(x, y, value, { fontFamily: font, fontSize: `${size}px`, color }).setOrigin(0.5)
+  private text(x: number, y: number, value: string, size: number, color: string, font = PIXEL_FONT): Phaser.GameObjects.Text {
+    const text = this.add.text(x, y, value, { fontFamily: font, fontSize: pixelFontSize(pixelScaleFor(size)), color }).setOrigin(0.5)
     this.layer?.add(text)
     return text
   }
@@ -199,7 +199,7 @@ export class ProfileScene extends Phaser.Scene {
     this.layer = this.add.container(0, 0)
     const { width } = GAME_SIZE
     const heading = this.mode === 'name' ? `PILOT NAME  ·  SLOT ${this.slot()}` : 'PILOT SLOTS'
-    this.layer.add(styleMenuHeading(this.add.text(width / 2, 22, heading, { fontFamily: MENU_FONT_DISPLAY, fontSize: '16px', color: '#f5f8ff' }).setOrigin(0.5)))
+    this.layer.add(styleMenuHeading(this.add.text(width / 2, 22, heading, { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color: '#f5f8ff' }).setOrigin(0.5)))
     if (this.mode === 'name') this.renderName()
     else this.renderSlots()
     this.text(width / 2, 232, this.status, 8, '#ffd27a')
@@ -213,7 +213,7 @@ export class ProfileScene extends Phaser.Scene {
       this.layer?.add(this.add.rectangle(x, 108, 132, 116, selected ? MENU_COLORS.panelBright : 0x081a34, selected ? 0.98 : 0.8)
         .setStrokeStyle(selected ? 2 : 1, selected ? MENU_COLORS.cyan : MENU_COLORS.blue, selected ? 1 : 0.5))
       this.text(x, 60, `SLOT ${card.slot}${card.slot === Profiles.activeSlot() && !card.empty ? '  ·  ACTIVE' : ''}`, 7, '#5de1ff')
-      this.text(x, 84, card.pilotName, 15, card.empty ? '#6f86a8' : '#f5f8ff', MENU_FONT_BODY).setFontStyle('bold').setName(`profile-card-${card.slot}`)
+      this.text(x, 84, card.pilotName, 15, card.empty ? '#6f86a8' : '#f5f8ff', PIXEL_FONT).setName(`profile-card-${card.slot}`)
       if (!card.empty) {
         this.text(x, 110, `WARDENS ${card.wardensCleared}/${card.wardensTotal}`, 9, '#d9edff')
         this.text(x, 126, `TIME ${card.playTime}`, 9, '#d9edff')
@@ -224,7 +224,7 @@ export class ProfileScene extends Phaser.Scene {
       const card = Profiles.cards()[this.cursor]
       this.layer?.add(this.add.rectangle(width / 2, 186, 300, 34, 0x06142a, 0.98).setStrokeStyle(1, MENU_COLORS.cyan, 0.8))
       this.text(width / 2, 177, `SLOT ${this.slot()}  ·  ${card?.pilotName ?? ''}`, 8, '#a9c9f2')
-      USED_CHOICES.forEach((label, index) => this.text(width / 2 + (index - 1) * 90, 193, index === this.choice ? `> ${label} <` : label, 10, index === this.choice ? '#5de1ff' : '#a9c9f2', MENU_FONT_BODY))
+      USED_CHOICES.forEach((label, index) => this.text(width / 2 + (index - 1) * 90, 193, index === this.choice ? `> ${label} <` : label, 10, index === this.choice ? '#5de1ff' : '#a9c9f2', PIXEL_FONT))
       this.text(width / 2, 214, 'LEFT / RIGHT CHOOSE   ENTER CONFIRM   ESC BACK', 7, '#8faed8')
       return
     }
@@ -235,7 +235,7 @@ export class ProfileScene extends Phaser.Scene {
   private renderName(): void {
     const { width } = GAME_SIZE
     this.layer?.add(this.add.rectangle(width / 2, 58, 200, 28, 0x06142a, 0.98).setStrokeStyle(1, MENU_COLORS.cyan, 0.8))
-    this.text(width / 2, 58, `${this.entry.name}${this.entry.name.length < 10 ? '_' : ''}`, 16, this.entry.pristine ? '#9fb3cc' : '#f5f8ff', MENU_FONT_BODY).setFontStyle('bold').setName('profile-name')
+    this.text(width / 2, 58, `${this.entry.name}${this.entry.name.length < 10 ? '_' : ''}`, 16, this.entry.pristine ? '#9fb3cc' : '#f5f8ff', PIXEL_FONT).setName('profile-name')
     const cellW = 30
     const left = width / 2 - (cellW * 10) / 2 + cellW / 2
     NAME_GRID.forEach((row, rowIndex) => row.forEach((cell, colIndex) => {
@@ -243,7 +243,7 @@ export class ProfileScene extends Phaser.Scene {
       const y = 94 + rowIndex * 22
       const selected = rowIndex === this.entry.row && colIndex === this.entry.col
       if (selected) this.layer?.add(this.add.rectangle(x, y, cellW - 4, 18, MENU_COLORS.panelBright, 1).setStrokeStyle(1, MENU_COLORS.cyan, 1))
-      this.text(x, y, cell === 'SPACE' ? 'SPC' : cell, cell.length > 1 ? 8 : 11, selected ? '#ffffff' : '#a9c9f2', MENU_FONT_BODY)
+      this.text(x, y, cell === 'SPACE' ? 'SPC' : cell, cell.length > 1 ? 8 : 11, selected ? '#ffffff' : '#a9c9f2', PIXEL_FONT)
     }))
     this.text(width / 2, 190, 'TYPE A NAME, OR PICK LETTERS WITH THE ARROWS AND ENTER', 7, '#a9c9f2')
     this.text(width / 2, 204, 'ENTER CONFIRM  ·  BACKSPACE ERASE  ·  ESC BACK  ·  2 TO 10 OF A-Z, 0-9, SPACE', 7, '#8faed8')

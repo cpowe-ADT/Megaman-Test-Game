@@ -687,6 +687,20 @@
         "assets/ui/hud_icons/hud_icons_v1/hud_icons_v1.atlas.json"
       ],
       "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with hud_icons_v1.json; the HUD weapon icon since part 12f wave 3 (src/ui/HUD.ts)"
+    },
+    {
+      "id": "font-omega-pixel-v1",
+      "family": "ui",
+      "sourceUrl": "original",
+      "license": "original",
+      "attribution": "OmegaPixel, an original pixel font drawn as a glyph table for this project and built with scripts/fonts/build-pixel-font.py",
+      "localSourcePath": "assets/fonts/source/omega-pixel.glyphs.txt",
+      "runtimeOutputs": [
+        "assets/fonts/omega-pixel.woff",
+        "assets/fonts/omega-pixel.png",
+        "assets/fonts/omega-pixel.xml"
+      ],
+      "notes": "Part 12i (EVAL-P8-003). Author: the OMEGA Relay agents (Claude Code) for Craig. Generator: scripts/fonts/build-pixel-font.py (fontTools 4.66.0, Pillow); rebuild with .venv/bin/python scripts/fonts/build-pixel-font.py and verify with --check. Loaded by src/scenes/Preload.ts; per-surface use in docs/architecture/rendering.md."
     }
   ]
 }

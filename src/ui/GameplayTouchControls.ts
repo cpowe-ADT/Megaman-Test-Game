@@ -3,6 +3,7 @@ import InputActions from '../input/InputActions'
 import { AUTOMATION } from '../config/automation'
 import { DigitalButtonPad, type DigitalButtonName } from '../input/DigitalButtonPad'
 import { Settings } from '../systems/Settings'
+import { PIXEL_FONT, pixelFontSize } from './pixelFont'
 import {
   isTouchSystemAction,
   touchControlsLayout,
@@ -171,9 +172,8 @@ export class GameplayTouchControls {
 
     const label = this.scene.add
       .text(0, 0, spec.label, {
-        fontFamily: '"Trebuchet MS", monospace',
-        fontSize: spec.fontScale === 2 ? '14px' : '9px',
-        fontStyle: 'bold',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(spec.fontScale),
         color: '#ecf7ff',
         align: 'center'
       })

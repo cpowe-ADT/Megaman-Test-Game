@@ -866,8 +866,8 @@ export class Game extends Phaser.Scene {
     ): Phaser.GameObjects.Text => {
       const label = this.add
         .text(x, y, text, {
-          fontFamily: 'monospace',
-          fontSize: '9px',
+          fontFamily: 'OmegaPixel, monospace',
+          fontSize: '8px',
           color: '#b7e3ff',
           align: originX === 1 ? 'right' : 'left'
         })
@@ -893,8 +893,8 @@ export class Game extends Phaser.Scene {
 
     this.phaseLabel = this.add
       .text(width / 2, 8, 'PHASE --', {
-        fontFamily: 'monospace',
-        fontSize: '7px',
+        fontFamily: 'OmegaPixel, monospace',
+        fontSize: '8px',
         color: '#d4e7ff',
         align: 'center'
       })

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { PIXEL_FONT, pixelFontSize } from './pixelFont'
 import AudioService from '../audio'
 import InputActions from '../input/InputActions'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
@@ -49,17 +50,16 @@ export class VictoryModal {
 
     const title = this.scene.add
       .text(panelX, panelY - 64, 'Boss Defeated', {
-        fontFamily: '"Trebuchet MS", monospace',
-        fontSize: '24px',
-        color: '#f8fbff',
-        fontStyle: 'bold'
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(3),
+        color: '#f8fbff'
       })
       .setOrigin(0.5)
 
     const body = this.scene.add
       .text(panelX, panelY - 18, `You have defeated ${options.bossName}.`, {
-        fontFamily: '"Trebuchet MS", monospace',
-        fontSize: '16px',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(2),
         color: '#e5efff',
         align: 'center'
       })
@@ -67,8 +67,8 @@ export class VictoryModal {
 
     const sub = this.scene.add
       .text(panelX, panelY + 8, 'Select another stage to continue.', {
-        fontFamily: '"Trebuchet MS", monospace',
-        fontSize: '13px',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(2),
         color: '#a8bfde',
         align: 'center'
       })
@@ -81,10 +81,9 @@ export class VictoryModal {
 
     const buttonLabel = this.scene.add
       .text(panelX, panelY + 58, 'Next', {
-        fontFamily: '"Trebuchet MS", monospace',
-        fontSize: '16px',
-        color: '#ffffff',
-        fontStyle: 'bold'
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(2),
+        color: '#ffffff'
       })
       .setOrigin(0.5)
 

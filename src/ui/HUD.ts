@@ -1,4 +1,5 @@
 import { IDENTITY } from '../content/identity'
+import { PIXEL_FONT, PIXEL_FONT_PX } from './pixelFont'
 import { GAME_WIDTH } from '../config/renderPolicy'
 import Phaser from 'phaser'
 import { getHudLayout } from './hudLayout'
@@ -62,7 +63,7 @@ export class HUD {
       x: number,
       y: number,
       s: string,
-      size = 12,
+      size = PIXEL_FONT_PX,
       originX = 0,
       originY = 0
     ) => {
@@ -85,7 +86,7 @@ export class HUD {
 
       const text = this.scene
         .add.text(x, y, s, {
-          fontFamily: 'monospace',
+          fontFamily: PIXEL_FONT,
           fontSize: `${size}px`,
           color: '#cfe8ff',
           stroke: strokeColor,
@@ -111,10 +112,10 @@ export class HUD {
     this.gBoss.image.setVisible(this.bossBarVisible)
 
     const layout = getHudLayout(GAME_WIDTH)
-    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.HERO_CALLSIGN, 9)
+    this.tPlayer = mkText(layout.playerLabel.x, layout.playerLabel.y, IDENTITY.HERO_CALLSIGN, PIXEL_FONT_PX)
     this.root.add(this.tPlayer)
 
-    this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', 9)
+    this.tWeapon = mkText(layout.weaponLabel.x, layout.weaponLabel.y, 'WEAPON • BUSTER', PIXEL_FONT_PX)
     this.root.add(this.tWeapon)
     if (scene.textures.exists(HUD_ICONS_ATLAS.key)) {
       const icon = hudWeaponIconPlacement(layout)
@@ -122,12 +123,12 @@ export class HUD {
       this.root.add(this.weaponIcon)
     }
 
-    this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', 9, 1, 0)
+    this.tBoss = mkText(layout.bossLabel.x, layout.bossLabel.y, 'BOSS • ???', PIXEL_FONT_PX, 1, 0)
     this.tBoss.setVisible(this.bossBarVisible)
     this.root.add(this.tBoss)
 
     // In the HUD band under the boss panel: on the floor it covered the boss spawn point in most rooms.
-    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'RETRY ×03', 10, 1, 0)
+    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'RETRY ×03', PIXEL_FONT_PX, 1, 0)
     this.root.add(this.tLives)
   }
 

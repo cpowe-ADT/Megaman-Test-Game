@@ -10,10 +10,9 @@ import {
   addMenuBackdrop,
   addMenuPanel,
   MENU_COLORS,
-  MENU_FONT_BODY,
-  MENU_FONT_CODE,
-  MENU_FONT_DISPLAY,
-  styleMenuHeading
+  styleMenuHeading,
+  PIXEL_FONT,
+  pixelFontSize
 } from '../ui/menu/menuTheme'
 import { bindingText, listConflicts, rebind, rebindMessage, REMAP_ROWS, type BindingTable, type RemapDevice } from '../ui/menu/remapModel'
 import { GAME_SIZE } from '../config/renderPolicy'
@@ -93,12 +92,12 @@ export class ControlsScene extends Phaser.Scene {
     this.add.rectangle(panelX, panelY, width, height, 0x000000, 0.72)
     addMenuBackdrop(this, 0.38)
     addMenuPanel(this, panelX, panelY, panelWidth, panelHeight)
-    styleMenuHeading(this.add.text(panelX, top + 5, 'CONTROLS', { fontFamily: MENU_FONT_DISPLAY, fontSize: '14px', color: '#f5f8ff' }).setOrigin(0.5, 0))
-    this.add.text(panelX, top + 24, 'PRESS-TO-BIND  ·  KEYBOARD AND PAD', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#5de1ff', letterSpacing: 2 }).setOrigin(0.5, 0)
+    styleMenuHeading(this.add.text(panelX, top + 5, 'CONTROLS', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color: '#f5f8ff' }).setOrigin(0.5, 0))
+    this.add.text(panelX, top + 24, 'PRESS-TO-BIND  ·  KEYBOARD AND PAD', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#5de1ff', letterSpacing: 2 }).setOrigin(0.5, 0)
     const headerY = top + 38
-    this.add.text(left + 16, headerY, 'ACTION', { fontFamily: MENU_FONT_BODY, fontSize: '8px', fontStyle: 'bold', color: '#79e7ff' }).setOrigin(0, 0.5)
+    this.add.text(left + 16, headerY, 'ACTION', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#79e7ff' }).setOrigin(0, 0.5)
     ;['KEYBOARD', 'PAD'].forEach((title, index) => {
-      this.add.text(columnX[index]!, headerY, title, { fontFamily: MENU_FONT_BODY, fontSize: '8px', fontStyle: 'bold', color: '#79e7ff' }).setOrigin(0.5)
+      this.add.text(columnX[index]!, headerY, title, { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#79e7ff' }).setOrigin(0.5)
     })
     this.add.rectangle(panelX, headerY + 6, panelWidth - 24, 1, MENU_COLORS.blue, 0.65)
 
@@ -107,18 +106,18 @@ export class ControlsScene extends Phaser.Scene {
     REMAP_ROWS.forEach((entry, index) => {
       const y = rowStartY + index * ROW_SPACING
       if (index % 2 === 0) this.add.rectangle(panelX, y, panelWidth - 24, ROW_SPACING - 1, 0x123259, 0.22)
-      this.labels.push(this.add.text(left + 16, y, entry.label.toUpperCase(), { fontFamily: MENU_FONT_BODY, fontSize: '8px', fontStyle: 'bold', color: '#e8f3ff' }).setOrigin(0, 0.5))
+      this.labels.push(this.add.text(left + 16, y, entry.label.toUpperCase(), { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#e8f3ff' }).setOrigin(0, 0.5))
       this.cells.push(DEVICES.map((_, column) => ({
         plate: this.add.rectangle(columnX[column]!, y, CELL_WIDTH, ROW_SPACING - 2, MENU_COLORS.panel, 0.5),
-        text: this.add.text(columnX[column]!, y, '', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#9fd8ff' }).setOrigin(0.5)
+        text: this.add.text(columnX[column]!, y, '', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#9fd8ff' }).setOrigin(0.5)
       })))
     })
     const extraY = rowStartY + REMAP_ROWS.length * ROW_SPACING + 3
     ;['RESET TO DEFAULT', 'BACK'].forEach((label, index) => {
-      this.labels.push(this.add.text(left + 16, extraY + index * ROW_SPACING, label, { fontFamily: MENU_FONT_BODY, fontSize: '8px', fontStyle: 'bold', color: '#e8f3ff' }).setOrigin(0, 0.5))
+      this.labels.push(this.add.text(left + 16, extraY + index * ROW_SPACING, label, { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#e8f3ff' }).setOrigin(0, 0.5))
     })
-    this.messageText = this.add.text(left + 214 + CELL_WIDTH / 2 + 4, extraY + 5, '', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#ffc857', align: 'center', wordWrap: { width: 250 } }).setOrigin(0.5)
-    this.hintText = this.add.text(panelX, top + panelHeight - 8, '', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#8faed8' }).setOrigin(0.5)
+    this.messageText = this.add.text(left + 214 + CELL_WIDTH / 2 + 4, extraY + 5, '', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#ffc857', align: 'center', wordWrap: { width: 250 } }).setOrigin(0.5)
+    this.hintText = this.add.text(panelX, top + panelHeight - 8, '', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#8faed8' }).setOrigin(0.5)
 
     const actions = InputActions.forScene(this)
     actions.onPressed('aimUp', () => this.moveRow(-1))
@@ -265,16 +264,16 @@ export class ControlsScene extends Phaser.Scene {
     this.add.rectangle(panelX, height / 2, width, height, 0x000000, 0.72)
     addMenuBackdrop(this, 0.38)
     addMenuPanel(this, panelX, height / 2, 320, 228)
-    styleMenuHeading(this.add.text(panelX, 22, 'EIGHT KEYS', { fontFamily: MENU_FONT_DISPLAY, fontSize: '16px', color: '#f5f8ff' }).setOrigin(0.5).setName('first-run-heading'))
-    this.add.text(panelX, 40, 'FIRST FLIGHT  ·  REPLAY IT FROM THE CONTROL MAP (T)', { fontFamily: MENU_FONT_CODE, fontSize: '7px', color: '#5de1ff', letterSpacing: 1 }).setOrigin(0.5)
+    styleMenuHeading(this.add.text(panelX, 22, 'EIGHT KEYS', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color: '#f5f8ff' }).setOrigin(0.5).setName('first-run-heading'))
+    this.add.text(panelX, 40, 'FIRST FLIGHT  ·  REPLAY IT FROM THE CONTROL MAP (T)', { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#5de1ff', letterSpacing: 1 }).setOrigin(0.5)
     firstRunRows().forEach((row, index) => {
       const y = 60 + index * 18
       this.add.rectangle(panelX, y, 288, 15, index % 2 === 0 ? 0x123259 : MENU_COLORS.panelBright, 0.3)
-      this.add.text(panelX - 136, y, row.action.toUpperCase(), { fontFamily: MENU_FONT_BODY, fontSize: '9px', fontStyle: 'bold', color: '#e8f3ff' }).setOrigin(0, 0.5)
-      this.add.text(panelX + 136, y, row.input, { fontFamily: MENU_FONT_CODE, fontSize: '8px', color: '#9fd8ff' }).setOrigin(1, 0.5)
+      this.add.text(panelX - 136, y, row.action.toUpperCase(), { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#e8f3ff' }).setOrigin(0, 0.5)
+      this.add.text(panelX + 136, y, row.input, { fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#9fd8ff' }).setOrigin(1, 0.5)
     })
     this.add.text(panelX, 220, next ? 'ENTER  CONTINUE' : 'ENTER / ESC  BACK', {
-      fontFamily: MENU_FONT_BODY, fontSize: '9px', fontStyle: 'bold', color: '#f5f8ff', backgroundColor: '#164b7c', padding: { x: 12, y: 4 }
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#f5f8ff', backgroundColor: '#164b7c', padding: { x: 12, y: 4 }
     }).setOrigin(0.5)
     const done = () => {
       if (!next) { this.scene.restart({ returnSceneKey: this.returnSceneKey }); return }

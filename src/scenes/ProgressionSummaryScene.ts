@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 import InputActions from '../input/InputActions'
 import { showToast } from '../core/navigation'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
@@ -79,28 +80,26 @@ export class ProgressionSummaryScene extends Phaser.Scene {
     this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x08172d, 0.98).setStrokeStyle(2, 0x4a8cff, 0.95)
 
     this.add.text(panelX, top, 'PROGRESSION SUMMARY', {
-      fontFamily: 'monospace',
-      fontSize: '16px',
-      color: '#f5f8ff',
-      fontStyle: 'bold'
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(2),
+      color: '#f5f8ff'
     }).setOrigin(0.5, 0)
 
     this.add.text(panelX, top + 18, 'Offline slot snapshot and final-route progress', {
-      fontFamily: 'monospace',
-      fontSize: '10px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#9ec2ff'
     }).setOrigin(0.5, 0)
 
     const addSummaryBlock = (x: number, y: number, label: string, value: string, wrapWidth = columnWidth): number => {
       this.add.text(x, y, label, {
-        fontFamily: 'monospace',
-        fontSize: '9px',
-        color: '#7fc7ff',
-        fontStyle: 'bold'
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(1),
+        color: '#7fc7ff'
       })
       const valueText = this.add.text(x, y + 10, value, {
-        fontFamily: 'monospace',
-        fontSize: '9px',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(1),
         color: '#f5f8ff',
         wordWrap: { width: wrapWidth, useAdvancedWrap: true }
       })
@@ -120,10 +119,9 @@ export class ProgressionSummaryScene extends Phaser.Scene {
 
     const latestItemsTop = Math.max(leftY, rightY) + 4
     this.add.text(left, latestItemsTop, 'Latest Items', {
-      fontFamily: 'monospace',
-      fontSize: '9px',
-      color: '#7fc7ff',
-      fontStyle: 'bold'
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
+      color: '#7fc7ff'
     })
 
     const latestItemsText =
@@ -132,8 +130,8 @@ export class ProgressionSummaryScene extends Phaser.Scene {
         : 'No checks claimed yet.'
 
     this.add.text(left, latestItemsTop + 10, latestItemsText, {
-      fontFamily: 'monospace',
-      fontSize: '9px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#d6e8ff',
       lineSpacing: 2,
       wordWrap: { width: innerWidth, useAdvancedWrap: true }
@@ -143,8 +141,8 @@ export class ProgressionSummaryScene extends Phaser.Scene {
     const actionTopY = panelY + panelHeight / 2 - 31
     const actionBottomY = panelY + panelHeight / 2 - 14
     this.add.text(panelX, transportNoteY, 'Transport: slotData + checkedLocations + receivedItems + checkpoints', {
-      fontFamily: 'monospace',
-      fontSize: '8px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#8fa5c7'
     }).setOrigin(0.5, 0)
 
@@ -217,8 +215,8 @@ export class ProgressionSummaryScene extends Phaser.Scene {
     enabled = true
   ): Phaser.GameObjects.Text {
     const button = this.add.text(x, y, label, {
-      fontFamily: 'monospace',
-      fontSize: '9px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: enabled ? '#f5f8ff' : '#9aa8bd',
       backgroundColor: enabled ? '#123259' : '#1a2940',
       padding: { x: 8, y: 4 }

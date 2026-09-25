@@ -8,7 +8,7 @@ import { getCampaignStage, TUTORIAL_STAGE_ID } from '../content/campaign'
 import { NewCampaignModel } from './menu/newCampaignModel'
 import { shouldPlayStory } from '../narrative/storyFlags'
 import { currentStoryPolicy } from './game/StoryDirector'
-import { addMenuBackdrop, addMenuPanel, MENU_FONT_CODE } from '../ui/menu/menuTheme'
+import { addMenuBackdrop, addMenuPanel, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 
 type Entry = { source: string; randomizerAvailable: boolean; onCancel?: () => void }
 /** The slot picker, name entry and first-run controls page show in play; automation opts in with `?profiles=on`. */
@@ -40,13 +40,13 @@ export class NewCampaignScene extends Phaser.Scene {
     const urlSeed = new URLSearchParams(window.location.search).get('seed')
     this.model = new NewCampaignModel(entry.randomizerAvailable, urlSeed)
     addMenuBackdrop(this); addMenuPanel(this,224,126,432,236)
-    this.add.text(224,22,'NEW CAMPAIGN',{fontFamily:MENU_FONT_CODE,fontSize:'18px',color:'#f5f8ff'}).setOrigin(.5)
+    this.add.text(224,22,'NEW CAMPAIGN',{fontFamily: PIXEL_FONT,fontSize: pixelFontSize(2),color:'#f5f8ff'}).setOrigin(.5)
     const pending = Profiles.pending()
     const replaces = pending ? !Profiles.cards()[pending.slot - 1]?.empty : Save.exists()
     const note = replaces ? 'Starting replaces the current campaign and saved mission.' : `Choose difficulty. The eight ${IDENTITY.WARDEN_TERM_PLURAL.toLowerCase()} await.`
-    this.add.text(224,50, pending ? `PILOT ${pending.pilotName}  ·  SLOT ${pending.slot}.  ${note}` : note, {fontFamily:MENU_FONT_CODE,fontSize:'8px',color:'#a9c9f2'}).setOrigin(.5)
-    this.lines = [80,108,136,173].map((y,index) => this.add.text(224,y,'',{fontFamily:MENU_FONT_CODE,fontSize:'11px',color:'#ffffff',align:'center',wordWrap:{width:400,useAdvancedWrap:true}}).setOrigin(.5).setInteractive({useHandCursor:true}).on('pointerdown',()=> { this.row=index; if(index===3) this.start(); else this.change(1); this.render() }))
-    this.add.text(224,220,'ARROWS CHOOSE   ENTER START   ESC CANCEL',{fontFamily:MENU_FONT_CODE,fontSize:'8px',color:'#a9c9f2'}).setOrigin(.5)
+    this.add.text(224,50, pending ? `PILOT ${pending.pilotName}  ·  SLOT ${pending.slot}.  ${note}` : note, {fontFamily: PIXEL_FONT,fontSize: pixelFontSize(1),color:'#a9c9f2'}).setOrigin(.5)
+    this.lines = [80,108,136,173].map((y,index) => this.add.text(224,y,'',{fontFamily: PIXEL_FONT,fontSize: pixelFontSize(1),color:'#ffffff',align:'center',wordWrap:{width:400,useAdvancedWrap:true}}).setOrigin(.5).setInteractive({useHandCursor:true}).on('pointerdown',()=> { this.row=index; if(index===3) this.start(); else this.change(1); this.render() }))
+    this.add.text(224,220,'ARROWS CHOOSE   ENTER START   ESC CANCEL',{fontFamily: PIXEL_FONT,fontSize: pixelFontSize(1),color:'#a9c9f2'}).setOrigin(.5)
     const actions=InputActions.forScene(this)
     actions.onPressed('moveLeft',()=>this.change(-1));actions.onPressed('moveRight',()=>this.change(1))
     actions.onPressed('aimUp',()=>this.move(-1));actions.onPressed('aimDown',()=>this.move(1))

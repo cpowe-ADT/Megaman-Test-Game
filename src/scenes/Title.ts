@@ -11,10 +11,9 @@ import {
   addMenuBackdrop,
   addMenuPanel,
   MENU_COLORS,
-  MENU_FONT_BODY,
-  MENU_FONT_CODE,
-  MENU_FONT_DISPLAY,
-  styleMenuHeading
+  styleMenuHeading,
+  PIXEL_FONT,
+  pixelFontSize
 } from '../ui/menu/menuTheme'
 import { GAME_SIZE } from '../config/renderPolicy'
 
@@ -64,8 +63,8 @@ export class Title extends Phaser.Scene {
     this.add.rectangle(width / 2 + 174, 34, 4, 38, MENU_COLORS.cyan, 0.95)
 
     styleMenuHeading(this.add.text(width / 2, 30, IDENTITY.GAME_TITLE, {
-      fontFamily: MENU_FONT_DISPLAY,
-      fontSize: '30px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(4),
       color: '#f5f8ff',
       stroke: '#06132a',
       strokeThickness: 3
@@ -76,8 +75,8 @@ export class Title extends Phaser.Scene {
     this.add.rectangle(width / 2 - 180, 68, 3, 11, MENU_COLORS.cyan, 0.95)
     this.add.rectangle(width / 2 + 180, 68, 3, 11, MENU_COLORS.cyan, 0.95)
     this.add.text(width / 2, 68, IDENTITY.GAME_SUBTITLE, {
-      fontFamily: MENU_FONT_CODE,
-      fontSize: '9px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#ccecff',
       letterSpacing: 0.5
     }).setOrigin(0.5).setName('identity-subtitle')
@@ -96,17 +95,16 @@ export class Title extends Phaser.Scene {
     this.add.rectangle(width / 2, 92, width - 96, 3, MENU_COLORS.blue, 0.7)
 
     this.add.text(width / 2, 103, started && pilot ? `MISSION CONTROL  ·  PILOT ${pilot.pilotName}  ·  SLOT ${pilot.slot}` : 'MISSION CONTROL', {
-      fontFamily: MENU_FONT_CODE,
-      fontSize: '7px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#5de1ff',
       letterSpacing: 2
     }).setOrigin(0.5)
 
     const startButton = this.add.text(width / 2, 118, primaryLabel.toUpperCase(), {
-      fontFamily: MENU_FONT_BODY,
-      fontSize: '12px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#f5f8ff',
-      fontStyle: 'bold',
       align: 'center',
       wordWrap: { width: width - 118 }
     }).setOrigin(0.5).setName('title-primary')
@@ -118,24 +116,23 @@ export class Title extends Phaser.Scene {
       this.handlePrimaryAction()
     })
     this.add.text(width / 2, 136, '[ ENTER ]  CONFIRM', {
-      fontFamily: MENU_FONT_CODE,
-      fontSize: '7px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#78dfff',
       letterSpacing: 1
     }).setOrigin(0.5)
 
     this.add.text(width / 2, 193, 'ENTER  DEPLOY     C  CONTROLS     O  OPTIONS     N  NEW CAMPAIGN     ESC  CLEAR RUN', {
-      fontFamily: MENU_FONT_CODE,
-      fontSize: '8px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#a9c9f2',
       align: 'center'
     }).setOrigin(0.5)
 
     const controlsButton = this.add.text(width / 2, 162, 'VIEW CONTROL MAP', {
-      fontFamily: MENU_FONT_BODY,
-      fontSize: '10px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#f5f8ff',
-      fontStyle: 'bold',
       backgroundColor: '#164b7c',
       padding: { x: 15, y: 5 }
     }).setOrigin(0.5)
@@ -149,8 +146,8 @@ export class Title extends Phaser.Scene {
         saveData.gameCompleted ? 'COMPLETED' : Save.isFinalRouteUnlocked() ? 'READY' : 'LOCKED'
       }`,
       {
-        fontFamily: MENU_FONT_CODE,
-        fontSize: '9px',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(1),
         color: '#d9edff',
         align: 'center'
       }

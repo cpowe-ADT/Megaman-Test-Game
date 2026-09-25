@@ -1,4 +1,5 @@
 import type Phaser from 'phaser'
+import { PIXEL_FONT, pixelFontSize } from './pixelFont'
 import { PLAY_OVERLAY_MAX_BOTTOM, toastLaneTop } from './overlayLayout'
 import { GAME_SIZE } from '../config/renderPolicy'
 
@@ -43,10 +44,10 @@ export class ToastLane {
     this.laneWidth = width - 24
     this.background = scene.add.rectangle(0, 0, this.laneWidth, 22, 0x07142a, 0.94).setStrokeStyle(1, 0x62b6ff, 0.8)
     this.speakerText = scene.add.text(-this.laneWidth / 2 + 8, 0, '', {
-      fontFamily: 'monospace', fontSize: '8px', color: '#7de8ff', fontStyle: 'bold'
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff'
     }).setOrigin(0, 0)
     this.bodyText = scene.add.text(-this.laneWidth / 2 + 8, 0, '', {
-      fontFamily: 'monospace', fontSize: '9px', color: '#f4f8ff', lineSpacing: 1,
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#f4f8ff', lineSpacing: 1,
       wordWrap: { width: this.laneWidth - 16, useAdvancedWrap: true }
     }).setOrigin(0, 0)
     // Hangs from the HUD band and grows downward (05c playtest fix): at the frame bottom it covered the floor

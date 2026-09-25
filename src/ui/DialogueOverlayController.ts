@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { PIXEL_FONT, pixelFontSize } from './pixelFont'
 import InputActions from '../input/InputActions'
 import {
   DialoguePlayback,
@@ -43,10 +44,9 @@ export class DialogueOverlayController {
       .image(TEXT_LEFT + PORTRAIT_FRAME_SIZE / 2, layout.centerY, PORTRAIT_ATLAS_KEY)
       .setVisible(false)
     this.speakerText = scene.add.text(TEXT_LEFT_WITH_PORTRAIT, layout.speakerY, '', {
-      fontFamily: 'monospace',
-      fontSize: '11px',
-      color: '#7de8ff',
-      fontStyle: 'bold'
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
+      color: '#7de8ff'
     })
     this.bodyText = scene.add.text(TEXT_LEFT_WITH_PORTRAIT, layout.bodyY, '', {
       fontFamily: 'monospace',
@@ -58,8 +58,8 @@ export class DialogueOverlayController {
     })
     this.progressText = scene.add
       .text(width - 27, layout.progressY, '', {
-        fontFamily: 'monospace',
-        fontSize: '8px',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(1),
         color: '#9ec2ff'
       })
       .setOrigin(1, layout.progressOriginY)

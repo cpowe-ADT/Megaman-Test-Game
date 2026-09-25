@@ -15,7 +15,7 @@ import type { BossId } from '../../bosses/types'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { GAMEPLAY_TEXTURE_KEYS } from '../../ui/gameplay/GameplayTextures'
 import type { HUD } from '../../ui/HUD'
-import { MENU_FONT_DISPLAY } from '../../ui/menu/menuTheme'
+import { PIXEL_FONT } from '../../ui/menu/menuTheme'
 import type { CameraDirector } from './CameraDirector'
 
 /** Over the HUD (1000), under the dialogue overlay. */
@@ -345,7 +345,7 @@ export class BossPresentation {
 
   private text(x: number, y: number, value: string, size: number, color: string): Phaser.GameObjects.Text {
     const text = this.host.add
-      .text(x, y, value, { fontFamily: MENU_FONT_DISPLAY, fontSize: `${size}px`, color, stroke: '#05070c', strokeThickness: 3 })
+      .text(x, y, value, { fontFamily: PIXEL_FONT, fontSize: `${size}px`, color, stroke: '#05070c', strokeThickness: 3 })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(BAND_DEPTH + 1)

@@ -57,5 +57,6 @@ export const ASSET_CREDITS: readonly string[] = [
   "Art: Original mini-bosses (relay turret nest, sentry twin, drill serpent), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original warden weapon shots and the boss energy orb, generated with Higgsfield (gpt_image_2) for this project (original-generated)",
   "Art: Original pickups (energy capsules, extra life, heart tank, sub tank, upgrade capsule), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
-  "Art: Original HUD icons (buster, warden weapons, saber, shield, heart, sub tank, capsule, key card), generated with Higgsfield (gpt_image_2) for this project (original-generated)"
+  "Art: Original HUD icons (buster, warden weapons, saber, shield, heart, sub tank, capsule, key card), generated with Higgsfield (gpt_image_2) for this project (original-generated)",
+  "Art: OmegaPixel, an original pixel font drawn as a glyph table for this project and built with scripts/fonts/build-pixel-font.py (original)"
 ]
