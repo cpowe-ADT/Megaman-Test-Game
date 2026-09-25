@@ -26,6 +26,7 @@ import type { RockfallDefinition } from '../mechanics/rockfall'
 import type { IcicleDefinition } from '../mechanics/icicle'
 import type { FloorGap } from '../stage/stageGeometry'
 import * as HEAT_WORKS from './stages/heatWorks'
+import { MINIBOSS_LAB_STAGE_ID, minibossLabStage } from './stages/minibossLab'
 
 export type CampaignStageKind = 'tutorial' | 'robot_master' | 'final'
 
@@ -1260,6 +1261,7 @@ export const MECHANICS_LAB_STAGE: CampaignStageDefinition = buildMechanicsLabSta
 
 export function getCampaignStage(id: string): CampaignStageDefinition {
   if (id === MECHANICS_LAB_STAGE_ID) return MECHANICS_LAB_STAGE
+  if (id === MINIBOSS_LAB_STAGE_ID) return minibossLabStage(CAMPAIGN_STAGES.pyro_maw)
   return CAMPAIGN_STAGES[id as CampaignStageId] ?? CAMPAIGN_STAGES.pyro_maw
 }
 

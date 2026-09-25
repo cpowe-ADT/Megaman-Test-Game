@@ -392,6 +392,125 @@
       "loadScope": "stage"
     },
     {
+      "id": "enemies-custodian_walker_basalt",
+      "atlasKey": "atlas_custodian_walker_basalt",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.png",
+        "runtimeData": "/assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.atlas.json",
+        "localImagePath": "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.png",
+        "localDataPath": "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.atlas.json"
+      },
+      "notes": "Basalt skin of the custodian walker (12c, EVAL-P6-005): palette swap of custodian_walker by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 64x64, feet on row 62. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-custodian_walker_glacier",
+      "atlasKey": "atlas_custodian_walker_glacier",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.png",
+        "runtimeData": "/assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.atlas.json",
+        "localImagePath": "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.png",
+        "localDataPath": "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.atlas.json"
+      },
+      "notes": "Glacier skin of the custodian walker (12c, EVAL-P6-005): palette swap of custodian_walker by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 64x64, feet on row 62. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-relay_turret_nest",
+      "atlasKey": "atlas_relay_turret_nest",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/relay_turret_nest/relay_turret_nest.png",
+        "runtimeData": "/assets/sprites/enemies/relay_turret_nest/relay_turret_nest.atlas.json",
+        "localImagePath": "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.png",
+        "localDataPath": "assets/sprites/enemies/relay_turret_nest/relay_turret_nest.atlas.json"
+      },
+      "notes": "Tide mini-boss, the relay turret nest (12c, EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py (cbdac1e): 18 frames of 64x64, feet on row 62, facing right. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-relay_turret_nest_ferro",
+      "atlasKey": "atlas_relay_turret_nest_ferro",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.png",
+        "runtimeData": "/assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.atlas.json",
+        "localImagePath": "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.png",
+        "localDataPath": "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.atlas.json"
+      },
+      "notes": "Ferro skin of the relay turret nest (12c, EVAL-P6-005): palette swap of relay_turret_nest by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 64x64, feet on row 62. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-sentry_twin",
+      "atlasKey": "atlas_sentry_twin",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/sentry_twin/sentry_twin.png",
+        "runtimeData": "/assets/sprites/enemies/sentry_twin/sentry_twin.atlas.json",
+        "localImagePath": "assets/sprites/enemies/sentry_twin/sentry_twin.png",
+        "localDataPath": "assets/sprites/enemies/sentry_twin/sentry_twin.atlas.json"
+      },
+      "notes": "Volt mini-boss, one drone of the sentry twins (12c, EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py (cbdac1e): 18 frames of 48x48, feet on row 44, facing right. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-sentry_twin_gale",
+      "atlasKey": "atlas_sentry_twin_gale",
+      "frame": {
+        "width": 48,
+        "height": 48
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.png",
+        "runtimeData": "/assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.atlas.json",
+        "localImagePath": "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.png",
+        "localDataPath": "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.atlas.json"
+      },
+      "notes": "Gale skin of the sentry twin (12c, EVAL-P6-005): palette swap of sentry_twin by scripts/sprites/palette_skin.py (d19f0cc; parameters in the atlas meta); 18 frames of 48x48, feet on row 44. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
+      "id": "enemies-drill_serpent",
+      "atlasKey": "atlas_drill_serpent",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/drill_serpent/drill_serpent.png",
+        "runtimeData": "/assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json",
+        "localImagePath": "assets/sprites/enemies/drill_serpent/drill_serpent.png",
+        "localDataPath": "assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json"
+      },
+      "notes": "Mire mini-boss, the drill serpent (12c, EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py (cbdac1e): 18 frames of 64x64, feet on row 62, facing right. Stage-scoped: the mini-boss lab now, its warden stage in 12d.",
+      "loadScope": "stage"
+    },
+    {
       "id": "enemies-enemy_shield_drone",
       "atlasKey": "atlas_enemy_shield_drone",
       "frame": {

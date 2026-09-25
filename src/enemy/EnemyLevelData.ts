@@ -1,5 +1,6 @@
 import { EnemyLevelMarker } from './types'
 import { CAMPAIGN_STAGES } from '../content/campaign'
+import { MINIBOSS_LAB_ENEMIES, MINIBOSS_LAB_STAGE_ID } from '../content/stages/minibossLab'
 
 export const ENEMY_LEVEL_MARKERS: Record<string, EnemyLevelMarker[]> = {
   tutorial_sentinel: CAMPAIGN_STAGES.tutorial_sentinel.enemyMarkers,
@@ -14,6 +15,8 @@ export const ENEMY_LEVEL_MARKERS: Record<string, EnemyLevelMarker[]> = {
   omega_fortress: CAMPAIGN_STAGES.omega_fortress.enemyMarkers,
   // The developer mechanics lab has no enemies (unknown ids fall back to Heat Works' roster).
   mechanics_lab: [],
+  // The developer mini-boss lab (12c): one mini-boss per locked room.
+  [MINIBOSS_LAB_STAGE_ID]: MINIBOSS_LAB_ENEMIES,
   enemy_test_range: [
     {
       id: 'marker_gunner_1',

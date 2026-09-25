@@ -94,9 +94,9 @@ export function queueGameSceneAtlases(scene: Phaser.Scene): void {
 }
 
 /**
- * Atlases only some stages draw (loadScope 'stage' in the sprite manifest): the custodian walker mini-boss
- * (0.38MB) and each warden's atlas (0.25MB each, 2.5MB for all ten, which Preload used to hold for a stage
- * that fights one). Preload skips them, so the boot texture budget does not pay for them; the list below
+ * Atlases only some stages draw (loadScope 'stage' in the sprite manifest): the mini-bosses and their
+ * stage skins (about 0.38MB each at 64px, a stage places one or two) and each warden's atlas (0.25MB
+ * each, 2.5MB for all ten, which Preload used to hold for a stage that fights one). Preload skips them, so the boot texture budget does not pay for them; the list below
  * matches the manifest's 'stage' entries (tests/stage-background-loading.test.ts). Rule: queued
  * by the stages whose enemy markers use the family (`atlas_<typeKey>`) and by the stage that fights the boss
  * (`atlas_<bossId>`), evicted when a stage that needs neither is built. Enemy and boss animations are made on
@@ -104,13 +104,25 @@ export function queueGameSceneAtlases(scene: Phaser.Scene): void {
  */
 export const STAGE_SCOPED_BOSS_IDS = ['sentinel_rook', 'pyro_maw', 'tide_reaver', 'volt_hopper', 'basalt_titan', 'ferro_blade', 'mire_wraith', 'gale_vixen', 'glacier_ronin', 'omega_core'] as const
 
+/** The mini-boss families (12c, `src/enemy/minibossCatalog.ts`), one atlas per archetype and skin. */
+export const STAGE_SCOPED_ENEMY_FAMILIES = [
+  'custodian_walker',
+  'custodian_walker_basalt',
+  'custodian_walker_glacier',
+  'relay_turret_nest',
+  'relay_turret_nest_ferro',
+  'sentry_twin',
+  'sentry_twin_gale',
+  'drill_serpent'
+] as const
+
 export const STAGE_SCOPED_ATLASES: readonly LoadableAtlasEntry[] = [
-  {
-    id: 'enemies-custodian_walker',
-    atlasKey: 'atlas_custodian_walker',
-    runtimeImage: '/assets/sprites/enemies/custodian_walker/custodian_walker.png',
-    runtimeData: '/assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json'
-  },
+  ...STAGE_SCOPED_ENEMY_FAMILIES.map((typeKey) => ({
+    id: `enemies-${typeKey}`,
+    atlasKey: `atlas_${typeKey}`,
+    runtimeImage: `/assets/sprites/enemies/${typeKey}/${typeKey}.png`,
+    runtimeData: `/assets/sprites/enemies/${typeKey}/${typeKey}.atlas.json`
+  })),
   ...STAGE_SCOPED_BOSS_IDS.map((bossId) => ({
     id: `boss-${bossId.replace(/_/g, '-')}`,
     atlasKey: `atlas_${bossId}`,

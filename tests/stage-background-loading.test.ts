@@ -83,3 +83,11 @@ test('preload and create resolve the same stage and boss', () => {
   assert.deepEqual(resolveGameStageAndBoss({ stageId: 'tutorial_sentinel' }, null, 'volt_hopper'), ['tutorial_sentinel', 'volt_hopper'])
   assert.deepEqual(resolveGameStageAndBoss({ stageId: 'tutorial_sentinel' }, { stageId: 'tide_reaver', bossId: 'tide_reaver' }, 'volt_hopper'), ['tide_reaver', 'tide_reaver'])
 })
+
+test('the mini-boss lab loads every mini-boss atlas and skin; Heat Works still loads only its walker; leaving the lab evicts them', () => {
+  const families = ['custodian_walker', 'custodian_walker_basalt', 'custodian_walker_glacier', 'relay_turret_nest', 'relay_turret_nest_ferro', 'sentry_twin', 'sentry_twin_gale', 'drill_serpent']
+  const lab = stageScopedAtlases('miniboss_lab').map((entry) => entry.atlasKey)
+  assert.deepEqual([...lab].sort(), [...families.map((key) => `atlas_${key}`), 'atlas_pyro_maw'].sort())
+  assert.deepEqual(stageScopedAtlases('pyro_maw').map((entry) => entry.atlasKey), ['atlas_custodian_walker', 'atlas_pyro_maw'])
+  assert.deepEqual(stageScopedAtlasKeysToEvict(lab, 'pyro_maw').sort(), families.filter((key) => key !== 'custodian_walker').map((key) => `atlas_${key}`).sort())
+})
