@@ -31,6 +31,10 @@ CELL_ROLES = {0: ("idle", 0), 1: ("idle", 1), 2: ("idle", 2), 3: ("hurt", 0),
 # Boss layout (4x3): idle 0-3, move 0-3, shoot 0-3, as the September boss sheets (src/bosses reads these groups).
 BOSS_CELL_ROLES = {i: (("idle", "move", "shoot")[i // 4], i % 4) for i in range(12)}
 
+# Boss extra groups (4x3, prompt 07 phase 7.2): intro pose 0-3, defeat 4-7, phase-two power-up 8-11. Appended to the
+# boss atlas; the existing idle, move and shoot frames are kept pixel for pixel.
+BOSS_EXTRA_CELL_ROLES = {i: (("intro", "defeat", "phase")[i // 4], i % 4) for i in range(12)}
+
 
 def old_idle_box(atlas: Image.Image, frames: dict, type_key: str) -> tuple[int, int, int]:
     """(content width, content height, lowest row + 1) of the old idle frames (medians)."""
@@ -87,9 +91,10 @@ def main() -> None:
     parser.add_argument("--in", dest="input_path", required=True)
     parser.add_argument("--type-key", required=True)
     parser.add_argument("--move-group", default=None, help="run or hover; read from the old atlas when omitted")
-    parser.add_argument("--layout", choices=["enemy", "boss"], default="enemy",
+    parser.add_argument("--layout", choices=["enemy", "boss", "boss-extra"], default="enemy",
                         help="enemy: 4x5 sheet into assets/sprites/enemies/<key>/<key>.atlas.json; "
-                             "boss: 4x3 (idle, move, shoot) into assets/sprites/bosses/<key>.json")
+                             "boss: 4x3 (idle, move, shoot) into assets/sprites/bosses/<key>.json; "
+                             "boss-extra: 4x3 (intro, defeat, phase) appended to the boss atlas, sized from the first intro frame")
     parser.add_argument("--mirror", action="store_true", help="flip every cell horizontally before cutting")
     parser.add_argument("--cells", action="append", default=[],
                         help="group=i,j,...: take this group's frames from these sheet cells (a cell the model drew "
@@ -102,10 +107,10 @@ def main() -> None:
                              "content box; for a new design that should fill a frame the old art under-used")
     args = parser.parse_args()
 
-    if args.layout == "boss":
+    if args.layout in ("boss", "boss-extra"):
         out_dir = ROOT / "assets" / "sprites" / "bosses"
         json_path = out_dir / f"{args.type_key}.json"
-        cols, rows, roles = 4, 3, BOSS_CELL_ROLES
+        cols, rows, roles = 4, 3, (BOSS_CELL_ROLES if args.layout == "boss" else BOSS_EXTRA_CELL_ROLES)
     else:
         out_dir = ROOT / "assets" / "sprites" / "enemies" / args.type_key
         json_path = out_dir / f"{args.type_key}.atlas.json"
@@ -131,7 +136,9 @@ def main() -> None:
 
     sheet = Image.open(args.input_path).convert("RGBA")
     cell_w, cell_h = sheet.width // cols, sheet.height // rows
-    idle = [keyed_cell(sheet, i, cols, cell_w, cell_h, args.mirror) for i in (0, 1, 2)]
+    # The size reference: the idle row, or for boss-extra the first intro frame (the settling pose stands like idle).
+    reference_cells = (0,) if args.layout == "boss-extra" else (0, 1, 2)
+    idle = [keyed_cell(sheet, i, cols, cell_w, cell_h, args.mirror) for i in reference_cells]
     boxes = [im.getchannel("A").getbbox() for im in idle if im.getchannel("A").getbbox()]
     src_h = statistics.median(b[3] - b[1] for b in boxes)
     src_w = statistics.median(b[2] - b[0] for b in boxes)
@@ -150,7 +157,7 @@ def main() -> None:
     for index, role, i in items:
         group = move if role == "move" else role
         name = f"{args.type_key}/{group}/{i:03d}"
-        if name not in old["frames"]:
+        if name not in old["frames"] and args.layout != "boss-extra":
             continue
         cell = keyed_cell(sheet, index, cols, cell_w, cell_h, args.mirror)
         small = cutter.decast_image(cutter.hard_alpha(cutter.mode_downscale(cell, scale)))
@@ -166,6 +173,13 @@ def main() -> None:
     if args.clear_top_rows:
         for name in frames:
             frames[name] = clear_top_strays(frames[name], args.clear_top_rows)
+    if args.layout == "boss-extra":
+        # Keep every frame the atlas already has (idle, move, shoot) pixel for pixel; the new groups replace their own.
+        for name in names:
+            if name not in frames:
+                f = old["frames"][name]["frame"]
+                frames[name] = old_atlas.crop((f["x"], f["y"], f["x"] + f["w"], f["y"] + f["h"]))
+        names = names + [n for n in frames if n not in names]
     missing = [n for n in names if n not in frames]
     if missing:
         raise SystemExit(f"sheet does not cover {missing}")
@@ -180,13 +194,19 @@ def main() -> None:
         entries[name] = {"frame": {"x": x, "y": y, "w": fw, "h": fh}, "rotated": False, "trimmed": False,
                          "spriteSourceSize": {"x": 0, "y": 0, "w": fw, "h": fh}, "sourceSize": {"w": fw, "h": fh}}
     # Hazard red, the steel greys, and the explosion's orange and pale yellow (without them the debris snapped to red).
-    atlas = cutter.quantize_with_fixed(atlas, 32, ((0xE2, 0x3A, 0x3A), (0x8A, 0x90, 0x9C), (0x3A, 0x3E, 0x47),
-                                                   (0xFF, 0x8A, 0x2A), (0xFF, 0xD2, 0x7A)))
+    # boss-extra keeps the existing frames: more palette room so their colours do not shift when frames are added.
+    palette = 64 if args.layout == "boss-extra" else 32
+    atlas = cutter.quantize_with_fixed(atlas, palette, ((0xE2, 0x3A, 0x3A), (0x8A, 0x90, 0x9C), (0x3A, 0x3E, 0x47),
+                                                        (0xFF, 0x8A, 0x2A), (0xFF, 0xD2, 0x7A)))
     atlas.save(image_path)
     meta = dict(old.get("meta", {}))
     meta.update({"app": "scripts/sprites/cut_enemy_sheet.py", "image": image_path.name,
-                 "size": {"w": atlas.width, "h": atlas.height}, "source": Path(args.input_path).as_posix(),
+                 "size": {"w": atlas.width, "h": atlas.height},
                  "generator": "Higgsfield gpt_image_2", "reskinTarget": reskin_target})
+    if args.layout == "boss-extra":
+        meta["extraSource"] = Path(args.input_path).as_posix()
+    else:
+        meta["source"] = Path(args.input_path).as_posix()
     json.dump({"frames": entries, "meta": meta}, json_path.open("w"), indent=2)
     print(f"{args.type_key}: {len(names)} frames of {fw}x{fh}, idle content {target_w}x{target_h} feet row {feet}, scale {scale:.3f}")
 

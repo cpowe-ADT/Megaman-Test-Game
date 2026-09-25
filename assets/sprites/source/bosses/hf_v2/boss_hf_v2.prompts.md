@@ -28,3 +28,22 @@ One variant each, facing RIGHT as asked (no mirror), the September v1 design lin
 | gale_vixen | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_222416_e0d1f31b-79ef-4876-86a9-5ca9ddd545f4.png |
 | glacier_ronin | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_222417_1eb93240-3abe-4c58-9069-787fa19a689a.png |
 | omega_core | https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260924_222417_e9fe6eba-de2a-4cf7-a7e8-023aeebc8d88.png |
+
+## Intro, defeat and phase-two poses (2026-09-25, prompt 07 phase 7.2 items 4 to 6; prompt 12 part 12f)
+
+One 4x3 sheet per boss at 4:3, 1k, medium, the boss's own v2 sheet as the reference image (role `image`; Pyro Maw's variant b). Prompt: "exactly the same robot as in the reference sheet ... facing RIGHT ... Row 1, the entrance intro: four frames of a proud power-up pose ... Row 2, the defeat: four frames (heavily damaged with sparks, staggering, collapsing to one knee with smoke, broken and dark with smoke). Row 3, the phase-two power-up: four frames of an enraged pose with a bright energy aura building around the body" (Omega Core: the ring lighting up segment by segment; cracking and breaking away). Cut with `scripts/sprites/cut_enemy_sheet.py --layout boss-extra --clear-top-rows 6` (Pyro Maw with `--mirror`: its first intro frame matched the standing frame mirrored, silhouette IoU 0.895 against 0.717; the other nine matched unmirrored), appending `intro`, `defeat` and `phase` groups (4 frames each) to `assets/sprites/bosses/<key>.{png,json}`; the existing idle, move and shoot frames keep their silhouettes exactly (checked frame by frame). Omega's phase row lost most of its red aura to the magenta key; the runtime adds its flash.
+
+| Boss | Job |
+| --- | --- |
+| sentinel_rook | 729527f5-50a3-42c1-8fa1-bbd013e3acab |
+| pyro_maw | 607f65d9-b22a-4923-9308-061436126e07 |
+| tide_reaver | ddda4ff2-8328-4dd1-9405-492d0481c3d8 |
+| volt_hopper | 2eabba16-1cdf-43b5-b577-1c6617a8b216 |
+| basalt_titan | c67c4ecf-0b61-439a-97f1-5c9b151a4e13 |
+| ferro_blade | 7eb4f56a-9d3f-4203-bd41-21886ddff118 |
+| mire_wraith | e27aa3e3-a168-41f7-9b37-21775f62452d |
+| gale_vixen | 28304b16-c0be-4e3d-b53f-6a574bf7a39c |
+| glacier_ronin | 2d53adba-2b0e-4418-ab15-17e75e00bc84 |
+| omega_core | 3c9c23f3-5312-4510-815a-6da74f64254f |
+
+Result URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_014010_<job>.png`; sources `assets/sprites/source/bosses/hf_v2/<key>_extra_a.png`.
