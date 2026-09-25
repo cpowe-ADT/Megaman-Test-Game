@@ -45,6 +45,11 @@ export async function runSaberComboScenario(name, { outputDir, url, readState, w
   const runReplay = (rows, setup, options = {}) => page.evaluate(({ rows, setup, options }) => {
     const scene = window.__phaserGame.scene.getScene('Game')
     const runtime = scene.newPlayerRuntime
+    // Let the previous replay's swing finish first (the finisher's recovery is 12 frames): under load fewer real
+    // frames pass between replays, and a leftover recovery used to be read as this replay's.
+    for (let settle = 0; settle < 60 && (runtime.lastCombatSnapshot?.slashPhase ?? null) !== null; settle += 1) {
+      window.stageDebug.replayInputs([{ frame: 0, held: [] }, { frame: 1, held: [] }])
+    }
     const boss = scene.bossTarget ?? scene.bossBody
     const bossX = boss.body?.center?.x ?? boss.x
     scene.player.setPosition(bossX + setup.offsetX, scene.player.y)
@@ -105,7 +110,7 @@ export async function runSaberComboScenario(name, { outputDir, url, readState, w
 
     const dash = await runReplay(DASH_ROWS, { offsetX: -220 })
     fs.writeFileSync(path.join(dir, 'dash-cancel.json'), JSON.stringify(dash, null, 2))
-    const recoveryAt = dash.frames.findIndex((frame) => frame.phase === 'recovery')
+    const recoveryAt = dash.frames.findIndex((frame) => frame.phase === 'recovery' && frame.move === 'combo1')
     const endedAt = dash.frames.findIndex((frame, index) => index > recoveryAt && frame.phase === null)
     assert.ok(recoveryAt >= 0, 'hit 1 reached recovery')
     assert.ok(endedAt - recoveryAt < 6, `the dash cut recovery short (${endedAt - recoveryAt} of 6 frames)`)
