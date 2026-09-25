@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { isWalkBlocked, type SolidRect } from './floorProbe'
-import { MinibossHealthBar, ensureAtlasAnimation, readSolidRects } from './minibossAdapter'
+import { MinibossHealthBar, ensureAtlasAnimation, playMinibossSfx, readSolidRects, type MinibossSound } from './minibossAdapter'
 import {
   SERPENT_ANIMATIONS,
   createSerpentState,
@@ -14,6 +14,7 @@ import type { EnemyBrain } from './types'
 import type { EnemyEntity } from './EnemyEntity'
 
 const BAR_COLOR = 0x8ae04a
+const EVENT_SFX: Partial<Record<string, MinibossSound>> = { burrow: 'dash', burst: 'burst', coil: 'tell', lunge: 'dash' }
 /** The mound shakes a pixel either way at this rate. */
 const SHAKE_FRAME_MS = 50
 
@@ -133,6 +134,10 @@ export class DrillSerpentBrain implements EnemyBrain {
     }
 
     for (const event of step.events) {
+      const sound = EVENT_SFX[event]
+      if (sound) {
+        playMinibossSfx(sound)
+      }
       if (event === 'defeated') {
         this.bar.hide()
         combat.finishDefeat()

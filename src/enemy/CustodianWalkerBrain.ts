@@ -7,6 +7,7 @@ import {
   type CustodianState
 } from './custodianWalker'
 import { isWalkBlocked, type SolidRect } from './floorProbe'
+import { playMinibossSfx } from './minibossAdapter'
 import {
   CUSTODIAN_SHOCKWAVE,
   groundWaveHits,
@@ -122,7 +123,10 @@ export class CustodianWalkerBrain implements EnemyBrain {
     }
 
     for (const event of step.events) {
-      if (event === 'stomp') {
+      if (event === 'windup') {
+        playMinibossSfx('tell')
+      } else if (event === 'stomp') {
+        playMinibossSfx('impact')
         this.launch(body.center.x, floorTop, body.halfWidth, now)
       } else if (event === 'defeated') {
         this.clearWaves()

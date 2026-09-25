@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { TELEGRAPHS_ATLAS, telegraphFrame } from '../boss/telegraphArt'
 import { EnemyProjectileCatalog, spawnEnemyProjectile } from './EnemyProjectiles'
-import { MinibossHealthBar, floorTopUnder, readSolidRects } from './minibossAdapter'
+import { MinibossHealthBar, floorTopUnder, playMinibossSfx, readSolidRects } from './minibossAdapter'
 import {
   createTwinsState,
   killTwins,
@@ -104,7 +104,12 @@ export class SentryTwinsBrain implements EnemyBrain {
       this.state = step.state
       this.poses = step.poses
       for (const event of step.events) {
-        if (event === 'bolt') {
+        if (event === 'bolt_windup') {
+          playMinibossSfx('tell')
+        } else if (event === 'swoop') {
+          playMinibossSfx('dash')
+        } else if (event === 'bolt') {
+          playMinibossSfx('bolt')
           this.fireBolt()
         } else if (event === 'flash') {
           this.flashBornAt = now

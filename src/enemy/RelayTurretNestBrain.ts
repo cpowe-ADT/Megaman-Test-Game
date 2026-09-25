@@ -3,7 +3,7 @@ import { TELEGRAPHS_ATLAS, telegraphFrame } from '../boss/telegraphArt'
 import { PROJECTILES_ATLAS_KEY } from '../projectiles/definitions/coreProjectiles'
 import { EnemyProjectileCatalog, spawnEnemyProjectile } from './EnemyProjectiles'
 import { isWalkBlocked, type SolidRect } from './floorProbe'
-import { MinibossHealthBar, readSolidRects } from './minibossAdapter'
+import { MinibossHealthBar, playMinibossSfx, readSolidRects } from './minibossAdapter'
 import { RELAY_NEST_MORTAR, launchMortar, mortarBlastHits, stepMortar, type MortarShell, type MortarStage } from './mortarShell'
 import {
   createRelayNestState,
@@ -125,9 +125,13 @@ export class RelayTurretNestBrain implements EnemyBrain {
     }
 
     for (const event of step.events) {
-      if (event === 'shot') {
+      if (event === 'burst_windup' || event === 'mortar_windup') {
+        playMinibossSfx('tell')
+      } else if (event === 'shot') {
+        playMinibossSfx('shot')
         this.fireShot()
       } else if (event === 'mortar') {
+        playMinibossSfx('mortar')
         this.fireMortar(floorTop, now)
       } else if (event === 'defeated') {
         this.clearShells()
@@ -254,7 +258,10 @@ export class RelayTurretNestBrain implements EnemyBrain {
       live.image = null
       live.marker?.destroy()
       live.marker = null
-      live.blast ??= this.drawBlast(live.shell)
+      if (!live.blast) {
+        playMinibossSfx('impact')
+        live.blast = this.drawBlast(live.shell)
+      }
       live.blast.setAlpha(Math.max(0, 1 - (live.shell.elapsedMs - RELAY_NEST_MORTAR.flightMs) / RELAY_NEST_MORTAR.blastMs))
       if (!live.hit && hero && player.active && mortarBlastHits(live.shell, hero)) {
         const result = this.entity.context.applyDamageToPlayer({

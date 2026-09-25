@@ -1,4 +1,6 @@
 import Phaser from 'phaser'
+import AudioService from '../audio'
+import type { SfxAssetKey } from '../audio/sfxLibrary'
 import type { SolidRect } from './floorProbe'
 
 /**
@@ -7,6 +9,23 @@ import type { SolidRect } from './floorProbe'
  * stage's solid rectangles for the floor probes, and brain-owned animations cut from a family's atlas.
  */
 export const MINIBOSS_BAR = { width: 36, height: 3, back: 0x140806 } as const
+
+export type MinibossSound = 'tell' | 'shot' | 'bolt' | 'mortar' | 'impact' | 'dash' | 'burst'
+
+/** Mini-boss sounds from the existing SFX set (12c), until the audio lane gives them their own. */
+export const MINIBOSS_SFX: Record<MinibossSound, SfxAssetKey> = {
+  tell: 'charge_start',
+  shot: 'shot_basic',
+  bolt: 'shot_charge_lv1',
+  mortar: 'shot_charge_lv2',
+  impact: 'land',
+  dash: 'dash',
+  burst: 'sword_hit'
+}
+
+export function playMinibossSfx(sound: MinibossSound): void {
+  AudioService.playSfx(MINIBOSS_SFX[sound])
+}
 
 export class MinibossHealthBar {
   private readonly graphics: Phaser.GameObjects.Graphics
