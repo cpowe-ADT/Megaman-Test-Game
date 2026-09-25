@@ -18,7 +18,9 @@ export const BOSS_BREAK = {
   /** A grounded (or hybrid) boss hops this high on the way back. */
   hopPx: 10,
   /** A hover boss bobs this far instead of hopping. */
-  bobPx: 4
+  bobPx: 4,
+  /** A break that ends in the air holds until the boss lands, at most this much longer, so it cannot attack mid-fall. */
+  maxAirHoldMs: 600
 } as const
 
 /** `hop`: grounded and hybrid bosses; `hover`: the aerial ones (their combat profile's `locomotion`). */

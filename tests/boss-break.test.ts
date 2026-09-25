@@ -230,3 +230,28 @@ test('a break cancels the shots of a volley still to fire, with its pending spaw
   controller.update(now, 16)
   assert.equal(requests.length, 1, 'no lance after the break')
 })
+
+test('a break that ends in the air holds until the boss lands, 600 ms more at most', () => {
+  const brain: BossBase = new BossBase(breakTestDefinition())
+  brain.OnFightStart()
+  brain.unlockIntro()
+  let grounded = false
+  const tick = (frames = 1) => {
+    for (let frame = 0; frame < frames; frame += 1) {
+      brain.TickAI({ nowMs: 0, dtMs: TICK_MS, bossPosition: { x: 0, y: 0 }, playerPosition: { x: 100, y: 0 }, distanceToPlayer: 100, lineOfSight: true, rng: () => 0.5, phaseIndex: 0, speedMultiplier: 1, thinkTimeMultiplier: 1, bossGrounded: grounded })
+    }
+  }
+  const weakHit = () => brain.ApplyDamage({ amount: 5, type: 'normal', source: 'player', iFrameMs: 120, stunMs: BOSS_WEAK_HIT.stunMs, stunLockoutMs: BOSS_WEAK_HIT.stunLockoutMs, breaks: true })
+  tick(2) // out of the intro state, as the other break tests do
+  assert.equal(weakHit().broke, true)
+  tick(Math.ceil(BOSS_BREAK.stunMs / TICK_MS) + 5)
+  assert.equal(brain.isBroken, true, 'still broken while airborne past the 450 ms stun')
+  grounded = true
+  tick()
+  assert.equal(brain.isBroken, false, 'the break ends on landing')
+  grounded = false
+  tick(Math.ceil((BOSS_BREAK.lockoutMs + 20) / TICK_MS))
+  assert.equal(weakHit().broke, true, 'the lockout has run, so this breaks again')
+  tick(Math.ceil((BOSS_BREAK.stunMs + BOSS_BREAK.maxAirHoldMs) / TICK_MS) + 2)
+  assert.equal(brain.isBroken, false, 'a boss that never lands is released after 600 ms more')
+})

@@ -37,6 +37,8 @@ export class BossBase implements IBoss {
   private readonly breakLockout = new BossBreakLockout()
   /** This HURT_INVULN is a break's stun rather than a plain hit's flinch. */
   private breaking = false
+  /** How long this break has held past its stun because the boss was still in the air. */
+  private breakAirHoldMs = 0
 
   constructor(definition: BossDefinition, hooks: BossEventHooks = {}) {
     this.definition = definition
@@ -214,9 +216,13 @@ export class BossBase implements IBoss {
       }
       case 'HURT_INVULN': {
         this.hurtRemainingMs -= ctx.dtMs
-        if (this.hurtRemainingMs <= 0) {
-          this.transitionTo('THINK')
+        if (this.hurtRemainingMs > 0) break
+        // A break that knocked the boss out of a hover or a hop ends only once it lands (BOSS_BREAK.maxAirHoldMs at most).
+        if (this.breaking && ctx.bossGrounded === false && this.breakAirHoldMs < BOSS_BREAK.maxAirHoldMs) {
+          this.breakAirHoldMs += ctx.dtMs
+          break
         }
+        this.transitionTo('THINK')
         break
       }
       case 'PHASE_TRANSITION': {
@@ -263,6 +269,7 @@ export class BossBase implements IBoss {
       }
       if (event.breaks) result.broke = broke
       this.breaking ||= broke
+      if (broke) this.breakAirHoldMs = 0
       const hurtMs = broke ? stunMs : (this.definition.hurtStunMs ?? 70)
       // A later hit never cuts a running stun short: a Buster pellet inside a break keeps the break's 450 ms.
       this.hurtRemainingMs = state === 'HURT_INVULN' ? Math.max(this.hurtRemainingMs, hurtMs) : hurtMs

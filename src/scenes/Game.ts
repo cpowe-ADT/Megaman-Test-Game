@@ -901,8 +901,8 @@ export class Game extends Phaser.Scene {
       .setScrollFactor(0)
       .setOrigin(0.5, 0)
       .setDepth(1000)
-    this.phaseLabel.setFixedSize(64, 24)
-    this.phaseLabel.setLetterSpacing(1)
+    // 66px inside the 68px centre panel; OmegaPixel spaces its own glyphs, so 'MAGMA GEYSER' (62px) and 'WEAKNESS HIT' fit.
+    this.phaseLabel.setFixedSize(66, 24)
     this.phaseLabel.setShadow(0, 1, '#041224', 0, false, true)
     this.phaseLabel.setStroke('#0a2137', 2)
 
