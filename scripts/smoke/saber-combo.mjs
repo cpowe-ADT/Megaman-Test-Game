@@ -13,7 +13,8 @@ const held = (spec) => Object.entries(spec).map(([frame, actions]) => ({ frame: 
 // Hero placed 34px left of the boss body centre, facing right. Hit 1 starts on frame 4. Each landed hit
 // freezes the scene for its hit-stop (presses made then are latched), so hit 1 is active on frames 9-16
 // and hit 2 on 27-35: the presses on frames 11 and 31 fall in those windows and chain hits 2 and 3.
-const COMBO_ROWS = held({ 0: ['moveRight'], 2: [], 4: ['saber'], 6: [], 11: ['saber'], 13: [], 31: ['saber'], 33: [], 84: [] })
+// The third press sits mid-way through hit 2's active window: hit-stop ticks by time, so the window drifts a frame run to run.
+const COMBO_ROWS = held({ 0: ['moveRight'], 2: [], 4: ['saber'], 6: [], 11: ['saber'], 13: [], 35: ['saber'], 37: [], 84: [] })
 // Hit 1 from frame 4 (recovery frames 13-18); a dash on frame 14 must end the swing at once.
 const DASH_ROWS = held({ 0: ['moveRight'], 2: [], 4: ['saber'], 6: [], 14: ['dash'], 17: [], 40: [] })
 // An enemy pellet 60px ahead, flying at the hero; the blade is live on frames 7-10.

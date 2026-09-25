@@ -180,10 +180,11 @@ export async function runClassicUpgradeScenario(name, { outputDir, titleUrl, rea
     await capture('buster-enemy')
     await page.evaluate(()=>{window.stageDebug.grantWeapon('HydroLance');window.stageDebug.grantUpgrade('chip_weapon_plus')})
     await tapKey(page,'e');await waitForState(page,s=>s.playerState?.weapon==='HydroLance')
-    await page.evaluate(()=>window.stageDebug.setWeaponEnergy('HydroLance',1))
+    // HydroLance's authored cost is 4 (Tide Reaver in src/bosses/roster.ts; applied as written since 12f wave 3); the Weapon Plus chip takes 1 off.
+    await page.evaluate(()=>window.stageDebug.setWeaponEnergy('HydroLance',3))
     await tapKey(page,'x',2)
     const shot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance')
-    assert.equal(shot.combatDebug.player.lastProjectile.energyCost,1);assert.equal(shot.combatDebug.player.lastProjectile.energyRemaining,0)
+    assert.equal(shot.combatDebug.player.lastProjectile.energyCost,3);assert.equal(shot.combatDebug.player.lastProjectile.energyRemaining,0)
     evidence.discount=shot.combatDebug.player.lastProjectile
     // The boss adapter receives the same resolved pellet damage: neutral Buster is exactly two, once.
     await page.evaluate(()=>{window.stageDebug.crossBossGate();window.bossDebug.unlockIntro()});await advanceFrames(page,15)
