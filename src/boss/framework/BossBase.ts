@@ -31,6 +31,8 @@ export class BossBase implements IBoss {
   private recoverRemainingMs = 0
   private hurtRemainingMs = 0
   private phaseTransitionRemainingMs = 0
+  private lastAttackContext?: AttackContext
+  private stunLockoutRemainingMs = 0
 
   constructor(definition: BossDefinition, hooks: BossEventHooks = {}) {
     this.definition = definition
@@ -52,6 +54,15 @@ export class BossBase implements IBoss {
     }
     this.attackController.setUnlockedAttacks([...initialUnlocks])
     this.attackController.setSelectionDeck(this.phaseController.currentPhase.patternDeck ?? [])
+    this.attackController.setPhaseKit({
+      enabled: this.phaseController.currentPhase.attackEnabled,
+      timing: this.phaseController.currentPhase.attackTiming
+    })
+  }
+
+  /** Whether the phase kit lets `attackId` start in the current phase. */
+  isAttackEnabled(attackId: string): boolean {
+    return this.attackController.isEnabled(attackId)
   }
 
   get state() {
@@ -68,6 +79,10 @@ export class BossBase implements IBoss {
 
   get activeAttackId(): string | undefined {
     return this.attackController.activeAttackId
+  }
+
+  get activeAttackLifecycle(): string | undefined {
+    return this.attackController.activeLifecycle
   }
 
   get hpSnapshot(): { current: number; max: number } {
@@ -93,6 +108,7 @@ export class BossBase implements IBoss {
 
   TickAI(ctx: BossContext): BossTickResult {
     this.damageController.tick(ctx.dtMs)
+    this.stunLockoutRemainingMs = Math.max(0, this.stunLockoutRemainingMs - ctx.dtMs)
     this.stateMachine.tick(ctx.dtMs)
 
     const hp = this.hpSnapshot
@@ -103,6 +119,7 @@ export class BossBase implements IBoss {
       this.attackController.unlockAttacks(phaseTransition.phase.unlockAttacks ?? [])
       this.attackController.setWeightOverrides(phaseTransition.phase.attackWeightOverrides ?? {})
       this.attackController.setSelectionDeck(phaseTransition.phase.patternDeck ?? [])
+      this.attackController.setPhaseKit({ enabled: phaseTransition.phase.attackEnabled, timing: phaseTransition.phase.attackTiming })
       this.phaseTransitionRemainingMs = phaseTransition.phase.transitionLockMs ?? 420
       this.stateMachine.tryTransition('PHASE_TRANSITION')
       this.hooks.onPhaseChanged?.(phaseTransition.current, phaseTransition.phase)
@@ -110,6 +127,7 @@ export class BossBase implements IBoss {
     }
 
     const attackContext = this.createAttackContext(ctx)
+    this.lastAttackContext = attackContext
     const attackTick = this.attackController.tick(ctx.dtMs, attackContext)
     if (attackTick.done) {
       this.hooks.onAttackResolved?.(attackTick.done)
@@ -218,10 +236,34 @@ export class BossBase implements IBoss {
     if (result.defeated) {
       this.Die()
     } else if (result.accepted && this.stateMachine.state !== 'DEAD') {
-      this.hurtRemainingMs = this.definition.hurtStunMs ?? 70
+      const weaknessStun = event.stunMs !== undefined && this.stunLockoutRemainingMs <= 0
+      if (weaknessStun) this.stunLockoutRemainingMs = event.stunLockoutMs ?? 0
+      if (weaknessStun && event.interruptWindup) {
+        const interrupted = this.attackController.interruptWindup(this.lastAttackContext ?? this.idleAttackContext())
+        if (interrupted) {
+          result.interruptedAttackId = interrupted.id
+          this.hooks.onAttackInterrupted?.(interrupted)
+        }
+      }
+      this.hurtRemainingMs = weaknessStun ? (event.stunMs ?? 70) : (this.definition.hurtStunMs ?? 70)
       this.transitionTo('HURT_INVULN')
     }
     return result
+  }
+
+  private idleAttackContext(): AttackContext {
+    return this.createAttackContext({
+      nowMs: 0,
+      dtMs: 0,
+      bossPosition: { x: 0, y: 0 },
+      playerPosition: { x: 0, y: 0 },
+      distanceToPlayer: 0,
+      lineOfSight: true,
+      rng: () => 0,
+      phaseIndex: this.phaseController.index,
+      speedMultiplier: 1,
+      thinkTimeMultiplier: 1
+    })
   }
 
   Die(): void {

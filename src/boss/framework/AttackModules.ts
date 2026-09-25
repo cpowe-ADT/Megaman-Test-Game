@@ -1,25 +1,50 @@
 import {
   AttackContext,
   AttackTickResult,
+  AttackTimingOverride,
   BossAttackDefinition,
   IAttack
 } from './types'
 
-type AttackLifecyclePhase = 'idle' | 'windup' | 'active' | 'recovery' | 'done'
+export type AttackLifecyclePhase = 'idle' | 'windup' | 'active' | 'recovery' | 'done'
 
 export class TimedAttackModule implements IAttack {
   readonly id: string
-  readonly Cooldown: number
-  readonly definition: BossAttackDefinition
+  readonly baseDefinition: BossAttackDefinition
+  private effective: BossAttackDefinition
 
   private phase: AttackLifecyclePhase = 'idle'
   private phaseRemainingMs = 0
   private emittedActiveSpawn = false
 
   constructor(definition: BossAttackDefinition) {
-    this.definition = definition
+    this.baseDefinition = definition
+    this.effective = definition
     this.id = definition.id
-    this.Cooldown = definition.cooldown
+  }
+
+  /** The attack as it plays in the current phase: the authored one, or its phase-kit retime. */
+  get definition(): BossAttackDefinition {
+    return this.effective
+  }
+
+  get Cooldown(): number {
+    return this.effective.cooldown
+  }
+
+  get lifecycle(): AttackLifecyclePhase {
+    return this.phase
+  }
+
+  /** A phase kit's retime (prompt 07 phase 7.2); undefined restores the authored timing. Takes effect on the next Enter. */
+  setTiming(timing?: AttackTimingOverride): void {
+    this.effective = timing
+      ? {
+          ...this.baseDefinition,
+          windupTime: timing.windupTime ?? this.baseDefinition.windupTime,
+          cooldown: timing.cooldown ?? this.baseDefinition.cooldown
+        }
+      : this.baseDefinition
   }
 
   Enter(_ctx: AttackContext): void {

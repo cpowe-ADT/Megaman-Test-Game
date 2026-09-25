@@ -12,7 +12,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'AUTONOMOUS GATEKEEPER',
     theme: { primary: 0x7d8cff, accent: 0xfff0b3, glow: 0x96a2ff, trail: 0x4552d4 },
     baseStats: {
-      maxHp: 24,
+      maxHp: 100,
       contactDamage: 6,
       moveSpeed: 60,
       dashSpeed: 90,
@@ -80,9 +80,27 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Combines stomp shock with hop follow-ups; shorter warning windows.',
         newAttacks: ['Stomp Shock'],
+        retireAttacks: ['Giga Hop'],
+        retimeAttacks: { 'Guard Shot': { telegraphMs: 200, cooldownMs: 380 } },
         cadenceMultiplier: 1.2
       }
     ],
+    desperation: {
+      name: 'Last Stand',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Rook Barrage.',
+      cadenceMultiplier: 1.3,
+      flashPalette: [0xffffff, 0x96a2ff, 0xfff0b3],
+      attack: {
+        name: 'Rook Barrage',
+        state: 'shoot',
+        description: 'Last-stand volley: a three-shot fan and a slow round behind it.',
+        telegraph: { telegraphMs: 380, warningFx: 'fan-lines', anchor: 'self' },
+        executeMs: 260,
+        cooldownMs: 900,
+        spawns: ['arc_shards', 'slow_bullet']
+      }
+    },
     spritePlan: {
       frame: PX(48, 48),
       origin: { x: 0.5, y: 0.9 },
@@ -126,7 +144,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'INFERNAL ENGINE',
     theme: { primary: 0xff6b3b, accent: 0xffc857, glow: 0xff8b5a, trail: 0xff392b },
     baseStats: {
-      maxHp: 32,
+      maxHp: 120,
       contactDamage: 8,
       moveSpeed: 70,
       dashSpeed: 120,
@@ -196,9 +214,27 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Ignition Dash leaves larger puddles; Serpent Stream sweeps faster.',
         newAttacks: ['Ignition Dash'],
+        retireAttacks: ['Blaze Lob'],
+        retimeAttacks: { 'Serpent Stream': { telegraphMs: 240, cooldownMs: 560 } },
         cadenceMultiplier: 1.35
       }
     ],
+    desperation: {
+      name: 'Meltdown',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Magma Geyser.',
+      cadenceMultiplier: 1.45,
+      flashPalette: [0xffffff, 0xff8b5a, 0xffc857],
+      attack: {
+        name: 'Magma Geyser',
+        state: 'special',
+        description: 'The floor under the hero erupts while a fire orb arcs in.',
+        telegraph: { telegraphMs: 420, warningFx: 'wave', anchor: 'target' },
+        executeMs: 360,
+        cooldownMs: 1100,
+        spawns: ['burn_puddle', 'fire_orb']
+      }
+    },
     spritePlan: {
       frame: PX(56, 48),
       origin: { x: 0.5, y: 0.88 },
@@ -242,7 +278,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'ABYSSAL HUNTER',
     theme: { primary: 0x3b9dff, accent: 0xa0f2ff, glow: 0x62c1ff, trail: 0x1a6bff },
     baseStats: {
-      maxHp: 32,
+      maxHp: 120,
       contactDamage: 8,
       moveSpeed: 64,
       dashSpeed: 100,
@@ -310,9 +346,27 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Introduces Riptide Crash and faster levitation strafes.',
         newAttacks: ['Riptide Crash'],
+        retireAttacks: ['Jet Levitate'],
+        retimeAttacks: { 'Lance Volley': { telegraphMs: 250, cooldownMs: 620 } },
         cadenceMultiplier: 1.3
       }
     ],
+    desperation: {
+      name: 'Undertow',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Maelstrom.',
+      cadenceMultiplier: 1.4,
+      flashPalette: [0xffffff, 0x62c1ff, 0xa0f2ff],
+      attack: {
+        name: 'Maelstrom',
+        state: 'special',
+        description: 'Rises, marks the hero, and drops splash pillars under a lance.',
+        telegraph: { telegraphMs: 440, warningFx: 'reticle', anchor: 'target' },
+        executeMs: 420,
+        cooldownMs: 1150,
+        spawns: ['splash_pillar', 'water_lance']
+      }
+    },
     spritePlan: {
       frame: PX(52, 50),
       origin: { x: 0.5, y: 0.86 },
@@ -356,7 +410,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'KINETIC CAPACITOR',
     theme: { primary: 0xffdd57, accent: 0xfff3b0, glow: 0xffff8d, trail: 0xffa600 },
     baseStats: {
-      maxHp: 30,
+      maxHp: 116,
       contactDamage: 8,
       moveSpeed: 90,
       dashSpeed: 140,
@@ -425,9 +479,27 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Adds Impulse Dash mix-ups; mines chain lightning on detonation.',
         newAttacks: ['Impulse Dash'],
+        retireAttacks: ['Rail Shot'],
+        retimeAttacks: { 'Capacitor Charge': { telegraphMs: 220, cooldownMs: 520 } },
         cadenceMultiplier: 1.4
       }
     ],
+    desperation: {
+      name: 'Overload',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Storm Grid.',
+      cadenceMultiplier: 1.5,
+      flashPalette: [0xffffff, 0xffff8d, 0xfff3b0],
+      attack: {
+        name: 'Storm Grid',
+        state: 'summon',
+        description: 'Calls a bolt onto the hero and a static orb along the floor.',
+        telegraph: { telegraphMs: 400, warningFx: 'reticle', anchor: 'target' },
+        executeMs: 320,
+        cooldownMs: 1050,
+        spawns: ['vertical_bolt', 'static_orb']
+      }
+    },
     spritePlan: {
       frame: PX(48, 46),
       origin: { x: 0.5, y: 0.86 },
@@ -471,7 +543,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: `SEISMIC ${IDENTITY.WARDEN_TERM}`,
     theme: { primary: 0x9b6b4a, accent: 0xffd7a0, glow: 0xc48c5a, trail: 0x6a4127 },
     baseStats: {
-      maxHp: 36,
+      maxHp: 132,
       contactDamage: 10,
       moveSpeed: 50,
       dashSpeed: 80,
@@ -539,9 +611,28 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Shockwaves travel faster; Barrage adds falling debris.',
         newAttacks: ['Basalt Barrage'],
+        retireAttacks: ['Crustquake'],
+        retimeAttacks: { 'Fault Punch': { telegraphMs: 280, cooldownMs: 680 } },
         cadenceMultiplier: 1.2
       }
     ],
+    desperation: {
+      name: 'Magma Core',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Tectonic Rift.',
+      cadenceMultiplier: 1.3,
+      flashPalette: [0xffffff, 0xc48c5a, 0xffd7a0],
+      attack: {
+        name: 'Tectonic Rift',
+        shortName: 'RIFT',
+        state: 'special',
+        description: 'Slams down: a shockwave runs the floor under a boulder spread.',
+        telegraph: { telegraphMs: 460, warningFx: 'fan-lines', anchor: 'self' },
+        executeMs: 480,
+        cooldownMs: 1200,
+        spawns: ['ground_shockwave', 'boulder_radial']
+      }
+    },
     spritePlan: {
       frame: PX(60, 56),
       origin: { x: 0.5, y: 0.92 },
@@ -585,7 +676,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'VECTOR DUELIST',
     theme: { primary: 0xc1d0ff, accent: 0xfff1b2, glow: 0xe0f0ff, trail: 0x8aa4ff },
     baseStats: {
-      maxHp: 30,
+      maxHp: 116,
       contactDamage: 8,
       moveSpeed: 100,
       dashSpeed: 150,
@@ -651,9 +742,27 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Adds Polar Snare and chains teleports twice in a row.',
         newAttacks: ['Polar Snare'],
+        retireAttacks: ['Mag Disc'],
+        retimeAttacks: { 'Vector Slice': { telegraphMs: 180, cooldownMs: 520 } },
         cadenceMultiplier: 1.35
       }
     ],
+    desperation: {
+      name: 'Overclock',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Disc Storm.',
+      cadenceMultiplier: 1.45,
+      flashPalette: [0xffffff, 0xe0f0ff, 0xfff1b2],
+      attack: {
+        name: 'Disc Storm',
+        state: 'shoot',
+        description: 'A mag disc out and back behind a three-shard fan.',
+        telegraph: { telegraphMs: 360, warningFx: 'fan-lines', anchor: 'self' },
+        executeMs: 300,
+        cooldownMs: 980,
+        spawns: ['mag_disc', 'arc_shards']
+      }
+    },
     spritePlan: {
       frame: PX(50, 48),
       origin: { x: 0.5, y: 0.86 },
@@ -712,7 +821,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'NEBULOUS CORRUPTOR',
     theme: { primary: 0x83d483, accent: 0xfff59d, glow: 0xb4f3b4, trail: 0x4f8c4f },
     baseStats: {
-      maxHp: 30,
+      maxHp: 116,
       contactDamage: 8,
       moveSpeed: 80,
       dashSpeed: 110,
@@ -777,9 +886,27 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Slide leaves longer trails; vapor pods release homing motes.',
         newAttacks: ['Toxic Bloom'],
+        retireAttacks: ['Toxic Slide'],
+        retimeAttacks: { 'Glob Lob': { telegraphMs: 220, cooldownMs: 580 } },
         cadenceMultiplier: 1.25
       }
     ],
+    desperation: {
+      name: 'Corrosion',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Miasma Flood.',
+      cadenceMultiplier: 1.35,
+      flashPalette: [0xffffff, 0xb4f3b4, 0xfff59d],
+      attack: {
+        name: 'Miasma Flood',
+        state: 'special',
+        description: 'Floods the floor ahead with acid and lobs a glob over it.',
+        telegraph: { telegraphMs: 420, warningFx: 'wave', anchor: 'self' },
+        executeMs: 380,
+        cooldownMs: 1100,
+        spawns: ['acid_trail', 'acid_glob']
+      }
+    },
     spritePlan: {
       frame: PX(48, 48),
       origin: { x: 0.5, y: 0.84 },
@@ -823,7 +950,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'SONIC SABOTEUR',
     theme: { primary: 0xa5f4ff, accent: 0xfff6c7, glow: 0xc3f9ff, trail: 0x6bd9ff },
     baseStats: {
-      maxHp: 30,
+      maxHp: 112,
       contactDamage: 8,
       moveSpeed: 110,
       dashSpeed: 160,
@@ -890,9 +1017,27 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Cyclone Lift occurs more often and adds aerial follow-up darts.',
         newAttacks: ['Cyclone Lift'],
+        retireAttacks: ['Aero Volley'],
+        retimeAttacks: { 'Turbine Slice': { telegraphMs: 190, cooldownMs: 560 } },
         cadenceMultiplier: 1.35
       }
     ],
+    desperation: {
+      name: 'Eye of Storm',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Tempest.',
+      cadenceMultiplier: 1.45,
+      flashPalette: [0xffffff, 0xc3f9ff, 0xfff6c7],
+      attack: {
+        name: 'Tempest',
+        state: 'shoot',
+        description: 'Hovers high, fans darts at the hero and sheds a wind blade.',
+        telegraph: { telegraphMs: 380, warningFx: 'fan-lines', anchor: 'target' },
+        executeMs: 260,
+        cooldownMs: 900,
+        spawns: ['dart_spread', 'wind_hitbox']
+      }
+    },
     spritePlan: {
       frame: PX(46, 46),
       origin: { x: 0.5, y: 0.84 },
@@ -936,7 +1081,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'CRYO SWORDMASTER',
     theme: { primary: 0xb0e4ff, accent: 0xfff3d1, glow: 0xd0f6ff, trail: 0x7ac8ff },
     baseStats: {
-      maxHp: 32,
+      maxHp: 120,
       contactDamage: 8,
       moveSpeed: 90,
       dashSpeed: 130,
@@ -1003,9 +1148,28 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Slides extend longer, icicle rain overlaps zones.',
         newAttacks: ['Shard Rain'],
+        retireAttacks: ['Glacier Slide'],
+        retimeAttacks: { 'Frost Draw': { telegraphMs: 250, cooldownMs: 580 } },
         cadenceMultiplier: 1.3
       }
     ],
+    desperation: {
+      name: 'Whiteout',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Absolute Zero.',
+      cadenceMultiplier: 1.4,
+      flashPalette: [0xffffff, 0xd0f6ff, 0xfff3d1],
+      attack: {
+        name: 'Absolute Zero',
+        shortName: 'ZERO',
+        state: 'summon',
+        description: 'Icicles fall on the marked column behind a freezing cone.',
+        telegraph: { telegraphMs: 440, warningFx: 'reticle', anchor: 'target' },
+        executeMs: 360,
+        cooldownMs: 1150,
+        spawns: ['icicle_fall', 'freeze_cone']
+      }
+    },
     spritePlan: {
       frame: PX(50, 48),
       origin: { x: 0.5, y: 0.86 },
@@ -1049,7 +1213,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     introCallout: 'CENTRAL DIRECTIVE',
     theme: { primary: 0x142d52, accent: 0x42e7ff, glow: 0x70f4ff, trail: 0xff8a32 },
     baseStats: {
-      maxHp: 72,
+      maxHp: 140,
       contactDamage: 10,
       moveSpeed: 82,
       dashSpeed: 176,
@@ -1118,6 +1282,8 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         enraged: true,
         description: 'Adds armored rams between shortened projectile cycles.',
         newAttacks: ['Core Ram'],
+        retireAttacks: ['Lockdown Pulse'],
+        retimeAttacks: { 'Directive Volley': { telegraphMs: 290, cooldownMs: 620 } },
         cadenceMultiplier: 1.22
       },
       {
@@ -1130,6 +1296,23 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         cadenceMultiplier: 1.42
       }
     ],
+    desperation: {
+      name: 'Final Order',
+      threshold: 0.2,
+      description: 'Desperation at 20% HP: Final Directive.',
+      cadenceMultiplier: 1.55,
+      flashPalette: [0xffffff, 0x70f4ff, 0x42e7ff],
+      attack: {
+        name: 'Final Directive',
+        shortName: 'DIRECTIVE',
+        state: 'special',
+        description: 'Marks the hero: shards, a static orb and falling ice at once.',
+        telegraph: { telegraphMs: 520, warningFx: 'reticle', anchor: 'target' },
+        executeMs: 420,
+        cooldownMs: 1300,
+        spawns: ['arc_shards', 'static_orb', 'icicle_fall']
+      }
+    },
     spritePlan: {
       frame: PX(64, 64),
       origin: { x: 0.5, y: 0.78 },

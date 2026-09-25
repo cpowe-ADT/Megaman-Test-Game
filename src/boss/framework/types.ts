@@ -71,7 +71,20 @@ export interface BossAttackDefinition {
   }
 }
 
+export interface AttackTimingOverride {
+  windupTime?: number
+  cooldown?: number
+}
+
 export interface BossPhaseDefinition {
+  /** HUD name for phases the blueprint's `phases` list does not hold (desperation). */
+  name?: string
+  /** The 20%-HP phase: its own attack, a palette flash and the arena change (prompt 07 phase 7.2). */
+  desperation?: boolean
+  /** The phase kit's `enabled` flip: an attack mapped to false never starts in this phase. */
+  attackEnabled?: Record<string, boolean>
+  /** The phase kit's retimes: the attack's wind-up and cooldown in this phase. */
+  attackTiming?: Record<string, AttackTimingOverride>
   threshold: number
   speedMultiplier?: number
   thinkTimeMultiplier?: number
@@ -126,6 +139,12 @@ export interface DamageEvent {
   knockback?: { x: number; y: number }
   hitstopFrames?: number
   iFrameMs?: number
+  /** Hurt-stun for this hit instead of the definition's `hurtStunMs` (weakness hits: 200 ms). */
+  stunMs?: number
+  /** A weakness hit cancels an attack still in its wind-up. */
+  interruptWindup?: boolean
+  /** After a `stunMs` stun, later ones fall back to the plain stun (and interrupt nothing) for this long. */
+  stunLockoutMs?: number
 }
 
 export interface HitResult {
@@ -136,6 +155,8 @@ export interface HitResult {
   nextHP: number
   hitstopFrames: number
   reason?: 'invuln' | 'zero-damage' | 'dead'
+  /** The attack this hit cancelled in its wind-up. */
+  interruptedAttackId?: string
 }
 
 export interface IAttack {
@@ -177,5 +198,6 @@ export interface BossEventHooks {
   onAttackResolved?: (attack: BossAttackDefinition) => void
   onDamageApplied?: (event: DamageEvent, result: HitResult) => void
   onPhaseChanged?: (phaseIndex: number, phase: BossPhaseDefinition) => void
+  onAttackInterrupted?: (attack: BossAttackDefinition) => void
   onDied?: () => void
 }

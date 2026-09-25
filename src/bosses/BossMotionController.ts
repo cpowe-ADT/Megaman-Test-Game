@@ -66,7 +66,26 @@ export class BossMotionController {
   private active: ActiveBossAction | null = null
   private lastGroundY = 0
 
-  constructor(private readonly room: BossRoomDynamicsProfile) {}
+  constructor(private room: BossRoomDynamicsProfile) {}
+
+  /** Desperation in an anchor room (prompt 07 phase 7.2 item 2): later teleports land on the shifted anchors. */
+  setAnchorFractions(anchorFractions: number[]): void {
+    this.room = { ...this.room, anchorFractions: [...anchorFractions] }
+    this.anchorsShifted = true
+  }
+
+  private anchorsShifted = false
+
+  /** Once a height-anchor room's anchors shift, a hover wind-up drifts to the shifted anchor away from the hero. */
+  private anchorDriftVelocityX(input: BossMotionFrameInput): number {
+    if (!this.anchorsShifted || this.room.kind !== 'height_anchors') return 0
+    const anchorX = resolveBossAnchorX(this.room.anchorFractions, input.bounds.minX, input.bounds.maxX, input.playerX, true)
+    return Math.abs(anchorX - input.x) < 4 ? 0 : Math.sign(anchorX - input.x) * 90
+  }
+
+  get anchorFractions(): readonly number[] {
+    return this.room.anchorFractions
+  }
 
   beginAttack(
     nowMs: number,
@@ -172,7 +191,7 @@ export class BossMotionController {
           output.allowGravity = false
           const difference = targetY - input.y
           output.velocityY = Math.abs(difference) < 3 ? 0 : Math.sign(difference) * (motion.riseSpeed ?? 140)
-          output.velocityX = nextPhase === 'active' ? action.facing * (motion.speed ?? 60) : 0
+          output.velocityX = nextPhase === 'active' ? action.facing * (motion.speed ?? 60) : this.anchorDriftVelocityX(input)
           if (!action.motionStarted) {
             action.motionStarted = true
             output.motionStarted = true

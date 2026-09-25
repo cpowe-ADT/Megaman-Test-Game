@@ -148,6 +148,13 @@ export class BossProjectileController {
     this.resumeTrailEmitters()
   }
 
+  /** A weakness hit cancelled this attack's wind-up (prompt 07 phase 7.2 item 3): its spawn, and so its drawn tell, go. */
+  cancelPendingAttack(attackId: string): number {
+    const before = this.pendingAttacks.length
+    this.pendingAttacks = this.pendingAttacks.filter((entry) => String(entry.attackData?.id ?? '') !== attackId)
+    return before - this.pendingAttacks.length
+  }
+
   onBossAttack(attack: AttackPattern, attackData?: any): void {
     this.options.playAttackSfx?.(String(attackData?.sfxName ?? attack?.name ?? 'ui_move'))
     if (!attack || !this.options.isEncounterActive()) {

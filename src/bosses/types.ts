@@ -111,6 +111,23 @@ export interface PhaseDefinition {
   description: string
   newAttacks: string[]
   cadenceMultiplier: number
+  /** Phase kit (prompt 07 phase 7.2): attacks this phase retires, by name; they stay retired in later phases. */
+  retireAttacks?: string[]
+  /** Attacks this phase retimes, by name: a new wind-up and cooldown that later phases keep. */
+  retimeAttacks?: Record<string, { telegraphMs?: number; cooldownMs?: number }>
+}
+
+/** The 20%-HP beat (prompt 07 phase 7.2 item 2): one new attack, a palette flash, and the room's arena change. */
+export interface DesperationPlan {
+  /** HUD phase label, at most 12 characters. */
+  name: string
+  /** Share of max HP at or below which desperation begins; 0.2 unless authored. */
+  threshold?: number
+  description: string
+  cadenceMultiplier: number
+  attack: AttackPattern
+  /** Colours the boss flashes through when desperation begins. */
+  flashPalette: number[]
 }
 
 export interface BossTheme {
@@ -153,6 +170,8 @@ export interface BossBlueprint {
   weaponReward?: WeaponRewardPlan
   attacks: AttackPattern[]
   phases: PhaseDefinition[]
+  /** Not in `attacks`: the desperation attack unlocks only at its threshold, after every phase. */
+  desperation?: DesperationPlan
   spritePlan: SpriteSheetPlan
   /** Additional effect layers like wings, cape, or elemental auras */
   overlaySprites?: SpriteSheetPlan[]
