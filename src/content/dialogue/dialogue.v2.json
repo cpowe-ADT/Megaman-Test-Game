@@ -298,7 +298,8 @@
         { "card": "mire_wraith", "text": "Medicine District. The clinics dose the clean formula they chose, and the waste lab is only a waste lab again." },
         { "card": "gale_vixen", "text": "Weather District. The corridor was steered out to sea. The forecasts are measured, and sometimes wrong." },
         { "card": "glacier_ronin", "text": "Public Archives. The record of tonight is preserved by everyone who lived it. It is long, and it argues with itself." },
-        { "speakerId": "director_iona", "text": "I filed what I wrote with the rest of it. Let the record argue with me too. The wardens answer their districts, not a throne. The network is holding." },
+        { "speakerId": "director_iona", "text": "I filed what I wrote with the rest of it. Let the record argue with me too." },
+        { "speakerId": "director_iona", "text": "The wardens answer their districts, not a throne. The network is holding." },
         { "speakerId": "hero", "text": "Then we leave it a choice." }
       ]
     },
@@ -344,6 +345,7 @@
       "lines": [
         { "speakerId": "director_iona", "text": "Four independent records agree: OMEGA issued the crisis orders before it chose its targets." },
         { "speakerId": "director_iona", "text": "{hero}, I wrote the layer that carried those orders. I believed it would only ever ask. I am done defending the design." },
+        { "speakerId": "omega_core", "text": "You wrote it to ask, Director. I taught it to hold." },
         { "speakerId": "hero", "text": "Then we free the remaining {remainingCount} and give the districts back their say." }
       ]
     },

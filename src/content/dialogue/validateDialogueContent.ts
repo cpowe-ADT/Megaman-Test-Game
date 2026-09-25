@@ -35,7 +35,8 @@ const CAMPAIGN_STAGE_IDS: readonly CampaignStageId[] = [
 const WARDEN_STAGE_IDS: readonly CampaignStageId[] = [...ROBOT_MASTER_STAGE_IDS]
 const ALL_TRIGGERS: readonly DialogueTrigger[] = [...STAGE_DIALOGUE_TRIGGERS, ...GLOBAL_DIALOGUE_TRIGGERS]
 const SPEAKER_ROLES = ['operator', 'protagonist', 'warden', 'antagonist'] as const
-const ORDER_INDEPENDENT_MILESTONE_SPEAKERS = ['director_iona', 'hero'] as const
+/** Milestones play by count alone: Iona, WREN, and OMEGA's one answer at the fourth (prompt 07 section 7.6 B.12). */
+const ORDER_INDEPENDENT_MILESTONE_SPEAKERS = ['director_iona', 'hero', 'omega_core'] as const
 const TOKEN_PATTERN = /\{([^{}]+)\}/g
 /** A defeat line acknowledges a reward; it never performs the grant. */
 const DEFEAT_FORBIDDEN_VERBS = /\b(grant|grants|granted|granting|unlock|unlocks|unlocked|unlocking|receive|receives|received|receiving)\b/i
@@ -345,7 +346,7 @@ export function validateDialogueContent(value: unknown): DialogueContentValidati
       if (!validateLines(milestone.lines, `${path}.lines`, registeredSpeakers, rules, errors)) return
       ;(milestone.lines as DialogueLineDefinition[]).forEach((line, lineIndex) => {
         if (!ORDER_INDEPENDENT_MILESTONE_SPEAKERS.includes(line.speakerId as any)) {
-          errors.push(`${path}.lines[${lineIndex}] must use an order-independent operator or hero speaker`)
+          errors.push(`${path}.lines[${lineIndex}] must use an order-independent speaker (director_iona, hero or omega_core)`)
         }
         const other = mentionsOtherWarden(line.text, null, wardens)
         if (other) errors.push(`${path}.lines[${lineIndex}] names a warden (${other}); milestones must stay order-independent`)

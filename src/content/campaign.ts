@@ -583,11 +583,11 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     kind: 'final',
     bossId: 'omega_core',
     runtimeBossConfigId: 'omega_core',
-    title: 'Omega Fortress',
+    title: 'Central Core',
     selectLabel: 'FINAL',
     introCallout: IDENTITY.ANTAGONIST_NAME,
     description: 'Remixed final route that cashes in on the full unlocked toolkit and ends the campaign.',
-    arenaLabel: 'Omega Citadel',
+    arenaLabel: 'Core Command Vault',
     rewardEnabled: false,
     enemyMarkers: [
       marker('omega_armored', 'enemy_armored_bot', 142, 185, 116, 176, {

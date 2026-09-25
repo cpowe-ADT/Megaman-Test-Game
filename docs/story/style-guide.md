@@ -15,7 +15,7 @@ Thirty rules for anyone adding a line to `dialogue.v2.json`.
 11. Wardens speak twice: OMEGA's version at the intro, their own at the defeat. Both are short. Each warden owns one verb, carried by its intro, its defeat and its epilogue card: Pyro seals, Tide holds, Volt cycles, Basalt bears, Ferro counts, Mire doses, Gale steers, Glacier preserves (`tests/story-text-pass.test.ts`).
 12. A defeat line acknowledges the reward with `{rewardLabel}`. It never grants, unlocks or gives it; the game already did. The validator rejects those verbs. It stays true for any placed reward (a weapon, a Heart Tank, an access item), so it never says what the reward does.
 13. Warden stages are order-independent: never name another warden in a warden's stage. The validator rejects it.
-14. Milestones depend only on the count. Iona and WREN only. No warden names.
+14. Milestones depend only on the count. Iona and WREN speak them; OMEGA answers once, at the fourth ("I taught it to hold"), between Iona's admission and WREN's close. No warden names.
 15. Banned words: any franchise term (Mega Man, Maverick, Reploid, robot master, Dr. anything), everywhere, credits included. In-fiction lines (everything but the credits) also never use "hero" as a noun or "AI"; the credits speak outside the fiction, so the "AI studio" credit stays.
 16. Public terms: wardens, districts, relays, the lattice, the override, the CORE, Recovery Unit 09.
 17. Use `{districtName}` on the district-restored line so the map reads the same everywhere.

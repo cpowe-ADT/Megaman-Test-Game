@@ -160,9 +160,11 @@ export async function runEndingFlowScenario(name, { outputDir, storyUrl, readSta
     await capture('card-1')
     for (let index = 0; index < 8; index += 1) await page.evaluate(() => window.narrativeDebug?.advance?.())
     const close = await waitForState(page, (state) => state.ending?.phase === 'close')
-    assert.equal(close.ending.pageCount, 2)
-    await page.evaluate(() => window.narrativeDebug?.advance?.())
-    await waitForState(page, (state) => state.ending?.phase === 'close' && state.ending.page === 1)
+    assert.equal(close.ending.pageCount, 3, "Iona's reckoning, the network holding, WREN's last line (12g gave the reckoning its own page)")
+    for (const closePage of [1, 2]) {
+      await page.evaluate(() => window.narrativeDebug?.advance?.())
+      await waitForState(page, (state) => state.ending?.phase === 'close' && state.ending.page === closePage)
+    }
     await capture('close-last-line')
     await page.evaluate(() => window.narrativeDebug?.advance?.())
     const record = await waitForState(page, (state) => state.ending?.phase === 'record')

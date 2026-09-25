@@ -1211,7 +1211,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     id: 'omega_core',
     codename: IDENTITY.ANTAGONIST_NAME,
     element: 'Normal',
-    arena: 'Omega Citadel Command Vault',
+    arena: 'Central Core Command Vault',
     // Omega's weakness rotates with its phases: Lightning, then Metal, then Ice (desperation keeps Ice); prompt 07 phase 7.3.
     damageProfile: { phaseWeaknesses: ['Lightning', 'Metal', 'Ice'] },
     introCallout: 'CENTRAL DIRECTIVE',

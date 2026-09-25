@@ -111,7 +111,7 @@ export const PROGRESSION_LOCATIONS: ProgressionLocationDefinition[] = [
     makePickupLocation(stage.id as CampaignStageId, 'sub_tank', `${stage.title} Sub Tank`),
     makePickupLocation(stage.id as CampaignStageId, 'pickup_bonus', `${stage.title} Bonus Pickup`)
   ]),
-  makePickupLocation(FINAL_STAGE_ID, 'boss_clear', 'Omega Fortress Boss Clear')
+  makePickupLocation(FINAL_STAGE_ID, 'boss_clear', 'Central Core Boss Clear')
 ]
 
 export const NON_FINAL_PROGRESSION_LOCATIONS = PROGRESSION_LOCATIONS.filter(

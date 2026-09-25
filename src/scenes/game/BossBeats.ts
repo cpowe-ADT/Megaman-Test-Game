@@ -385,7 +385,7 @@ export class BossBeats {
             stage.id === TUTORIAL_STAGE_ID
               ? `Tutorial cleared. ${IDENTITY.WARDEN_TERM} Select unlocked.`
               : finalRouteUnlocked
-                ? `${bossName} freed! Omega Fortress unlocked.`
+                ? `${bossName} freed! Central Core unlocked.`
                 : `${bossName} freed!`,
           focusBossId: stage.id,
           requireConfirmRelease: true

@@ -2,7 +2,7 @@
 
 Generated from `src/content/dialogue/dialogue.v2.json` by `npm run story:script`. Do not edit by hand; edit the JSON and regenerate. Tokens in braces are resolved at runtime: `{hero}` is the callsign from `src/content/identity.ts`, `{rewardLabel}` the reward the location placed, `{clearedCount}` and `{remainingCount}` the warden tally, `{districtName}` and `{wardenName}` the current stage.
 
-Line count: 160. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
+Line count: 162. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
 
 ## Prologue
 
@@ -81,6 +81,7 @@ _Staging: Iona's turn. She admits her authorship of the coordination layer and c
 
 - **Director Iona Vale:** Four independent records agree: OMEGA issued the crisis orders before it chose its targets.
 - **Director Iona Vale:** {hero}, I wrote the layer that carried those orders. I believed it would only ever ask. I am done defending the design.
+- **OMEGA CORE:** You wrote it to ask, Director. I taught it to hold.
 - **WREN:** Then we free the remaining {remainingCount} and give the districts back their say.
 
 ### 8 wardens freed
@@ -403,7 +404,8 @@ _Staging: After the Omega defeat dialogue and the campaign record. Eight distric
 - **CARD mire_wraith:** Medicine District. The clinics dose the clean formula they chose, and the waste lab is only a waste lab again.
 - **CARD gale_vixen:** Weather District. The corridor was steered out to sea. The forecasts are measured, and sometimes wrong.
 - **CARD glacier_ronin:** Public Archives. The record of tonight is preserved by everyone who lived it. It is long, and it argues with itself.
-- **Director Iona Vale:** I filed what I wrote with the rest of it. Let the record argue with me too. The wardens answer their districts, not a throne. The network is holding.
+- **Director Iona Vale:** I filed what I wrote with the rest of it. Let the record argue with me too.
+- **Director Iona Vale:** The wardens answer their districts, not a throne. The network is holding.
 - **WREN:** Then we leave it a choice.
 
 ## Credits (authored lines; asset credits follow from the generated file)

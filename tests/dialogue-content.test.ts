@@ -239,9 +239,16 @@ test('validator: milestone kinds, counts, and speakers', () => {
   assert.ok(driftErrors.some((e) => e.includes('1, 4, or 8')))
   assert.ok(driftErrors.some((e) => e.includes('once each')))
 
-  const speaker = cloneContent()
-  speaker.milestones[0].lines[0].speakerId = 'omega_core'
-  assert.ok(errorsOf(speaker).some((e) => e.includes('order-independent operator or hero speaker')))
+  // Flipped in 12g (7.6 B.12): OMEGA answers Iona once at the fourth milestone, so it is order-independent; a warden is not.
+  const omega = cloneContent()
+  omega.milestones[0].lines[0].speakerId = 'omega_core'
+  assert.deepEqual(errorsOf(omega), [])
+  const warden = cloneContent()
+  warden.milestones[0].lines[0].speakerId = 'pyro_maw'
+  assert.ok(errorsOf(warden).some((e) => e.includes('must use an order-independent speaker')))
+  const four = DIALOGUE_REGISTRY.getMilestone(4)?.lines ?? []
+  assert.deepEqual(four.map((line) => line.speakerId), ['director_iona', 'director_iona', 'omega_core', 'hero'])
+  assert.equal(four[2].text, 'You wrote it to ask, Director. I taught it to hold.')
 
   const duplicate = cloneContent()
   duplicate.sequences[1].id = duplicate.sequences[0].id
