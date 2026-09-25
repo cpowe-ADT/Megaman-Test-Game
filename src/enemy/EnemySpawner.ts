@@ -140,8 +140,8 @@ export class EnemySpawner {
     return id ? this.enemies.get(id) : undefined
   }
 
-  /** The drop a defeat forces (a mini-boss's health pickup), or undefined for the usual roll. */
-  defeatDropFor(sprite: Phaser.Physics.Arcade.Sprite): 'health' | undefined {
+  /** The drop a defeat forces (a mini-boss's large health capsule), or undefined for the usual roll. */
+  defeatDropFor(sprite: Phaser.Physics.Arcade.Sprite): 'health_large' | undefined {
     return minibossDefeatDrop(this.getEntityBySprite(sprite)?.definition)
   }
 

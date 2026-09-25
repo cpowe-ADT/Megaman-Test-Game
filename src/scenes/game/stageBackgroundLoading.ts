@@ -6,6 +6,7 @@ import { getCampaignStage } from '../../content/campaign'
 import { MECHANICS_ATLAS, MECHANICS_V2_ATLAS } from '../../mechanics/mechanicsVisuals'
 import { TELEGRAPHS_ATLAS } from '../../boss/telegraphArt'
 import { WEAPONS_ATLAS } from '../../projectiles/weaponArt'
+import { PICKUPS_ATLAS } from '../../ui/pickups/pickupArt'
 import { STAGE_BACKGROUND_ASSETS, type StageBackgroundAsset } from '../../content/stageBackgroundCatalog'
 import { queueStageTileAtlas } from './stageTileLoading'
 
@@ -78,12 +79,12 @@ export function queueStageBackgrounds(scene: Phaser.Scene, stageId: string): voi
 /**
  * Atlases only the Game scene draws: the hero's buster, saber and hit art, the stage mechanics art
  * (v1: vents, slag, walls, crumbles, gates, 256x262; v2: conveyors, ice, rails, wind, currents, rockfall,
- * 256x212), the boss attack tells (256x112) and the warden weapon shots (256x222). Recorded in the sprite manifest with loadScope 'game',
+ * 256x212), the boss attack tells (256x112), the warden weapon shots (256x222) and the pickups (128x178, 12h). Recorded in the sprite manifest with loadScope 'game',
  * so Preload skips them; tests/hero-combat-visuals.test.ts and tests/mechanics-visuals.test.ts keep the
  * two in step. Rule: loaded on the first Game.preload and kept resident across stages, never evicted,
  * because every stage draws them (every pit has slag, every boss telegraphs, every weapon is one pickup away) and together they are about 1.1MB decoded.
  */
-export const GAME_SCENE_ATLASES = [...HERO_COMBAT_ATLASES, MECHANICS_ATLAS, MECHANICS_V2_ATLAS, TELEGRAPHS_ATLAS, WEAPONS_ATLAS] as const
+export const GAME_SCENE_ATLASES = [...HERO_COMBAT_ATLASES, MECHANICS_ATLAS, MECHANICS_V2_ATLAS, TELEGRAPHS_ATLAS, WEAPONS_ATLAS, PICKUPS_ATLAS] as const
 
 export function queueGameSceneAtlases(scene: Phaser.Scene): void {
   GAME_SCENE_ATLASES.forEach((atlas) => {

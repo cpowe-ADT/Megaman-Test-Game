@@ -523,8 +523,9 @@ async function runMinibossLabMatrix(page, { storyUrl, readState, waitForState, c
     const gone = await labDrive({ id, maxFrames: 60 }, `(s, c) => !c.entity.sprite.active && { otherActive: Boolean(c.entity.brain.other?.active) }`)
     assert.ok(gone.met, `${tag}: gone after its death frames`)
     if (kind === 'twins') assert.equal(gone.extra.otherActive, false, `${tag}: twin 1 goes with the pool`)
-    const drop = gone.drops.find((entry) => entry.type === 'health' && Math.abs(entry.x - killAt.x) <= 24)
-    assert.ok(drop, `${tag}: a health pickup dropped where it fell (${JSON.stringify(gone.drops)} vs x ${killAt.x})`)
+    const drop = gone.drops.find((entry) => entry.type === 'health_large' && Math.abs(entry.x - killAt.x) <= 24)
+    assert.ok(drop, `${tag}: the large health capsule dropped where it fell (${JSON.stringify(gone.drops)} vs x ${killAt.x})`)
+    await shot('drop')
     row.drop = drop
     await setLoop(true)
     state = await waitForState(page, (next) => mech(next).roomLocks?.[index]?.phase === 'open' && !mech(next).roomLocks[index].gateClosed, 4000, `${tag}: the gate opens`)

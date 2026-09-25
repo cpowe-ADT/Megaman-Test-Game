@@ -68,7 +68,9 @@ import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD, formatDistrictLabel } from '../ui/HUD'
 import { VictoryModal } from '../ui/VictoryModal'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
-import { ensurePickupTextures, PICKUP_TEXTURE_KEYS } from '../ui/pickups/PickupTextures'
+import { applyPickupArt } from '../ui/pickups/PickupTextures'
+import { DROP_ART, LOCATION_ART, rollEnemyDrop, type EnemyDropType } from '../ui/pickups/pickupArt'
+import { applyDropReward } from '../ui/pickups/dropRewards'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import {
   claimLocationCheck,
@@ -468,24 +470,12 @@ export class Game extends Phaser.Scene {
       .filter((location) => location.category !== 'boss_clear' && location.x != null && location.y != null)
       .filter((location) => !collected.has(location.id))
       .forEach((location) => {
-        const textureKey =
-          location.category === 'capsule'
-            ? PICKUP_TEXTURE_KEYS.upgrade
-            : location.category === 'heart_tank'
-              ? PICKUP_TEXTURE_KEYS.heartTank
-              : location.category === 'sub_tank'
-                ? PICKUP_TEXTURE_KEYS.subTank
-                : PICKUP_TEXTURE_KEYS.bonus
-        const pickup = this.progressionPickups?.create(
-          Number(location.x),
-          Number(location.y),
-          textureKey
-        ) as Phaser.Physics.Arcade.Sprite | undefined
+        const pickup = this.progressionPickups?.create(Number(location.x), Number(location.y)) as Phaser.Physics.Arcade.Sprite | undefined
         if (!pickup) {
           return
         }
         pickup.setActive(true).setVisible(true).setDepth(5)
-        pickup.setScale(location.category === 'capsule' ? 1.08 : 1)
+        applyPickupArt(pickup, LOCATION_ART[location.category], { bob: true })
         pickup.setDataEnabled()
         pickup.data?.set('locationId', location.id)
         pickup.data?.set('locationCategory', location.category)
@@ -517,6 +507,7 @@ export class Game extends Phaser.Scene {
       body.enable = false
     }
     pickup.setActive(false).setVisible(false)
+    this.tweens.killTweensOf(pickup)
     this.collectProgressionLocation(locationId)
   }
 
@@ -981,7 +972,6 @@ export class Game extends Phaser.Scene {
     this.devRegister(this.player, 'player')
 
     this.buildStage(stageId)
-    ensurePickupTextures(this)
 
     this.projectileRegistry = createDefaultProjectileRegistry()
     this.projectileSystem = new ProjectileSystem(this, this.projectileRegistry, {
@@ -1590,33 +1580,12 @@ export class Game extends Phaser.Scene {
     })
   }
 
-  private spawnEnemyDrop(
-    x: number,
-    y: number,
-    forcedType?: 'health' | 'ammo' | 'bonus'
-  ): Phaser.Physics.Arcade.Sprite | null {
+  private spawnEnemyDrop(x: number, y: number, forcedType?: EnemyDropType): Phaser.Physics.Arcade.Sprite | null {
     if (!this.drops) {
       return null
     }
-
-    let dropType = forcedType
-    if (!dropType) {
-      const roll = Phaser.Math.FloatBetween(0, 1)
-      if (roll > 0.45) {
-        return null
-      }
-      dropType = roll < 0.18 ? 'health' : roll < 0.33 ? 'ammo' : 'bonus'
-    }
-
-    const textureKey =
-      dropType === 'health'
-        ? PICKUP_TEXTURE_KEYS.health
-        : dropType === 'ammo'
-          ? PICKUP_TEXTURE_KEYS.weapon
-          : PICKUP_TEXTURE_KEYS.bonus
-    const drop = this.drops.get(x, y, textureKey) as
-      | Phaser.Physics.Arcade.Sprite
-      | null
+    const dropType = forcedType ?? rollEnemyDrop(Phaser.Math.FloatBetween(0, 1))
+    const drop = dropType ? (this.drops.get(x, y) as Phaser.Physics.Arcade.Sprite | null) : null
     if (!drop) {
       return null
     }
@@ -1624,8 +1593,7 @@ export class Game extends Phaser.Scene {
     this.clearDropExpireTimer(drop)
     drop.setActive(true).setVisible(true).setDepth(5)
     drop.setPosition(x, y)
-    drop.setTexture(textureKey)
-    drop.setScale(dropType === 'bonus' ? 1.05 : 1)
+    applyPickupArt(drop, DROP_ART[dropType])
     drop.setDataEnabled()
     drop.data?.set('dropType', dropType)
     drop.clearTint()
@@ -1665,8 +1633,8 @@ export class Game extends Phaser.Scene {
     }
 
     this.clearDropExpireTimer(drop)
-    const dropType = (drop.data?.get?.('dropType') as 'health' | 'ammo' | 'bonus' | undefined) ?? 'bonus'
-    const outcome = this.applyPickupReward(dropType)
+    const dropType = (drop.data?.get?.('dropType') as EnemyDropType | undefined) ?? 'bonus'
+    const outcome = applyDropReward(dropType, { heal: (amount) => this.restorePlayerHealth(amount), restoreEnergy: (amount) => this.restoreWeaponEnergy(amount) })
     const body = drop.body as Phaser.Physics.Arcade.Body | undefined
     body?.setVelocity(0, 0)
     if (body) {
@@ -1680,51 +1648,6 @@ export class Game extends Phaser.Scene {
     if (outcome.message) {
       this.showStageToast(outcome.message, 650)
     }
-  }
-
-  private applyPickupReward(
-    dropType: 'health' | 'ammo' | 'bonus'
-  ): { sfx?: string; message?: string } {
-    if (dropType === 'health') {
-      const healed = this.restorePlayerHealth(2)
-      if (healed > 0) {
-        return { sfx: 'pickup_health', message: `HP +${healed}` }
-      }
-      const ammo = this.restoreWeaponEnergy(4)
-      if (ammo.restored > 0) {
-        return { sfx: 'pickup_ammo', message: `${getWeaponDisplayName(ammo.weaponId ?? 'Buster').toUpperCase()} +${ammo.restored}` }
-      }
-      return { sfx: 'pickup_bonus', message: 'SYSTEM OK' }
-    }
-
-    if (dropType === 'ammo') {
-      const ammo = this.restoreWeaponEnergy(6)
-      if (ammo.restored > 0) {
-        return { sfx: 'pickup_ammo', message: `${getWeaponDisplayName(ammo.weaponId ?? 'Buster').toUpperCase()} +${ammo.restored}` }
-      }
-      const healed = this.restorePlayerHealth(1)
-      if (healed > 0) {
-        return { sfx: 'pickup_health', message: `HP +${healed}` }
-      }
-      return { sfx: 'pickup_bonus', message: 'ENERGY MAX' }
-    }
-
-    const healed = this.restorePlayerHealth(1)
-    const ammo = this.restoreWeaponEnergy(3)
-    if (healed > 0 || ammo.restored > 0) {
-      if (healed > 0 && ammo.restored > 0) {
-        return {
-          sfx: 'pickup_bonus',
-          message: `HP +${healed} • ${getWeaponDisplayName(ammo.weaponId ?? 'Buster').toUpperCase()} +${ammo.restored}`
-        }
-      }
-      if (healed > 0) {
-        return { sfx: 'pickup_health', message: `HP +${healed}` }
-      }
-      return { sfx: 'pickup_ammo', message: `${getWeaponDisplayName(ammo.weaponId ?? 'Buster').toUpperCase()} +${ammo.restored}` }
-    }
-
-    return { sfx: 'pickup_bonus', message: 'BONUS SECURED' }
   }
 
   private restorePlayerHealth(amount: number): number {

@@ -216,9 +216,9 @@ export function isMinibossDefinition(definition?: Pick<EnemyDefinition, 'role'>)
 }
 
 /**
- * The drop a defeat forces: a mini-boss always leaves a health pickup; any other enemy rolls as before
+ * The drop a defeat forces: a mini-boss always leaves the large health capsule (heals 6, part 12h); any other enemy rolls as before
  * (undefined). The Game scene's enemy-defeat handler passes it to `spawnEnemyDrop`.
  */
-export function minibossDefeatDrop(definition?: Pick<EnemyDefinition, 'role'>): 'health' | undefined {
-  return isMinibossDefinition(definition) ? 'health' : undefined
+export function minibossDefeatDrop(definition?: Pick<EnemyDefinition, 'role'>): 'health_large' | undefined {
+  return isMinibossDefinition(definition) ? 'health_large' : undefined
 }

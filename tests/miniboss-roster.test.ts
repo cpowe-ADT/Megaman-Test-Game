@@ -297,7 +297,7 @@ test('mini-boss roster: four archetypes and four skins, each its own family with
     const definition = EnemyCatalog[key]
     assert.ok(definition === MINIBOSS_CATALOG[key], `${key} is in the enemy catalog`)
     assert.deepEqual([definition.typeKey, definition.brain, definition.role], [key, brain, 'miniboss'])
-    assert.equal(minibossDefeatDrop(definition), 'health')
+    assert.equal(minibossDefeatDrop(definition), 'health_large')
     const manifestKeys = (EnemyAnimationManifest[key] ?? []).map((entry) => entry.key)
     for (const animation of Object.values(definition.animations)) {
       assert.ok(animation.startsWith(`${key}_`) && manifestKeys.includes(animation), `${key}: ${animation}`)
