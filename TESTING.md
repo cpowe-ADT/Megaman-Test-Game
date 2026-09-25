@@ -20,6 +20,7 @@ The goal is fast feedback from deterministic tests, with browser automation rese
 | `npm run test:visual-sweep` | Cross-mission visual sweep and artifact capture | Sprite pipeline, atlas changes, boss/enemy presentation, mission-wide visual changes |
 | `npm run verify` | Combined validation gate | Required before merge for substantive gameplay, tooling, content, or asset-pipeline work |
 | `npm run perf:footprint` | Builds nothing: serves `dist/` with `vite preview` and measures download before Title, time to Title, decoded audio, textures, JS heap, per-step CPU, growth across stage revisits and the hi-DPI canvas against `tests/perf-budget.json`; fails on a breach or any page error | After `npm run build`, for loading, asset, audio, render-scale or render-loop changes; `PERF_REPORT_ONLY=1` records a baseline without failing. Plan: `docs/prompts/09-footprint-and-performance.md` |
+| `npm run audio:check` | Needs ffmpeg. Every `.ogg`/`.wav` under `assets/audio` is credited in `assets/audio/credits/README.md` and every credited path exists; every runtime music file meets the one loudness target (-16 LUFS within 1 LU, true peak at most -1dBTP) and a loop seam of at most 3dB (waivers print on every run); report `output/audio/check-credits.md` | Any change under `assets/audio/`, `scripts/audio/` or `src/audio/`; part of `npm run verify`. `tests/audio-cue-map.test.ts` checks the credits and cue map without ffmpeg, and development builds (so smoke) throw on an SFX key missing from `src/audio/sfxLibrary.ts` |
 
 ## Continuous Integration
 
