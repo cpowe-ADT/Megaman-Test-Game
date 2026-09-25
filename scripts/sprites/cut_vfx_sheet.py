@@ -45,9 +45,11 @@ def main() -> None:
             sheets[path] = Image.open(ROOT / path).convert("RGBA")
         cols, rows = cutter.parse_grid(group.get("grid", "4x4"))
         cuts = [cut_cell(sheets[path], i, cols, rows, group["scale"], group.get("inset", 0.02)) for i in group["cells"]]
-        w = max(c.width for c in cuts) + 2
-        h = max(c.height for c in cuts) + 2
-        w, h = w + (w % 2), h + (h % 2)
+        pad = group.get("pad", 1)  # 0 for tiles that repeat edge to edge (slag surface and fill)
+        w = max(c.width for c in cuts) + 2 * pad
+        h = max(c.height for c in cuts) + 2 * pad
+        if pad:
+            w, h = w + (w % 2), h + (h % 2)
         for i, content in enumerate(cuts):
             frame = Image.new("RGBA", (w, h), (0, 0, 0, 0))
             frame.paste(content, ((w - content.width) // 2, (h - content.height) // 2), content)

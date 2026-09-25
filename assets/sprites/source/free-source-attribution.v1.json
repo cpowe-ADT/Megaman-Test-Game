@@ -571,6 +571,19 @@
         "assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json"
       ],
       "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut with scripts/sprites/cut_enemy_sheet.py (64px frames, feet row 62, from a template atlas); not wired to a runtime family yet (EVAL-P6-005)"
+    },
+    {
+      "id": "mechanics-hf-v1",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original stage mechanic art (flame vents, slag, breakable walls, crumbling catwalks, room gates), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/mechanics/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/mechanics/mechanics_v1/mechanics_v1.png",
+        "assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/mechanics/hf_v1/mechanics_hf_v1.prompts.md; scripts/sprites/cut_vfx_sheet.py with mechanics_v1.json"
     }
   ]
 }

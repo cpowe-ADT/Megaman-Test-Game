@@ -1,0 +1,16 @@
+{
+  "_note": "Stage mechanic art v1 (2026-09-25): Higgsfield gpt_image_2 sheets in assets/sprites/source/mechanics/hf_v1/ (provenance in mechanics_hf_v1.prompts.md). 4x4 cells, row-major from 0. Objects are bottom-heavy in their cells; the runtime scales walls and gates to their definition size. slag_* use pad 0 so they tile edge to edge.",
+  "key": "mechanics_v1",
+  "outDir": "assets/sprites/mechanics/mechanics_v1",
+  "atlasWidth": 256,
+  "groups": [
+    { "name": "vent_nozzle", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_pyro_a.png", "cells": [0, 1, 2, 3], "scale": 0.1 },
+    { "name": "vent_flame", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_pyro_a.png", "cells": [4, 5, 6, 7], "scale": 0.21 },
+    { "name": "breakable_wall", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_pyro_a.png", "cells": [8, 9, 10, 11], "scale": 0.2 },
+    { "name": "crumble", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_pyro_a.png", "cells": [12, 13, 14, 15], "scale": 0.25 },
+    { "name": "slag_surface", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_slag_gates_a.png", "cells": [0, 1, 2, 3], "scale": 0.125, "pad": 0, "inset": 0.005 },
+    { "name": "slag_fill", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_slag_gates_a.png", "cells": [4, 5, 6, 7], "scale": 0.125, "pad": 0, "inset": 0.03 },
+    { "name": "energy_gate", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_slag_gates_a.png", "cells": [8, 9, 10, 11], "scale": 0.25 },
+    { "name": "scrap_gate", "sheet": "assets/sprites/source/mechanics/hf_v1/mechanics_slag_gates_a.png", "cells": [12, 13, 14, 15], "scale": 0.25 }
+  ]
+}

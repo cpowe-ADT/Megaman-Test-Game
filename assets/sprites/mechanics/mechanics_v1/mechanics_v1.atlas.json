@@ -1,0 +1,661 @@
+{
+  "frames": {
+    "mechanics_v1/vent_nozzle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 16
+      }
+    },
+    "mechanics_v1/vent_nozzle/001": {
+      "frame": {
+        "x": 20,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 16
+      }
+    },
+    "mechanics_v1/vent_nozzle/002": {
+      "frame": {
+        "x": 40,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 16
+      }
+    },
+    "mechanics_v1/vent_nozzle/003": {
+      "frame": {
+        "x": 60,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 20,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 20,
+        "h": 16
+      }
+    },
+    "mechanics_v1/vent_flame/000": {
+      "frame": {
+        "x": 80,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 52
+      }
+    },
+    "mechanics_v1/vent_flame/001": {
+      "frame": {
+        "x": 108,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 52
+      }
+    },
+    "mechanics_v1/vent_flame/002": {
+      "frame": {
+        "x": 136,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 52
+      }
+    },
+    "mechanics_v1/vent_flame/003": {
+      "frame": {
+        "x": 164,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 52
+      }
+    },
+    "mechanics_v1/breakable_wall/000": {
+      "frame": {
+        "x": 192,
+        "y": 0,
+        "w": 42,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 52
+      }
+    },
+    "mechanics_v1/breakable_wall/001": {
+      "frame": {
+        "x": 0,
+        "y": 52,
+        "w": 42,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 52
+      }
+    },
+    "mechanics_v1/breakable_wall/002": {
+      "frame": {
+        "x": 42,
+        "y": 52,
+        "w": 42,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 52
+      }
+    },
+    "mechanics_v1/breakable_wall/003": {
+      "frame": {
+        "x": 84,
+        "y": 52,
+        "w": 42,
+        "h": 52
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 52
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 52
+      }
+    },
+    "mechanics_v1/crumble/000": {
+      "frame": {
+        "x": 126,
+        "y": 52,
+        "w": 58,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 34
+      }
+    },
+    "mechanics_v1/crumble/001": {
+      "frame": {
+        "x": 184,
+        "y": 52,
+        "w": 58,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 34
+      }
+    },
+    "mechanics_v1/crumble/002": {
+      "frame": {
+        "x": 0,
+        "y": 104,
+        "w": 58,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 34
+      }
+    },
+    "mechanics_v1/crumble/003": {
+      "frame": {
+        "x": 58,
+        "y": 104,
+        "w": 58,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 34
+      }
+    },
+    "mechanics_v1/slag_surface/000": {
+      "frame": {
+        "x": 116,
+        "y": 104,
+        "w": 30,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 16
+      }
+    },
+    "mechanics_v1/slag_surface/001": {
+      "frame": {
+        "x": 146,
+        "y": 104,
+        "w": 30,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 16
+      }
+    },
+    "mechanics_v1/slag_surface/002": {
+      "frame": {
+        "x": 176,
+        "y": 104,
+        "w": 30,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 16
+      }
+    },
+    "mechanics_v1/slag_surface/003": {
+      "frame": {
+        "x": 206,
+        "y": 104,
+        "w": 30,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 16
+      }
+    },
+    "mechanics_v1/slag_fill/000": {
+      "frame": {
+        "x": 0,
+        "y": 138,
+        "w": 30,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 29
+      }
+    },
+    "mechanics_v1/slag_fill/001": {
+      "frame": {
+        "x": 30,
+        "y": 138,
+        "w": 30,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 29
+      }
+    },
+    "mechanics_v1/slag_fill/002": {
+      "frame": {
+        "x": 60,
+        "y": 138,
+        "w": 30,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 29
+      }
+    },
+    "mechanics_v1/slag_fill/003": {
+      "frame": {
+        "x": 90,
+        "y": 138,
+        "w": 30,
+        "h": 29
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 29
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 29
+      }
+    },
+    "mechanics_v1/energy_gate/000": {
+      "frame": {
+        "x": 120,
+        "y": 138,
+        "w": 32,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 64
+      }
+    },
+    "mechanics_v1/energy_gate/001": {
+      "frame": {
+        "x": 152,
+        "y": 138,
+        "w": 32,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 64
+      }
+    },
+    "mechanics_v1/energy_gate/002": {
+      "frame": {
+        "x": 184,
+        "y": 138,
+        "w": 32,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 64
+      }
+    },
+    "mechanics_v1/energy_gate/003": {
+      "frame": {
+        "x": 216,
+        "y": 138,
+        "w": 32,
+        "h": 64
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 64
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 64
+      }
+    },
+    "mechanics_v1/scrap_gate/000": {
+      "frame": {
+        "x": 0,
+        "y": 202,
+        "w": 58,
+        "h": 60
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 60
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 60
+      }
+    },
+    "mechanics_v1/scrap_gate/001": {
+      "frame": {
+        "x": 58,
+        "y": 202,
+        "w": 58,
+        "h": 60
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 60
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 60
+      }
+    },
+    "mechanics_v1/scrap_gate/002": {
+      "frame": {
+        "x": 116,
+        "y": 202,
+        "w": 58,
+        "h": 60
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 60
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 60
+      }
+    },
+    "mechanics_v1/scrap_gate/003": {
+      "frame": {
+        "x": 174,
+        "y": 202,
+        "w": 58,
+        "h": 60
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 58,
+        "h": 60
+      },
+      "sourceSize": {
+        "w": 58,
+        "h": 60
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "mechanics_v1.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 256,
+      "h": 262
+    },
+    "scale": "1",
+    "source": [
+      "assets/sprites/source/mechanics/hf_v1/mechanics_pyro_a.png",
+      "assets/sprites/source/mechanics/hf_v1/mechanics_slag_gates_a.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "mechanics_v1.json"
+  }
+}
