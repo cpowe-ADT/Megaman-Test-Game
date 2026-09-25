@@ -624,9 +624,17 @@
         "assets/sprites/enemies/sentry_twin/sentry_twin.png",
         "assets/sprites/enemies/sentry_twin/sentry_twin.atlas.json",
         "assets/sprites/enemies/drill_serpent/drill_serpent.png",
-        "assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json"
+        "assets/sprites/enemies/drill_serpent/drill_serpent.atlas.json",
+        "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.png",
+        "assets/sprites/enemies/custodian_walker_basalt/custodian_walker_basalt.atlas.json",
+        "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.png",
+        "assets/sprites/enemies/custodian_walker_glacier/custodian_walker_glacier.atlas.json",
+        "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.png",
+        "assets/sprites/enemies/relay_turret_nest_ferro/relay_turret_nest_ferro.atlas.json",
+        "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.png",
+        "assets/sprites/enemies/sentry_twin_gale/sentry_twin_gale.atlas.json"
       ],
-      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut_enemy_sheet.py from template atlases; not wired yet"
+      "notes": "assets/sprites/source/minibosses/hf_v1/minibosses_hf_v1.prompts.md; cut_enemy_sheet.py from template atlases; not wired yet; palette skins by scripts/sprites/palette_skin.py (custodian walker basalt and glacier, turret nest ferro, sentry twin gale)"
     },
     {
       "id": "weapons-v1-hf",

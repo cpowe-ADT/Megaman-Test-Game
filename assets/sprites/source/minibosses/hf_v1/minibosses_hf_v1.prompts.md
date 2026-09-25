@@ -20,3 +20,14 @@ Same template (4x5, 3:4, 1k, medium, faces right). Cut with `cut_enemy_sheet.py 
 | drill_serpent_a.png | cdd73d41-aff2-428d-973a-317ad26231f4 | segmented mechanical worm with a spinning cone drill head, moss green and rusted bronze plating, toxic green seams, emerging from a mud mound | `assets/sprites/enemies/drill_serpent/` 64x64, feet row 62, move group `run` (burrow); `--clear-top-rows 10 --cells attack_active=12,13,13` |
 
 URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_01201{7,8}_<job>.png`.
+
+## Stage skins (2026-09-25, prompt 12 part 12c)
+
+Palette swaps of the cut atlases with `scripts/sprites/palette_skin.py` (hue, saturation and value shift, an optional luminance tint, tell colours kept by `--keep-hue`); no new generation. Parameters are recorded in each atlas's `meta.paletteSkin`.
+
+| Skin | From | Arguments |
+| --- | --- | --- |
+| custodian_walker_basalt | custodian_walker | `--hue 0 --sat 0.08 --val 1.45 --tint 0.62,0.6,0.56 --keep-hue 10:45` (grey stone, orange seams kept) |
+| custodian_walker_glacier | custodian_walker | `--hue 0 --sat 0.2 --val 1.35 --tint 0.55,0.8,1.0 --keep-hue 10:45` (ice blue, seams kept) |
+| relay_turret_nest_ferro | relay_turret_nest | `--hue 175 --sat 1.1 --val 0.95` (red steel, blue stripes) |
+| sentry_twin_gale | sentry_twin | `--hue -45 --sat 0.6 --val 2.1 --keep-hue 35:65` (light teal body, yellow fins kept) |
