@@ -596,7 +596,7 @@
         "assets/sprites/mechanics/mechanics_v2/mechanics_v2.png",
         "assets/sprites/mechanics/mechanics_v2/mechanics_v2.atlas.json"
       ],
-      "notes": "assets/sprites/source/mechanics/hf_v1/mechanics_hf_v1.prompts.md; cut_vfx_sheet.py with mechanics_v2.json; not drawn yet"
+      "notes": "assets/sprites/source/mechanics/hf_v1/mechanics_hf_v1.prompts.md; cut_vfx_sheet.py with mechanics_v2.json; drawn by the part 12b mechanics"
     },
     {
       "id": "telegraphs-v1-hf",
@@ -609,7 +609,20 @@
         "assets/sprites/effects/telegraphs_v1/telegraphs_v1.png",
         "assets/sprites/effects/telegraphs_v1/telegraphs_v1.atlas.json"
       ],
-      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with telegraphs_v1.json; not drawn yet"
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with telegraphs_v1.json; drawn by the boss telegraph renderer since part 12f wave 1"
+    },
+    {
+      "id": "hazards-v1-hf",
+      "family": "effects",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original boss arena hazards (floor mine, steam pod, ground shockwave, stone column, tornado, water geyser, fire and acid puddles), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/effects/hazards_v1/hazards_v1.png",
+        "assets/sprites/effects/hazards_v1/hazards_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with hazards_v1.json; drawn by the boss hazard spawners (part 12f wave 4)"
     },
     {
       "id": "minibosses-v1-hf",

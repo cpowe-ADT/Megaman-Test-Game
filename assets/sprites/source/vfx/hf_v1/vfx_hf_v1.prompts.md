@@ -35,3 +35,16 @@ Same frame and settings (4x4 cells on magenta, shots travel right). Cut with `sc
 | weapons_c.png | d3bb92da-8b23-494b-a043-8459059b0a29 | frost shatter (ice shards), a large boss energy orb; a small violet boss bullet and a ground shockwave, not cut (the violet keys against magenta; the wave crosses its cell border) |
 
 URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_013341_<job>.png`.
+
+## Boss arena hazards (2026-09-25, prompt 07 phase 7.1, EVAL-P7-001; twelve hazard ids resolved to one floor-spike spawner)
+
+Same frame and settings (4x4 cells on magenta, objects on a floor line near each cell's bottom; the prompts also asked for an empty magenta margin in every cell). Cut with `scripts/sprites/cut_vfx_sheet.py --spec scripts/sprites/hazards_v1.json` into `assets/sprites/effects/hazards_v1/` (four frames per group, bottom-aligned). Sheet b1 drew its geyser row about 75px below its cell line; the spec's `shiftY` moves those crop boxes.
+
+| File | Job | Picked | Rows |
+| --- | --- | --- | --- |
+| hazards_a1.png | eb76eb4b-0156-4512-b0eb-18ac5a672301 | no (the armed mine's pale pink halo keys away against magenta) | floor mine (unarmed, arming, armed, detonating), steam pod (closed, cracking, venting, burst), low ground shockwave, basalt column rising |
+| hazards_a2.png | 91347c1e-74b1-4efc-9eaf-097ea7af24da | yes | same rows: `charge_mine`, `vapor_pod`, `ground_shockwave`, `stone_pillar` |
+| hazards_b1.png | 4902104b-81e5-4d5b-bb1b-aa38d2a25eea | yes | tornado column, water geyser (rise, full, foam, collapse), fire puddle, acid puddle: `tornado_pillar`, `splash_pillar`, `burn_puddle`, `acid_trail` |
+| hazards_b2.png | 339fa7b0-2ed2-4a66-b8d0-6ab202387782 | no (its background drifts off pure magenta) | same rows as b1 |
+
+URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_06223N_<job>.png` (N 7 or 8).

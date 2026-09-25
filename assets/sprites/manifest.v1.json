@@ -644,6 +644,23 @@
       "notes": "Higgsfield gpt_image_2 boss attack tells: reticle, floor_marker, warning_flash, charge_glow (four frames each); cut by scripts/sprites/cut_vfx_sheet.py (telegraphs_v1.json). Loaded by the Game scene; drawn by the boss telegraph renderer (prompt 12 part 12f)."
     },
     {
+      "id": "effects-hazards_v1",
+      "atlasKey": "atlas_hazards_v1",
+      "frame": {
+        "width": 42,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/effects/hazards_v1/hazards_v1.png",
+        "runtimeData": "/assets/sprites/effects/hazards_v1/hazards_v1.atlas.json",
+        "localImagePath": "assets/sprites/effects/hazards_v1/hazards_v1.png",
+        "localDataPath": "assets/sprites/effects/hazards_v1/hazards_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 boss arena hazards: charge_mine, vapor_pod, ground_shockwave, stone_pillar, tornado_pillar, splash_pillar, burn_puddle, acid_trail (four frames each, bottom-aligned); cut by scripts/sprites/cut_vfx_sheet.py (hazards_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by the boss hazard spawners (prompt 12 part 12f wave 4)."
+    },
+    {
       "id": "projectiles-weapons_v1",
       "atlasKey": "atlas_weapons_v1",
       "frame": {

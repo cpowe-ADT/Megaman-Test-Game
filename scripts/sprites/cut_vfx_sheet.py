@@ -21,11 +21,13 @@ import hf_sheet_to_atlas as cutter
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def cut_cell(sheet: Image.Image, index: int, cols: int, rows: int, scale: float, inset: float) -> Image.Image:
+def cut_cell(sheet: Image.Image, index: int, cols: int, rows: int, scale: float, inset: float, shift_y: float = 0.0) -> Image.Image:
     cell_w, cell_h = sheet.width / cols, sheet.height / rows
     c, r = index % cols, index // cols
-    box = (round(c * cell_w + cell_w * inset), round(r * cell_h + cell_h * inset),
-           round((c + 1) * cell_w - cell_w * inset), round((r + 1) * cell_h - cell_h * inset))
+    # shift_y moves the crop box down by a fraction of a cell, for a row the model drew below its cell line
+    dy = cell_h * shift_y
+    box = (round(c * cell_w + cell_w * inset), max(0, round(r * cell_h + cell_h * inset + dy)),
+           round((c + 1) * cell_w - cell_w * inset), min(sheet.height, round((r + 1) * cell_h - cell_h * inset + dy)))
     keyed = cutter.defringe(cutter.key_magenta(sheet.crop(box), 60))
     small = cutter.hard_alpha(cutter.mode_downscale(keyed, scale, colors=32), threshold=90)
     bbox = small.getchannel("A").getbbox()
@@ -44,7 +46,7 @@ def main() -> None:
         if path not in sheets:
             sheets[path] = Image.open(ROOT / path).convert("RGBA")
         cols, rows = cutter.parse_grid(group.get("grid", "4x4"))
-        cuts = [cut_cell(sheets[path], i, cols, rows, group["scale"], group.get("inset", 0.02)) for i in group["cells"]]
+        cuts = [cut_cell(sheets[path], i, cols, rows, group["scale"], group.get("inset", 0.02), group.get("shiftY", 0.0)) for i in group["cells"]]
         if "size" in group:  # a tile that must repeat exactly (for example 16x16): resize the cut content to it
             cuts = [c.resize(tuple(group["size"]), Image.Resampling.NEAREST) for c in cuts]
         pad = group.get("pad", 1)  # 0 for tiles that repeat edge to edge (slag surface and fill)
@@ -52,9 +54,11 @@ def main() -> None:
         h = max(c.height for c in cuts) + 2 * pad
         if pad:
             w, h = w + (w % 2), h + (h % 2)
+        align = group.get("align", "center")  # "bottom": a floor hazard keeps its base on the frame's bottom row
         for i, content in enumerate(cuts):
             frame = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-            frame.paste(content, ((w - content.width) // 2, (h - content.height) // 2), content)
+            y = h - pad - content.height if align == "bottom" else (h - content.height) // 2
+            frame.paste(content, ((w - content.width) // 2, y), content)
             frames.append((f"{spec['key']}/{group['name']}/{i:03d}", frame))
 
     # Shelf packing, rows of at most `width` pixels.
