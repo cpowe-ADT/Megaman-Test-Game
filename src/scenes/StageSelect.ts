@@ -259,7 +259,7 @@ export class StageSelect extends Phaser.Scene {
       { font: FONT.subtitle, color: COLOR.textMuted }).setOrigin(1, 0).setName('identity-stage-caption')
 
     this.headerProgress = this.add
-      .text(layout.headerRect.centerX, layout.headerRect.bottom - 3, '', {
+      .text(layout.headerRect.centerX, layout.headerRect.bottom - 1, '', {
         font: FONT.subtitle,
         color: COLOR.textMuted,
         align: 'center'
@@ -322,7 +322,8 @@ export class StageSelect extends Phaser.Scene {
 
         const portrait = this.add.rectangle(x - layout.slotWidth / 2 + 20, y - layout.slotHeight / 2 + 20, 32, 32).setStrokeStyle(1, COLOR.borderMuted).setFillStyle(0x07142a, .5)
         const portraitSprite = this.add.image(portrait.x, portrait.y, 'px').setVisible(false)
-        const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted })
+        // A fixed 8px box: Linux's monospace fallback measures 9px and crossed the selection outline (CI run 36099719476).
+        const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted, fixedHeight: 8 })
         this.slots.push(new Phaser.Math.Vector2(x, y))
         this.slotEntries.push({ rect, name, meta, badge, portrait, portraitSprite, weakness, stageIndex: null })
       }
