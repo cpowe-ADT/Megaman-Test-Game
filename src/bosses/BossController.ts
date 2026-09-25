@@ -18,6 +18,7 @@ import {
 } from './bossCombatProfiles'
 import { BossMotionController } from './BossMotionController'
 import { bossDeathTimeline, paletteFlashColor, resolveDesperationArena, type DesperationArenaChange } from '../boss/fightBeats'
+import { bossRecoilFrame, breakDirection, breakKnockbackOffset, breakKnockbackX, type BossBreakStyle } from '../boss/bossBreak'
 
 export interface BossControllerConfig {
   spawn: Phaser.Math.Vector2
@@ -34,6 +35,17 @@ export interface BossControllerConfig {
 interface BossPhaseView {
   name: string
   threshold: number
+}
+
+/** The last break, for `getDebugState().break` (smoke 44): where the knockback started and ended. */
+interface BossBreakRecord {
+  atMs: number
+  heroX: number
+  direction: 'west' | 'east'
+  style: BossBreakStyle
+  interruptedAttackId: string | null
+  fromX: number | null
+  toX: number | null
 }
 
 interface BossRuntimeTrace {
@@ -108,6 +120,9 @@ export class BossController extends Phaser.GameObjects.Container {
   private paletteFlashStartedAtMs: number | null = null
   private desperationArena: DesperationArenaChange | null = null
   private interrupts = { count: 0, lastAttackId: null as string | null }
+  /** A break's knockback in flight: it starts on the first boss frame after the hit-stop (part 12f wave 5). */
+  private breakKnockback: { direction: -1 | 1; style: BossBreakStyle; grounded: boolean; elapsedMs: number; fromX: number | null; fromY: number | null } | null = null
+  private breaks: { count: number; last: BossBreakRecord | null } = { count: 0, last: null }
 
   private readonly enforceRoomBoundsAfterPhysics = (): void => {
     const clampedX = clampBossXToBounds(this.x, this.getSafeMovementBounds())
@@ -284,6 +299,7 @@ export class BossController extends Phaser.GameObjects.Container {
           attackName: attack.displayName ?? attack.id
         })
       },
+      onBroken: ({ interruptedAttack }) => this.beginBreak(interruptedAttack?.id ?? null),
       onDied: () => {
         this.arenaController.onBossDeath()
         // destroy() waits for the defeat frames and the chained explosion (prompt 07 phase 7.2 item 5).
@@ -347,6 +363,7 @@ export class BossController extends Phaser.GameObjects.Container {
     if (this.defeatStartedAtMs !== null) return
     this.defeatStartedAtMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
     this.motionController?.finishAttack()
+    this.breakKnockback = null
     if (this.body) {
       this.body.setVelocity(0, 0)
       this.body.setAllowGravity(false)
@@ -364,6 +381,56 @@ export class BossController extends Phaser.GameObjects.Container {
   flashWhite(durationMs: number): void {
     this.whiteFlashUntilMs = this.scene.time.now + durationMs
     this.sprite.setTintFill(0xffffff)
+  }
+
+  /**
+   * A break landed (part 12f wave 5): whatever the boss was doing stops (the interrupted attack's motion, a passive
+   * jump, a walk), and the knockback starts away from the hero. Grounded and hybrid bosses hop; aerial ones bob.
+   */
+  private beginBreak(interruptedAttackId: string | null): void {
+    const heroX = (this.scene.registry.get('player_x') as number | undefined) ?? this.x
+    const direction = breakDirection(this.x, heroX, this.sprite.flipX ? -1 : 1)
+    const style: BossBreakStyle = this.combatProfile?.locomotion === 'aerial' ? 'hover' : 'hop'
+    const grounded = this.body?.onFloor?.() || this.body?.blocked?.down || false
+    this.motionController?.finishAttack()
+    this.awaitingActionLanding = false
+    this.landingPresentationUntilMs = 0
+    this.lastLifecyclePhase = 'done'
+    this.lastMotionIntent = 'hold'
+    this.airborneVelocityX = 0
+    this.body?.setVelocity(0, 0)
+    this.body?.setAllowGravity(false)
+    this.breakKnockback = { direction, style, grounded, elapsedMs: 0, fromX: null, fromY: null }
+    const atMs = Math.max(0, Math.round(this.scene.time.now ?? 0))
+    const record: BossBreakRecord = { atMs, heroX: Math.round(heroX), direction: direction === -1 ? 'west' : 'east', style, interruptedAttackId, fromX: null, toX: null }
+    this.breaks = { count: this.breaks.count + 1, last: record }
+    // The recoil pose shows at once, so the weakness hit-stop freezes the boss in it rather than in its attack pose.
+    this.sprite.setFlipX(heroX < this.x)
+    this.playAnimationForState()
+  }
+
+  /**
+   * The knockback, scripted in boss time from where the boss stood when the hit-stop let go: out along the curve,
+   * clamped to the safe bounds, gravity off until it ends; then gravity lands it.
+   */
+  private stepBreakKnockback(delta: number): void {
+    const knockback = this.breakKnockback
+    if (!knockback) return
+    if (knockback.fromX === null || knockback.fromY === null) {
+      knockback.fromX = this.x
+      knockback.fromY = this.y
+      if (this.breaks.last) this.breaks.last.fromX = Math.round(this.x)
+    }
+    knockback.elapsedMs += Math.max(0, delta)
+    const offset = breakKnockbackOffset(knockback.elapsedMs, knockback.style, knockback.grounded)
+    this.x = breakKnockbackX(knockback.fromX, knockback.direction, offset.dx, this.getSafeMovementBounds())
+    this.y = knockback.fromY + offset.dy
+    this.body.setVelocity(0, 0)
+    this.body.setAllowGravity(offset.done)
+    if (offset.done) {
+      this.breakKnockback = null
+      if (this.breaks.last) this.breaks.last.toX = Math.round(this.x)
+    }
   }
 
   get isInvulnerable(): boolean {
@@ -395,6 +462,13 @@ export class BossController extends Phaser.GameObjects.Container {
       intro: { presenting: this.introPresenting },
       defeat: { startedAtMs: this.defeatStartedAtMs, destroyAtMs: this.defeatStartedAtMs === null ? null : this.defeatStartedAtMs + bossDeathTimeline().explosionEndMs },
       interrupts: { ...this.interrupts },
+      break: {
+        broken: this.bossBrain.isBroken,
+        lockoutRemainingMs: Math.round(this.bossBrain.breakLockoutRemainingMs),
+        knockback: this.breakKnockback ? { style: this.breakKnockback.style, elapsedMs: Math.round(this.breakKnockback.elapsedMs) } : null,
+        count: this.breaks.count,
+        last: this.breaks.last ? { ...this.breaks.last } : null
+      },
       activeAttackLifecycle: this.bossBrain.activeAttackLifecycle ?? null,
       traceCount: this.runtimeTraces.length,
       traceTail: this.runtimeTraces.slice(-8),
@@ -453,6 +527,14 @@ export class BossController extends Phaser.GameObjects.Container {
     const speed = (this.runtimeDefinition.moveSpeed ?? this.blueprint.baseStats.moveSpeed) * 0.9
     const grounded = this.body.onFloor() || this.body.blocked.down
     if (grounded) this.lastGroundY = this.y
+
+    if (this.breakKnockback) {
+      // The break owns the body until its knockback ends: no attack motion, walk or passive jump.
+      this.stepBreakKnockback(delta)
+      this.sprite.setFlipX(playerX < this.x)
+      this.playAnimationForState()
+      return
+    }
 
     const motionFrame = this.motionController?.update({
       nowMs: this.scene.time.now,
@@ -709,8 +791,10 @@ export class BossController extends Phaser.GameObjects.Container {
       ? attackProfile.animation[animationPhase] ?? attackProfile.animation.recovery
       : null
     const landingPresentation = this.scene.time.now < this.landingPresentationUntilMs
-    const stateKey =
-      (runtimeState === 'ATTACKING' || landingPresentation) && actionKey
+    // A break holds its recoil pose (the first defeat frame) for the whole stun; a plain hit's flinch stays idle.
+    const stateKey = this.bossBrain.isBroken
+      ? 'recoil'
+      : (runtimeState === 'ATTACKING' || landingPresentation) && actionKey
         ? actionKey
         : runtimeState === 'MOVE_TO_RANGE'
           ? 'move'
@@ -776,7 +860,9 @@ export class BossController extends Phaser.GameObjects.Container {
       : stateKey.includes('idle')
         ? 'idle'
         : 'shoot'
+    const recoil = bossRecoilFrame(this.groupedAtlasFrames, this.atlasFrames)
     const groupMap: Record<string, string[]> = {
+      recoil: recoil ? [recoil] : [],
       intro: this.groupedAtlasFrames.intro ?? this.groupedAtlasFrames.idle ?? [],
       phase: this.groupedAtlasFrames.phase ?? this.groupedAtlasFrames.special ?? [],
       defeat: this.groupedAtlasFrames.defeat ?? this.groupedAtlasFrames.idle ?? [],

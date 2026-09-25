@@ -2,8 +2,8 @@
 // and window.stepFrames(1, { manageLoop: false }) drives every frame. For Pyro Maw and Tide Reaver, from the room
 // activating: (1) the WARNING band, then the name-and-element card (warning-<boss>.png, card-<boss>.png); (2) the bar
 // filling 0 to max in ticks over about 900 ms after the intro dialogue (bar-fill-<boss>.png); (3) phase two shows the
-// phase pose and its retired attack never starts in the trace (phase-two-<boss>.png); (4) a weakness hit in a wind-up
-// interrupts it with a 200 ms stun and a white flash (weakness-<boss>.png); (5) desperation at 20%: palette flash,
+// phase pose and its retired attack never starts in the trace (phase-two-<boss>.png); (4) a weakness hit mid-attack
+// breaks the boss (weakness-<boss>.png, break-<boss>.png; see checkWeakness); (5) desperation at 20%: palette flash,
 // the arena change, the new attack's telegraph (desperation-<boss>.png, desperation-attack-<boss>.png); (6) the death:
 // defeat frames under hit-stop, a chained explosion, a flash, a freeze, then the defeat dialogue (death-*.png).
 import assert from 'node:assert/strict'
@@ -197,25 +197,51 @@ async function checkPhaseTwo(page, dir, boss) {
   return { phaseOne: trace.startedByPhase['0'], phaseTwo, captures: [phaseShot] }
 }
 
+// The break (part 12f wave 5): a weakness hit mid-attack (active or recovery) cancels the attack, the boss recoils in
+// its first defeat frame under the white fill, boss_hit_weak and the weakness hit-stop, is knocked 24 px away from the
+// hero with a hop and lands, holds the pose for the 450 ms stun, and a second weakness hit inside the 1.5 s lockout
+// deals its damage without a break (weakness-<boss>.png: the hit under hit-stop; break-<boss>.png: mid-knockback).
 async function checkWeakness(page, dir, boss) {
   const hit = await page.evaluate((bossId) => {
     const { scene, step, debug } = window.__b44
     const s = scene()
     const weaponId = s.progressionSave?.progressionWorld?.weaknessProfiles?.[bossId]?.weaknessWeaponIds?.[0] ?? null
     if (!weaponId) return { weaponId }
+    // Mid-attack, standing (so the hop lands inside the stun) and off the walls (so the hero fits beside it).
+    const nearWall = (d) => Math.min(s.bossController.x - d.movementBounds.minX, d.movementBounds.maxX - s.bossController.x)
+    const midAttack = (d) => d.state === 'ATTACKING' && d.grounded && nearWall(d) >= 12 && (d.activeAttackLifecycle === 'active' || d.activeAttackLifecycle === 'recovery')
     for (let frame = 0; frame < 2400; frame += 1) {
-      const d = debug()
-      if (d.activeAttackLifecycle === 'windup' && d.state === 'ATTACKING') {
-        const pendingBefore = s.bossProjectileController.getPendingTelegraphs().length
+      if (midAttack(debug())) {
+        // The hero stands in the room on the boss's side with less room, so the knockback carries the boss toward the middle.
+        const bounds = debug().movementBounds
+        const bossX = s.bossController.x
+        window.stageDebug.setPlayerX(bossX - bounds.minX < bounds.maxX - bossX ? Math.max(bounds.minX, bossX - 40) : Math.min(bounds.maxX, bossX + 40))
+        step()
+        const ready = debug()
+        if (!midAttack(ready)) continue
+        const lastHitstop = s.cameraDirector.hitstops.at(-1)
         s.bossDamage.applyDamageToBoss(2, { weaponId })
         const reaction = s.bossDamage.lastReaction
-        if (reaction?.accepted && reaction.weakness && reaction.interruptedAttackId) {
-          const after = debug()
-          const pendingAfter = s.bossProjectileController.getPendingTelegraphs().length
-          // One rendered frame (inside the weakness hit-stop) so the capture shows the white flash.
-          step()
-          const sprite = s.bossController.list[0]
-          return { weaponId, reaction, pendingBefore, pendingAfter, state: after.state, interrupts: after.interrupts, tintFill: Boolean(sprite?.tintFill) }
+        const after = debug()
+        const newHitstop = s.cameraDirector.hitstops.at(-1)
+        const pendingAfter = s.bossProjectileController.getPendingTelegraphs().length
+        // One rendered frame inside the weakness hit-stop: the recoil pose under the white fill.
+        step()
+        const frozen = debug()
+        const sprite = s.bossController.list[0]
+        return {
+          weaponId,
+          attackId: ready.activeAttackId,
+          lifecycle: ready.activeAttackLifecycle,
+          heroX: s.player.x,
+          reaction,
+          pendingAfter,
+          hitstop: newHitstop !== lastHitstop ? newHitstop?.kind : null,
+          state: after.state,
+          activeAfter: after.activeAttackId,
+          interrupts: after.interrupts,
+          frozen: { hitstop: s.hitstopRemainingFrames, key: frozen.animationKey, frame: frozen.animationFrame, broken: frozen.break.broken },
+          tintFill: Boolean(sprite?.tintFill)
         }
       }
       step()
@@ -223,30 +249,120 @@ async function checkWeakness(page, dir, boss) {
     return { weaponId, reaction: s.bossDamage.lastReaction }
   }, boss.bossId)
   const weakShot = await capture(page, dir, `weakness-${boss.bossId}.png`)
+  const recoilKey = `${boss.bossId}_recoil`
+  const recoilFrame = `${boss.bossId}/defeat/000`
   assert.ok(hit.weaponId, `${boss.bossId}: the save names a weakness weapon`)
-  assert.ok(hit.reaction?.interruptedAttackId, `${boss.bossId}: a weakness hit landed in a wind-up (${JSON.stringify(hit.reaction)})`)
-  assert.equal(hit.reaction.stunMs, 200)
+  assert.ok(hit.attackId, `${boss.bossId}: a weakness hit landed mid-attack (${JSON.stringify(hit.reaction)})`)
+  assert.equal(hit.reaction.broke, true, `${boss.bossId}: the weakness hit breaks the boss`)
+  assert.equal(hit.reaction.interruptedAttackId, hit.attackId, `${boss.bossId}: the break cancels ${hit.attackId} in its ${hit.lifecycle}`)
+  assert.equal(hit.activeAfter, null)
+  assert.equal(hit.pendingAfter, 0, `${boss.bossId}: nothing of the cancelled attack is left to spawn`)
+  assert.equal(hit.reaction.stunMs, 450)
+  assert.equal(hit.reaction.stunLockoutMs, 1500)
   assert.equal(hit.reaction.iFrameMs, 120)
-  assert.equal(hit.reaction.whiteFlashMs, 140)
+  assert.deepEqual(hit.reaction.played, { flashMs: 140, whiteFlashMs: 140, sfx: 'boss_hit_weak', hitStop: true }, `${boss.bossId}: the break plays boss_hit_weak`)
+  assert.equal(hit.hitstop, 'boss_weakness', `${boss.bossId}: the camera's weakness hit-stop`)
   assert.equal(hit.state, 'HURT_INVULN')
-  assert.equal(hit.tintFill, true, `${boss.bossId}: the weakness hit flashes the boss white`)
-  assert.ok(hit.pendingAfter < hit.pendingBefore, `${boss.bossId}: the interrupted attack's spawn and tell are cancelled`)
-  // The weakness hit-stop (CONTACT_HIT_FEEL.boss_weakness) freezes the boss first; the 200 ms stun runs on the
-  // frames the boss actually ticks, so hit-stop frames are counted apart.
-  const stun = await page.evaluate(() => {
+  assert.ok(hit.frozen.hitstop > 0, `${boss.bossId}: the capture frame is inside the hit-stop`)
+  assert.deepEqual([hit.frozen.key, hit.frozen.frame, hit.frozen.broken], [recoilKey, recoilFrame, true], `${boss.bossId}: the recoil pose shows under the hit-stop`)
+  assert.equal(hit.tintFill, true, `${boss.bossId}: the break flashes the boss white`)
+
+  // The hit-stop freezes the boss first; the knockback and the 450 ms stun run on the frames the boss ticks.
+  const knock = await page.evaluate(() => {
     const { scene, step, debug } = window.__b44
-    let frames = 0
-    let hitstopFrames = 0
+    const counts = { frames: 0, hitstopFrames: 0 }
+    const poses = []
+    while (counts.frames + counts.hitstopFrames < 60) {
+      const frozen = scene().hitstopRemainingFrames > 0
+      step()
+      if (frozen) {
+        counts.hitstopFrames += 1
+        continue
+      }
+      counts.frames += 1
+      const d = debug()
+      poses.push(`${d.animationKey}|${d.animationFrame}`)
+      if ((d.break.knockback?.elapsedMs ?? 999) >= 80) return { counts, poses, knockback: d.break.knockback, y: scene().bossController.y }
+    }
+    return { counts, poses, knockback: null }
+  })
+  const breakShot = await capture(page, dir, `break-${boss.bossId}.png`)
+  assert.ok(knock.knockback, `${boss.bossId}: the knockback is in flight (${JSON.stringify(knock)})`)
+  assert.equal(knock.knockback.style, 'hop')
+
+  const stun = await page.evaluate((counts) => {
+    const { scene, step, debug } = window.__b44
+    let { frames, hitstopFrames } = counts
+    const poses = []
+    let landedFrame = null
     while (debug().state === 'HURT_INVULN' && frames + hitstopFrames < 120) {
       const frozen = scene().hitstopRemainingFrames > 0
       step()
-      if (frozen) hitstopFrames += 1
-      else frames += 1
+      if (frozen) {
+        hitstopFrames += 1
+        continue
+      }
+      frames += 1
+      const d = debug()
+      if (d.state === 'HURT_INVULN') poses.push(`${d.animationKey}|${d.animationFrame}`)
+      if (landedFrame === null && !d.break.knockback && d.grounded) landedFrame = frames
     }
-    return { frames, hitstopFrames }
-  })
-  assert.ok(stun.frames >= 11 && stun.frames <= 14, `${boss.bossId}: the stun lasts about 200 ms of boss time (${JSON.stringify(stun)})`)
-  return { weaponId: hit.weaponId, interrupted: hit.reaction.interruptedAttackId, stun, captures: [weakShot] }
+    const d = debug()
+    return { frames, hitstopFrames, poses, landedFrame, last: d.break.last, lockoutMs: d.break.lockoutRemainingMs, traceTail: d.traceTail, interrupts: d.interrupts }
+  }, knock.counts)
+  const poses = [...knock.poses, ...stun.poses]
+  assert.ok(stun.frames >= 26 && stun.frames <= 29, `${boss.bossId}: the stun lasts about 450 ms of boss time (${JSON.stringify({ frames: stun.frames, hitstopFrames: stun.hitstopFrames })})`)
+  assert.ok(poses.length >= 25 && poses.every((pose) => pose === `${recoilKey}|${recoilFrame}`), `${boss.bossId}: the recoil frame holds for the stun (${JSON.stringify([...new Set(poses)])})`)
+  const away = stun.last.direction === 'east' ? 1 : -1
+  assert.equal(Math.sign(stun.last.fromX - hit.heroX), away, `${boss.bossId}: the knockback goes away from the hero (${JSON.stringify(stun.last)})`)
+  assert.ok((stun.last.toX - stun.last.fromX) * away >= 20, `${boss.bossId}: about 24 px back (${JSON.stringify(stun.last)})`)
+  assert.ok(stun.landedFrame !== null && stun.landedFrame <= 16, `${boss.bossId}: the boss lands after the hop (${stun.landedFrame})`)
+  const cut = stun.traceTail.findIndex((entry) => entry.event === 'attack_interrupted' && entry.attackId === hit.attackId)
+  assert.ok(cut >= 0, `${boss.bossId}: the trace records the interrupt`)
+  const later = stun.traceTail.slice(cut + 1)
+  const nextStart = later.findIndex((entry) => entry.event === 'attack_started')
+  const untilNext = nextStart < 0 ? later : later.slice(0, nextStart)
+  assert.equal(untilNext.filter((entry) => entry.attackId === hit.attackId).length, 0, `${boss.bossId}: ${hit.attackId} is gone from the trace (${JSON.stringify(later)})`)
+
+  // Inside the lockout (about 1 s of it left) a second weakness hit deals its damage and blinks, without the break.
+  const lockout = await page.evaluate((weaponId) => {
+    const { scene, debug } = window.__b44
+    const s = scene()
+    const before = debug()
+    const hpBefore = s.bossController.hp.current
+    const lastHitstop = s.cameraDirector.hitstops.at(-1)
+    s.bossDamage.applyDamageToBoss(2, { weaponId })
+    const after = debug()
+    return {
+      lockoutBefore: before.break.lockoutRemainingMs,
+      reaction: s.bossDamage.lastReaction,
+      damage: hpBefore - s.bossController.hp.current,
+      breaks: [before.break.count, after.break.count],
+      interrupts: [before.interrupts.count, after.interrupts.count],
+      active: [before.activeAttackId, after.activeAttackId],
+      broken: after.break.broken,
+      hitstop: s.cameraDirector.hitstops.at(-1) !== lastHitstop
+    }
+  }, hit.weaponId)
+  assert.ok(lockout.lockoutBefore >= 700 && lockout.lockoutBefore <= 1100, `${boss.bossId}: the second hit lands mid-lockout (${lockout.lockoutBefore} ms left)`)
+  assert.equal(lockout.reaction.accepted, true)
+  assert.ok(lockout.damage > 0, `${boss.bossId}: the lockout hit still deals its damage`)
+  assert.equal(lockout.reaction.broke, false, `${boss.bossId}: no break inside the lockout`)
+  assert.deepEqual(lockout.reaction.played, { flashMs: 70, whiteFlashMs: 0, sfx: 'boss_hit', hitStop: false })
+  assert.equal(lockout.breaks[1], lockout.breaks[0])
+  assert.equal(lockout.interrupts[1], lockout.interrupts[0])
+  assert.equal(lockout.active[1], lockout.active[0], `${boss.bossId}: the lockout hit cancels nothing`)
+  assert.equal(lockout.broken, false)
+  assert.equal(lockout.hitstop, false)
+  return {
+    weaponId: hit.weaponId,
+    interrupted: hit.reaction.interruptedAttackId,
+    lifecycle: hit.lifecycle,
+    stun: { frames: stun.frames, hitstopFrames: stun.hitstopFrames, landedFrame: stun.landedFrame },
+    knockback: stun.last,
+    lockout: { remainingMs: lockout.lockoutBefore, damage: lockout.damage, played: lockout.reaction.played },
+    captures: [weakShot, breakShot]
+  }
 }
 
 async function checkDesperation(page, dir, boss, readState) {

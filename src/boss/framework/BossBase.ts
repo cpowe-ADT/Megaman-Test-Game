@@ -1,3 +1,4 @@
+import { BOSS_BREAK, BossBreakLockout } from '../bossBreak'
 import { BossAttackController } from './BossAttackController'
 import { BossDamageController } from './BossDamageController'
 import { BossPhaseController } from './BossPhaseController'
@@ -32,7 +33,10 @@ export class BossBase implements IBoss {
   private hurtRemainingMs = 0
   private phaseTransitionRemainingMs = 0
   private lastAttackContext?: AttackContext
-  private stunLockoutRemainingMs = 0
+  /** No second break until a break's lockout runs out (boss time), so a weakness weapon cannot stun-lock the boss. */
+  private readonly breakLockout = new BossBreakLockout()
+  /** This HURT_INVULN is a break's stun rather than a plain hit's flinch. */
+  private breaking = false
 
   constructor(definition: BossDefinition, hooks: BossEventHooks = {}) {
     this.definition = definition
@@ -85,6 +89,15 @@ export class BossBase implements IBoss {
     return this.attackController.activeLifecycle
   }
 
+  /** A break holds the boss: no attack, no motion, the recoil pose, until its stun ends. */
+  get isBroken(): boolean {
+    return this.breaking && this.stateMachine.state === 'HURT_INVULN'
+  }
+
+  get breakLockoutRemainingMs(): number {
+    return this.breakLockout.remainingMs
+  }
+
   get hpSnapshot(): { current: number; max: number } {
     return {
       current: this.damageController.currentHP,
@@ -103,12 +116,14 @@ export class BossBase implements IBoss {
     this.recoverRemainingMs = 0
     this.hurtRemainingMs = 0
     this.phaseTransitionRemainingMs = 0
+    this.breakLockout.reset()
+    this.breaking = false
     this.hooks.onStateChanged?.(this.stateMachine.state)
   }
 
   TickAI(ctx: BossContext): BossTickResult {
     this.damageController.tick(ctx.dtMs)
-    this.stunLockoutRemainingMs = Math.max(0, this.stunLockoutRemainingMs - ctx.dtMs)
+    this.breakLockout.tick(ctx.dtMs)
     this.stateMachine.tick(ctx.dtMs)
 
     const hp = this.hpSnapshot
@@ -236,17 +251,24 @@ export class BossBase implements IBoss {
     if (result.defeated) {
       this.Die()
     } else if (result.accepted && this.stateMachine.state !== 'DEAD') {
-      const weaknessStun = event.stunMs !== undefined && this.stunLockoutRemainingMs <= 0
-      if (weaknessStun) this.stunLockoutRemainingMs = event.stunLockoutMs ?? 0
-      if (weaknessStun && event.interruptWindup) {
-        const interrupted = this.attackController.interruptWindup(this.lastAttackContext ?? this.idleAttackContext())
-        if (interrupted) {
-          result.interruptedAttackId = interrupted.id
-          this.hooks.onAttackInterrupted?.(interrupted)
-        }
+      const state = this.stateMachine.state
+      // A break needs the stun state: none lands in the intro or a phase transition, or inside the lockout.
+      const canStun = state === 'HURT_INVULN' || this.stateMachine.canTransition('HURT_INVULN')
+      const stunMs = event.stunMs ?? BOSS_BREAK.stunMs
+      const broke = Boolean(event.breaks) && canStun && this.breakLockout.tryStart(event.stunLockoutMs ?? BOSS_BREAK.lockoutMs)
+      const interrupted = broke ? this.attackController.interruptActive(this.lastAttackContext ?? this.idleAttackContext()) : undefined
+      if (interrupted) {
+        result.interruptedAttackId = interrupted.id
+        this.hooks.onAttackInterrupted?.(interrupted)
       }
-      this.hurtRemainingMs = weaknessStun ? (event.stunMs ?? 70) : (this.definition.hurtStunMs ?? 70)
+      if (event.breaks) result.broke = broke
+      this.breaking ||= broke
+      const hurtMs = broke ? stunMs : (this.definition.hurtStunMs ?? 70)
+      // A later hit never cuts a running stun short: a Buster pellet inside a break keeps the break's 450 ms.
+      this.hurtRemainingMs = state === 'HURT_INVULN' ? Math.max(this.hurtRemainingMs, hurtMs) : hurtMs
       this.transitionTo('HURT_INVULN')
+      // After the transition, so the hook sees the boss broken and can show the recoil pose under the hit-stop.
+      if (broke) this.hooks.onBroken?.({ stunMs, interruptedAttack: interrupted })
     }
     return result
   }
@@ -277,6 +299,7 @@ export class BossBase implements IBoss {
   private transitionTo(next: Parameters<BossStateMachine['tryTransition']>[0]): void {
     const transitioned = this.stateMachine.tryTransition(next)
     if (transitioned) {
+      if (next !== 'HURT_INVULN') this.breaking = false
       this.hooks.onStateChanged?.(next)
     }
   }

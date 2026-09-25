@@ -108,7 +108,7 @@ export class BossProjectileController {
   private pendingAttacks: PendingBossAttack[] = []
   private lockedAttackDirection: 1 | -1 | null = null
   /** Shots an attack fires after it executes (Serpent Stream's sweep, Lance Volley's sequence), by time. */
-  private scheduledShots: Array<{ at: number; fire: () => void }> = []
+  private scheduledShots: Array<{ at: number; fire: () => void; attackId: string }> = []
   private pausedAt = 0
 
   constructor(private readonly options: BossProjectileControllerOptions) {}
@@ -157,10 +157,12 @@ export class BossProjectileController {
   }
 
   /** A weakness hit cancelled this attack's wind-up (prompt 07 phase 7.2 item 3): its spawn, and so its drawn tell, go. */
+  /** A break cancels its attack's pending spawn (and so its tell) and the shots of a sweep or volley still to fire. */
   cancelPendingAttack(attackId: string): number {
-    const before = this.pendingAttacks.length
+    const before = this.pendingAttacks.length + this.scheduledShots.length
     this.pendingAttacks = this.pendingAttacks.filter((entry) => String(entry.attackData?.id ?? '') !== attackId)
-    return before - this.pendingAttacks.length
+    this.scheduledShots = this.scheduledShots.filter((shot) => !attackId || shot.attackId !== attackId)
+    return before - this.pendingAttacks.length - this.scheduledShots.length
   }
 
   onBossAttack(attack: AttackPattern, attackData?: any): void {
@@ -344,8 +346,9 @@ export class BossProjectileController {
     const direction = this.lockedAttackDirection ?? 1
     const damage = Number(attackData?.hit?.damageAmount ?? 1)
     const activeMs = Number(attackData?.activeTime ?? attack.executeMs ?? 900)
+    const attackId = String(attackData?.id ?? '')
     serpentStreamSweep(activeMs).forEach(({ atMs, angle }) =>
-      this.scheduleShot(atMs, (origin) =>
+      this.scheduleShot(attackId, atMs, (origin) =>
         this.spawnBossBullet(origin, attack, { speed: SERPENT_STREAM.speed, damage, angle: angle * direction, direction, scale: SERPENT_STREAM.scale })
       )
     )
@@ -356,7 +359,7 @@ export class BossProjectileController {
     const direction = this.lockedAttackDirection ?? 1
     const count = lanceVolleyCount(this.options.getPhaseIndex?.() ?? 0)
     for (let index = 0; index < count; index += 1) {
-      this.scheduleShot(index * LANCE_VOLLEY.intervalMs, (origin) =>
+      this.scheduleShot(String(attackData?.id ?? ''), index * LANCE_VOLLEY.intervalMs, (origin) =>
         this.spawnBossBullet(origin, attack, {
           projectileId: 'boss_water_lance',
           speed: Number(attackData?.params?.projectileSpeed ?? 285),
@@ -369,8 +372,11 @@ export class BossProjectileController {
     }
   }
 
-  /** Fires now when `delayMs` is 0, else on the first update at or after it (from wherever the boss is then). */
-  private scheduleShot(delayMs: number, fire: (origin: BossProjectileOrigin) => void): void {
+  /**
+   * Fires now when `delayMs` is 0, else on the first update at or after it (from wherever the boss is then), unless a
+   * break cancels `attackId` first (`cancelPendingAttack`).
+   */
+  private scheduleShot(attackId: string, delayMs: number, fire: (origin: BossProjectileOrigin) => void): void {
     const run = () => {
       const origin = this.options.getBossOrigin()
       if (isOriginActive(origin) && this.options.isEncounterActive()) fire(origin)
@@ -379,7 +385,7 @@ export class BossProjectileController {
       run()
       return
     }
-    this.scheduledShots.push({ at: this.options.getNow() + delayMs, fire: run })
+    this.scheduledShots.push({ at: this.options.getNow() + delayMs, fire: run, attackId })
   }
 
   private fireScheduledShots(now: number): void {

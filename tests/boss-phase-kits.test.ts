@@ -151,16 +151,17 @@ test('the trace proves the retired attack never starts in phase two, the retime 
   })
 })
 
-test('a weakness hit stuns 200 ms, flashes white twice as long, interrupts a wind-up, and cannot stun-lock', () => {
+test('a weakness hit breaks the boss for 450 ms, flashes white twice as long, cancels a wind-up, and cannot stun-lock', () => {
   const weak = bossHitReaction(1.75)
   assert.equal(weak.weakness, true)
-  assert.equal(weak.stunMs, 200)
-  assert.equal(weak.interruptWindup, true)
+  assert.equal(weak.stunMs, 450)
+  assert.equal(weak.stunLockoutMs, 1500)
+  assert.equal(weak.breaks, true)
   assert.equal(weak.whiteFlashMs, BOSS_HIT_FLASH_MS * 2)
   assert.equal(weak.iFrameMs, 120)
   assert.equal(weak.sfx, 'boss_hit_weak')
   const plain = bossHitReaction(1)
-  assert.deepEqual([plain.weakness, plain.stunMs, plain.interruptWindup, plain.whiteFlashMs, plain.iFrameMs], [false, undefined, false, 0, 120])
+  assert.deepEqual([plain.weakness, plain.stunMs, plain.breaks, plain.whiteFlashMs, plain.iFrameMs], [false, undefined, false, 0, 120])
   assert.equal(BOSS_PLAYER_HIT_IFRAME_MS, 120)
   assert.equal(bossHitReaction(1.4).weakness, true)
 
@@ -179,26 +180,28 @@ test('a weakness hit stuns 200 ms, flashes white twice as long, interrupts a win
   }
   assert.equal(brain.activeAttackLifecycle, 'windup')
   const attackId = brain.activeAttackId!
-  const hit = brain.ApplyDamage({ amount: 2, type: 'normal', source: 'player', iFrameMs: weak.iFrameMs, stunMs: weak.stunMs, stunLockoutMs: weak.stunLockoutMs, interruptWindup: true })
+  const hit = brain.ApplyDamage({ amount: 2, type: 'normal', source: 'player', iFrameMs: weak.iFrameMs, stunMs: weak.stunMs, stunLockoutMs: weak.stunLockoutMs, breaks: true })
   assert.equal(hit.interruptedAttackId, attackId)
   assert.deepEqual(interrupted, [attackId])
   assert.equal(brain.state, 'HURT_INVULN')
   assert.equal(brain.activeAttackId, undefined)
-  for (let frame = 0; frame < 12; frame += 1) tick()
-  assert.equal(brain.state, 'HURT_INVULN', 'still stunned at 192 ms')
-  for (let frame = 0; frame < 2; frame += 1) tick()
-  assert.notEqual(brain.state, 'HURT_INVULN', 'the 200 ms stun ends')
-  // Inside the 1 s lockout a second weakness hit damages but interrupts nothing.
+  assert.equal(hit.broke, true)
+  for (let frame = 0; frame < 28; frame += 1) tick()
+  assert.equal(brain.state, 'HURT_INVULN', 'still stunned at 448 ms')
+  tick()
+  assert.notEqual(brain.state, 'HURT_INVULN', 'the 450 ms stun ends')
+  // Inside the 1.5 s lockout a second weakness hit damages but breaks and cancels nothing.
   guard = 0
   while (brain.activeAttackLifecycle !== 'windup' && guard < 400) {
     tick()
     guard += 1
   }
-  const second = brain.ApplyDamage({ amount: 2, type: 'normal', source: 'player', iFrameMs: 120, stunMs: 200, stunLockoutMs: 1000, interruptWindup: true })
+  const second = brain.ApplyDamage({ amount: 2, type: 'normal', source: 'player', iFrameMs: 120, stunMs: weak.stunMs, stunLockoutMs: weak.stunLockoutMs, breaks: true })
   assert.equal(second.accepted, true)
-  // 14 stun frames plus the wait for the next wind-up, all inside the 1 s lockout from the first stun.
-  assert.ok((14 + guard) * 16 < 1000, `the second wind-up came inside the lockout (${(14 + guard) * 16} ms)`)
+  // 29 stun frames plus the wait for the next wind-up, all inside the 1.5 s lockout from the first break.
+  assert.ok((29 + guard) * 16 < 1500, `the second wind-up came inside the lockout (${(29 + guard) * 16} ms)`)
   assert.equal(second.interruptedAttackId, undefined)
+  assert.equal(second.broke, false)
 })
 
 test('intro, bar fill, death and desperation beats keep their timings', () => {

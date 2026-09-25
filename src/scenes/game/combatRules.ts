@@ -1,3 +1,4 @@
+import { BOSS_BREAK } from '../../boss/bossBreak'
 import { bossHudLabel, type BossBlueprint } from '../../bosses/types'
 import { PASSIVE_WEAPON_RECHARGE_INTERVAL_MS } from '../../content/weaponEnergyEconomy'
 
@@ -62,25 +63,35 @@ export const BOSS_HIT_FLASH_MS = 70
 export const BOSS_WEAK_HIT = {
   /** Multipliers at or above this react as weakness hits. */
   multiplierAtLeast: 1.4,
-  stunMs: 200,
-  /** After a weakness stun the next one waits this long, so a weakness weapon cannot stun-lock the boss. */
-  stunLockoutMs: 1000,
-  /** Until the audio lane adds `boss_hit_weak`, the audio service plays `boss_hit` for it. */
+  /** A weakness hit breaks the boss (`src/boss/bossBreak.ts`, part 12f wave 5): 450 ms in the recoil pose. */
+  stunMs: BOSS_BREAK.stunMs,
+  /** After a break the next one waits 1.5 s, so a weakness weapon cannot stun-lock the boss. */
+  stunLockoutMs: BOSS_BREAK.lockoutMs,
   sfx: 'boss_hit_weak'
 } as const
 
 export interface BossHitReaction {
   weakness: boolean
   iFrameMs: number
-  /** Weakness hits only: the hurt-stun, its lockout, and the wind-up interrupt. */
+  /** Weakness hits only: the break's stun and its lockout. */
   stunMs?: number
   stunLockoutMs?: number
-  interruptWindup: boolean
-  /** The alpha blink every hit plays. */
+  /** A weakness hit asks to break the boss; the framework refuses inside the lockout (`HitResult.broke`). */
+  breaks: boolean
+  /** The alpha blink a hit of this kind plays when it breaks (weakness) or lands (plain). */
   flashMs: number
-  /** The white fill a weakness hit adds (0 for a plain hit). */
+  /** The white fill a break adds (0 for a plain hit). */
   whiteFlashMs: number
   sfx: 'boss_hit' | typeof BOSS_WEAK_HIT.sfx
+}
+
+/** What a landed hit plays (`bossHitPresentation`). */
+export interface BossHitPresentation {
+  flashMs: number
+  whiteFlashMs: number
+  sfx: BossHitReaction['sfx']
+  /** The camera's weakness hit-stop (`CameraDirector.onBossHit`). */
+  hitStop: boolean
 }
 
 /** How the boss reacts to a player hit at `multiplier` (prompt 07 phase 7.2 item 3). */
@@ -92,12 +103,24 @@ export function bossHitReaction(multiplier: number): BossHitReaction {
         iFrameMs: BOSS_PLAYER_HIT_IFRAME_MS,
         stunMs: BOSS_WEAK_HIT.stunMs,
         stunLockoutMs: BOSS_WEAK_HIT.stunLockoutMs,
-        interruptWindup: true,
+        breaks: true,
         flashMs: BOSS_HIT_FLASH_MS * 2,
         whiteFlashMs: BOSS_HIT_FLASH_MS * 2,
         sfx: BOSS_WEAK_HIT.sfx
       }
-    : { weakness, iFrameMs: BOSS_PLAYER_HIT_IFRAME_MS, interruptWindup: false, flashMs: BOSS_HIT_FLASH_MS, whiteFlashMs: 0, sfx: 'boss_hit' }
+    : { weakness, iFrameMs: BOSS_PLAYER_HIT_IFRAME_MS, breaks: false, flashMs: BOSS_HIT_FLASH_MS, whiteFlashMs: 0, sfx: 'boss_hit' }
+}
+
+/**
+ * What a landed hit plays. A break (and a killing weakness blow) plays the weakness blink, the white fill,
+ * `boss_hit_weak` and the camera's weakness hit-stop; a hit that did not break (a plain hit, or a weakness hit inside
+ * the lockout) deals its damage and blinks like a plain hit.
+ */
+export function bossHitPresentation(reaction: BossHitReaction, hit: { broke?: boolean; defeated?: boolean }): BossHitPresentation {
+  if (reaction.weakness && (hit.broke || hit.defeated)) {
+    return { flashMs: reaction.flashMs, whiteFlashMs: reaction.whiteFlashMs, sfx: reaction.sfx, hitStop: true }
+  }
+  return { flashMs: BOSS_HIT_FLASH_MS, whiteFlashMs: 0, sfx: 'boss_hit', hitStop: false }
 }
 
 /**

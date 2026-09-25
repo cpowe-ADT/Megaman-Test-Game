@@ -139,11 +139,14 @@ export interface DamageEvent {
   knockback?: { x: number; y: number }
   hitstopFrames?: number
   iFrameMs?: number
-  /** Hurt-stun for this hit instead of the definition's `hurtStunMs` (weakness hits: 200 ms). */
+  /**
+   * A weakness hit breaks the boss (`src/boss/bossBreak.ts`): it cancels the running attack whatever its lifecycle,
+   * and the boss is knocked back and held in its recoil pose for `stunMs` instead of the definition's `hurtStunMs`.
+   */
+  breaks?: boolean
+  /** The break's stun (`BOSS_BREAK.stunMs`, 450 ms, when absent). */
   stunMs?: number
-  /** A weakness hit cancels an attack still in its wind-up. */
-  interruptWindup?: boolean
-  /** After a `stunMs` stun, later ones fall back to the plain stun (and interrupt nothing) for this long. */
+  /** After a break, later breaking hits only damage (plain stun, nothing cancelled) for this long. */
   stunLockoutMs?: number
 }
 
@@ -155,8 +158,10 @@ export interface HitResult {
   nextHP: number
   hitstopFrames: number
   reason?: 'invuln' | 'zero-damage' | 'dead'
-  /** The attack this hit cancelled in its wind-up. */
+  /** The attack this hit's break cancelled (wind-up, active or recovery). */
   interruptedAttackId?: string
+  /** The hit broke the boss: false for plain hits, and for weakness hits inside the lockout. */
+  broke?: boolean
 }
 
 export interface IAttack {
@@ -199,5 +204,7 @@ export interface BossEventHooks {
   onDamageApplied?: (event: DamageEvent, result: HitResult) => void
   onPhaseChanged?: (phaseIndex: number, phase: BossPhaseDefinition) => void
   onAttackInterrupted?: (attack: BossAttackDefinition) => void
+  /** A break landed (after `onAttackInterrupted` for the attack it cancelled, if any): play the knockback and the pose. */
+  onBroken?: (info: { stunMs: number; interruptedAttack?: BossAttackDefinition }) => void
   onDied?: () => void
 }

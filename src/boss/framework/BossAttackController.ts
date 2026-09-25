@@ -167,10 +167,13 @@ export class BossAttackController {
     return this.activeModule?.lifecycle
   }
 
-  /** A weakness hit cancels an attack still in its wind-up; it cools down as if it had played. */
-  interruptWindup(ctx: AttackContext): BossAttackDefinition | undefined {
+  /**
+   * A break (a weakness hit) cancels the running attack whatever its lifecycle: wind-up, active or recovery. It cools
+   * down as if it had played, so the boss does not restart it the moment the stun ends.
+   */
+  interruptActive(ctx: AttackContext): BossAttackDefinition | undefined {
     const active = this.activeModule
-    if (!active || active.lifecycle !== 'windup') {
+    if (!active) {
       return undefined
     }
     const interrupted = active.definition

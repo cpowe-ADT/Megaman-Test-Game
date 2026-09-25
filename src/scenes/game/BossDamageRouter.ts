@@ -17,7 +17,17 @@ import type { Save } from '../../systems/Save'
 import { formatDistrictLabel, type HUD } from '../../ui/HUD'
 import type { CameraDirector } from './CameraDirector'
 import { blinkBossHit, type BlinkTarget, type BlinkTweens } from '../../boss/hitFlash'
-import { bossDamageScale, bossHitFeedbackLabel, bossHitReaction, scaleBossHitDamage, type BossHitReaction, type CombatHitSource, type CombatHitTarget } from './combatRules'
+import {
+  bossDamageScale,
+  bossHitFeedbackLabel,
+  bossHitPresentation,
+  bossHitReaction,
+  scaleBossHitDamage,
+  type BossHitPresentation,
+  type BossHitReaction,
+  type CombatHitSource,
+  type CombatHitTarget
+} from './combatRules'
 import type { StoryDirector } from './StoryDirector'
 
 export interface BossHitContext {
@@ -62,8 +72,10 @@ export interface BossDamageRouterHost {
  * stays as a one-line delegation for the debug hooks and the classic-campaign smoke.
  */
 export class BossDamageRouter {
-  /** The last player hit on the boss and how it reacted (prompt 07 phase 7.2 item 3; smoke 44 reads the weakness stagger). */
-  lastReaction: (BossHitReaction & { atMs: number; multiplier: number; accepted: boolean; interruptedAttackId: string | null }) | null = null
+  /** The last player hit on the boss, how it reacted and what it played (smoke 44 reads the break and the lockout). */
+  lastReaction:
+    | (BossHitReaction & { atMs: number; multiplier: number; accepted: boolean; broke: boolean; interruptedAttackId: string | null; played: BossHitPresentation })
+    | null = null
   /** The weakness table's verdict on the last player hit (prompt 07 phase 7.3; smoke 12 and 44 read it). */
   lastElementHit: (BossElementHit & { weaponId: string; classic: boolean; label: string; damageType: string }) | null = null
 
@@ -122,9 +134,10 @@ export class BossDamageRouter {
         iFrameMs: reaction.iFrameMs,
         stunMs: reaction.stunMs,
         stunLockoutMs: reaction.stunLockoutMs,
-        interruptWindup: reaction.interruptWindup
+        breaks: reaction.breaks
       })
-      this.lastReaction = { ...reaction, atMs: host.time.now, multiplier, accepted: hit.accepted, interruptedAttackId: hit.interruptedAttackId ?? null }
+      const played = bossHitPresentation(reaction, hit)
+      this.lastReaction = { ...reaction, atMs: host.time.now, multiplier, accepted: hit.accepted, broke: hit.broke === true, interruptedAttackId: hit.interruptedAttackId ?? null, played }
       const hp = controller.hp
       host.bossHp = { current: hp.current, max: hp.max }
       if (host.bossTarget) {
@@ -143,10 +156,10 @@ export class BossDamageRouter {
       if (host.bossDeathHandled || host.victoryTriggered) {
         return
       }
-      blinkBossHit(host.tweens as unknown as BlinkTweens | undefined, (host.bossTarget ?? host.bossArt) as unknown as BlinkTarget | undefined, 0.25, reaction.flashMs)
-      if (reaction.whiteFlashMs > 0) controller.flashWhite(reaction.whiteFlashMs)
-      AudioService.playSfx(reaction.sfx)
-      host.cameraDirector.onBossHit(multiplier, hit.amountApplied)
+      blinkBossHit(host.tweens as unknown as BlinkTweens | undefined, (host.bossTarget ?? host.bossArt) as unknown as BlinkTarget | undefined, 0.25, played.flashMs)
+      if (played.whiteFlashMs > 0) controller.flashWhite(played.whiteFlashMs)
+      AudioService.playSfx(played.sfx)
+      if (played.hitStop) host.cameraDirector.onBossHit(multiplier, hit.amountApplied)
       this.showHitFeedback(weaponId, multiplier)
       if (hit.defeated || hp.current <= 0) {
         host.onBossDefeated()
