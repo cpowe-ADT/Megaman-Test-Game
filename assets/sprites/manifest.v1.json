@@ -17,7 +17,8 @@
         "localImagePath": "assets/sprites/bosses/sentinel_rook.png",
         "localDataPath": "assets/sprites/bosses/sentinel_rook.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_sentinel_rook_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_sentinel_rook_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-pyro-maw",
@@ -34,7 +35,8 @@
         "localImagePath": "assets/sprites/bosses/pyro_maw.png",
         "localDataPath": "assets/sprites/bosses/pyro_maw.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_pyro_maw_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_pyro_maw_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-tide-reaver",
@@ -51,7 +53,8 @@
         "localImagePath": "assets/sprites/bosses/tide_reaver.png",
         "localDataPath": "assets/sprites/bosses/tide_reaver.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_tide_reaver_sheet_hf_v1_20260910_b.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_tide_reaver_sheet_hf_v1_20260910_b.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-volt-hopper",
@@ -68,7 +71,8 @@
         "localImagePath": "assets/sprites/bosses/volt_hopper.png",
         "localDataPath": "assets/sprites/bosses/volt_hopper.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_volt_hopper_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_volt_hopper_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-basalt-titan",
@@ -85,7 +89,8 @@
         "localImagePath": "assets/sprites/bosses/basalt_titan.png",
         "localDataPath": "assets/sprites/bosses/basalt_titan.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_basalt_titan_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_basalt_titan_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-ferro-blade",
@@ -102,7 +107,8 @@
         "localImagePath": "assets/sprites/bosses/ferro_blade.png",
         "localDataPath": "assets/sprites/bosses/ferro_blade.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_ferro_blade_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_ferro_blade_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-mire-wraith",
@@ -119,7 +125,8 @@
         "localImagePath": "assets/sprites/bosses/mire_wraith.png",
         "localDataPath": "assets/sprites/bosses/mire_wraith.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_mire_wraith_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_mire_wraith_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-gale-vixen",
@@ -136,7 +143,8 @@
         "localImagePath": "assets/sprites/bosses/gale_vixen.png",
         "localDataPath": "assets/sprites/bosses/gale_vixen.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_gale_vixen_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_gale_vixen_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-glacier-ronin",
@@ -153,7 +161,8 @@
         "localImagePath": "assets/sprites/bosses/glacier_ronin.png",
         "localDataPath": "assets/sprites/bosses/glacier_ronin.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_glacier_ronin_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_glacier_ronin_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "boss-omega-core",
@@ -170,7 +179,8 @@
         "localImagePath": "assets/sprites/bosses/omega_core.png",
         "localDataPath": "assets/sprites/bosses/omega_core.json"
       },
-      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_omega_core_sheet_hf_v1_20260910.png."
+      "notes": "Original generated sheet (Higgsfield gpt_image_2) cut by scripts/sprites/hf_sheet_to_atlas.py from boss_omega_core_sheet_hf_v1_20260910.png.",
+      "loadScope": "stage"
     },
     {
       "id": "enemies-enemy_gunner_bot",
@@ -365,6 +375,23 @@
       "notes": "Generated via tools/sprites/slice_sheet_to_atlas.py"
     },
     {
+      "id": "enemies-custodian_walker",
+      "atlasKey": "atlas_custodian_walker",
+      "frame": {
+        "width": 64,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/enemies/custodian_walker/custodian_walker.png",
+        "runtimeData": "/assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json",
+        "localImagePath": "assets/sprites/enemies/custodian_walker/custodian_walker.png",
+        "localDataPath": "assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json"
+      },
+      "notes": "Heat Works mini-boss (EVAL-P6-005). Higgsfield gpt_image_2 sheet cut by scripts/sprites/cut_enemy_sheet.py: 18 frames of 64x64, feet on row 62, facing right. Loaded by Preload like the other enemy families (0.39MB decoded).",
+      "loadScope": "stage"
+    },
+    {
       "id": "enemies-enemy_shield_drone",
       "atlasKey": "atlas_enemy_shield_drone",
       "frame": {
@@ -445,6 +472,23 @@
       },
       "loadScope": "game",
       "notes": "Higgsfield gpt_image_2 saber arcs (slash_1/2/3, slash_air), hit_spark, deflect, charge_aura, explode; cut by scripts/sprites/cut_vfx_sheet.py (vfx_hero_effects_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene."
+    },
+    {
+      "id": "mechanics-mechanics_v1",
+      "atlasKey": "atlas_mechanics_v1",
+      "frame": {
+        "width": 58,
+        "height": 64
+      },
+      "status": "ready",
+      "source": {
+        "runtimeImage": "/assets/sprites/mechanics/mechanics_v1/mechanics_v1.png",
+        "runtimeData": "/assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json",
+        "localImagePath": "assets/sprites/mechanics/mechanics_v1/mechanics_v1.png",
+        "localDataPath": "assets/sprites/mechanics/mechanics_v1/mechanics_v1.atlas.json"
+      },
+      "loadScope": "game",
+      "notes": "Higgsfield gpt_image_2 stage mechanics: vent_nozzle, vent_flame, breakable_wall, crumble, slag_surface, slag_fill, energy_gate, scrap_gate (four frames each); cut by scripts/sprites/cut_vfx_sheet.py (mechanics_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by src/mechanics/adapters."
     }
   ]
 }

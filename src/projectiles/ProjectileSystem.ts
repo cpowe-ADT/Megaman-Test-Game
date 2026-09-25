@@ -39,6 +39,10 @@ export class ProjectileSystem {
     }
   }
 
+  getDefinition(id: string): ProjectileDefinition | undefined {
+    return this.registry.get(id)
+  }
+
   getGroup(pool: ProjectilePoolKey): Phaser.Physics.Arcade.Group {
     return this.groups[pool]
   }

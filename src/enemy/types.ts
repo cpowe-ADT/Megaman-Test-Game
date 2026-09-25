@@ -44,6 +44,14 @@ export interface EnemyStatsConfig {
   hitstunLightMs: number
   hitstunHeavyMs: number
   invulnerabilityMs?: number
+  /** Super armour (mini-bosses): no hitstun, and only hits of `pushMinDamage` or more push it. */
+  heavy?: EnemyHeavyConfig
+}
+
+export interface EnemyHeavyConfig {
+  pushMinDamage: number
+  pushSpeed: number
+  pushMs: number
 }
 
 export interface EnemyAIConfig {
@@ -80,6 +88,8 @@ export interface EnemyAnimationKeys {
   attackActive: string
   hurt: string
   death: string
+  /** Shown during `attack_recover`; the attack's active pose when absent. */
+  attackRecover?: string
   spawn?: string
   turn?: string
   stunned?: string
@@ -98,6 +108,20 @@ export interface EnemyDefinition {
   drops?: EnemyDropTable
   deathBehavior: EnemyDeathBehavior
   animations: EnemyAnimationKeys
+  /** When set, a kill plays the death frames for this long before the defeat (explosion, drop) lands. */
+  deathSequenceMs?: number
+  /** A dedicated behaviour in place of the generic `EnemyAI` (see `enemyBrains.ts`). */
+  brain?: EnemyBrainKey
+}
+
+export type EnemyBrainKey = 'custodian_walker'
+
+/** A per-family behaviour the entity runs instead of `EnemyAI`; it owns the entity's state and facing. */
+export interface EnemyBrain {
+  update(now: number, deltaMs: number): void
+  onHurt(now: number): void
+  onDefeated(now: number): void
+  destroy(): void
 }
 
 export interface DamageEvent {

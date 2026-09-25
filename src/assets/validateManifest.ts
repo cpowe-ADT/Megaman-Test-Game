@@ -146,8 +146,8 @@ export function validateSpriteManifest(value: unknown): ManifestValidationResult
 
     const animations = validateAnimations(entry.animations, `${path}.animations`, errors)
     const loadScope = entry.loadScope
-    if (loadScope !== undefined && loadScope !== 'preload' && loadScope !== 'game') {
-      errors.push(`${path}.loadScope must be "preload" or "game" when provided`)
+    if (loadScope !== undefined && loadScope !== 'preload' && loadScope !== 'game' && loadScope !== 'stage') {
+      errors.push(`${path}.loadScope must be "preload", "game" or "stage" when provided`)
     }
 
     if (
@@ -179,7 +179,7 @@ export function validateSpriteManifest(value: unknown): ManifestValidationResult
         remoteDataUrl: typeof source.remoteDataUrl === 'string' ? source.remoteDataUrl : undefined
       },
       animations,
-      loadScope: loadScope === 'game' || loadScope === 'preload' ? loadScope : undefined,
+      loadScope: loadScope === 'game' || loadScope === 'preload' || loadScope === 'stage' ? loadScope : undefined,
       notes: typeof entry.notes === 'string' ? entry.notes : undefined
     }
 

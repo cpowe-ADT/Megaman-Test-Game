@@ -6,6 +6,22 @@ import { resolveSwordTrailPose } from './SwordTrailProfile'
 import { SHAKES, resolveChargeAuraFrequencyMs } from './hitFeel'
 import { FEEL_FRAME_MS, LANDING_SQUASH_FRAMES } from './config'
 import { Settings } from '../systems/Settings'
+import {
+  CHARGE_AURA,
+  CHARGE_AURA_BY_LEVEL,
+  HERO_EFFECTS_ATLAS,
+  HERO_PROJECTILES_ATLAS,
+  SLASH_ARC_OVERLAYS,
+  SLASH_ARC_ROTATION,
+  muzzleAnchor,
+  muzzleFrameForLevel,
+  slashArcFlipX,
+  type ChargeLevel,
+  type MuzzlePose
+} from '../combat/heroCombatVisuals'
+import { ensureStripAnimation, playStripOnce } from '../combat/heroFxPlayer'
+import { PLAYER_GAMEPLAY_CONFIG, type Direction8 } from './config'
+import type { SlashMove } from './types'
 
 const EFFECTS_ATLAS_KEY = 'atlas_effects_core'
 
@@ -27,6 +43,8 @@ export class VfxSfxRouter {
   private destroyed = false
   private scaleTween?: Phaser.Tweens.Tween
   private baseScale?: { x: number; y: number }
+  private chargeAura?: Phaser.GameObjects.Sprite
+  private chargeAuraLevel: ChargeLevel = 0
 
   constructor(private readonly scene: Phaser.Scene, private readonly player: Phaser.GameObjects.Sprite) {}
 
@@ -72,7 +90,97 @@ export class VfxSfxRouter {
     this.ownedTimers.add(timer)
   }
 
+  /**
+   * The visible charge tell: `charge_aura` on the hero, tinted and scaled by level (0 hides it). Called
+   * every frame by NewPlayerRuntime with the charge level while the button is held.
+   */
+  updateChargeAura(level: ChargeLevel): void {
+    if (this.destroyed) {
+      return
+    }
+    if (level === 0) {
+      this.chargeAura?.setVisible(false)
+      this.chargeAuraLevel = 0
+      return
+    }
+    if (!this.chargeAura) {
+      const animKey = ensureStripAnimation(this.scene, 'charge_aura', CHARGE_AURA, -1)
+      if (!animKey) {
+        return
+      }
+      this.chargeAura = this.own(this.scene.add.sprite(this.player.x, this.player.y, HERO_EFFECTS_ATLAS.key, CHARGE_AURA.frames[0]))
+      this.chargeAura.setBlendMode(Phaser.BlendModes.ADD)
+      this.chargeAura.play(animKey)
+    }
+    const aura = this.chargeAura
+    // Behind the hero so the body stays readable inside the ring (at depth + 1 it washed the sprite out).
+    aura.setPosition(this.player.x, this.player.y).setDepth(this.player.depth - 1).setVisible(true)
+    if (level !== this.chargeAuraLevel) {
+      const style = CHARGE_AURA_BY_LEVEL[level]
+      aura.setTint(style.tint).setScale(style.scale).setAlpha(Settings.get().reducedFlashing ? style.alpha * 0.6 : style.alpha)
+      aura.anims.timeScale = style.frameRate / CHARGE_AURA.frameRate
+      this.chargeAuraLevel = level
+    }
+  }
+
+  getChargeAuraDebug(): { visible: boolean; level: number; frame: string | null } {
+    const aura = this.chargeAura
+    return { visible: Boolean(aura?.visible), level: this.chargeAuraLevel, frame: aura?.visible ? String(aura.frame?.name ?? '') : null }
+  }
+
+  /** `fx_slash_arc_<move>_<dir>`: the hit's arc, centred on its box and riding with the hero. */
+  private spawnSlashArc(spec: string): void {
+    const cut = spec.lastIndexOf('_')
+    const move = spec.slice(0, cut) as SlashMove
+    const direction = spec.slice(cut + 1) as Direction8
+    const overlay = SLASH_ARC_OVERLAYS[move]
+    if (!overlay) {
+      return
+    }
+    const horizontal = direction === 'e' || direction === 'w'
+    const aimed = move === 'air_spin' ? PLAYER_GAMEPLAY_CONFIG.sword.windows.air[direction] : PLAYER_GAMEPLAY_CONFIG.sword.windows.ground[direction]
+    const anchor = horizontal
+      ? { x: overlay.anchor.x * (direction === 'w' ? -1 : 1), y: overlay.anchor.y }
+      : { x: aimed?.hitbox.offsetX ?? 0, y: aimed?.hitbox.offsetY ?? 0 }
+    const player = this.player
+    // Not owned: the arc destroys itself when its strip ends or the scene shuts down.
+    playStripOnce(this.scene, `slash_${move}`, overlay, player.x + anchor.x, player.y + anchor.y, {
+      flipX: slashArcFlipX(direction),
+      rotation: SLASH_ARC_ROTATION[direction] ?? 0,
+      depth: player.depth + 2,
+      follow: () => ({ x: player.x + anchor.x, y: player.y + anchor.y })
+    })
+  }
+
+  /** `fx_muzzle_lv<level>_<pose>`: flash at the cannon tip for the pose; false when the art is not loaded. */
+  private spawnMuzzle(key: string): boolean {
+    const match = /^fx_muzzle_lv([0-4])_(stand|run|air|dash)$/.exec(key)
+    if (!match || !this.scene.textures.exists(HERO_PROJECTILES_ATLAS.key)) {
+      return false
+    }
+    const level = Number(match[1]) as ChargeLevel
+    const facing: 1 | -1 = this.player.flipX ? 1 : -1
+    const at = muzzleAnchor(match[2] as MuzzlePose, facing)
+    const flash = this.own(this.scene.add.sprite(this.player.x + at.x, this.player.y + at.y, HERO_PROJECTILES_ATLAS.key, muzzleFrameForLevel(level)))
+    flash.setOrigin(facing === 1 ? 0 : 1, 0.5).setFlipX(facing === -1).setDepth(this.player.depth + 2).setBlendMode(Phaser.BlendModes.ADD)
+    this.scene.tweens.add({ targets: flash, alpha: 0, delay: 40 + level * 10, duration: 60 })
+    this.destroyLater(flash, 110 + level * 10)
+    return true
+  }
+
   private spawnVfx(key: string): void {
+    if (key.startsWith('fx_slash_arc_')) {
+      this.spawnSlashArc(key.slice('fx_slash_arc_'.length))
+      return
+    }
+    if (key.startsWith('fx_muzzle_lv')) {
+      if (!this.spawnMuzzle(key)) this.spawnVfx('fx_muzzle_small')
+      return
+    }
+    // The drawn arcs (fx_slash_arc_*) replace the procedural trail when the hero effects atlas is loaded.
+    if (key.startsWith('fx_sword_trail_dir_') && this.scene.textures.exists(HERO_EFFECTS_ATLAS.key)) {
+      return
+    }
     if (!this.scene.textures.exists(EFFECTS_ATLAS_KEY)) {
       return
     }

@@ -34,6 +34,23 @@ import {
   type RisingLiquidState
 } from '../risingLiquid'
 import { detectRoomLockVerbs, type RoomLockVerbSample } from '../roomLock'
+import {
+  CRUMBLE_SLAB,
+  CRUMBLE_SLAB_TOP_ROW,
+  MECHANICS_ATLAS,
+  MECHANICS_FRAME_SIZE,
+  SLAG_FILL_OFFSET_PX,
+  SLAG_SURFACE_TOP_ROW,
+  VENT_NOZZLE_ORIGIN_Y,
+  breakableWallFrameIndex,
+  crumbleFrameIndex,
+  mechanicsFrame,
+  slagFrameIndices,
+  ventFlameFrameIndex,
+  ventNozzleFrameIndex,
+  wallTileLayout
+} from '../mechanicsVisuals'
+import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, setMechanicsFrame } from './mechanicsArt'
 
 export { stageMechanicPlatforms } from '../stageMechanics'
 
@@ -61,10 +78,13 @@ export type StageMechanicsDeps = {
 }
 
 type HazardEntry = { hazard: ResolvedHazard; body: Phaser.GameObjects.GameObject & { body: unknown } }
-type VentEntry = HazardEntry & { flame: Phaser.GameObjects.Rectangle; nozzle: Phaser.GameObjects.GameObject; phase: VentPhase; untilFireMs: number }
-type LiquidEntry = { def: RisingLiquidDefinition; state: RisingLiquidState; fill: Phaser.GameObjects.Rectangle; surface: Phaser.GameObjects.Rectangle }
-type CrumbleEntry = { state: CrumbleState; box: Box; timing: { shakeMs: number; respawnMs: number }; visual?: Visual; baseX: number; baseY: number }
-type WallEntry = { def: BreakableWallDefinition; state: BreakableWallState; box: Box; visual?: Visual; cracks: Phaser.GameObjects.Graphics }
+/** The flame body stays a Rectangle (the damage box); `jet` is the drawn flame when the mechanics atlas is loaded. */
+type VentEntry = HazardEntry & { flame: Phaser.GameObjects.Rectangle; nozzle: Phaser.GameObjects.GameObject; jet?: Phaser.GameObjects.Image; phase: VentPhase; untilFireMs: number }
+type SlagStrip = { surface: Phaser.GameObjects.TileSprite; fill: Phaser.GameObjects.TileSprite }
+type LiquidEntry = { def: RisingLiquidDefinition; state: RisingLiquidState; fill: Phaser.GameObjects.Rectangle; surface: Phaser.GameObjects.Rectangle; art?: SlagStrip }
+/** `art` replaces the platform's drawing (hidden, its body kept) and follows its shake, drop and fade. */
+type CrumbleEntry = { state: CrumbleState; box: Box; timing: { shakeMs: number; respawnMs: number }; visual?: Visual; baseX: number; baseY: number; art?: Phaser.GameObjects.Image }
+type WallEntry = { def: BreakableWallDefinition; state: BreakableWallState; box: Box; visual?: Visual; cracks: Phaser.GameObjects.Graphics; art?: Phaser.GameObjects.TileSprite }
 
 const FLAME_COLOR = 0xff7a1c
 const ARM_FLASH_COLOR = 0xffe08a
@@ -72,6 +92,13 @@ const NOZZLE_COLOR = 0x35130c
 const SLAG_COLOR = 0xff5a1f
 const SLAG_SURFACE_COLOR = 0xffe08a
 const LETHAL_DAMAGE = 99
+/** The backdrop's pit slag strip depth (StageBackdrop.ts): the art covers the same rectangle. */
+const PIT_SLAG_DEPTH_PX = 10
+/** The collapse frame shows this long before the broken wall fades. */
+const WALL_COLLAPSE_HOLD_MS = 140
+
+/** Frame name of a drawn mechanic for `render_game_to_text().mechanics`, null when hidden or not art. */
+const frameName = mechanicsFrameName
 
 function staticBodyOf(object: Phaser.GameObjects.GameObject): Phaser.Physics.Arcade.StaticBody | undefined {
   const body = (object as Phaser.Types.Physics.Arcade.GameObjectWithBody).body
@@ -98,22 +125,31 @@ export class StageMechanicsAdapter {
   private readonly liquids: LiquidEntry[] = []
   private readonly crumbles: CrumbleEntry[] = []
   private readonly walls: WallEntry[] = []
+  /** Slag at the bottom of each floor gap (drawn over the backdrop's flat strip, same rectangle). */
+  private readonly pitSlag: SlagStrip[] = []
+  private readonly art: boolean
 
   constructor(private readonly deps: StageMechanicsDeps) {
     const { scene } = deps
+    this.art = mechanicsArtReady(scene)
     const arena = getCampaignStage(deps.stageId).arena
     for (const def of arena.risingLiquids ?? []) this.liquids.push(this.createLiquid(def))
+    if (this.art) {
+      for (const gap of arena.floorGaps ?? []) this.pitSlag.push(this.createSlagStrip(gap.x, gap.width, GAME_HEIGHT - PIT_SLAG_DEPTH_PX, PIT_SLAG_DEPTH_PX, true))
+    }
     for (const group of arena.crumbleGroups ?? []) {
       const timing = crumbleTiming(group)
       createCrumbleStates(group).forEach((state, index) => {
         const visual = deps.platforms()?.findPlatformVisual(state.id) as Visual | undefined
-        this.crumbles.push({ state, box: crumbleBox(group.platforms[index]), timing, visual, baseX: visual?.x ?? 0, baseY: visual?.y ?? 0 })
+        const box = crumbleBox(group.platforms[index])
+        this.crumbles.push({ state, box, timing, visual, baseX: visual?.x ?? 0, baseY: visual?.y ?? 0, art: this.createCrumbleArt(box, visual) })
       })
     }
     for (const def of arena.breakableWalls ?? []) {
       const visual = deps.platforms()?.findPlatformVisual(def.id) as Visual | undefined
       const cracks = scene.add.graphics().setDepth(2)
-      this.walls.push({ def, state: createBreakableWallState(def), box: wallBox(def), visual, cracks })
+      const box = wallBox(def)
+      this.walls.push({ def, state: createBreakableWallState(def), box, visual, cracks, art: this.createWallArt(box, visual) })
     }
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.update, this)
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this)
@@ -152,10 +188,18 @@ export class StageMechanicsAdapter {
         box: box(body),
         live: Boolean(staticBodyOf(body)?.enable)
       })),
-      vents: this.vents.map((vent) => ({ id: vent.hazard.id, phase: vent.phase, untilFireMs: Math.round(vent.untilFireMs), live: Boolean(staticBodyOf(vent.flame)?.enable) })),
-      risingLiquids: this.liquids.map(({ def, state }) => ({ ...state, surfaceY: Math.round(state.surfaceY), floorY: def.floorY, topY: def.topY, held: this.wasDying })),
-      crumbles: this.crumbles.map(({ state, visual }) => ({ ...state, timerMs: Math.round(state.timerMs), bodyEnabled: Boolean(visual && staticBodyOf(visual)?.enable) })),
-      breakableWalls: this.walls.map(({ state, visual }) => ({ ...state, bodyEnabled: Boolean(visual && staticBodyOf(visual)?.enable) }))
+      vents: this.vents.map((vent) => ({
+        id: vent.hazard.id,
+        phase: vent.phase,
+        untilFireMs: Math.round(vent.untilFireMs),
+        live: Boolean(staticBodyOf(vent.flame)?.enable),
+        nozzleFrame: frameName(vent.nozzle),
+        flameFrame: frameName(vent.jet)
+      })),
+      risingLiquids: this.liquids.map(({ def, state, art }) => ({ ...state, surfaceY: Math.round(state.surfaceY), floorY: def.floorY, topY: def.topY, held: this.wasDying, surfaceFrame: frameName(art?.surface), surfaceArtTop: art?.surface.visible ? art.surface.y : null })),
+      crumbles: this.crumbles.map(({ state, visual, art }) => ({ ...state, timerMs: Math.round(state.timerMs), bodyEnabled: Boolean(visual && staticBodyOf(visual)?.enable), frame: frameName(art) })),
+      breakableWalls: this.walls.map(({ state, visual, art }) => ({ ...state, bodyEnabled: Boolean(visual && staticBodyOf(visual)?.enable), frame: frameName(art) })),
+      pitSlag: { strips: this.pitSlag.length, surfaceFrame: frameName(this.pitSlag[0]?.surface) }
     }
   }
 
@@ -172,6 +216,24 @@ export class StageMechanicsAdapter {
     scene.physics.add.existing(flame, true)
     group.add(flame)
     this.tagHazard(flame, hazard)
+    if (this.art) {
+      // The jet covers the damage box from the nozzle end, scaled to its height; the nozzle (added after) sits over its base.
+      const up = hazard.direction === 'up'
+      const edgeY = up ? hazard.y + hazard.height / 2 : hazard.y - hazard.height / 2
+      const jet = scene.add
+        .image(hazard.x, edgeY, MECHANICS_ATLAS.key, mechanicsFrame('vent_flame', 0))
+        .setOrigin(0.5, up ? 1 : 0)
+        .setScale(hazard.height / MECHANICS_FRAME_SIZE.vent_flame.height)
+        .setFlipY(!up)
+        .setDepth(3)
+        .setVisible(false)
+      const nozzle = scene.add
+        .image(hazard.x, edgeY, MECHANICS_ATLAS.key, mechanicsFrame('vent_nozzle', 0))
+        .setOrigin(0.5, up ? VENT_NOZZLE_ORIGIN_Y.up : VENT_NOZZLE_ORIGIN_Y.down)
+        .setFlipY(!up)
+        .setDepth(3)
+      return { hazard, body: flame as HazardEntry['body'], flame, nozzle, jet, phase: 'idle', untilFireMs: 0 }
+    }
     const baseY = hazard.direction === 'up' ? hazard.y + hazard.height / 2 - 4 : hazard.y - hazard.height / 2 + 4
     const frame = resolveStageVentFrame(stageId, scene)
     const nozzle: Phaser.GameObjects.GameObject = frame
@@ -185,7 +247,64 @@ export class StageMechanicsAdapter {
     const height = Math.max(GAME_HEIGHT, def.floorY) - def.topY + 32
     const fill = scene.add.rectangle(def.x, def.floorY, def.width, height, def.color ?? SLAG_COLOR, 0.82).setOrigin(0, 0).setDepth(3).setVisible(false)
     const surface = scene.add.rectangle(def.x, def.floorY, def.width, 2, SLAG_SURFACE_COLOR, 1).setOrigin(0, 0).setDepth(3).setVisible(false)
-    return { def, state: createRisingLiquidState(def), fill, surface }
+    const art = this.art ? this.createSlagStrip(def.x, def.width, def.floorY, height, false) : undefined
+    if (art && typeof def.color === 'number') [art.surface, art.fill].forEach((strip) => strip.setTint(def.color as number))
+    return { def, state: createRisingLiquidState(def), fill, surface, art }
+  }
+
+  /**
+   * A slag surface strip whose liquid edge (frame row `SLAG_SURFACE_TOP_ROW`) sits on `liquidTop`, and
+   * the fill tiled below it from just under that edge; both tile left-right and cycle their frames slowly.
+   */
+  private createSlagStrip(x: number, width: number, liquidTop: number, depthPx: number, visible: boolean): SlagStrip {
+    const { scene } = this.deps
+    const surfaceSize = MECHANICS_FRAME_SIZE.slag_surface
+    const frames = slagFrameIndices(0)
+    const fill = scene.add
+      .tileSprite(x, liquidTop + SLAG_FILL_OFFSET_PX, width, Math.max(1, depthPx - SLAG_FILL_OFFSET_PX), MECHANICS_ATLAS.key, mechanicsFrame('slag_fill', frames.fill))
+      .setOrigin(0, 0)
+      .setDepth(3)
+      .setVisible(visible)
+    const surface = scene.add
+      .tileSprite(x, liquidTop - SLAG_SURFACE_TOP_ROW, width, surfaceSize.height, MECHANICS_ATLAS.key, mechanicsFrame('slag_surface', frames.surface))
+      .setOrigin(0, 0)
+      .setDepth(3)
+      .setVisible(visible)
+    return { surface, fill }
+  }
+
+  private syncSlagFrames(strip: SlagStrip): void {
+    const frames = slagFrameIndices(this.clockMs)
+    setMechanicsFrame(strip.surface, 'slag_surface', frames.surface)
+    setMechanicsFrame(strip.fill, 'slag_fill', frames.fill)
+  }
+
+  /** The crumble slab frame scaled to the platform's width, its slab top on the platform's top; hides the platform's drawing. */
+  private createCrumbleArt(box: Box, visual: Visual | undefined): Phaser.GameObjects.Image | undefined {
+    if (!this.art || !visual) return undefined
+    visual.setVisible(false)
+    const scale = (box.right - box.left) / CRUMBLE_SLAB.width
+    return this.deps.scene.add
+      .image(box.left - CRUMBLE_SLAB.left * scale, box.top - CRUMBLE_SLAB_TOP_ROW[0] * scale, MECHANICS_ATLAS.key, mechanicsFrame('crumble', 0))
+      .setOrigin(0, 0)
+      .setScale(scale)
+      .setDepth(2)
+  }
+
+  /** The wall frame tiled to the wall's height (whole tiles) and at least `WALL_MIN_DRAW_WIDTH` wide; hides the platform's drawing. */
+  private createWallArt(box: Box, visual: Visual | undefined): Phaser.GameObjects.TileSprite | undefined {
+    if (!this.art || !visual) return undefined
+    visual.setVisible(false)
+    const width = box.right - box.left
+    const height = box.bottom - box.top
+    const layout = wallTileLayout(width, height)
+    const art = this.deps.scene.add
+      .tileSprite((box.left + box.right) / 2, box.top, layout.drawWidth / layout.tileScaleX, height / layout.tileScaleY, MECHANICS_ATLAS.key, mechanicsFrame('breakable_wall', 0))
+      .setOrigin(0.5, 0)
+      .setDepth(2)
+    // Laid out at the frame's own size (whole tiles), then scaled to the drawn width and the wall's height.
+    art.setScale(layout.tileScaleX, layout.tileScaleY)
+    return art
   }
 
   private update(_time: number, delta: number): void {
@@ -196,6 +315,7 @@ export class StageMechanicsAdapter {
     // Every timer steps by the clock's advance (capped per frame), so crumbles and slag keep the vents' time.
     const stepMs = this.clockMs - before
     this.syncVents(false)
+    this.pitSlag.forEach((strip) => this.syncSlagFrames(strip))
     if (paused) return
     const player = this.deps.player()
     const dying = this.deps.isDying()
@@ -216,6 +336,16 @@ export class StageMechanicsAdapter {
       vent.untilFireMs = cycle.untilFireMs
       const body = staticBodyOf(vent.flame)
       if (body) body.enable = cycle.phase === 'firing'
+      if (vent.jet && vent.nozzle instanceof Phaser.GameObjects.Image) {
+        // Art: cold, arming dull/bright for the 300ms flash, firing; the jet flickers only while the body is live.
+        setMechanicsFrame(vent.nozzle, 'vent_nozzle', ventNozzleFrameIndex(cycle.phase, this.clockMs))
+        const flameIndex = ventFlameFrameIndex(cycle.phase, this.clockMs)
+        vent.jet.setVisible(flameIndex !== null)
+        if (flameIndex !== null) setMechanicsFrame(vent.jet, 'vent_flame', flameIndex)
+        vent.flame.fillAlpha = 0
+        if (force || cycle.phase !== vent.phase) vent.phase = cycle.phase
+        continue
+      }
       // Arming flash: the nozzle blinks and a low flame flickers for the 300ms before it fires.
       const blink = cycle.phase === 'arming' && Math.floor(this.clockMs / 60) % 2 === 0
       const nozzle = vent.nozzle
@@ -253,6 +383,13 @@ export class StageMechanicsAdapter {
   private drawLiquid(liquid: LiquidEntry): void {
     const visible = liquid.state.phase !== 'dormant'
     const y = Math.round(liquid.state.surfaceY)
+    if (liquid.art) {
+      // The kill line is `surfaceY`: the strip's liquid edge row sits on it, the fill starts just under it.
+      liquid.art.surface.setVisible(visible).setY(y - SLAG_SURFACE_TOP_ROW)
+      liquid.art.fill.setVisible(visible).setY(y + SLAG_FILL_OFFSET_PX)
+      this.syncSlagFrames(liquid.art)
+      return
+    }
     liquid.fill.setVisible(visible).setY(y)
     liquid.surface.setVisible(visible).setY(y)
   }
@@ -280,7 +417,20 @@ export class StageMechanicsAdapter {
         visual.setAlpha(1)
         if (body) body.enable = true
       }
+      this.drawCrumble(crumble)
     }
+  }
+
+  /** The art follows the (hidden) platform drawing's shake, drop and fade; the frame follows the phase. */
+  private drawCrumble(crumble: CrumbleEntry): void {
+    const { art, visual } = crumble
+    if (!art || !visual) return
+    const index = crumbleFrameIndex(crumble.state, crumble.timing.shakeMs)
+    setMechanicsFrame(art, 'crumble', index)
+    const scale = art.scaleX
+    art.x = crumble.box.left - CRUMBLE_SLAB.left * scale + (visual.x - crumble.baseX)
+    art.y = crumble.box.top - CRUMBLE_SLAB_TOP_ROW[index] * scale + (visual.y - crumble.baseY)
+    art.setAlpha(visual.alpha)
   }
 
   private updateWalls(player: Phaser.Physics.Arcade.Sprite, hero: Box, delta: number): void {
@@ -293,7 +443,7 @@ export class StageMechanicsAdapter {
     for (let cut = 0; cut < cuts; cut += 1) {
       for (const wall of this.walls) {
         if (wall.state.phase !== 'broken' && isSaberReachingWall({ x: player.x, top: hero.top, bottom: hero.bottom }, facing, wall.box)) {
-          this.hitWall(wall, { kind: 'saber' })
+          this.hitWall(wall, { kind: 'saber' }, facing > 0 ? wall.box.left : wall.box.right, player.y)
         }
       }
     }
@@ -307,23 +457,37 @@ export class StageMechanicsAdapter {
       const wall = this.walls.find((entry) => entry.state.phase !== 'broken' && shotReachesWall(shot, entry.box, Math.max(delta, 17)))
       if (!wall) continue
       bullet.data?.set?.('breakableWallHit', wall.def.id)
-      this.hitWall(wall, { kind: 'shot', chargeLevel })
+      this.hitWall(wall, { kind: 'shot', chargeLevel }, body.velocity.x >= 0 ? wall.box.left : wall.box.right, bullet.y)
     }
   }
 
-  private hitWall(wall: WallEntry, hit: { kind: 'saber' } | { kind: 'shot'; chargeLevel: number }): void {
+  /** A counted hit: the crack frame (or line) for the new stage, a spark where it landed and a hit SFX; a broken wall loses its body and fades. */
+  private hitWall(wall: WallEntry, hit: { kind: 'saber' } | { kind: 'shot'; chargeLevel: number }, sparkX: number, sparkY: number): void {
     const next = applyBreakableWallHit(wall.def, wall.state, hit)
     if (next === wall.state) return
     wall.state = next
     this.drawCracks(wall)
+    const { top, bottom } = wall.box
+    playMechanicHit(this.deps.scene, sparkX, Math.min(Math.max(sparkY, top + 6), bottom - 6), hit.kind === 'saber' ? 'sword_hit' : 'enemy_hit')
     if (next.phase !== 'broken' || !wall.visual) return
     const body = staticBodyOf(wall.visual)
     if (body) body.enable = false
-    this.deps.scene.tweens.add({ targets: [wall.visual, wall.cracks], alpha: 0, duration: 220, onComplete: () => wall.visual?.setVisible(false) })
+    const targets = wall.art ? [wall.visual, wall.art] : [wall.visual, wall.cracks]
+    this.deps.scene.tweens.add({
+      targets,
+      alpha: 0,
+      delay: wall.art ? WALL_COLLAPSE_HOLD_MS : 0,
+      duration: 220,
+      onComplete: () => { wall.visual?.setVisible(false); wall.art?.setVisible(false) }
+    })
   }
 
-  /** Crack stages: one more jagged line per stage across the wall face. */
+  /** Crack stages: the wall frame by hits over hitsRequired (art), else one more jagged line per stage across the wall face. */
   private drawCracks(wall: WallEntry): void {
+    if (wall.art) {
+      setMechanicsFrame(wall.art, 'breakable_wall', breakableWallFrameIndex(wall.state))
+      return
+    }
     const stage = breakableWallCrackStage(wall.state)
     const { left, right, top, bottom } = wall.box
     wall.cracks.clear().lineStyle(1, 0x1a0f08, 0.9)
@@ -337,9 +501,12 @@ export class StageMechanicsAdapter {
   private destroy(): void {
     const { scene } = this.deps
     scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.update, this)
-    this.vents.forEach((vent) => vent.nozzle.destroy())
-    this.liquids.forEach((liquid) => { liquid.fill.destroy(); liquid.surface.destroy() })
-    this.walls.forEach((wall) => wall.cracks.destroy())
+    this.vents.forEach((vent) => { vent.nozzle.destroy(); vent.jet?.destroy() })
+    const destroyStrip = (strip: SlagStrip | undefined) => { strip?.surface.destroy(); strip?.fill.destroy() }
+    this.liquids.forEach((liquid) => { liquid.fill.destroy(); liquid.surface.destroy(); destroyStrip(liquid.art) })
+    this.pitSlag.forEach(destroyStrip)
+    this.crumbles.forEach((crumble) => crumble.art?.destroy())
+    this.walls.forEach((wall) => { wall.cracks.destroy(); wall.art?.destroy() })
     scene.data?.remove(STAGE_MECHANICS_DATA_KEY)
   }
 }

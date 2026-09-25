@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
-import { GAME_HEIGHT } from '../../config/renderPolicy'
+import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { getCampaignStage } from '../../content/campaign'
 import { stageVerticalTop } from '../../stage/stageGeometry'
 
@@ -14,9 +14,25 @@ const PIT_SLAG_DEPTH_PX = 10
  * with a two-screen room (Heat Works' climb, the tutorial shaft) gets backdrop and layers above the
  * first screen too, where the climb used to show a blank band; the first screen draws as before. Game pixels throughout, not
  * `scene.scale` (canvas pixels: the parallax canvases were 252*scale tall, 32MB at scale 6).
+ *
+ * Each parallax layer is a TileSprite one view wide, not one world wide: a Phaser TileSprite keeps a
+ * texture the size of its display, so a world-wide layer cost width x height x 4 bytes (Heat Works,
+ * 5824px: four layers, 18.7MB, the stage texture budget 10.5MB). Before each render the sprite moves to
+ * `scrollX * factor` (on screen that is the view's left edge) and its tile offset follows, which draws
+ * exactly what the world-wide sprite drew; memory no longer grows with the stage.
  */
+/** Width of a parallax strip: the view plus a margin for sub-pixel scroll. */
+export const PARALLAX_STRIP_WIDTH = GAME_WIDTH + 8
+
+/** Where a view-wide strip sits for a camera scroll: world x `scrollX * factor` shows on screen at 0. */
+export function parallaxStripX(scrollX: number, scrollFactorX: number): number {
+  return scrollX * scrollFactorX
+}
+
 export class StageBackdrop {
   private layers: Phaser.GameObjects.TileSprite[] = []
+  private strips: Array<{ sprite: Phaser.GameObjects.TileSprite; factor: number }> = []
+  private followingCamera = false
   private graphics?: Phaser.GameObjects.Graphics
   private slag?: Phaser.GameObjects.Graphics
 
@@ -30,6 +46,12 @@ export class StageBackdrop {
   clear(): void {
     this.layers.forEach((layer) => layer.destroy())
     this.layers = []
+    this.strips = []
+    if (this.followingCamera) {
+      this.scene.events.off(Phaser.Scenes.Events.PRE_RENDER, this.followCamera, this)
+      this.scene.events.off(Phaser.Scenes.Events.SHUTDOWN, this.clear, this)
+      this.followingCamera = false
+    }
     this.graphics?.destroy()
     this.graphics = undefined
     this.slag?.destroy()
@@ -62,7 +84,7 @@ export class StageBackdrop {
       if (top < 0) spans.push({ y: top, height: -top, tileY: top - layer.y })
       for (const span of spans) {
         const tileSprite = scene.add
-          .tileSprite(0, span.y, worldWidth, span.height, layer.key)
+          .tileSprite(0, span.y, Math.min(worldWidth, PARALLAX_STRIP_WIDTH), span.height, layer.key)
           .setOrigin(0, 0)
           .setScrollFactor(layer.scrollFactorX, 1)
           .setDepth(-40 + index)
@@ -74,9 +96,26 @@ export class StageBackdrop {
           tileSprite.setTint(layer.tint)
         }
         this.layers.push(tileSprite)
+        this.strips.push({ sprite: tileSprite, factor: layer.scrollFactorX })
       }
     })
+    if (this.strips.length > 0) {
+      this.followCamera()
+      scene.events.on(Phaser.Scenes.Events.PRE_RENDER, this.followCamera, this)
+      scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.clear, this)
+      this.followingCamera = true
+    }
     this.renderPitSlag(stage.arena.floorGaps ?? [], height)
+  }
+
+  /** Keeps each view-wide strip under the camera and its texture in phase with the world-wide layer it replaces. */
+  private followCamera(): void {
+    const scrollX = this.scene.cameras.main.scrollX
+    for (const { sprite, factor } of this.strips) {
+      const x = parallaxStripX(scrollX, factor)
+      sprite.x = x
+      sprite.tilePositionX = x
+    }
   }
 
   /** The accent band between `from` and `to`: a faint fill, horizontal rules getting stronger downward, diagonals. */

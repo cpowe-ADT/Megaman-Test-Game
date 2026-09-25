@@ -1,6 +1,9 @@
 import type Phaser from 'phaser'
+import type { LoadableAtlasEntry } from '../../assets/types'
+import { AUTOMATION } from '../../config/automation'
 import { HERO_COMBAT_ATLASES } from '../../combat/heroCombatVisuals'
 import { getCampaignStage } from '../../content/campaign'
+import { MECHANICS_ATLAS } from '../../mechanics/mechanicsVisuals'
 import { STAGE_BACKGROUND_ASSETS, type StageBackgroundAsset } from '../../content/stageBackgroundCatalog'
 import { queueStageTileAtlas } from './stageTileLoading'
 
@@ -13,10 +16,27 @@ import { queueStageTileAtlas } from './stageTileLoading'
 export const RESIDENT_BACKGROUND_KEYS: readonly string[] = ['bg_dock_0']
 
 export type GameStartData = { stageId?: string; bossId?: string; loadFromSave?: boolean } | undefined | null
+type ActiveRunIds = { stageId?: string; bossId?: string } | null | undefined
 
 /** The stage the Game scene will build from its start data: a resumed run wins, then the stage, then the boss id. */
-export function resolveGameStageId(data: GameStartData, activeRun: { stageId?: string } | null | undefined): string {
+export function resolveGameStageId(data: GameStartData, activeRun: ActiveRunIds): string {
   return activeRun?.stageId ?? data?.stageId ?? data?.bossId ?? 'pyro_maw'
+}
+
+/** Automation's `?bossId=` override (automation builds only). */
+export function automationBossQuery(): string | null {
+  if (!AUTOMATION.enabled || typeof window === 'undefined') return null
+  return new URLSearchParams(window.location.search).get('bossId')
+}
+
+/**
+ * The stage and the boss the Game scene will run, one rule for preload (which atlases to queue) and
+ * create (which boss to build): a resumed run wins, then automation's override, then the start data,
+ * then the stage's own boss.
+ */
+export function resolveGameStageAndBoss(data: GameStartData, activeRun: ActiveRunIds, queryBossId: string | null = automationBossQuery()): [string, string] {
+  const stageId = resolveGameStageId(data, activeRun)
+  return [stageId, activeRun?.bossId ?? queryBossId ?? data?.bossId ?? getCampaignStage(stageId).bossId]
 }
 
 export function stageBackgroundKeys(stageId: string): string[] {
@@ -54,22 +74,73 @@ export function queueStageBackgrounds(scene: Phaser.Scene, stageId: string): voi
 }
 
 /**
- * Atlases only the Game scene draws: the hero's buster, saber and hit art (recorded in the sprite
- * manifest with loadScope 'game', so Preload skips them; tests/hero-combat-visuals.test.ts keeps the
- * two in step). Rule: loaded on the first Game.preload and kept resident across stages, never
- * evicted, because every stage draws them and together they are about 0.3MB decoded.
+ * Atlases only the Game scene draws: the hero's buster, saber and hit art, and the stage mechanics art
+ * (vents, slag, walls, crumbles, gates; 256x262). Recorded in the sprite manifest with loadScope 'game',
+ * so Preload skips them; tests/hero-combat-visuals.test.ts and tests/mechanics-visuals.test.ts keep the
+ * two in step. Rule: loaded on the first Game.preload and kept resident across stages, never evicted,
+ * because every stage draws them (every pit has slag) and together they are about 0.6MB decoded.
  */
+export const GAME_SCENE_ATLASES = [...HERO_COMBAT_ATLASES, MECHANICS_ATLAS] as const
+
 export function queueGameSceneAtlases(scene: Phaser.Scene): void {
-  HERO_COMBAT_ATLASES.forEach((atlas) => {
+  GAME_SCENE_ATLASES.forEach((atlas) => {
     if (!scene.textures.exists(atlas.key)) {
       scene.load.atlas(atlas.key, atlas.image, atlas.data)
     }
   })
 }
 
-/** Everything Game.preload() queues for a stage: its background layers, its biome tile atlas and the resident Game-scene atlases. */
-export function queueStageAssets(scene: Phaser.Scene, stageId: string): void {
+/**
+ * Atlases only some stages draw (loadScope 'stage' in the sprite manifest): the custodian walker mini-boss
+ * (0.38MB) and each warden's atlas (0.25MB each, 2.5MB for all ten, which Preload used to hold for a stage
+ * that fights one). Preload skips them, so the boot texture budget does not pay for them; the list below
+ * matches the manifest's 'stage' entries (tests/stage-background-loading.test.ts). Rule: queued
+ * by the stages whose enemy markers use the family (`atlas_<typeKey>`) and by the stage that fights the boss
+ * (`atlas_<bossId>`), evicted when a stage that needs neither is built. Enemy and boss animations are made on
+ * first use (EnemyAnimator, BossController), after this load.
+ */
+export const STAGE_SCOPED_BOSS_IDS = ['sentinel_rook', 'pyro_maw', 'tide_reaver', 'volt_hopper', 'basalt_titan', 'ferro_blade', 'mire_wraith', 'gale_vixen', 'glacier_ronin', 'omega_core'] as const
+
+export const STAGE_SCOPED_ATLASES: readonly LoadableAtlasEntry[] = [
+  {
+    id: 'enemies-custodian_walker',
+    atlasKey: 'atlas_custodian_walker',
+    runtimeImage: '/assets/sprites/enemies/custodian_walker/custodian_walker.png',
+    runtimeData: '/assets/sprites/enemies/custodian_walker/custodian_walker.atlas.json'
+  },
+  ...STAGE_SCOPED_BOSS_IDS.map((bossId) => ({
+    id: `boss-${bossId.replace(/_/g, '-')}`,
+    atlasKey: `atlas_${bossId}`,
+    runtimeImage: `/assets/sprites/bosses/${bossId}.png`,
+    runtimeData: `/assets/sprites/bosses/${bossId}.json`
+  }))
+]
+
+export function stageScopedAtlases(stageId: string, bossId: string = getCampaignStage(stageId).bossId): LoadableAtlasEntry[] {
+  const used = new Set(getCampaignStage(stageId).enemyMarkers.map((marker) => `atlas_${marker.typeKey}`))
+  used.add(`atlas_${bossId}`)
+  return STAGE_SCOPED_ATLASES.filter((entry) => used.has(entry.atlasKey))
+}
+
+export function stageScopedAtlasKeysToEvict(loadedKeys: readonly string[], stageId: string, bossId?: string): string[] {
+  const keep = new Set(stageScopedAtlases(stageId, bossId).map((entry) => entry.atlasKey))
+  const scoped = new Set(STAGE_SCOPED_ATLASES.map((entry) => entry.atlasKey))
+  return loadedKeys.filter((key) => scoped.has(key) && !keep.has(key))
+}
+
+export function queueStageScopedAtlases(scene: Phaser.Scene, stageId: string, bossId?: string): void {
+  stageScopedAtlasKeysToEvict(scene.textures.getTextureKeys(), stageId, bossId).forEach((key) => scene.textures.remove(key))
+  stageScopedAtlases(stageId, bossId).forEach((entry) => {
+    if (!scene.textures.exists(entry.atlasKey)) {
+      scene.load.atlas(entry.atlasKey, entry.runtimeImage, entry.runtimeData)
+    }
+  })
+}
+
+/** Everything Game.preload() queues for a stage: its background layers, its biome tile atlas, its boss and stage-scoped enemy atlases and the resident Game-scene atlases. */
+export function queueStageAssets(scene: Phaser.Scene, stageId: string, bossId?: string): void {
   queueStageBackgrounds(scene, stageId)
   queueStageTileAtlas(scene, stageId)
+  queueStageScopedAtlases(scene, stageId, bossId)
   queueGameSceneAtlases(scene)
 }

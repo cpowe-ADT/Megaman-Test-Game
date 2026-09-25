@@ -214,9 +214,18 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     assert.ok(scrap.player.x < 2240, `the scrap gate blocks the walk (x ${scrap.player.x})`)
     await replay('pellet')
     assert.equal((await lock(4)).phase, 'locked', 'a pellet does not break the scrap gate')
+    // The scrap gate art (mechanics_v1) and its sign: the key and verb from the bindings, on screen below the HUD band.
+    const signed = await capture('scrap-gate-sign')
+    const scrapLock = locksOf(signed)[4]
+    assert.equal(scrapLock.gateFrame, 'mechanics_v1/scrap_gate/000', 'an intact scrap gate')
+    assert.deepEqual([scrapLock.sign?.visible, scrapLock.sign?.text], [true, 'C  SLASH'], 'the gate sign reads C  SLASH')
+    const { x: signX, y: signY, width: signW, height: signH } = scrapLock.sign
+    const inView = signX - signW / 2 >= signed.camera.scrollX && signX + signW / 2 <= signed.camera.scrollX + 448 && signY - signH / 2 >= signed.camera.scrollY + 58 && signY + signH / 2 <= signed.camera.scrollY + 252
+    assert.ok(inView, `sign inside the view below the HUD band (${JSON.stringify(scrapLock.sign)}, camera ${signed.camera.scrollX}, ${signed.camera.scrollY})`)
     await replay('saber')
     const cut = await capture('saber')
     assert.deepEqual([locksOf(cut)[4].phase, locksOf(cut)[4].progress], ['open', 3], 'three saber cuts break the scrap gate')
+    assert.equal(locksOf(cut)[4].sign?.visible, false, 'the sign hides when the lock opens')
     await replay('walk-right')
     const through = await capture('through')
     assert.ok(through.player.x > 2240)

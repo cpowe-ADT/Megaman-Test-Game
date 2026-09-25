@@ -1,5 +1,33 @@
 import { BOSS_ROSTER } from '../../bosses/roster'
-import { BUSTER_SHOT_VISUALS, HERO_PROJECTILES_ATLAS, type ChargeLevel } from '../../combat/heroCombatVisuals'
+import { BUSTER_SHOT_VISUALS, HERO_PROJECTILES_ATLAS, REFLECTED_SHOT_VISUAL, type ChargeLevel } from '../../combat/heroCombatVisuals'
+
+/** An enemy shot the saber sent back (src/combat/SwordHitRouter.ts): a player shot drawn as `reflected`. */
+export const PLAYER_REFLECTED_SHOT_ID = 'player_reflected_shot'
+
+function createReflectedShotDefinition(): ProjectileDefinition {
+  return {
+    id: PLAYER_REFLECTED_SHOT_ID,
+    owner: 'player',
+    pool: 'player',
+    speed: 260,
+    damage: 2,
+    lifetimeMs: 1600,
+    maxVelocityX: 640,
+    maxVelocityY: 640,
+    visual: {
+      textureKey: HERO_PROJECTILES_ATLAS.key,
+      frame: REFLECTED_SHOT_VISUAL.frames[0],
+      animationFrames: REFLECTED_SHOT_VISUAL.frames,
+      animationFrameMs: Math.round(1000 / REFLECTED_SHOT_VISUAL.frameRate),
+      depth: 2,
+      scale: REFLECTED_SHOT_VISUAL.scale,
+      flipXWithDirection: true
+    },
+    hitbox: { width: REFLECTED_SHOT_VISUAL.width, height: REFLECTED_SHOT_VISUAL.height },
+    behavior: { kind: 'standard' },
+    hitPolicy: { hitsEnvironment: true, collidesWithWorldBounds: true, pierce: 0 }
+  }
+}
 import { getWeaponConfig } from '../../content/weapons'
 import { PLAYER_GAMEPLAY_CONFIG } from '../../player/config'
 import type { ProjectileDefinition } from '../types'
@@ -250,6 +278,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     createChargeDefinition(2),
     createChargeDefinition(3),
     createChargeDefinition(4),
+    createReflectedShotDefinition(),
     createEnemyDefinition({
       id: 'enemy_basic_shot',
       reflectable: true,

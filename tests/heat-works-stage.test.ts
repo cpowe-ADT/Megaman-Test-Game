@@ -111,13 +111,13 @@ test('Heat Works secrets: the heart needs a dash jump, the sub tank is behind th
   assert.equal(climb.riseMs, 14000)
 })
 
-test('Heat Works enemies: 18+ placements of the five brief types, each spawning off camera and retiring behind', () => {
+test('Heat Works enemies: 18+ placements of the five brief types and the mini-boss, each spawning off camera and retiring behind', () => {
   const stage = getCampaignStage('pyro_maw')
   const markers = stage.enemyMarkers
   assert.ok(markers.length >= 18)
   assert.deepEqual(
     [...new Set(markers.map((entry) => entry.typeKey))].sort(),
-    ['enemy_armored_bot', 'enemy_drone', 'enemy_mine_bot', 'enemy_rocket_bot', 'enemy_slicer_bot']
+    ['custodian_walker', 'enemy_armored_bot', 'enemy_drone', 'enemy_mine_bot', 'enemy_rocket_bot', 'enemy_slicer_bot']
   )
   for (const entry of markers) {
     assert.ok((entry.spawnTriggerX ?? 0) <= entry.x - 260, `${entry.id} spawns off camera`)

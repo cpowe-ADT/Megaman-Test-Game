@@ -96,6 +96,7 @@ export class PlayerCombat {
   private comboLinkRemainingMs = 0
   private airSlashUsed = false
   private slashStartedThisTick = false
+  private muzzlePose: 'stand' | 'run' | 'air' | 'dash' = 'stand'
   private wasDashing = false
   private swingId = 0
   private readonly swingTargets = new Set<unknown>()
@@ -152,6 +153,7 @@ export class PlayerCombat {
     }
 
     const canAct = this.hitstunRemainingMs <= 0
+    this.muzzlePose = dashing ? 'dash' : !grounded ? 'air' : intent.moveAxis !== 0 ? 'run' : 'stand'
 
     if (canAct) {
       if (this.deferredReleaseLevel > 0 && now >= this.nextFireAt) {
@@ -442,9 +444,10 @@ export class PlayerCombat {
         this.slashPhase = 'active'
         this.slashPhaseRemainingMs = this.framesToMs(hit.activeFrames) + carry
         events.push({ type: 'vfx', key: `fx_sword_trail_dir_${this.slashDirection}` })
+        events.push({ type: 'vfx', key: `fx_slash_arc_${this.slashMove}_${this.slashDirection}` })
         if (!this.slashHitboxFired) {
-          // One-shot event for the current adapter (Game.ts applySwordHitboxFromRuntime); the per-frame
-          // box is snapshot.swordHitbox. No hit-stop or shake here: the hit path emits them on contact.
+          // One event per combo hit (debug overlay, animation hitbox.enable); the hit path itself reads
+          // snapshot.swordHitbox every active frame (src/combat/SwordHitRouter.ts) and emits hit-stop on contact.
           events.push({ type: 'hitbox', request: this.resolveHitbox() })
           this.slashHitboxFired = true
         }
@@ -524,7 +527,7 @@ export class PlayerCombat {
     this.transientShotFired = true
 
     events.push({ type: 'projectile', request })
-    events.push({ type: 'vfx', key: 'fx_muzzle_small' })
+    events.push({ type: 'vfx', key: `fx_muzzle_lv${chargeLevel}_${this.muzzlePose}` })
     events.push({ type: 'sfx', key: chargeLevel > 0 ? `shot_charge_lv${chargeLevel}` : 'shot_basic' })
 
     this.player.setFlipX(shouldFlipPlayerSpriteForFacing(facing))

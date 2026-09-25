@@ -116,14 +116,17 @@ export const SLASH_ARC_OVERLAYS: Record<SlashMove, SlashArcOverlay> = {
   air_spin: { ...strip('effects_hero', 'slash_air', 4, 24, 44, 40), anchor: { x: 18, y: -4 } }
 }
 
-/** Aimed swings rotate the east-facing arc about its centre (radians, +y down); the anchor follows the aimed box. */
+/**
+ * Aimed swings rotate the arc about its centre (radians, +y down, clockwise positive); the anchor follows
+ * the aimed box. West-side values apply to the flipped arc, so nw turns clockwise to point up-left.
+ */
 export const SLASH_ARC_ROTATION: Record<Direction8, number> = {
   e: 0,
   ne: -Math.PI / 4,
   n: -Math.PI / 2,
-  nw: -Math.PI / 4,
+  nw: Math.PI / 4,
   w: 0,
-  sw: Math.PI / 4,
+  sw: -Math.PI / 4,
   s: Math.PI / 2,
   se: Math.PI / 4
 }

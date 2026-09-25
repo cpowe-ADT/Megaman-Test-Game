@@ -60,10 +60,10 @@ import { NewPlayerRuntime } from '../player/NewPlayerRuntime'
 import { applyPlayerBodyProfile } from '../player/PlayerBodyProfiles'
 import { PLAYER_GAMEPLAY_CONFIG, resolvePlayerPhysicsLimits } from '../player/config'
 import { resolvePlayerFeatureFlags } from '../player/featureFlags'
-import { resolveSwordHitboxOrigin, swordHitboxIntersectsTarget } from '../player/swordCollision'
-import type { PlayerDamageRequest, PlayerDamageResult, ResolvedHitbox } from '../player/types'
+import { SwordHitRouter } from '../combat/SwordHitRouter'
+import type { PlayerDamageRequest, PlayerDamageResult } from '../player/types'
 import { ActiveRunSaveData, Save } from '../systems/Save'
-import { queueStageAssets, resolveGameStageId } from './game/stageBackgroundLoading'
+import { queueStageAssets, resolveGameStageAndBoss } from './game/stageBackgroundLoading'
 import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD, formatDistrictLabel } from '../ui/HUD'
 import { VictoryModal } from '../ui/VictoryModal'
@@ -326,6 +326,7 @@ export class Game extends Phaser.Scene {
   private readonly playerFeatureFlags = resolvePlayerFeatureFlags()
   private readonly enemyFeatureFlags = resolveEnemyFeatureFlags()
   private newPlayerRuntime?: NewPlayerRuntime
+  private swordHitRouter?: SwordHitRouter
   private enemySpawner?: EnemySpawner
   private pauseOverlay?: Phaser.GameObjects.Container
   private paused = false
@@ -1030,7 +1031,8 @@ export class Game extends Phaser.Scene {
     }
   }
 
-  private updateBossControllerSafe(): void {
+  /** `delta` is the scene update's own; `game.loop.delta` is stale under stepFrames and ran the boss slow. */
+  private updateBossControllerSafe(delta: number): void {
     const controller = this.bossController
     if (!controller) {
       return
@@ -1045,14 +1047,14 @@ export class Game extends Phaser.Scene {
     if (this.victoryTriggered || this.bossDeathHandled) {
       return
     }
-    controller.update(this.time.now, this.game.loop.delta)
+    controller.update(this.time.now, delta)
   }
   // ======================= [AI-UPDATE-END]
 
   /** Loads only this stage's background layers and biome tile atlas; see stageBackgroundLoading.ts and stageTileLoading.ts. */
   preload(): void {
     const data = this.sys.settings.data as GameData
-    queueStageAssets(this, resolveGameStageId(data, (data as any)?.loadFromSave ? Save.loadActiveRun() : null))
+    queueStageAssets(this, ...resolveGameStageAndBoss(data, (data as any)?.loadFromSave ? Save.loadActiveRun() : null))
   }
 
   create(data: GameData): void {
@@ -1125,11 +1127,9 @@ export class Game extends Phaser.Scene {
     const activeRun = loadFromSave ? Save.loadActiveRun() : null
     this.sessionStats = new CampaignSessionStatistics(activeRun?.stageElapsedMs)
     installProgressionDebugHooks(this, (previous, next, item) => { this.progressionSave = next; this.applyProgressionStateToRuntime(previous, next, item) })
-    const stageId = resolveGameStageId(data as any, activeRun)
+    const [stageId, resolvedBossId] = resolveGameStageAndBoss(data as any, activeRun)
     const stage = getCampaignStage(stageId)
-    const bossIdFromQuery = AUTOMATION.enabled ? (params?.get('bossId') as BossId | null) : null
-    const selectedBossId =
-      (activeRun?.bossId as BossId | undefined) ?? bossIdFromQuery ?? data.bossId ?? stage.bossId
+    const selectedBossId = resolvedBossId as BossId
     this.activeBossId = selectedBossId
     this.activeStageId = stage.id
     const blueprint = getBossById(selectedBossId)
@@ -1398,6 +1398,13 @@ export class Game extends Phaser.Scene {
         this.touchControls = undefined
       })
     }
+    this.swordHitRouter = new SwordHitRouter({
+      scene: this, player: () => this.player, facing: () => this.facing, enemies: () => this.enemies, enemyShots: () => this.bossBullets,
+      boss: () => (this.victoryTriggered ? null : ((this.bossTarget ?? this.bossBody) as any) ?? null), bossHp: () => this.bossHp?.current ?? null,
+      projectiles: () => this.projectileSystem, damageBoss: (amount) => this.applyDamageToBoss(amount), flashEnemy: (enemy) => this.flashEnemy(enemy),
+      damageEnemy: (enemy, amount, knockback) => { if (!this.enemySpawner?.applyDamageToSprite(enemy, { amount, type: 'melee', knockback, sourceId: 'player_sword' })) this.applyDamageToTarget(enemy, amount) },
+      onSwing: () => this.rechargeSelectedWeaponFromSaber(), onContactHit: (kind, frames) => this.cameraDirector.onContactHit(kind, frames)
+    })
     this.newPlayerRuntime = new NewPlayerRuntime(
       this,
       this.player,
@@ -1407,7 +1414,7 @@ export class Game extends Phaser.Scene {
         setAnimation: (key) => this.setPlayerAnimation(key),
         spawnProjectile: (request) => this.fireBulletFromRuntime(request),
         canChargeProjectile: () => this.getCurrentWeaponConfig().allowCharge,
-        applySwordHitbox: (hitbox) => this.applySwordHitboxFromRuntime(hitbox),
+        applySwordHitbox: (hitbox, claim) => this.swordHitRouter?.apply(hitbox, claim),
         applyDamage: (damage) => this.commitPlayerDamage(damage)
       },
       this.virtualButtons
@@ -1492,7 +1499,7 @@ export class Game extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.sessionStats.tick(delta, Boolean(this.player?.active && !this.paused && !this.victoryTriggered && !this.dialogueOverlay?.isActive() && !this.victoryModal?.isOpen() && !this.storyDirector?.isBlocking()))
-    if (this.cameraDirector.tickHitstop()) { this.cameraDirector.tickCameraFollow(); return }
+    if (this.cameraDirector.tickHitstop()) { this.newPlayerRuntime?.latchPressesDuringHitstop(); this.cameraDirector.tickCameraFollow(); return }
 
     if (!this.player || !this.actions) {
       const now = this.time.now
@@ -1561,7 +1568,7 @@ export class Game extends Phaser.Scene {
     this.enemySpawner?.update(now, delta)
     this.devUpdate()
 
-    this.updateBossControllerSafe()
+    this.updateBossControllerSafe(delta)
   }
 
   private createPauseOverlay(width: number, height: number): void {
@@ -1882,64 +1889,6 @@ export class Game extends Phaser.Scene {
 
     this.applyDamageToBoss(2)
     this.tweens?.add({ targets: boss, alpha: 0.25, yoyo: true, duration: 70 })
-  }
-
-  private applySwordHitboxFromRuntime(hitbox: ResolvedHitbox): void {
-    this.rechargeSelectedWeaponFromSaber()
-    const origin = resolveSwordHitboxOrigin(this.player.x, this.player.y, this.facing, hitbox)
-    let hitConfirmed = false
-
-    this.enemies.children.iterate((child) => {
-      const enemy = child as Phaser.Physics.Arcade.Sprite | null
-      if (!enemy || !enemy.active) {
-        return false
-      }
-      const collided = swordHitboxIntersectsTarget(origin, hitbox, {
-        x: enemy.x,
-        y: enemy.y,
-        width: enemy.displayWidth,
-        height: enemy.displayHeight
-      })
-      if (!collided) {
-        return false
-      }
-      const handledByFramework = this.enemySpawner?.applyDamageToSprite(enemy, {
-        amount: 2,
-        type: 'melee',
-        knockback: new Phaser.Math.Vector2(this.facing * 100, -60),
-        sourceId: 'player_sword'
-      })
-      const remaining = handledByFramework ? 1 : this.applyDamageToTarget(enemy, 2)
-      if (remaining > 0) {
-        this.flashEnemy(enemy)
-        this.spawnSwordImpactFx(enemy.x, enemy.y, false)
-        hitConfirmed = true
-      }
-      return false
-    })
-
-    const boss = this.bossTarget ?? this.bossBody
-    const onHit = () => { AudioService.playSfx('sword_hit'); this.cameraDirector.onContactHit(hitbox.grounded ? 'sword_ground' : 'sword_air', hitbox.hitstopFrames) }
-    if (!boss || !boss.active || this.victoryTriggered) {
-      if (hitConfirmed) onHit()
-      return
-    }
-
-    if (
-      swordHitboxIntersectsTarget(origin, hitbox, {
-        // The boss is a container; its display size is not its hurt box. Use the aligned body.
-        x: boss.body?.center?.x ?? boss.x,
-        y: boss.body?.center?.y ?? boss.y,
-        width: boss.body?.width ?? boss.displayWidth,
-        height: boss.body?.height ?? boss.displayHeight
-      })
-    ) {
-      this.applyDamageToBoss(2)
-      this.tweens?.add({ targets: boss, alpha: 0.25, yoyo: true, duration: 70 })
-      this.spawnSwordImpactFx(boss.x + this.facing * 10, boss.y - 6, true)
-      hitConfirmed = true
-    }
-    if (hitConfirmed) onHit()
   }
 
   private onBulletHitsEnemy(
@@ -2545,49 +2494,6 @@ export class Game extends Phaser.Scene {
       if (enemy.active) {
         enemy.clearTint()
       }
-    })
-  }
-
-  private spawnSwordImpactFx(x: number, y: number, strong: boolean): void {
-    this.events.emit('camera.shake', {
-      intensity: strong ? 0.009 : 0.005,
-      duration: strong ? 100 : 75
-    })
-
-    if (!this.textures.exists(EFFECTS_ATLAS_KEY)) {
-      return
-    }
-
-    const flash = this.add
-      .sprite(x, y, EFFECTS_ATLAS_KEY, strong ? 'effects_core/core/019' : 'effects_core/core/011')
-      .setDepth(8)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setTint(strong ? 0xd8fff4 : 0xc4fff2)
-      .setScale(strong ? 1.35 : 1.05)
-
-    this.tweens.add({
-      targets: flash,
-      alpha: 0,
-      scale: strong ? 1.95 : 1.45,
-      duration: strong ? 120 : 90,
-      ease: 'Quad.Out',
-      onComplete: () => flash.destroy()
-    })
-
-    const emitter = this.add.particles(x, y, EFFECTS_ATLAS_KEY, {
-      frame: strong ? PROJECTILE_CLASH_FRAMES : ['effects_core/core/011', 'effects_core/core/003'],
-      lifespan: { min: 70, max: 120 },
-      speed: strong ? { min: 35, max: 120 } : { min: 25, max: 80 },
-      quantity: strong ? 12 : 7,
-      scale: { start: strong ? 0.7 : 0.5, end: 0 },
-      alpha: { start: 0.85, end: 0 },
-      tint: strong ? [0xc7fff1, 0xffffff, 0x7effc8] : [0xb8fff0, 0xffffff],
-      blendMode: 'ADD'
-    })
-    emitter.setDepth(7)
-    this.time.delayedCall(strong ? 135 : 105, () => {
-      emitter.stop()
-      emitter.destroy()
     })
   }
 

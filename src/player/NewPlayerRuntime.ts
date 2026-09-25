@@ -31,14 +31,16 @@ import type {
   PlayerRuntimeEvent,
   ProjectileSpawnReceipt,
   ResolvedHitbox,
-  SpawnProjectileRequest
+  SpawnProjectileRequest,
+  PlayerIntent
 } from './types'
 
 type RuntimeHooks = {
   setAnimation: (key: string) => void
   spawnProjectile: (request: SpawnProjectileRequest) => ProjectileSpawnReceipt | null
   canChargeProjectile: () => boolean
-  applySwordHitbox: (hitbox: ResolvedHitbox) => void
+  /** Called on every active sword frame; `claim` is true the first time a target is claimed in this combo hit. */
+  applySwordHitbox: (hitbox: ResolvedHitbox, claim: (target: unknown) => boolean) => void
   applyDamage: (damage: number) => void
 }
 
@@ -58,6 +60,26 @@ export class NewPlayerRuntime {
   private readonly debug: PlayerDebug
 
   private activeHitbox: ResolvedHitbox | undefined
+  private readonly claimSwordHit = (target: unknown): boolean => this.combat.claimSwordHit(target)
+  private latchedPresses = { slash: false, jump: false }
+
+  /**
+   * Hit-stop freezes the scene update, and a saber or jump press made during it used to vanish (a combo
+   * press landing in hit 1's freeze never reached hit 2). Game calls this on frozen frames; the presses
+   * are replayed on the first frame after.
+   */
+  latchPressesDuringHitstop(): void {
+    const intent = this.controller.sampleIntent(this.motor.getFacing())
+    this.latchedPresses.slash ||= intent.slashPressed
+    this.latchedPresses.jump ||= intent.jumpPressed
+  }
+
+  private takeLatchedPresses(intent: PlayerIntent): PlayerIntent {
+    const latched = this.latchedPresses
+    if (!latched.slash && !latched.jump) return intent
+    this.latchedPresses = { slash: false, jump: false }
+    return { ...intent, slashPressed: intent.slashPressed || latched.slash, jumpPressed: intent.jumpPressed || latched.jump }
+  }
   private lastMotorSnapshot?: MotorSnapshot
   private lastCombatSnapshot?: CombatSnapshot
   private currentAnimationKey = 'player_idle'
@@ -115,7 +137,7 @@ export class NewPlayerRuntime {
         if (eventName === 'hitbox.enable') {
           const request = this.activeHitbox
           if (request) {
-            this.hooks.applySwordHitbox(request)
+            this.hooks.applySwordHitbox(request, this.claimSwordHit)
           }
         }
         if (eventName === 'fx.spawn') {
@@ -139,7 +161,7 @@ export class NewPlayerRuntime {
     if (this.deathActive) {
       return
     }
-    const intent = this.controller.sampleIntent(this.motor.getFacing())
+    const intent = this.takeLatchedPresses(this.controller.sampleIntent(this.motor.getFacing()))
     const motorSnapshot = this.motor.update(
       intent,
       deltaMs,
@@ -159,6 +181,13 @@ export class NewPlayerRuntime {
     )
 
     this.consumeCombatEvents(combatResult.events)
+    // The sword tests its box on every active frame, not only the first (targets that step in late are hit).
+    const swordHitbox = combatResult.snapshot.swordHitbox
+    if (swordHitbox) {
+      this.activeHitbox = swordHitbox
+      this.hooks.applySwordHitbox(swordHitbox, this.claimSwordHit)
+    }
+    this.vfxSfx.updateChargeAura(combatResult.snapshot.charging ? combatResult.snapshot.chargeLevel : 0)
     this.updateIFrameBlink(deltaMs, combatResult.snapshot.iFramesRemainingMs)
     if (motorSnapshot.justJumped) {
       this.lastJumpSource = motorSnapshot.jumpSource
@@ -413,7 +442,6 @@ export class NewPlayerRuntime {
         this.dispatchProjectile(event.request)
       } else if (event.type === 'hitbox') {
         this.activeHitbox = event.request
-        this.hooks.applySwordHitbox(event.request)
       }
     }
 

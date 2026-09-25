@@ -22,6 +22,26 @@ import {
   type RoomRect,
   type VerticalSegmentDefinition
 } from '../roomLock'
+import { GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
+import { MAIN_GROUND_HEIGHT } from '../../stage/stageGeometry'
+import {
+  MECHANICS_ATLAS,
+  MECHANICS_FRAME_SIZE,
+  SCRAP_GATE_TILE_SCALE,
+  bottomAlignedTileOffset,
+  energyGateFrameIndex,
+  gateSignPosition,
+  gateSignText,
+  isGateSignShown,
+  mechanicsFrame,
+  scrapGateFrameIndex
+} from '../mechanicsVisuals'
+import { mechanicsArtReady, mechanicsFrameName, playMechanicHit, setMechanicsFrame } from './mechanicsArt'
+
+/** A verb gate's world-space sign: key and verb from the live bindings (`C  SLASH`), shown near the closed gate. */
+type GateSign = { container: Phaser.GameObjects.Container; panel: Phaser.GameObjects.Rectangle; label: Phaser.GameObjects.BitmapText | Phaser.GameObjects.Text }
+const SIGN_PAD_X = 4
+const SIGN_HEIGHT = 12
 
 /** The player runtime surface the adapter reads: the typed verb sample and facing. */
 export type RoomLockRuntime = {
@@ -62,6 +82,10 @@ const RAISED_STAGE_CAMERA = -2
 export class RoomLockAdapter {
   private states: RoomLockState[]
   private readonly gates: Phaser.GameObjects.Rectangle[] = []
+  /** Drawn gates (mechanics_v1): `energy_gate` for verb and fight locks, `scrap_gate` for the saber lock; the Rectangle keeps the body. */
+  private readonly gateArt: (Phaser.GameObjects.TileSprite | undefined)[] = []
+  private readonly signs: (GateSign | undefined)[] = []
+  private clockMs = 0
   private readonly colliders: Phaser.Physics.Arcade.Collider[] = []
   private readonly defaultWorld: RoomRect
   private prevSample: RoomLockVerbSample | null = null
@@ -94,20 +118,94 @@ export class RoomLockAdapter {
       ;(gate.body as Phaser.Physics.Arcade.StaticBody | undefined)?.updateFromGameObject()
       if (player) this.colliders.push(scene.physics.add.collider(player, gate))
       this.gates.push(gate)
+      const art = mechanicsArtReady(scene) ? this.createGateArt(lock, top) : undefined
+      if (art) gate.setVisible(false)
+      this.gateArt.push(art)
+      this.signs.push(lock.requiredInput ? this.createSign() : undefined)
     }
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.update, this)
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this)
     scene.data.set(ROOM_LOCK_DATA_KEY, this)
   }
 
-  getDebugState(): Array<RoomLockState & { gateX: number; gateClosed: boolean; cameraHeld: boolean; room: RoomRect }> {
-    return this.states.map((state, index) => ({
-      ...state,
-      gateX: this.locks[index].gateX,
-      gateClosed: Boolean((this.gates[index]?.body as Phaser.Physics.Arcade.StaticBody | undefined)?.enable),
-      cameraHeld: this.cameraRoom === index,
-      room: { ...this.locks[index].room }
-    }))
+  getDebugState(): Array<
+    RoomLockState & { gateX: number; gateClosed: boolean; cameraHeld: boolean; room: RoomRect; gateFrame: string | null; sign: { visible: boolean; text: string; x: number; y: number; width: number; height: number } | null }
+  > {
+    return this.states.map((state, index) => {
+      const art = this.gateArt[index]
+      const sign = this.signs[index]
+      return {
+        ...state,
+        gateX: this.locks[index].gateX,
+        gateClosed: Boolean((this.gates[index]?.body as Phaser.Physics.Arcade.StaticBody | undefined)?.enable),
+        cameraHeld: this.cameraRoom === index,
+        room: { ...this.locks[index].room },
+        gateFrame: mechanicsFrameName(art),
+        sign: sign ? { visible: sign.container.visible, text: sign.label.text, x: sign.container.x, y: sign.container.y, width: sign.panel.width, height: sign.panel.height } : null
+      }
+    })
+  }
+
+  /**
+   * The gate column from the room's top to the floor, tiles ending whole on the floor: the energy
+   * field at 1:1 (tinted amber for a fight gate), the scrap plates at `SCRAP_GATE_TILE_SCALE`.
+   */
+  private createGateArt(lock: RoomLockDefinition, top: number): Phaser.GameObjects.TileSprite {
+    const saber = lock.requiredInput === 'saber'
+    const group = saber ? 'scrap_gate' : 'energy_gate'
+    const scale = saber ? SCRAP_GATE_TILE_SCALE : 1
+    const size = MECHANICS_FRAME_SIZE[group]
+    const height = (GAME_HEIGHT - MAIN_GROUND_HEIGHT - top) / scale
+    const art = this.deps.scene.add
+      .tileSprite(lock.gateX, top, size.width, height, MECHANICS_ATLAS.key, mechanicsFrame(group, 0))
+      .setOrigin(0.5, 0)
+      .setScale(scale)
+      .setDepth(4)
+    art.tilePositionY = bottomAlignedTileOffset(height, size.height)
+    if (isDefeatLock(lock)) art.setTint(FIGHT_GATE_COLOR)
+    return art
+  }
+
+  private createSign(): GateSign {
+    const { scene } = this.deps
+    const label = scene.cache.bitmapFont.exists('font')
+      ? scene.add.bitmapText(0, 0, 'font', '', 8).setOrigin(0.5, 0.5).setTint(0xfff1b0)
+      : scene.add.text(0, 0, '', { fontFamily: 'monospace', fontSize: '8px', color: '#fff1b0', fontStyle: 'bold' }).setOrigin(0.5, 0.5)
+    const panel = scene.add.rectangle(0, 0, 8, SIGN_HEIGHT, 0x0b1624, 0.88).setStrokeStyle(1, 0x7de8ff, 0.9)
+    const container = scene.add.container(0, 0, [panel, label]).setDepth(5).setVisible(false)
+    return { container, panel, label }
+  }
+
+  /** Signs and gate frames, every frame the world runs. */
+  private syncArt(player: Phaser.Physics.Arcade.Sprite): void {
+    const view = this.deps.scene.cameras.main.worldView
+    this.locks.forEach((lock, index) => {
+      const state = this.states[index]
+      const art = this.gateArt[index]
+      if (art && state.phase !== 'open') {
+        if (lock.requiredInput === 'saber') setMechanicsFrame(art, 'scrap_gate', scrapGateFrameIndex(state))
+        else setMechanicsFrame(art, 'energy_gate', energyGateFrameIndex(this.clockMs))
+      }
+      const sign = this.signs[index]
+      if (!sign || !lock.requiredInput) return
+      const shown = isGateSignShown(state, player.x, lock.gateX)
+      sign.container.setVisible(shown)
+      if (!shown) return
+      const text = gateSignText(lock.requiredInput, Settings.get().bindings)
+      if (sign.label.text !== text) {
+        sign.label.setText(text)
+        sign.panel.setSize(Math.ceil(sign.label.width) + SIGN_PAD_X * 2, SIGN_HEIGHT)
+      }
+      const position = gateSignPosition({
+        gateX: lock.gateX,
+        floorY: GAME_HEIGHT - MAIN_GROUND_HEIGHT,
+        signWidth: sign.panel.width,
+        signHeight: SIGN_HEIGHT,
+        view: { x: view.x, y: view.y, width: view.width, height: view.height },
+        hudBandPx: GAMEPLAY_VIEWPORT_TOP
+      })
+      sign.container.setPosition(position.x, position.y)
+    })
   }
 
   /** `render_game_to_text().mechanics.verticalSegments`: the camera follows vertically while `cameraHeld`. */
@@ -119,9 +217,10 @@ export class RoomLockAdapter {
     }))
   }
 
-  private update(): void {
+  private update(_time: number, delta: number): void {
     const player = this.deps.player()
     if (!player?.active || this.deps.scene.physics.world.isPaused) return
+    this.clockMs += Math.min(Math.max(0, delta || 0), 100)
     const index = findRoomIndex(this.locks, player.x)
     if (index >= 0 && this.states[index].phase === 'dormant') {
       this.states[index] = armRoomLock(this.states[index])
@@ -142,27 +241,40 @@ export class RoomLockAdapter {
       this.prevSample = null
     }
     this.syncBounds(player)
+    this.syncArt(player)
   }
 
   private apply(index: number, verb: RoomLockInput, player: Phaser.Physics.Arcade.Sprite): void {
     const lock = this.locks[index]
     const facing = this.deps.runtime()?.getFacing() ?? 1
     if (verb === 'saber' && !isSaberInReach(player.x, facing, lock.gateX)) return
-    this.commit(index, applyRoomLockInput(this.states[index], verb))
+    const before = this.states[index]
+    this.commit(index, applyRoomLockInput(before, verb))
+    // A counted cut on the scrap gate: a spark on its face and the sword hit SFX.
+    if (verb === 'saber' && this.states[index] !== before) playMechanicHit(this.deps.scene, lock.gateX - facing * (GATE_WIDTH / 2), player.y - 4, 'sword_hit')
   }
 
-  /** A changed state fades the gate with progress and removes its body when the lock opens. */
+  /**
+   * A changed state steps the scrap gate's cut frame (or fades a fight gate, and the flat gate without
+   * art, with progress) and removes the body when the lock opens: the sign hides, the gate falls apart and fades.
+   */
   private commit(index: number, next: RoomLockState): void {
     if (next === this.states[index]) return
     this.states[index] = next
     const gate = this.gates[index]
+    const art = this.gateArt[index]
+    const scrap = this.locks[index].requiredInput === 'saber'
     if (next.phase !== 'open') {
-      gate.setAlpha(Math.max(0.35, 1 - next.progress / next.hitsRequired))
+      if (art && scrap) setMechanicsFrame(art, 'scrap_gate', scrapGateFrameIndex(next))
+      else (art ?? gate).setAlpha(Math.max(0.35, 1 - next.progress / next.hitsRequired))
       return
     }
     const body = gate.body as Phaser.Physics.Arcade.StaticBody | undefined
     if (body) body.enable = false
-    this.deps.scene.tweens.add({ targets: gate, alpha: 0, duration: 240, onComplete: () => gate.setVisible(false) })
+    this.signs[index]?.container.setVisible(false)
+    if (art && scrap) setMechanicsFrame(art, 'scrap_gate', scrapGateFrameIndex(next))
+    const target = art ?? gate
+    this.deps.scene.tweens.add({ targets: target, alpha: 0, delay: art && scrap ? 140 : 0, duration: 240, onComplete: () => target.setVisible(false) })
   }
 
   /**
@@ -205,6 +317,8 @@ export class RoomLockAdapter {
     this.deps.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.update, this)
     this.colliders.forEach((collider) => collider.destroy())
     this.gates.forEach((gate) => gate.destroy())
+    this.gateArt.forEach((art) => art?.destroy())
+    this.signs.forEach((sign) => sign?.container.destroy())
     this.deps.scene.data?.remove(ROOM_LOCK_DATA_KEY)
   }
 }

@@ -3716,7 +3716,8 @@ async function runBossSwordScenario(name) {
         const frameName = String(state.playerVisual?.frameName ?? '')
         const validSlash =
           (animationKey === 'player_slash_ground_e' && frameName.startsWith('player_main/slash_ground_e/')) ||
-          (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/'))
+          (animationKey === 'player_slash_air_e' && frameName.startsWith('player_main/slash_air_e/')) ||
+          (animationKey === 'player_slash_air_spin' && frameName.startsWith('player_main/slash_air_spin/'))
         return validSlash && state.newPlayer?.visuals?.activeHitbox?.direction === 'e'
       },
       2500
@@ -3894,8 +3895,10 @@ async function main() {
     await executeSmokeScenario(summary, '35-radio-ticker', () => runRadioTickerScenario('35-radio-ticker', storyDeps))
     await executeSmokeScenario(summary, '36-ending-flow', () => runEndingFlowScenario('36-ending-flow', storyDeps))
     await executeSmokeScenario(summary, '42-mechanics-matrix', async () => (await import('./smoke/mechanics-matrix.mjs')).runMechanicsMatrixScenario('42-mechanics-matrix', { outputDir, url, readState, waitForState, advanceFrames, tapKey }))
+    await executeSmokeScenario(summary, '43-miniboss-custodian', async () => (await import('./smoke/miniboss-custodian.mjs')).runMinibossCustodianScenario('43-miniboss-custodian', storyDeps))
     await executeSmokeScenario(summary, '49-tutorial-verbs', async () => (await import('./smoke/tutorial-verbs.mjs')).runTutorialVerbsScenario('49-tutorial-verbs', storyDeps))
     await executeSmokeScenario(summary, '50-pyro-route', async () => (await import('./smoke/pyro-route.mjs')).runPyroRouteScenario('50-pyro-route', storyDeps))
+    await executeSmokeScenario(summary, '51-saber-combo', async () => (await import('./smoke/saber-combo.mjs')).runSaberComboScenario('51-saber-combo', { outputDir, url, readState, waitForState, advanceFrames }))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }
     await executeSmokeScenario(summary, '38-options-persist', () => runOptionsPersistScenario('38-options-persist', pauseDeps))

@@ -18,7 +18,7 @@ import type { StagePlatformDefinition, LocationAnchors } from '../campaign'
  *   3-4 escalate  1344-2240  checkpoint 2 and the radio, sorting lanes with faster vents, slicers, rocket
  *                            loaders on ledges, two pits
  *   5 secret      2240-2688  the route runs over a sealed chamber; a charged shot breaks its wall (sub tank)
- *   6 midboss     2688-3648  the ante-room, then the locked catwalk room (opens once its stand-ins fall)
+ *   6 midboss     2688-3648  the ante-room, then the locked catwalk room (opens once the custodian walker falls)
  *   7-9 master    3648-4544  checkpoint 3, the two-screen slag climb between two wall faces (one-way
  *                            ledges, two crumbles, vents on ledges, wall kicks the fast line, capsule
  *                            alcove at the top), then the works floor with a crumble stone over a pit
@@ -85,8 +85,8 @@ const checkpoint = (id: string, x: number, triggerX: number, radioSequenceId?: s
 })
 
 export const HEAT_WORKS_ROUTE_WIDTH = 12 * 448
-/** Mid-boss stand-ins until `custodian_walker` exists (EVAL-P6-005): the catwalk gate opens once all fall. */
-export const HEAT_WORKS_MIDBOSS_MARKERS = ['pyro_mid_armored', 'pyro_mid_mine_a', 'pyro_mid_mine_b']
+/** The mini-boss (`custodian_walker`, EVAL-P6-005): the catwalk gate opens once it falls. */
+export const HEAT_WORKS_MIDBOSS_MARKERS = ['pyro_mid_custodian']
 
 export const HEAT_WORKS_CHECKPOINTS = [
   checkpoint('pyro_start', 44, 0),
@@ -192,7 +192,11 @@ export const HEAT_WORKS_LOCATION_ANCHORS: LocationAnchors = {
   pickup_bonus: { x: 4680, y: 218 }
 }
 
-/** 20 placements, the brief's five types; each spawns at least 260px ahead of the hero and retires behind. */
+/**
+ * 18 placements: the brief's five types and the mini-boss; each spawns at least 260px ahead of the hero
+ * and retires behind. The custodian walker spawns while the hero is still in the ante-room (off camera),
+ * waits until the hero is in the room, and patrols the floor between the catwalk step and the gate.
+ */
 export const HEAT_WORKS_ENEMIES: EnemyLevelMarker[] = [
   enemy('pyro_intro_mine', 'enemy_mine_bot', 440, standingOn(204), 170, 620),
   enemy('pyro_teach_slicer', 'enemy_slicer_bot', 620, standingOn(FLOOR), 360, 760, [596, 636]),
@@ -206,9 +210,7 @@ export const HEAT_WORKS_ENEMIES: EnemyLevelMarker[] = [
   enemy('pyro_sort_rocket_b', 'enemy_rocket_bot', 2212, standingOn(180), 1952, 2300),
   enemy('pyro_secret_drone', 'enemy_drone', 2480, 120, 2220, 2600),
   enemy('pyro_ante_slicer', 'enemy_slicer_bot', 2790, standingOn(204), 2530, 2900, [2736, 2848]),
-  enemy('pyro_mid_armored', 'enemy_armored_bot', 3560, standingOn(FLOOR), 3300, 3760, [3470, 3620]),
-  enemy('pyro_mid_mine_a', 'enemy_mine_bot', 3464, standingOn(180), 3204, 3760),
-  enemy('pyro_mid_mine_b', 'enemy_mine_bot', 3600, standingOn(180), 3340, 3760),
+  enemy('pyro_mid_custodian', 'custodian_walker', 3560, standingOn(FLOOR), 3100, 3760, [3372, 3624]),
   enemy('pyro_climb_drone', 'enemy_drone', 3920, -40, 3660, 4200),
   enemy('pyro_climb_mine', 'enemy_mine_bot', 4000, standingOn(-68), 3740, 4200),
   enemy('pyro_works_drone', 'enemy_drone', 4320, 150, 4060, 4440),

@@ -1,7 +1,9 @@
 import { EnemyAnimationEntry } from './types'
 
-function createSet(base: string): EnemyAnimationEntry[] {
-  return [
+type AnimationSuffix = 'idle' | 'move' | 'attack_windup' | 'attack_active' | 'death'
+
+function createSet(base: string, frameRates: Partial<Record<AnimationSuffix, number>> = {}): EnemyAnimationEntry[] {
+  const entries: EnemyAnimationEntry[] = [
     {
       key: `${base}_idle`,
       frameRate: 6,
@@ -95,6 +97,10 @@ function createSet(base: string): EnemyAnimationEntry[] {
       events: [{ frame: 1, event: 'spawn_vfx', payload: { key: 'boom' } }]
     }
   ]
+  return entries.map((entry) => {
+    const rate = frameRates[entry.key.slice(base.length + 1) as AnimationSuffix]
+    return rate ? { ...entry, frameRate: rate } : entry
+  })
 }
 
 const keys = [
@@ -112,6 +118,9 @@ const keys = [
   'enemy_fly_trap'
 ] as const
 
-export const EnemyAnimationManifest: Record<string, EnemyAnimationEntry[]> = Object.fromEntries(
-  keys.map((key) => [key, createSet(key)])
-)
+export const EnemyAnimationManifest: Record<string, EnemyAnimationEntry[]> = {
+  ...Object.fromEntries(keys.map((key) => [key, createSet(key)])),
+  // Mini-boss (atlas custodian_walker, 64px frames): a heavy walk, a 500 ms leg-raise tell (three frames
+  // at 6 fps), a 250 ms stomp and four death frames over 500 ms (CUSTODIAN_TUNING).
+  custodian_walker: createSet('custodian_walker', { idle: 5, move: 6, attack_windup: 6, attack_active: 12, death: 8 })
+}

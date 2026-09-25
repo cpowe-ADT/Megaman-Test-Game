@@ -10,7 +10,7 @@ export function getGameSceneAtlasEntries(manifest: SpriteSheetManifestV1): Loada
   return getReadyAtlasEntries(manifest, 'game')
 }
 
-function getReadyAtlasEntries(manifest: SpriteSheetManifestV1, scope: 'preload' | 'game'): LoadableAtlasEntry[] {
+function getReadyAtlasEntries(manifest: SpriteSheetManifestV1, scope: 'preload' | 'game' | 'stage'): LoadableAtlasEntry[] {
   return manifest.entries
     .filter(
       (entry) =>

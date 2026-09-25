@@ -5,7 +5,7 @@
 // (b) the intro vent does not hurt while quiet and takes 2 HP when it fires;
 // (d) a charged shot breaks the secret wall and walking in collects the sub tank;
 // (e) the catwalk room locks (camera held, the mid-boss callout on the radio lane), walking into its gate
-//     does not pass, and it opens only after the last stand-in falls;
+//     does not pass, and it opens only after the custodian walker falls (its fight is smoke 43);
 // (c) from checkpoint 3, walking in starts the slag; from the top ledge real input clears the right wall
 //     onto the works floor; the capsule alcove is reachable (warp plus assert); the slag kills and resets;
 // (f) real input from the end of the vent lane over the last pit crosses checkpoint 4 into the boss room,
@@ -141,7 +141,7 @@ export async function runPyroRouteScenario(name, { outputDir, storyUrl, readStat
     await capture('secret-room')
     mark('d')
 
-    // (e) The catwalk room: locks on entry, holds the camera, plays the callout; opens only after the last stand-in.
+    // (e) The catwalk room: locks on entry, holds the camera, plays the callout; opens only after the mini-boss falls.
     await place(3232, 214)
     state = await waitForState(page, (next) => mech(next).roomLocks?.[0]?.phase === 'locked', 3000, 'catwalk room locks')
     assert.equal(mech(state).roomLocks[0].cameraHeld, true, 'the camera is held to the room')
@@ -154,7 +154,7 @@ export async function runPyroRouteScenario(name, { outputDir, storyUrl, readStat
     assert.ok(pushed.x < 3648, `the closed gate holds (x ${pushed.x})`)
     evidence.pushed = { ...pushed, stream: (await readState(page)).enemySpawner, entities: await page.evaluate(() => window.__phaserGame.scene.getScene('Game').enemySpawner.getEntities().map((entry) => [entry.id, Math.round(entry.sprite.x), Math.round(entry.sprite.y), entry.sprite.active])) }
     mark('e-pushed')
-    state = await waitForState(page, (next) => (next.enemySpawner?.activeMarkers ?? 0) >= 3, 4000, 'stand-ins spawned')
+    state = await waitForState(page, (next) => (next.enemySpawner?.activeMarkers ?? 0) >= 1, 4000, 'mini-boss spawned')
     mark('e-spawned')
     const killStandIn = (id) => page.evaluate((id) => {
       const game = window.__phaserGame.scene.getScene('Game')
@@ -163,14 +163,14 @@ export async function runPyroRouteScenario(name, { outputDir, storyUrl, readStat
       game.enemySpawner.applyDamageToSprite(entity.sprite, { amount: 999, type: 'bullet', knockback: game.cameras.main.midPoint.clone().set(0, 0), sourceId: 'smoke_50' })
       return true
     }, id)
-    const ids = ['pyro_mid_armored', 'pyro_mid_mine_a', 'pyro_mid_mine_b']
+    const ids = ['pyro_mid_custodian']
     for (const [index, id] of ids.entries()) {
       assert.ok(await killStandIn(id), `found stand-in ${id}`)
       await advanceFrames(page, 20)
       const lock = mech(await readState(page)).roomLocks[0]
       if (index < ids.length - 1) assert.deepEqual([lock.phase, lock.gateClosed], ['locked', true], `still locked after ${id}`)
     }
-    state = await waitForState(page, (next) => mech(next).roomLocks?.[0]?.phase === 'open' && !mech(next).roomLocks[0].gateClosed, 4000, 'gate opens after the last stand-in')
+    state = await waitForState(page, (next) => mech(next).roomLocks?.[0]?.phase === 'open' && !mech(next).roomLocks[0].gateClosed, 4000, 'gate opens after the mini-boss')
     evidence.midboss = mech(state).roomLocks[0]
     await capture('midboss-open')
     mark('e')
@@ -199,6 +199,22 @@ export async function runPyroRouteScenario(name, { outputDir, storyUrl, readStat
     assert.ok(Math.abs(state.player.x - 3680) < 24, `respawned at checkpoint 3 (x ${state.player.x})`)
     evidence.slagReset = byId(mech(state).risingLiquids, 'pyro_slag')
     await capture('respawn-checkpoint-3')
+    // Craig: "when I dropped in the lava I kept on spawning in the lava and dying". The beam-in scale
+    // (0.2 x 1.8) used to stretch the physics body 14px into the floor, so the hero sank and died again.
+    // After a slag death and after a pit death the hero must stand on the floor a second later, alive.
+    const holdsAfterRespawn = async (label) => {
+      await advanceFrames(page, 60)
+      const held = await readState(page)
+      assert.ok(held.playerState?.hp > 0, `${label}: alive a second after the respawn (hp ${held.playerState?.hp})`)
+      assert.equal(held.newPlayer?.locomotion?.grounded, true, `${label}: standing after the respawn`)
+      assert.ok(Math.abs(held.player.y - 214) <= 2, `${label}: feet on the floor, not sunk into it (y ${held.player.y})`)
+      return held.player
+    }
+    evidence.respawnHoldsAfterSlag = await holdsAfterRespawn('slag')
+    await place(4312, 150)
+    await waitForState(page, (next) => next.playerState?.hp === 0, 8000, 'the pit over slag kills')
+    await waitForState(page, (next) => next.playerState?.hp > 0, 12000, 'respawn after the pit')
+    evidence.respawnHoldsAfterPit = await holdsAfterRespawn('pit')
     mark('c')
 
     // (f) From the end of the vent lane: over the last pit, checkpoint 4, the boss room, the boss on screen.

@@ -84,8 +84,9 @@ export class EnemyAnimator {
       case 'attack_windup':
         return animations.attackWindup
       case 'attack_active':
-      case 'attack_recover':
         return animations.attackActive
+      case 'attack_recover':
+        return animations.attackRecover ?? animations.attackActive
       case 'stunned':
         return animations.stunned ?? animations.hurt
       case 'dead':
