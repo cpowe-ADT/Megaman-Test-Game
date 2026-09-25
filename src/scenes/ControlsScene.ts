@@ -128,6 +128,8 @@ export class ControlsScene extends Phaser.Scene {
     actions.onPressed('tutorial', () => { if (!this.listening) this.scene.restart({ returnSceneKey: this.returnSceneKey, firstRun: true }) })
     actions.onPadPressed((input) => this.onPadInput(input))
     bindMenuConfirmCancel(this, { onConfirm: () => this.activate(), onCancel: () => { if (!this.listening) this.close() } })
+    // Part 12i: remapping needs a keyboard or pad; a tap leaves, so the pause menu's Controls row works by touch.
+    this.input.on('pointerdown', () => { if (!this.listening) this.close() })
     const onKey = (event: KeyboardEvent) => this.onKey(event)
     window.addEventListener('keydown', onKey)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('keydown', onKey))
@@ -280,6 +282,7 @@ export class ControlsScene extends Phaser.Scene {
       this.scene.start(next.key, next.data)
     }
     bindMenuConfirmCancel(this, { onConfirm: done, onCancel: done })
+    this.input.once('pointerdown', done)
   }
 
   private close(): void {

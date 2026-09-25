@@ -22,6 +22,7 @@ import {
   type SystemMenuSource
 } from './menu/systemMenuSelector'
 import { GAME_SIZE } from '../config/renderPolicy'
+import { menuRowAt, menuTapIntent } from '../ui/menu/menuTap'
 
 type SystemMenuData = {
   sourceScene: SystemMenuSource
@@ -168,14 +169,18 @@ export class SystemMenu extends Phaser.Scene {
       onCancel: () => this.closeWithAction(this.sourceSceneKey === 'Game' ? 'resume' : 'back')
     })
 
+    // Part 12i: the whole plate is the tap target; a cycle row (weapon, sub tank) steps with its outer thirds.
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      const hitIndex = this.rows.findIndex((row) => row.getBounds().contains(pointer.worldX, pointer.worldY))
-      if (hitIndex >= 0) {
-        AudioService.unlock()
-        this.index = hitIndex
-        this.updateCursor()
-        this.activateSelection()
-      }
+      const hitIndex = menuRowAt(this.rowBackplates.map((plate) => plate.getBounds()), pointer.worldX, pointer.worldY)
+      const plate = this.rowBackplates[hitIndex]
+      const option = this.options[hitIndex]
+      if (!plate || !option) return
+      AudioService.unlock()
+      this.index = hitIndex
+      this.updateCursor()
+      const intent = menuTapIntent(pointer.worldX - plate.getBounds().x, plate.width, option.kind === 'cycle' ? 'cycle' : 'action')
+      if (intent === 'activate') this.activateSelection()
+      else this.cycleSelection(intent === 'previous' ? -1 : 1)
     })
   }
 

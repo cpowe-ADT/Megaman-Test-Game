@@ -3640,6 +3640,66 @@ async function runTouchControlsScenario(name) {
       3000
     )
     await captureScenarioState(page, scenarioDir, 1, pausedState)
+
+    // Part 12i (EVAL-P8-005): real taps through Phaser input, in game pixels mapped onto the canvas.
+    const toPage = (gx, gy) => page.evaluate(({ gx, gy }) => {
+      const rect = window.__phaserGame.canvas.getBoundingClientRect()
+      return { x: rect.left + (gx * rect.width) / 448, y: rect.top + (gy * rect.height) / 252 }
+    }, { gx, gy })
+    const tapAt = async (gx, gy) => { const at = await toPage(gx, gy); await page.mouse.click(at.x, at.y) }
+    const touchButton = (id) => page.evaluate((id) => window.__phaserGame.scene.getScene('Game').touchControls.layoutSnapshot().find((b) => b.id === id), id)
+    const tapButton = async (id) => { const b = await touchButton(id); await tapAt(b.x, b.y) }
+    const tapRow = async (sceneKey, id, where = 'middle') => {
+      const plate = await page.evaluate(({ sceneKey, id }) => {
+        const scene = window.__phaserGame.scene.getScene(sceneKey)
+        const state = scene.getDebugState()
+        const index = (state.options ?? state.rows).findIndex((row) => row.id === id)
+        const rect = (scene.rowBackplates ?? scene.backplates)[index]
+        return rect ? { x: rect.x, y: rect.y, width: rect.width } : null
+      }, { sceneKey, id })
+      if (!plate) throw new Error(`No ${id} row plate in ${sceneKey}`)
+      await tapAt(where === 'right' ? plate.x + plate.width / 2 - 12 : plate.x, plate.y)
+    }
+    const running = (state) => state.scene === 'Game' && !state.activeScenes?.includes('SystemMenu') && !state.activeScenes?.includes('Options')
+
+    await tapRow('SystemMenu', 'resume')
+    await waitForState(page, running, 3000, 'tapping RESUME to close the pause menu')
+    await page.evaluate(() => { window.stageDebug?.grantWeapon?.('FlameSerpent'); window.stageDebug?.grantWeapon?.('HydroLance') })
+    await advanceFrames(page, 2)
+    const weaponBefore = (await readState(page)).playerState?.weapon
+    await tapButton('weaponNext')
+    const weaponNextState = await waitForState(page, (state) => running(state) && state.playerState?.weapon && state.playerState.weapon !== weaponBefore, 3000, 'the WPN > button to cycle the weapon')
+    await tapButton('weaponPrev')
+    const weaponPrevState = await waitForState(page, (state) => running(state) && state.playerState?.weapon === weaponBefore, 3000, 'the < WPN button to cycle back')
+
+    const right = await touchButton('right')
+    const rightAt = await toPage(right.x + right.width / 2 - 6, right.y)
+    await page.mouse.move(rightAt.x, rightAt.y)
+    await page.mouse.down()
+    await advanceFrames(page, 20)
+    const tappedRightState = await waitForState(page, (state) => running(state) && Number(state.player?.vx ?? 0) >= 30, 3000, 'a real press near the right edge of RIGHT to move right')
+    await page.mouse.up()
+    await advanceFrames(page, 6)
+
+    await tapButton('pause')
+    await waitForState(page, (state) => state.activeScenes?.includes('SystemMenu'), 3000, 'the pause button to open the pause menu')
+    await tapRow('SystemMenu', 'options')
+    await waitForState(page, (state) => state.activeScenes?.includes('Options'), 3000, 'tapping OPTIONS in the pause menu')
+    await tapRow('Options', 'touchControls', 'right')
+    await tapRow('Options', 'touchControls', 'right')
+    const toggled = await page.evaluate(() => ({
+      value: window.__phaserGame.scene.getScene('Options').getDebugState().rows.find((row) => row.id === 'touchControls')?.value,
+      stored: JSON.parse(window.localStorage.getItem('settings.v1') ?? '{}').touchControls,
+      layerVisible: window.__phaserGame.scene.getScene('Game').touchControls?.isVisible?.()
+    }))
+    if (toggled.value !== 'OFF' || toggled.stored !== 'off' || toggled.layerVisible !== false) {
+      throw new Error(`Expected two taps on TOUCH CONTROLS to reach OFF and hide the layer at once; saw ${JSON.stringify(toggled)}`)
+    }
+    await tapRow('Options', 'back')
+    await waitForState(page, (state) => !state.activeScenes?.includes('Options') && state.activeScenes?.includes('SystemMenu'), 3000, 'tapping BACK in Options')
+    await tapRow('SystemMenu', 'resume')
+    const hiddenState = await waitForState(page, (state) => running(state) && state.playerState?.virtualControlsVisible === false, 3000, 'the layer to stay hidden after resuming with TOUCH CONTROLS OFF')
+    await captureScenarioState(page, scenarioDir, 2, { weaponBefore, weaponNextState, weaponPrevState, tappedRightState, toggled, hiddenState })
   } finally {
     await page.mouse.up().catch(() => {})
     await closeGameplayPage(browser, scenarioDir, errors)

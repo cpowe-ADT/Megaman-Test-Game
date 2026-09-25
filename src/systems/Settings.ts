@@ -17,11 +17,15 @@ export type KnownSettings = {
   reducedFlashing: boolean
   /** `integer` keeps a whole-number zoom at every window size (letterboxed); `smooth` fills windows under 2x. */
   pixelScaling: PixelScaling
+  /** `auto` shows the touch layer on touch screens (and under `?touchControls=1`); `on` and `off` override that (part 12i). */
+  touchControls: TouchControlsMode
 }
+export const TOUCH_CONTROLS_MODES = Object.freeze(['auto', 'on', 'off'] as const)
+export type TouchControlsMode = typeof TOUCH_CONTROLS_MODES[number]
 /** Known fields plus any newer build's keys, preserved untouched. */
 export type SettingsData = KnownSettings & Record<string, unknown>
 export const SETTINGS_DEFAULTS: Omit<KnownSettings, 'bindings' | 'padBindings'> = Object.freeze({
-  musicVolume: 8, sfxVolume: 8, screenShake: true, storyReplay: false, reducedFlashing: false, pixelScaling: 'smooth'
+  musicVolume: 8, sfxVolume: 8, screenShake: true, storyReplay: false, reducedFlashing: false, pixelScaling: 'smooth', touchControls: 'auto'
 })
 export const VOLUME_STEPS = 10
 const KEY = 'settings.v1'
@@ -78,7 +82,8 @@ export function validateSettings(value: unknown): SettingsData {
     screenShake: bool(raw.screenShake, SETTINGS_DEFAULTS.screenShake),
     storyReplay: bool(raw.storyReplay, SETTINGS_DEFAULTS.storyReplay),
     reducedFlashing: bool(raw.reducedFlashing, SETTINGS_DEFAULTS.reducedFlashing),
-    pixelScaling: PIXEL_SCALING_MODES.includes(raw.pixelScaling as PixelScaling) ? raw.pixelScaling as PixelScaling : SETTINGS_DEFAULTS.pixelScaling
+    pixelScaling: PIXEL_SCALING_MODES.includes(raw.pixelScaling as PixelScaling) ? raw.pixelScaling as PixelScaling : SETTINGS_DEFAULTS.pixelScaling,
+    touchControls: TOUCH_CONTROLS_MODES.includes(raw.touchControls as TouchControlsMode) ? raw.touchControls as TouchControlsMode : SETTINGS_DEFAULTS.touchControls
   }
 }
 function objectPatch(value: unknown): object {

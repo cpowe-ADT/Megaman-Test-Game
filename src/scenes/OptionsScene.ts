@@ -9,9 +9,11 @@ import { applyDisplayOptionChange, DISPLAY_OPTION_HINTS, displayOptionsRows, isD
 import { advanceDeleteConfirmation, applyOptionsChange, DELETE_WORD, optionsRows, type OptionsRow } from './menu/optionsModel'
 import { selectMenuIndex } from './menu/systemMenuSelector'
 import { GAME_SIZE } from '../config/renderPolicy'
+import { cycleTouchControls, TOUCH_CONTROLS_HINT, touchOptionsRow, withTouchRow, type TouchOptionsRow } from '../ui/menu/touchOptions'
+import { menuRowAt, menuTapIntent } from '../ui/menu/menuTap'
 
 type OptionsSceneData = { returnSceneKey?: string }
-type AnyOptionsRow = OptionsRow | DisplayOptionsRow
+type AnyOptionsRow = OptionsRow | DisplayOptionsRow | TouchOptionsRow
 
 const FULLSCREEN_EVENTS = [
   Phaser.Scale.Events.ENTER_FULLSCREEN, Phaser.Scale.Events.LEAVE_FULLSCREEN,
@@ -77,6 +79,7 @@ export class OptionsScene extends Phaser.Scene {
     actions.onPressed('moveLeft', () => this.change(-1))
     actions.onPressed('moveRight', () => this.change(1))
     bindMenuConfirmCancel(this, { onConfirm: () => this.activate(), onCancel: () => this.close() })
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.onTap(pointer.worldX, pointer.worldY))
     this.keyHandler = (event: KeyboardEvent) => this.onTypedKey(event)
     window.addEventListener('keydown', this.keyHandler)
     // Entering or leaving clears a refusal; a refusal (no user gesture, or no Fullscreen API) shows in the hint.
@@ -112,7 +115,7 @@ export class OptionsScene extends Phaser.Scene {
   private currentRows(): AnyOptionsRow[] {
     const settings = Settings.get()
     const display = displayOptionsRows({ fullscreen: this.fullscreenState(), pixelScaling: settings.pixelScaling, reducedFlashing: settings.reducedFlashing })
-    return withDisplayRows(optionsRows({ settings, difficulty: Save.load().difficulty }), display)
+    return withTouchRow(withDisplayRows(optionsRows({ settings, difficulty: Save.load().difficulty }), display), touchOptionsRow(settings.touchControls))
   }
 
   private renderRows(): void {
@@ -132,6 +135,7 @@ export class OptionsScene extends Phaser.Scene {
       this.deleting ? `TYPE ${DELETE_WORD} TO ERASE THE CAMPAIGN AND SETTINGS   ESC CANCEL`
         : selected?.id === 'fullscreen' && this.fullscreenFailed ? 'THE BROWSER REFUSED FULLSCREEN: TRY AGAIN WITH A KEY OR CLICK'
           : selected && isDisplayOptionId(selected.id) ? DISPLAY_OPTION_HINTS[selected.id]
+            : selected?.id === 'touchControls' ? TOUCH_CONTROLS_HINT
             : selected?.id === 'difficulty' ? 'BOSS HEALTH APPLIES ON THE NEXT STAGE ENTRY   LEFT / RIGHT CHANGE'
               : selected?.kind === 'cycle' ? 'LEFT / RIGHT CHANGE     ENTER / ESC BACK' : 'ENTER CONFIRM     ESC BACK'
     )
@@ -148,7 +152,9 @@ export class OptionsScene extends Phaser.Scene {
     if (this.deleting) return
     const row = this.rows[this.index]
     if (!row || row.kind !== 'cycle') return
-    if (isDisplayOptionId(row.id)) {
+    if (row.id === 'touchControls') {
+      Settings.update({ touchControls: cycleTouchControls(Settings.get().touchControls, delta) })
+    } else if (isDisplayOptionId(row.id)) {
       this.changeDisplay(row.id)
     } else {
       const patch = applyOptionsChange({ settings: Settings.get(), difficulty: Save.load().difficulty }, row.id, delta)
@@ -188,11 +194,29 @@ export class OptionsScene extends Phaser.Scene {
       this.renderRows()
       return
     }
-    if (isDisplayOptionId(row.id)) {
+    if (isDisplayOptionId(row.id) || row.id === 'touchControls') {
       this.change(1)
       return
     }
     this.close()
+  }
+
+  /** A tap selects its row; a cycle row steps with its outer thirds and its middle, action rows activate (part 12i). */
+  private onTap(x: number, y: number): void {
+    if (this.deleting) return
+    const hit = menuRowAt(this.backplates.map((plate) => plate.getBounds()), x, y)
+    const row = this.rows[hit]
+    const plate = this.backplates[hit]
+    if (!row || !plate) return
+    AudioService.unlock()
+    this.index = hit
+    const intent = menuTapIntent(x - plate.getBounds().x, plate.width, row.kind)
+    if (intent === 'previous') this.change(-1)
+    else if (intent === 'next' || row.kind === 'cycle') this.change(1)
+    else {
+      this.renderRows()
+      this.activate()
+    }
   }
 
   private onTypedKey(event: KeyboardEvent): void {

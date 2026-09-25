@@ -1,52 +1,46 @@
 import Phaser from 'phaser'
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/renderPolicy'
 import InputActions from '../input/InputActions'
 import { AUTOMATION } from '../config/automation'
 import { DigitalButtonPad, type DigitalButtonName } from '../input/DigitalButtonPad'
-
-type TouchButtonConfig = {
-  key?: DigitalButtonName
-  x: number
-  y: number
-  width: number
-  height: number
-  label: string
-  alpha?: number
-  radius?: number
-  onPress?: () => void
-}
+import { Settings } from '../systems/Settings'
+import {
+  isTouchSystemAction,
+  touchControlsLayout,
+  touchControlsVisible,
+  type TouchButtonId,
+  type TouchButtonSpec,
+  type TouchSystemAction
+} from './touchControlsModel'
 
 type GameplayTouchControlsOptions = {
   onPause: () => void
 }
 
-function resolveTouchMode(): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  const query = new URLSearchParams(window.location.search)
-  if (AUTOMATION.enabled && query.get('touchControls') === '1') {
-    return true
-  }
-
-  if (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) {
-    return true
-  }
-
+function isTouchScreen(): boolean {
+  if (typeof window === 'undefined') return false
+  if (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) return true
   return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches)
 }
 
+function automationForcesTouch(): boolean {
+  return typeof window !== 'undefined' && AUTOMATION.enabled && new URLSearchParams(window.location.search).get('touchControls') === '1'
+}
+
+/**
+ * The on-screen pad, face buttons and system row (weapon previous, weapon next, pause). The layer exists in every
+ * browser session but builds its buttons only when first shown; `settings.touchControls` (Options: AUTO, ON, OFF)
+ * decides whether it shows, and a change applies at once, even while the pause menu is open.
+ */
 export class GameplayTouchControls {
   private readonly root: Phaser.GameObjects.Container
   private readonly cleanupHandlers: Array<() => void> = []
   private readonly pointerBindings = new Map<number, DigitalButtonName>()
   private readonly buttonPointerIds = new Map<DigitalButtonName, Set<number>>()
-  private readonly visualPressers = new Map<DigitalButtonName, () => void>()
-  private readonly visualResetters = new Map<DigitalButtonName, () => void>()
-  private pauseVisualPress?: () => void
-  private pauseVisualReset?: () => void
-  private visible = false
+  private readonly visualPressers = new Map<TouchButtonId, () => void>()
+  private readonly visualResetters = new Map<TouchButtonId, () => void>()
+  private requested = false
+  private shown = false
+  private built = false
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -55,14 +49,9 @@ export class GameplayTouchControls {
   ) {
     this.root = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(1800)
     this.root.setVisible(false)
-    this.build()
-    this.layout()
 
     this.cleanupHandlers.push(InputActions.forScene(scene).onCancelled(() => this.resetInput()))
-
-    const resizeHandler = () => this.layout()
-    this.scene.scale.on('resize', resizeHandler)
-    this.cleanupHandlers.push(() => this.scene.scale.off('resize', resizeHandler))
+    this.cleanupHandlers.push(Settings.onChange(() => this.applyVisibility()))
 
     const pointerUpHandler = (pointer: Phaser.Input.Pointer) => {
       this.releasePointer(pointer.id)
@@ -75,20 +64,24 @@ export class GameplayTouchControls {
     })
   }
 
+  /** Every browser session gets the (lazy) layer, so switching Options to ON mid-stage can show it. */
   static shouldEnable(): boolean {
-    return resolveTouchMode()
+    return typeof window !== 'undefined'
   }
 
+  /** Whether the current setting, device and automation flag let the layer show. */
+  static isAllowed(): boolean {
+    return touchControlsVisible({ mode: Settings.get().touchControls, touchScreen: isTouchScreen(), forced: automationForcesTouch() })
+  }
+
+  /** The scene's request; the layer shows only when `isAllowed()` agrees. */
   setVisible(visible: boolean): void {
-    this.visible = visible
-    this.root.setVisible(visible)
-    if (!visible) {
-      this.resetInput()
-    }
+    this.requested = visible
+    this.applyVisibility()
   }
 
   isVisible(): boolean {
-    return this.visible
+    return this.shown
   }
 
   setButtonHeld(name: DigitalButtonName, held: boolean): void {
@@ -102,9 +95,12 @@ export class GameplayTouchControls {
   }
 
   triggerPause(): void {
-    this.pauseVisualPress?.()
-    this.options.onPause()
-    this.scene.time.delayedCall(120, () => this.pauseVisualReset?.())
+    this.pulseSystem('pause')
+  }
+
+  /** Automation: button centres and sizes in game pixels, so a smoke can tap them. */
+  layoutSnapshot(): Array<{ id: TouchButtonId; x: number; y: number; width: number; height: number }> {
+    return touchControlsLayout().map(({ id, x, y, width, height }) => ({ id, x, y, width, height }))
   }
 
   destroy(): void {
@@ -118,110 +114,106 @@ export class GameplayTouchControls {
     this.root.destroy(true)
   }
 
+  private applyVisibility(): void {
+    const shown = this.requested && GameplayTouchControls.isAllowed()
+    if (shown && !this.built) {
+      this.built = true
+      touchControlsLayout().forEach((spec) => this.root.add(this.createButton(spec)))
+    }
+    this.shown = shown
+    this.root.setVisible(shown)
+    if (!shown) {
+      this.resetInput()
+    }
+  }
+
+  private pulseSystem(id: TouchSystemAction): void {
+    this.visualPressers.get(id)?.()
+    if (id === 'pause') {
+      this.options.onPause()
+    } else {
+      InputActions.forScene(this.scene).pulse(id)
+    }
+    this.scene.time.delayedCall(120, () => this.visualResetters.get(id)?.())
+  }
+
   private resetInput(): void {
     this.pointerBindings.clear()
     this.buttonPointerIds.clear()
     this.buttons.reset()
     this.visualResetters.forEach(reset => reset())
-    this.pauseVisualReset?.()
   }
 
-  private build(): void {
-    const configs: TouchButtonConfig[] = [
-      { key: 'left', x: 66, y: -4, width: 56, height: 44, label: 'L' },
-      { key: 'right', x: 134, y: -4, width: 56, height: 44, label: 'R' },
-      { key: 'up', x: 100, y: -46, width: 52, height: 40, label: 'U', alpha: 0.24 },
-      { key: 'down', x: 100, y: 38, width: 52, height: 40, label: 'D', alpha: 0.24 },
-      { key: 'jump', x: -168, y: -18, width: 64, height: 64, label: 'JUMP', radius: 18 },
-      { key: 'dash', x: -102, y: 22, width: 60, height: 60, label: 'DASH', radius: 18 },
-      { key: 'shoot', x: -34, y: -18, width: 70, height: 70, label: 'SHOT', radius: 20 },
-      { key: 'saber', x: 42, y: 22, width: 62, height: 62, label: 'SABER', radius: 18 },
-      { x: -16, y: -98, width: 44, height: 28, label: 'II', alpha: 0.34, onPress: this.options.onPause }
-    ]
-
-    configs.forEach((config) => this.root.add(this.createButton(config)))
-  }
-
-  private createButton(config: TouchButtonConfig): Phaser.GameObjects.Container {
-    const alpha = config.alpha ?? 0.18
-    const container = this.scene.add.container(0, 0)
-    const circular = Boolean(config.radius)
-    const shape = circular
+  private createButton(spec: TouchButtonSpec): Phaser.GameObjects.Container {
+    const alpha = spec.alpha
+    const container = this.scene.add.container(spec.x, spec.y)
+    // Hit areas are in the shape's local space, measured from its top-left corner (Phaser adds the display origin
+    // before testing): the old centre-based areas covered only the button's upper-left quarter.
+    const shape = spec.round
       ? this.scene.add
-          .ellipse(0, 0, config.width, config.height, 0x08172a, alpha)
+          .ellipse(0, 0, spec.width, spec.height, 0x08172a, alpha)
           .setStrokeStyle(2, 0xccecff, 0.3)
           .setInteractive(
-            new Phaser.Geom.Circle(0, 0, Math.min(config.width, config.height) / 2),
+            new Phaser.Geom.Circle(spec.width / 2, spec.height / 2, Math.min(spec.width, spec.height) / 2),
             Phaser.Geom.Circle.Contains
           )
       : this.scene.add
-          .rectangle(0, 0, config.width, config.height, 0x08172a, alpha)
+          .rectangle(0, 0, spec.width, spec.height, 0x08172a, alpha)
           .setStrokeStyle(2, 0xccecff, 0.3)
           .setInteractive(
-            new Phaser.Geom.Rectangle(-config.width / 2, -config.height / 2, config.width, config.height),
+            new Phaser.Geom.Rectangle(0, 0, spec.width, spec.height),
             Phaser.Geom.Rectangle.Contains
           )
 
-    const glow = circular
-      ? this.scene.add.ellipse(0, 0, config.width - 6, config.height - 6, 0x1b88ff, 0.08).setVisible(false)
-      : this.scene.add.rectangle(0, 0, config.width - 6, config.height - 6, 0x1b88ff, 0.08).setVisible(false)
+    const glow = spec.round
+      ? this.scene.add.ellipse(0, 0, spec.width - 6, spec.height - 6, 0x1b88ff, 0.08).setVisible(false)
+      : this.scene.add.rectangle(0, 0, spec.width - 6, spec.height - 6, 0x1b88ff, 0.08).setVisible(false)
 
     const label = this.scene.add
-      .text(0, 0, config.label, {
+      .text(0, 0, spec.label, {
         fontFamily: '"Trebuchet MS", monospace',
-        fontSize: config.label.length > 2 ? '12px' : '14px',
+        fontSize: spec.fontScale === 2 ? '14px' : '9px',
         fontStyle: 'bold',
         color: '#ecf7ff',
         align: 'center'
       })
       .setOrigin(0.5)
 
-    shape.setDataEnabled()
-    shape.data?.set('restAlpha', alpha)
-    shape.data?.set('pressedAlpha', Math.min(0.5, alpha + 0.18))
-
+    const pressedAlpha = Math.min(0.5, alpha + 0.18)
     const setPressedVisual = () => {
-      shape.setFillStyle(0x10355a, Number(shape.data?.get('pressedAlpha') ?? 0.34))
+      shape.setFillStyle(0x10355a, pressedAlpha)
       glow.setVisible(true)
     }
-
     const release = () => {
-      shape.setFillStyle(0x08172a, Number(shape.data?.get('restAlpha') ?? alpha))
+      shape.setFillStyle(0x08172a, alpha)
       glow.setVisible(false)
     }
+    this.visualPressers.set(spec.id, setPressedVisual)
+    this.visualResetters.set(spec.id, release)
 
-    const press = (pointerId: number) => {
-      if (config.key && this.pointerBindings.get(pointerId) === config.key) {
-        setPressedVisual()
-        return
-      }
-      if (config.key) {
+    const id = spec.id
+    if (isTouchSystemAction(id)) {
+      shape.on('pointerdown', () => this.pulseSystem(id))
+      shape.on('pointerup', release)
+      shape.on('pointerout', release)
+    } else {
+      const press = (pointerId: number) => {
+        if (this.pointerBindings.get(pointerId) === id) {
+          setPressedVisual()
+          return
+        }
         const previousKey = this.pointerBindings.get(pointerId)
-        if (previousKey && previousKey !== config.key) {
+        if (previousKey && previousKey !== id) {
           this.releasePointer(pointerId)
         }
-      }
-      if (config.key) {
-        const ids = this.buttonPointerIds.get(config.key) ?? new Set<number>()
+        const ids = this.buttonPointerIds.get(id) ?? new Set<number>()
         ids.add(pointerId)
-        this.buttonPointerIds.set(config.key, ids)
-        this.pointerBindings.set(pointerId, config.key)
-        this.buttons.setHeld(config.key, true)
+        this.buttonPointerIds.set(id, ids)
+        this.pointerBindings.set(pointerId, id)
+        this.buttons.setHeld(id, true)
+        setPressedVisual()
       }
-      setPressedVisual()
-      config.onPress?.()
-    }
-
-    if (config.key) {
-      this.visualPressers.set(config.key, setPressedVisual)
-      this.visualResetters.set(config.key, release)
-    } else if (config.onPress) {
-      this.pauseVisualPress = setPressedVisual
-      this.pauseVisualReset = release
-    }
-
-    shape.on('pointerdown', (pointer: Phaser.Input.Pointer) => press(pointer.id))
-    if (config.key) {
+      shape.on('pointerdown', (pointer: Phaser.Input.Pointer) => press(pointer.id))
       shape.on('pointerover', (pointer: Phaser.Input.Pointer) => {
         if (pointer.isDown) {
           press(pointer.id)
@@ -229,14 +221,12 @@ export class GameplayTouchControls {
       })
       shape.on('pointerup', (pointer: Phaser.Input.Pointer) => this.releasePointer(pointer.id))
       shape.on('pointerout', (pointer: Phaser.Input.Pointer) => this.releasePointer(pointer.id))
-    } else {
-      shape.on('pointerup', () => release())
-      shape.on('pointerout', () => release())
     }
 
     container.add([shape, glow, label])
+    // Smoke 13f finds a button by `getData('layout').key`, as it did before part 12i.
     container.setDataEnabled()
-    container.data?.set('layout', config)
+    container.data?.set('layout', { ...spec, key: spec.id })
     return container
   }
 
@@ -261,27 +251,5 @@ export class GameplayTouchControls {
       this.buttons.setHeld(key, false)
       this.visualResetters.get(key)?.()
     }
-  }
-
-  private layout(): void {
-    const width = GAME_WIDTH
-    const height = GAME_HEIGHT
-    const leftAnchor = { x: 24, y: height - 66 }
-    const rightAnchor = { x: width - 92, y: height - 70 }
-
-    this.root.iterate((child: Phaser.GameObjects.GameObject) => {
-      const node = child as Phaser.GameObjects.Container
-      const config = node.data?.get('layout') as TouchButtonConfig | undefined
-      if (!config) {
-        return
-      }
-
-      const anchor = config.key && ['left', 'right', 'up', 'down'].includes(config.key) ? leftAnchor : rightAnchor
-      if (!config.key && config.label === 'II') {
-        node.setPosition(width - 32, 28)
-        return
-      }
-      node.setPosition(anchor.x + config.x, anchor.y + config.y)
-    })
   }
 }
