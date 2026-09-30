@@ -185,35 +185,36 @@ export class ProjectileSystem {
     const deltaSeconds = deltaMs / 1000
 
     Object.values(this.groups).forEach((group) => {
+      // Phaser's Set.iterate stops at a callback that returns false: every path returns true, so each live shot is updated.
       group.children.iterate((child) => {
         const bullet = child as Phaser.Physics.Arcade.Sprite | null
         if (!bullet?.active) {
-          return false
+          return true
         }
 
         const projectileId = bullet.data?.get?.('projectileId') as string | undefined
         if (!projectileId) {
           this.recycleInvalidProjectile(bullet)
-          return false
+          return true
         }
 
         const definition = this.registry.get(projectileId)
         if (!definition) {
           this.recycleInvalidProjectile(bullet)
-          return false
+          return true
         }
 
         const spawnedAt = Number(bullet.data?.get?.('spawnedAt') ?? now)
         const lifetimeMs = Number(bullet.data?.get?.('lifetimeMs') ?? definition.lifetimeMs)
         if (lifetimeMs > 0 && now - spawnedAt >= lifetimeMs) {
           this.recycle(bullet, 'expired')
-          return false
+          return true
         }
 
         const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
         if (!body || !body.enable) {
           this.recycleInvalidProjectile(bullet)
-          return false
+          return true
         }
 
         const rawStalledSince = bullet.data?.get?.('stalledSince')
@@ -232,7 +233,7 @@ export class ProjectileSystem {
         }
         if (stall.shouldRecycle) {
           this.recycle(bullet, 'expired')
-          return false
+          return true
         }
 
         if (definition.behavior.kind === 'wave') {
@@ -246,7 +247,7 @@ export class ProjectileSystem {
           body?.setVelocityY(body.velocity.y + gravityY * deltaSeconds)
         } else if (definition.behavior.kind === 'boomerang' && body) {
           const returnTarget = definition.owner === 'enemy' ? context.enemyReturnTarget : context.player
-          if (!returnTarget) return false
+          if (!returnTarget) return true
           const returnAfterMs = Math.max(
             80,
             Number(bullet.data?.get?.('returnAfterMs') ?? definition.behavior.returnAfterMs)
@@ -267,7 +268,7 @@ export class ProjectileSystem {
             const distance = Math.hypot(dx, dy)
             if (distance <= 14) {
               this.recycle(bullet, 'expired')
-              return false
+              return true
             }
             const scale = returnSpeed / Math.max(1, distance)
             body.setVelocity(dx * scale, dy * scale)
@@ -296,7 +297,7 @@ export class ProjectileSystem {
           this.pullPickups(bullet, context.pickups)
         }
 
-        return false
+        return true
       })
     })
   }
