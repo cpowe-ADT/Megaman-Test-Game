@@ -23,6 +23,8 @@ const SHELL_FRAME = 'projectiles_core/core/003'
 const SHELL_TINT = 0xffb36b
 const MARKER_FRAME_MS = 90
 const BAR_COLOR = 0x4ad8ff
+/** The Tide skin's stage-brief variant (12c): "a rotating shield with one gap per beat". */
+const SHIELD_VARIANT = 'tide_shield'
 
 type LiveShell = {
   shell: MortarShell
@@ -67,6 +69,8 @@ export class RelayTurretNestBrain implements EnemyBrain {
   private shells: LiveShell[] = []
   private shellHits = 0
   private readonly bar: MinibossHealthBar
+  /** The Tide skin's rotating shield gap, or `null` for every other skin (no shield at all). */
+  private shieldGapSideValue: 1 | -1 | null
 
   constructor(entity: EnemyEntity, enabled: boolean) {
     this.entity = entity
@@ -75,6 +79,13 @@ export class RelayTurretNestBrain implements EnemyBrain {
     this.state = createRelayNestState(player && player.x >= entity.sprite.x ? 1 : -1)
     entity.facing = this.state.facing
     this.bar = new MinibossHealthBar(entity.context.scene, BAR_COLOR)
+    // Starts shielded on its facing side (the front), like `shield_drone`'s fixed arc, then rotates.
+    this.shieldGapSideValue = entity.variant === SHIELD_VARIANT ? (this.state.facing === 1 ? -1 : 1) : null
+  }
+
+  /** The open side right now, for `EnemyEntity.applyDamage`'s shield-arc check; `null` off the Tide skin. */
+  shieldGapSide(): 1 | -1 | null {
+    return this.shieldGapSideValue
   }
 
   update(now: number, deltaMs: number): void {
@@ -127,6 +138,10 @@ export class RelayTurretNestBrain implements EnemyBrain {
     for (const event of step.events) {
       if (event === 'burst_windup' || event === 'mortar_windup') {
         playMinibossSfx('tell')
+        // One gap per beat: the shield rotates as each new attack telegraphs.
+        if (this.shieldGapSideValue !== null) {
+          this.shieldGapSideValue = this.shieldGapSideValue === 1 ? -1 : 1
+        }
       } else if (event === 'shot') {
         playMinibossSfx('shot')
         this.fireShot()

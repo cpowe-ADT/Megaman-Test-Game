@@ -45,6 +45,7 @@ export class EnemySpawner {
       explicitId?: string
       patrolMinX?: number
       patrolMaxX?: number
+      variant?: string
     }
   ): EnemyEntity | null {
     const resolvedDefinition = this.resolveDefinition(typeKey)
@@ -66,6 +67,7 @@ export class EnemySpawner {
       enableAI: this.options.enableAI,
       enableProjectiles: this.options.enableProjectiles,
       definitionOverride: resolvedDefinition,
+      variant: options?.variant,
       patrolBounds: hasPatrolBounds
         ? {
             minX: Math.min(options?.patrolMinX as number, options?.patrolMaxX as number),
@@ -237,7 +239,8 @@ export class EnemySpawner {
       const spawned = this.spawn(marker.typeKey, marker.x, marker.y, {
         explicitId: marker.id,
         patrolMinX: marker.patrolMinX,
-        patrolMaxX: marker.patrolMaxX
+        patrolMaxX: marker.patrolMaxX,
+        variant: marker.variant
       })
       if (!spawned) {
         return

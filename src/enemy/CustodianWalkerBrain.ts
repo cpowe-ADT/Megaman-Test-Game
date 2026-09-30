@@ -7,6 +7,7 @@ import {
   type CustodianState
 } from './custodianWalker'
 import { isWalkBlocked, type SolidRect } from './floorProbe'
+import { stepIceSlide } from './iceSlide'
 import { playMinibossSfx } from './minibossAdapter'
 import {
   CUSTODIAN_SHOCKWAVE,
@@ -30,6 +31,8 @@ const WAVE_FRAMES = [
 const WAVE_FRAME_MS = 80
 const BAR_WIDTH = 36
 const BAR_HEIGHT = 3
+/** The Glacier skin's stage-brief variant (12c): "it slides further than it means to". */
+const SLIDE_VARIANT = 'glacier_slide'
 
 type LiveWave = { wave: GroundWave; image: Phaser.GameObjects.Image; hit: boolean; bornAt: number }
 
@@ -64,6 +67,8 @@ export class CustodianWalkerBrain implements EnemyBrain {
   private readonly bar: Phaser.GameObjects.Graphics
   private barHp = -1
   private waveHits = 0
+  /** The Glacier skin's eased velocity (`iceSlide.ts`); unused (stays 0) off that variant. */
+  private slideVelocityX = 0
 
   constructor(entity: EnemyEntity, enabled: boolean) {
     this.entity = entity
@@ -82,12 +87,14 @@ export class CustodianWalkerBrain implements EnemyBrain {
     const dying = this.state.phase === 'dying' || this.state.phase === 'gone'
     if (!body || (!this.enabled && !dying)) {
       motor.setIntent(0, 0)
+      this.slideVelocityX = 0
       this.updateWaves(dtMs, now)
       return
     }
     const grounded = Boolean(body.blocked.down || body.onFloor())
     if (!grounded && !dying) {
       motor.setIntent(0, 0)
+      this.slideVelocityX = 0
       this.updateWaves(dtMs, now)
       return
     }
@@ -115,7 +122,12 @@ export class CustodianWalkerBrain implements EnemyBrain {
       this.entity.state = step.animState
       sprite.data?.set('enemyState', step.animState)
     }
-    motor.setIntent(step.velocityX, 0)
+    // The Glacier skin eases toward the walker's own intent instead of snapping to it, so a stop or a
+    // turn overshoots ("it slides further than it means to"); every other skin moves exactly as stepped.
+    const velocityX =
+      this.entity.variant === SLIDE_VARIANT ? stepIceSlide(this.slideVelocityX, step.velocityX, dtMs) : step.velocityX
+    this.slideVelocityX = velocityX
+    motor.setIntent(velocityX, 0)
     // The wind-up art is three frames at 6 fps (500 ms); a shorter enraged wind-up plays them faster.
     const timeScale = step.state.phase === 'windup' ? CUSTODIAN_TUNING.windupMs / step.state.windupMs : 1
     if (sprite.anims && sprite.anims.timeScale !== timeScale) {

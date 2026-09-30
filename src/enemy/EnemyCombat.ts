@@ -3,8 +3,9 @@ import { EnemyAttackConfig, EnemyDefinition, EnemyRuntimeContext, DamageEvent } 
 import { EnemyProjectileCatalog, spawnEnemyProjectile } from './EnemyProjectiles'
 import { EnemyMotor } from './EnemyMotor'
 import { resolveHeavyPush } from './enemyDamage'
+import { computeHitboxRect, resolveAttackPhase, resolveHitboxKey, type EnemyAttackPhase } from './attackHitbox'
 
-export type EnemyAttackPhase = 'none' | 'windup' | 'active' | 'recover'
+export type { EnemyAttackPhase }
 
 export class EnemyCombat {
   private readonly sprite: Phaser.Physics.Arcade.Sprite
@@ -72,18 +73,7 @@ export class EnemyCombat {
     if (this.attackStartedAt < 0) {
       return 'none'
     }
-    const cfg = this.definition.attack
-    const elapsed = now - this.attackStartedAt
-    if (elapsed < cfg.windupMs) {
-      return 'windup'
-    }
-    if (elapsed < cfg.windupMs + cfg.activeMs) {
-      return 'active'
-    }
-    if (elapsed < cfg.windupMs + cfg.activeMs + cfg.recoveryMs) {
-      return 'recover'
-    }
-    return 'none'
+    return resolveAttackPhase(this.definition.attack, now - this.attackStartedAt)
   }
 
   update(now: number, facing: 1 | -1): void {
@@ -176,10 +166,10 @@ export class EnemyCombat {
     if (phase !== 'active') {
       return null
     }
-    const hitbox = this.definition.hitboxes.melee
-    const originX = this.sprite.x + (facing < 0 ? -hitbox.offsetX - hitbox.width : hitbox.offsetX)
-    const originY = this.sprite.y + hitbox.offsetY - hitbox.height * 0.5
-    return new Phaser.Geom.Rectangle(originX, originY, hitbox.width, hitbox.height)
+    const key = resolveHitboxKey(this.definition.attack.type, this.definition.hitboxes)
+    const hitbox = this.definition.hitboxes[key] ?? this.definition.hitboxes.melee
+    const rect = computeHitboxRect(this.sprite.x, this.sprite.y, facing, hitbox)
+    return new Phaser.Geom.Rectangle(rect.x, rect.y, rect.width, rect.height)
   }
 
   private applyMeleeHitIfNeeded(_attack: EnemyAttackConfig, facing: 1 | -1): void {
