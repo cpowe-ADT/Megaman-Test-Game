@@ -15,7 +15,8 @@ import {
   groundWaveHits,
   launchShockwaves,
   resolveShockwaveSpan,
-  stepGroundWave
+  stepGroundWave,
+  waveFrameIndex
 } from '../src/enemy/groundShockwave.ts'
 import { resolveHeavyPush } from '../src/enemy/enemyDamage.ts'
 import { EnemyCatalog } from '../src/enemy/EnemyCatalog.ts'
@@ -144,6 +145,18 @@ test('ground shockwave: runs both ways at 150 px/s, dies at a wall or a ledge en
   const jumping = { left: moved.x - 7, right: moved.x + 7, top: 190, bottom: 212 }
   assert.equal(groundWaveHits(moved, standing), true)
   assert.equal(groundWaveHits(moved, jumping), false)
+})
+
+// 13b.4 (EVAL-P13-005): the glacier route flake's TypeError was `WAVE_FRAMES[negativeIndex].name` --
+// JS `%` keeps the dividend's sign, so a negative `elapsedMs` (never proven to occur, but not excluded)
+// indexed off the end of the array into `undefined`.
+test('wave frame index: cycles 0..frameCount-1 and never goes negative, even for a negative elapsed', () => {
+  assert.equal(waveFrameIndex(0, 80, 2), 0)
+  assert.equal(waveFrameIndex(79, 80, 2), 0)
+  assert.equal(waveFrameIndex(80, 80, 2), 1)
+  assert.equal(waveFrameIndex(160, 80, 2), 0)
+  assert.equal(waveFrameIndex(-1, 80, 2), 0)
+  assert.equal(waveFrameIndex(-80, 80, 2), 0)
 })
 
 test('heavy: pellets and light swings do not push it; the combo finisher pushes a little', () => {

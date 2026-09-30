@@ -523,7 +523,8 @@ export class PlayerCombat {
     const request: SpawnProjectileRequest = {
       type: chargeLevel === 0 ? 'pellet' : 'charge',
       chargeLevel,
-      facing
+      facing,
+      pose: this.muzzlePose
     }
 
     this.nextFireAt = now + this.blaster.fireRateMs

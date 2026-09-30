@@ -107,3 +107,14 @@ export function groundWaveRect(wave: GroundWave, def: GroundShockwaveDefinition 
 export function groundWaveHits(wave: GroundWave, hero: RectLike, def: GroundShockwaveDefinition = CUSTODIAN_SHOCKWAVE): boolean {
   return wave.alive && rectsOverlap(groundWaveRect(wave, def), hero)
 }
+
+/**
+ * The frame index for a wave's cycling animation (13b.4, `EVAL-P13-005`): safe for any `elapsedMs`,
+ * including negative (JS `%` keeps the dividend's sign, so a plain `Math.floor(elapsedMs / frameMs) %
+ * frameCount` can return a negative index and read `undefined` off the end of the array — the glacier
+ * route flake's TypeError, `CustodianWalkerBrain.ts` reading `.name` off that `undefined`).
+ */
+export function waveFrameIndex(elapsedMs: number, frameMs: number, frameCount: number): number {
+  const step = Math.floor(Math.max(0, elapsedMs) / Math.max(1, frameMs))
+  return ((step % frameCount) + frameCount) % frameCount
+}

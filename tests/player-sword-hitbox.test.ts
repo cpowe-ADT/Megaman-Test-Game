@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PLAYER_GAMEPLAY_CONFIG } from '../src/player/config'
 import { resolveSwordHitboxOrigin, swordHitboxIntersectsTarget } from '../src/player/swordCollision'
+import { resolveHurtbox } from '../src/combat/Hitbox'
 import type { ResolvedHitbox } from '../src/player/types'
 
 test('ground sword hitbox reaches an enemy in front of the player', () => {
@@ -67,4 +68,17 @@ test('west-facing sword hitboxes stay on the left side of the player', () => {
     height: 20
   })
   assert.equal(intersects, true)
+})
+
+// Prompt 06 phase 6.0 (`EVAL-P6-015`): the sword's hit test is `resolveHurtbox` under its own name, so
+// any caller (sword, shots, a future debug overlay) sharing it gets the exact same geometry.
+test('swordHitboxIntersectsTarget is resolveHurtbox: same inputs, same answer', () => {
+  const hitbox: ResolvedHitbox = {
+    shape: PLAYER_GAMEPLAY_CONFIG.sword.windows.ground.e.hitbox,
+    direction: 'e',
+    grounded: true
+  }
+  const origin = resolveSwordHitboxOrigin(100, 120, 1, hitbox)
+  const target = { x: 130, y: 118, width: 20, height: 20 }
+  assert.equal(swordHitboxIntersectsTarget(origin, hitbox, target), resolveHurtbox(origin, hitbox.shape, target))
 })

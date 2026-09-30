@@ -106,6 +106,9 @@ export type SpawnProjectileRequest = {
   weaponId?: 'ArcSlash'
   chargeLevel: 0 | 1 | 2 | 3 | 4
   facing: 1 | -1
+  /** The pose the muzzle flash fired from (13b.3, `EVAL-P13-004`): the shot spawns at the same anchor,
+   * so it starts at the cannon tip instead of a pose-blind fixed offset. Defaults to 'stand'. */
+  pose?: 'stand' | 'run' | 'air' | 'dash'
 }
 
 export type ProjectileSpawnReceipt = {

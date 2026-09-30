@@ -25,7 +25,9 @@ function createReflectedShotDefinition(): ProjectileDefinition {
     },
     hitbox: { width: REFLECTED_SHOT_VISUAL.width, height: REFLECTED_SHOT_VISUAL.height },
     behavior: { kind: 'standard' },
-    hitPolicy: { hitsEnvironment: true, collidesWithWorldBounds: true, pierce: 0 }
+    // 13b.3 (EVAL-P13-004): a standard shot leaves on camera exit (ProjectileSystem.ts), not on
+    // touching the world's top or bottom edge -- a tall charged body no longer dies at the hero's hand.
+    hitPolicy: { hitsEnvironment: true, collidesWithWorldBounds: false, pierce: 0 }
   }
 }
 import { getWeaponConfig, WEAPON_TUNING, type WeaponRuntimeConfig } from '../../content/weapons'
@@ -258,7 +260,9 @@ function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
             : { kind: 'standard' },
     hitPolicy: {
       hitsEnvironment: true,
-      collidesWithWorldBounds: true,
+      // 13b.3 (EVAL-P13-004): a standard shot leaves on camera exit (ProjectileSystem.ts), not on
+      // touching a world edge; a lob, wave or boomerang still collides with the world as before.
+      collidesWithWorldBounds: style !== 'standard',
       pierce: weapon.projectile.pierce
     }
   }
@@ -273,7 +277,9 @@ function createChargeDefinition(level: 1 | 2 | 3 | 4): ProjectileDefinition {
     pool: 'player',
     speed: charge.speed,
     damage: charge.damage,
-    lifetimeMs: 840,
+    // 13b.3 (EVAL-P13-004): a generous backstop now that leaving the camera view is what actually
+    // removes a standard shot; the old 840ms could still end a slow charge level mid-screen.
+    lifetimeMs: 2000,
     maxVelocityX: 640,
     maxVelocityY: 640,
     visual: busterVisual(level, 2),
@@ -281,7 +287,9 @@ function createChargeDefinition(level: 1 | 2 | 3 | 4): ProjectileDefinition {
     behavior: { kind: 'standard' },
     hitPolicy: {
       hitsEnvironment: true,
-      collidesWithWorldBounds: true,
+      // No top/bottom world-edge kill (13a-combat.md #3): lv3/lv4's tall sensor body used to touch the
+      // floor/ceiling of a one-screen room and vanish at the hero's hand.
+      collidesWithWorldBounds: false,
       pierce: charge.pierce
     }
   }

@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { getCampaignStage } from '../../content/campaign'
-import { stageVerticalTop } from '../../stage/stageGeometry'
+import { backdropLayerSpans, stageVerticalTop } from '../../stage/stageGeometry'
 import { hazardStripPattern } from '../../mechanics/mechanicsVisuals'
 import { killPitGaps } from '../../boss/bossRoomLayout'
 
@@ -76,16 +76,18 @@ export class StageBackdrop {
     // The first screen keeps its look exactly (under the HUD band it is the opaque base colour only, so
     // the 1x and 2x renders match there); a tall stage repeats the band above the first screen.
     this.drawBand(backdrop, accentColor, worldWidth, GAMEPLAY_VIEWPORT_TOP, height)
-    if (top < 0) this.drawBand(backdrop, accentColor, worldWidth, top, 0)
+    // 13b.2 (EVAL-P13-003): the upward repeat joins the first screen's band at the viewport top, not at
+    // world y 0, or a tall room shows a flat, pattern-less strip between them (13a-music-backdrop.md).
+    if (top < 0) this.drawBand(backdrop, accentColor, worldWidth, top, GAMEPLAY_VIEWPORT_TOP)
     backdrop.fillStyle(accentColor, 0.45).fillRect(0, GAMEPLAY_VIEWPORT_TOP, worldWidth, 2)
     this.graphics = backdrop
     layers.forEach((layer, index) => {
       if (!scene.textures.exists(layer.key)) {
         return
       }
-      const spans = [{ y: layer.y, height: Math.max(16, height - layer.y), tileY: 0 }]
-      // Above the first screen the layer tiles upward, in phase with its first-screen copy.
-      if (top < 0) spans.push({ y: top, height: -top, tileY: top - layer.y })
+      // Above the first screen the layer tiles upward, in phase with its first-screen copy (13b.2,
+      // EVAL-P13-003: the two copies now join with no gap at the viewport top).
+      const spans = backdropLayerSpans(layer.y, top, height, GAMEPLAY_VIEWPORT_TOP)
       for (const span of spans) {
         const tileSprite = scene.add
           .tileSprite(0, span.y, Math.min(worldWidth, PARALLAX_STRIP_WIDTH), span.height, layer.key)

@@ -55,3 +55,27 @@ export function stageVerticalTop(
   const lockTops = (arena.roomLocks ?? []).map((lock) => lock.room.y)
   return Math.min(0, ...segmentTops, ...lockTops)
 }
+
+/**
+ * The world-y spans a parallax layer tiles across (`StageBackdrop`, EVAL-P13-003): the first-screen
+ * copy from the layer's authored y down to the floor, plus, in a room taller than one screen, an
+ * upward copy that joins it with no gap below the gameplay viewport top. The first screen's look stays
+ * exactly as authored (that strip sits under the HUD there); a tall room repeats it going up.
+ */
+export function backdropLayerSpans(
+  layerY: number,
+  top: number,
+  height: number,
+  gameplayViewportTop: number
+): Array<{ y: number; height: number; tileY: number }> {
+  const spans = [{ y: layerY, height: Math.max(16, height - layerY), tileY: 0 }]
+  if (top < 0) {
+    spans.push({ y: top, height: Math.min(layerY, gameplayViewportTop) - top, tileY: top - layerY })
+  }
+  return spans
+}
+
+/** The highest world-y these spans reach: for "the backdrop covers the camera's full vertical bounds". */
+export function backdropCoverageTop(spans: readonly { y: number }[]): number {
+  return Math.min(...spans.map((span) => span.y))
+}

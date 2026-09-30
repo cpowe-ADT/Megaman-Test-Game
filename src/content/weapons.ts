@@ -187,14 +187,17 @@ export const BUSTER_WEAPON_CONFIG: WeaponRuntimeConfig = {
   energyCost: 0,
   maxEnergy: 28,
   damage: 1,
-  speed: 260,
+  // 13b.3 (EVAL-P13-004): at least 360 px/s so the pellet outruns the dash (about 320); it used to lag
+  // behind and draw under the hero's own body for the whole dash. `lifetimeMs` is a generous backstop
+  // now that `ProjectileSystem` expires a standard player shot when it leaves the camera view instead.
+  speed: 370,
   scale: 1,
   allowCharge: true,
   behavior: 'charge',
   onHitTag: 'none',
   projectile: {
     style: 'standard',
-    lifetimeMs: 720,
+    lifetimeMs: 2000,
     pierce: 0
   }
 }

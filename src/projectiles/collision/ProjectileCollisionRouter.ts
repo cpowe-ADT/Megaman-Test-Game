@@ -55,7 +55,8 @@ type ProjectileCollisionRouterOptions = {
   getPlayer: () => Phaser.Physics.Arcade.Sprite | undefined
   getNow: () => number
   getFacing: () => 1 | -1
-  damageBoss: (damage: number, meta: BulletDamageMeta) => void
+  /** Returns whether damage landed (13b.3, `EVAL-P13-004`): a rejected hit deflects, an accepted one sparks. */
+  damageBoss: (damage: number, meta: BulletDamageMeta) => boolean
   damagePlayer: (damage: number, meta: EnemyBulletDamageMeta) => { accepted: boolean }
   damageEnemy: (enemy: Phaser.Physics.Arcade.Sprite, damage: number, extras?: EnemyHitExtras) => EnemyHitResult
   /** Live enemies, for ThunderSpike's chain (optional: without it a charged spike does not chain). */
@@ -80,6 +81,8 @@ type ProjectileCollisionRouterOptions = {
   ) => void
   playEnemyHitSfx?: () => void
   spawnProjectileClashFx?: (x: number, y: number, strong: boolean) => void
+  /** A shot the boss rejected (immune, or blocked by the weakness rules) deflects instead (item 6, 13b.3). */
+  playDeflectSfx?: () => void
 }
 
 function asDynSprite(obj: unknown): Phaser.Physics.Arcade.Sprite | null {
@@ -151,15 +154,36 @@ export class ProjectileCollisionRouter {
       return
     }
 
+    // A deflected shot (below) stays overlapping the boss for a frame or two while it clears the
+    // hitbox; skip it instead of re-rolling the reject and re-bouncing it every one of those frames.
+    const deflectedUntil = Number(bullet.data?.get?.('deflectedUntil') ?? 0)
+    if (deflectedUntil > this.options.getNow()) {
+      return
+    }
+
     const damage = (bullet.data?.get?.('damage') as number | undefined) ?? 1
-    this.options.damageBoss(damage, {
+    const accepted = this.options.damageBoss(damage, {
       weaponId: bullet.data?.get?.('weaponId') as string | undefined,
       weaponElement: bullet.data?.get?.('weaponElement') as string | undefined,
       projectileId: bullet.data?.get?.('projectileId') as string | undefined,
       chargeLevel: Math.max(0, Math.min(4, Number(bullet.data?.get?.('chargeLevel') ?? 0))) as 0 | 1 | 2 | 3 | 4,
       kind: 'bullet'
     })
-    this.options.devLogOverlap?.('PB->B', bullet, target, true, 'owner is player')
+    this.options.devLogOverlap?.('PB->B', bullet, target, accepted, accepted ? 'owner is player' : 'rejected: deflected')
+    // Item 6 (13b.3, EVAL-P13-004): a rejected hit (immune, or blocked by the weakness rules) used to
+    // vanish exactly like an accepted one, with no spark and no sign it did not land -- "the pellet
+    // that touched the boss and did no damage". It now deflects (a tink and a bounce up and back)
+    // instead of being recycled, and only an accepted hit shows an impact spark at the contact point.
+    if (!accepted) {
+      this.options.playDeflectSfx?.()
+      bullet.data?.set?.('deflectedUntil', this.options.getNow() + 150)
+      const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
+      if (body) {
+        body.setVelocity(-body.velocity.x * 0.6, Math.min(0, body.velocity.y) - 90)
+      }
+      return
+    }
+    this.options.spawnProjectileClashFx?.(bullet.x, bullet.y, false)
     // Bosses take the weakness table, not status tags; a flame still leaves its puddle where it hit.
     const tag = String(bullet.data?.get?.('onHitTag') ?? 'none')
     if (tag !== 'none') this.record(tag, 'boss', bullet, tag === 'burn' ? 'burn' : 'none')

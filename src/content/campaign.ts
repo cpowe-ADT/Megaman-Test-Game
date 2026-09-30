@@ -615,7 +615,13 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       teachRoom(2, 'wall_jump', { room: { y: -252, height: 504 } }),
       teachRoom(3, 'charge'),
       teachRoom(4, 'saber', { hitsRequired: 3 })
-    ]
+    ],
+    // 13b.2 (EVAL-P13-003): the wall-kick shaft's own teach room (above) is 2 screens tall (y -252,
+    // height 504) but had no matching verticalSegments entry, so the backdrop and parallax never
+    // extended upward with the camera and the top of the shaft showed void. Same room span.
+    arena: {
+      verticalSegments: [{ id: 'tutorial_shaft', x: 2 * TEACH_SCREEN, width: TEACH_SCREEN, verticalScreens: 2 }]
+    }
   }
 }
 

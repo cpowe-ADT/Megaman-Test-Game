@@ -13,7 +13,10 @@ import {
   REFLECTED_SHOT_VISUAL,
   SHOT_IMPACT_FRAME,
   SLASH_ARC_OVERLAYS,
-  muzzleFrameForLevel
+  muzzleFrameForLevel,
+  muzzleAnchor,
+  MUZZLE_ANCHORS,
+  type MuzzlePose
 } from '../src/combat/heroCombatVisuals'
 import { MECHANICS_ATLAS } from '../src/mechanics/mechanicsVisuals'
 import { GAME_SCENE_ATLASES } from '../src/scenes/game/stageBackgroundLoading'
@@ -80,5 +83,17 @@ test('hero combat atlases are manifest entries the Game scene loads, not Preload
     const atlas = gameAtlases.find((candidate) => candidate.key === entry.atlasKey)!
     assert.equal(entry.runtimeImage, `/${atlas.image}`)
     assert.equal(entry.runtimeData, `/${atlas.data}`)
+  }
+})
+
+// 13b.3 (EVAL-P13-004): the shot and the muzzle flash read the same anchor table, so a shot spawns at
+// the cannon tip in every pose instead of a fixed offset (WeaponRuntime.ts, VfxSfxRouter.ts).
+test('muzzle anchor: every pose mirrors across facing', () => {
+  for (const pose of Object.keys(MUZZLE_ANCHORS) as MuzzlePose[]) {
+    const right = muzzleAnchor(pose, 1)
+    const left = muzzleAnchor(pose, -1)
+    assert.equal(right.x, MUZZLE_ANCHORS[pose].x, `${pose}: facing right keeps the authored x`)
+    assert.equal(left.x, -MUZZLE_ANCHORS[pose].x, `${pose}: facing left mirrors x`)
+    assert.equal(right.y, left.y, `${pose}: y does not depend on facing`)
   }
 })

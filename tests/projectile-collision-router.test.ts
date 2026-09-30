@@ -25,6 +25,10 @@ function createSprite(seed: Record<string, unknown> = {}) {
     },
     setVelocityX(value: number) {
       body.velocity.x = value
+    },
+    setVelocity(x: number, y: number) {
+      body.velocity.x = x
+      body.velocity.y = y
     }
   }
 
@@ -184,6 +188,7 @@ test('ProjectileCollisionRouter forwards immutable projectile identity to boss d
     getFacing: () => 1,
     damageBoss: (_damage, meta) => {
       received = meta
+      return true
     },
     damagePlayer: () => ({ accepted: true }),
     damageEnemy: () => ({ accepted: true, defeated: false, recycleBullet: true }),
@@ -200,6 +205,52 @@ test('ProjectileCollisionRouter forwards immutable projectile identity to boss d
     chargeLevel: 4,
     kind: 'bullet'
   })
+})
+
+// Item 6 (13b.3, EVAL-P13-004): "the pellet that touched the boss and did no damage" -- a rejected hit
+// (immune, or blocked by the weakness rules) used to be recycled exactly like an accepted one, with no
+// sign it did not land. It now deflects instead.
+test('ProjectileCollisionRouter deflects a shot the boss rejected instead of recycling it', () => {
+  const bullet = createSprite({ owner: 'player', damage: 1 })
+  bullet.body.velocity.x = 200
+  bullet.body.velocity.y = 10
+  const boss = createSprite({ hp: 20 })
+  let recycled = false
+  let deflectSfxPlayed = false
+  let sparkSpawned = false
+  const router = new ProjectileCollisionRouter({
+    playerBullets: createGroup(bullet) as any,
+    enemyBullets: createGroup({}) as any,
+    getPlayer: () => undefined,
+    getNow: () => 300,
+    getFacing: () => 1,
+    damageBoss: () => false,
+    damagePlayer: () => ({ accepted: true }),
+    damageEnemy: () => ({ accepted: true, defeated: false, recycleBullet: true }),
+    recycleBullet: () => {
+      recycled = true
+    },
+    recordCombatHit: () => {},
+    playDeflectSfx: () => {
+      deflectSfxPlayed = true
+    },
+    spawnProjectileClashFx: () => {
+      sparkSpawned = true
+    }
+  })
+
+  router.handlePlayerBulletHitsBoss(bullet as any, boss as any, boss as any)
+
+  assert.equal(recycled, false, 'a rejected hit is not recycled')
+  assert.equal(deflectSfxPlayed, true, 'a rejected hit plays the deflect sfx')
+  assert.equal(sparkSpawned, false, 'a rejected hit does not spark (that is an accepted hit only)')
+  assert.equal(bullet.body.velocity.x, -120, 'bounces back (x reversed, at 0.6x speed)')
+  assert.equal(bullet.body.velocity.y, -90, 'kicks up')
+
+  // Still overlapping the boss on the very next frame: skipped, not re-deflected.
+  bullet.body.velocity.x = -120
+  router.handlePlayerBulletHitsBoss(bullet as any, boss as any, boss as any)
+  assert.equal(bullet.body.velocity.x, -120, 'a deflected shot is not re-processed while it clears the hitbox')
 })
 
 test('ProjectileCollisionRouter forwards hostile source metadata without creating a duplicate player trace', () => {

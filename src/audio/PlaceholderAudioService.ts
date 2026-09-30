@@ -9,6 +9,9 @@ import { SFX_ASSETS, resolveSfxKey, type SfxAssetKey } from './sfxLibrary'
 const STRICT_SFX_KEYS = Boolean(import.meta.env?.DEV)
 /** Boss phase changes crossfade between the boss track and its phase-two track over this long. */
 export const MUSIC_PHASE_CROSSFADE_MS = 600
+/** A failed stage-music fetch/decode (13a: a build served mid-rebuild) retries once after this long,
+ * instead of waiting for the next keypress to unlock() and try again. */
+export const MUSIC_LOAD_RETRY_MS = 2000
 
 type MusicSound = Phaser.Sound.BaseSound & { setVolume?: (value: number) => unknown; seek?: number }
 
@@ -436,6 +439,23 @@ export class PlaceholderAudioService {
       } else {
         // The cue moved on while this track decoded (a boss dies mid-load): do not keep it resident.
         this.evictIdleMusic()
+        // A load failed (13a: a build served mid-rebuild) and the cue is still wanted: one retry after
+        // MUSIC_LOAD_RETRY_MS, so the track can still start without the player needing to press a key.
+        if (!loaded.every(Boolean) && this.requestedTrack?.key === track.key) {
+          this.scheduleMusicRetry(track)
+        }
+      }
+    })
+  }
+
+  private scheduleMusicRetry(track: ResolvedMusicTrack): void {
+    const scene = this.musicScene
+    if (!scene?.time) {
+      return
+    }
+    scene.time.delayedCall(MUSIC_LOAD_RETRY_MS, () => {
+      if (this.requestedTrack?.key === track.key) {
+        this.ensureMusicLoaded(track)
       }
     })
   }

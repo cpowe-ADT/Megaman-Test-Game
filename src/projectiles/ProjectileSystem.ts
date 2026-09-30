@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
+import { GAME_HEIGHT, GAME_WIDTH } from '../config/renderPolicy'
 import { ProjectileRegistry } from './ProjectileRegistry'
-import { liftShotAboveFloor, resolveProjectileStall } from './projectileLifecycle'
+import { isOutsideCameraView, isProjectileExpired, liftShotAboveFloor, resolveProjectileStall } from './projectileLifecycle'
 import type { ProjectileDefinition, ProjectilePoolKey, ProjectileSpawnRequest } from './types'
 import { bounceVelocity, classifyImpact, magnetPullVelocity, resolveImpactFollowUp, shotAngleDeg } from './weaponEffects'
 
@@ -125,6 +126,10 @@ export class ProjectileSystem {
     bullet.data?.set('owner', definition.owner)
     bullet.data?.set('damage', damage)
     bullet.data?.set('spawnedAt', this.scene.time.now)
+    // 13b.3 (EVAL-P13-004): age accumulates by `deltaMs` only on a frame `update()` actually runs, so
+    // hit-stop (which skips that call outright) pauses it instead of the shot losing lifetime to frames
+    // it was frozen for. `spawnedAt` stays a plain clock stamp: smoke reads it to pick the newest shot.
+    bullet.data?.set('ageMs', 0)
     bullet.data?.set('originX', request.x)
     bullet.data?.set('originY', spawnY)
     bullet.data?.set('direction', request.direction)
@@ -204,11 +209,24 @@ export class ProjectileSystem {
           return true
         }
 
-        const spawnedAt = Number(bullet.data?.get?.('spawnedAt') ?? now)
+        // 13b.3 (EVAL-P13-004): age accumulates only on a frame this loop actually runs, so hit-stop
+        // (which skips the whole `update()` call) pauses it instead of the shot losing lifetime to
+        // frames it was frozen for. `spawnedAt` stays a plain clock stamp (smoke reads it).
+        const ageMs = Number(bullet.data?.get?.('ageMs') ?? 0) + deltaMs
+        bullet.data?.set('ageMs', ageMs)
         const lifetimeMs = Number(bullet.data?.get?.('lifetimeMs') ?? definition.lifetimeMs)
-        if (lifetimeMs > 0 && now - spawnedAt >= lifetimeMs) {
+        if (isProjectileExpired(ageMs, lifetimeMs)) {
           this.recycle(bullet, 'expired')
           return true
+        }
+        // A straight player shot leaves once it is off camera, not on a fixed lifetime (13b.3): it
+        // flies until the view scrolls past it. Lobs, waves and boomerangs keep their own arcs/timers.
+        if (definition.owner === 'player' && definition.behavior.kind === 'standard') {
+          const camera = this.scene.cameras.main
+          if (isOutsideCameraView(bullet.x, bullet.y, { left: camera.scrollX, top: camera.scrollY, width: GAME_WIDTH, height: GAME_HEIGHT })) {
+            this.recycle(bullet, 'expired')
+            return true
+          }
         }
 
         const body = bullet.body as Phaser.Physics.Arcade.Body | undefined
@@ -240,8 +258,7 @@ export class ProjectileSystem {
           const baseY = Number(bullet.data?.get?.('waveOriginY') ?? bullet.y)
           const amplitude = Number(bullet.data?.get?.('waveAmplitude') ?? definition.behavior.amplitude)
           const periodMs = Math.max(60, Number(bullet.data?.get?.('wavePeriodMs') ?? definition.behavior.periodMs))
-          const elapsed = now - spawnedAt
-          bullet.y = baseY + Math.sin((elapsed / periodMs) * Math.PI * 2) * amplitude
+          bullet.y = baseY + Math.sin((ageMs / periodMs) * Math.PI * 2) * amplitude
         } else if (definition.behavior.kind === 'lob') {
           const gravityY = Number(bullet.data?.get?.('gravityY') ?? definition.behavior.gravityY)
           body?.setVelocityY(body.velocity.y + gravityY * deltaSeconds)
@@ -257,8 +274,7 @@ export class ProjectileSystem {
             Number(bullet.data?.get?.('returnSpeed') ?? definition.behavior.returnSpeed)
           )
           const homeOffsetY = Number(bullet.data?.get?.('homeOffsetY') ?? definition.behavior.homeOffsetY)
-          const elapsed = now - spawnedAt
-          if (elapsed >= returnAfterMs && !bullet.data?.get?.('returning')) {
+          if (ageMs >= returnAfterMs && !bullet.data?.get?.('returning')) {
             bullet.data?.set('returning', true)
           }
 
@@ -279,13 +295,12 @@ export class ProjectileSystem {
         const animationFrames = definition.visual.animationFrames
         if (animationFrames && animationFrames.length > 1) {
           const frameMs = Math.max(16, definition.visual.animationFrameMs ?? 66)
-          const frame = animationFrames[Math.floor((now - spawnedAt) / frameMs) % animationFrames.length]
+          const frame = animationFrames[Math.floor(ageMs / frameMs) % animationFrames.length]
           if (bullet.frame?.name !== frame) bullet.setFrame(frame)
         }
         if (projectileId.startsWith('player_buster_charge_lv')) {
           // Directional art: pulse, never spin.
-          const elapsed = now - spawnedAt
-          const pulse = 1 + Math.sin(elapsed * 0.026) * 0.06
+          const pulse = 1 + Math.sin(ageMs * 0.026) * 0.06
           bullet.setScale(baseScale * pulse)
           bullet.setAngle(0)
         } else {
