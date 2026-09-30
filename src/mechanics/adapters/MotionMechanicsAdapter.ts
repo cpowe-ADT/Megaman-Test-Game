@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { StageArenaDefinition } from '../../content/campaign'
 import { NEUTRAL_PLAYER_ENVIRONMENT, type PlayerEnvironment } from '../../player/environment'
-import { conveyorBox, conveyorCarryAt, conveyorCarryDeltaX, conveyorSpeed, type ConveyorDefinition } from '../conveyor'
+import { conveyorBox, conveyorCarryAt, conveyorCarryDeltaX, conveyorShotCarryAt, conveyorSpeed, type ConveyorDefinition } from '../conveyor'
 import type { Box } from '../crumbleGroup'
 import { currentFlowDirection, type CurrentZoneDefinition } from '../currentZone'
 import type { ZoneRect } from '../forceZone'
@@ -40,7 +40,8 @@ export type MotionMechanicsDeps = {
 }
 
 type Hideable = Phaser.GameObjects.GameObject & { setVisible(value: boolean): unknown }
-type BeltEntry = { def: ConveyorDefinition; speed: number; box: Box; art?: Phaser.GameObjects.TileSprite; carried: number }
+/** `carried`: bodies moved this frame; `shots`: shots moved this frame; `shotFrames`: shot-frames since the stage began. */
+type BeltEntry = { def: ConveyorDefinition; speed: number; box: Box; art?: Phaser.GameObjects.TileSprite; carried: number; shots: number; shotFrames: number }
 type IceEntry = { def: IceFloorDefinition; box: Box; art?: Phaser.GameObjects.TileSprite }
 type CurrentEntry = { def: CurrentZoneDefinition; direction: 1 | -1; art?: Phaser.GameObjects.TileSprite; plain?: Phaser.GameObjects.Rectangle }
 type WindEntry = {
@@ -64,7 +65,7 @@ const SURFACE_DEPTH = 2
  * Phaser edge of the 12b movement mechanics: `conveyor`, `ice_floor`, `current_zone` and `wind_zone` (gust,
  * lift, magnet lift). Once per frame it folds the belt and ice under the hero's feet and the zones around
  * its body into the motor environment (`runtime.setEnvironment`), moves other grounded bodies (enemies,
- * pickups) along the belts, and draws the tells from `mechanics_v2`: stepping chevrons, the ice shimmer,
+ * pickups) and the shots skimming a belt along the belts, and draws the tells from `mechanics_v2`: stepping chevrons, the ice shimmer,
  * bubbles and streaks drifting with the flow. Installed by `StageMechanicsAdapter`, which owns the clock.
  */
 export class MotionMechanicsAdapter {
@@ -92,7 +93,7 @@ export class MotionMechanicsAdapter {
     for (const def of arena.conveyors ?? []) {
       const box = conveyorBox(def)
       const speed = conveyorSpeed(def)
-      this.belts.push({ def, speed, box, art: this.createBeltArt(def.id, box, speed), carried: 0 })
+      this.belts.push({ def, speed, box, art: this.createBeltArt(def.id, box, speed), carried: 0, shots: 0, shotFrames: 0 })
     }
     for (const def of arena.iceFloors ?? []) {
       const box = iceFloorBox(def)
@@ -218,21 +219,32 @@ export class MotionMechanicsAdapter {
     this.deps.runtime()?.setEnvironment?.(environment)
   }
 
-  /** Enemies, pickups and any other grounded dynamic body on a belt move with it (the hero moves through its motor). */
+  /**
+   * Enemies, pickups and any other grounded dynamic body on a belt move with it (the hero moves through its
+   * motor); so does a shot skimming one (`conveyorShotCarryAt`), on top of its own velocity. Shots are the
+   * bodies `ProjectileSystem` tagged with a `projectileId`.
+   */
   private carryBodies(stepMs: number): void {
-    this.belts.forEach((belt) => { belt.carried = 0 })
+    this.belts.forEach((belt) => { belt.carried = 0; belt.shots = 0 })
     if (this.belts.length === 0 || stepMs <= 0) return
     const heroBody = this.deps.player()?.body
     const defs = this.belts.map((belt) => belt.def)
     for (const body of this.deps.scene.physics.world.bodies.entries) {
-      if (body === heroBody || !body.enable || !(body.blocked.down || body.touching.down)) continue
+      if (body === heroBody || !body.enable) continue
       const object = body.gameObject as (Phaser.GameObjects.GameObject & { x: number }) | undefined
       if (!object?.active) continue
-      const carry = conveyorCarryAt(defs, { left: body.left, right: body.right, top: body.top, bottom: body.bottom }, true)
+      const shot = object.data?.get?.('projectileId') != null
+      if (!shot && !(body.blocked.down || body.touching.down)) continue
+      const box = { left: body.left, right: body.right, top: body.top, bottom: body.bottom }
+      const carry = shot ? conveyorShotCarryAt(defs, box) : conveyorCarryAt(defs, box, true)
       if (!carry.id || carry.speed === 0) continue
       object.x += conveyorCarryDeltaX(carry.speed, stepMs)
       const belt = this.belts.find((entry) => entry.def.id === carry.id)
-      if (belt) belt.carried += 1
+      if (!belt) continue
+      if (shot) {
+        belt.shots += 1
+        belt.shotFrames += 1
+      } else belt.carried += 1
     }
   }
 
@@ -281,6 +293,8 @@ export class MotionMechanicsAdapter {
         speed: belt.speed,
         heroOn: this.beltId === belt.def.id,
         carried: belt.carried,
+        shots: belt.shots,
+        shotFrames: belt.shotFrames,
         frame: mechanicsFrameName(belt.art),
         flipX: Boolean(belt.art?.flipX)
       })),
