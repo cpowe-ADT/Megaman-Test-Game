@@ -14,7 +14,7 @@ import {
 } from '../progression/index'
 import { freshStatistics, normalizeStatistics, type CampaignStatistics } from '../progression/statistics'
 import type { Difficulty, ProgressionMode } from '../progression/types'
-import { CAMPAIGN_STAGES, type CampaignStageId } from '../content/campaign'
+import { CAMPAIGN_STAGES, FINAL_STAGE_ID, type CampaignStageId } from '../content/campaign'
 import { buildWeaponOrder } from '../content/weapons'
 import { DIALOGUE_REGISTRY } from '../content/dialogue/index'
 import { markStorySeen, sanitizeStoryFlags } from '../narrative/storyFlags'
@@ -160,7 +160,11 @@ const SAVE_MIGRATIONS: ReadonlyArray<{ to: number; note: string; apply: (save: R
 ]
 
 function withOmegaRunFields(run: unknown): unknown {
-  return run && typeof run === 'object' ? { omegaAct: 1, rematchCleared: [], ...(run as RawSave) } : run ?? null
+  if (!run || typeof run !== 'object') return run ?? null
+  const fields = { omegaAct: 1, rematchCleared: [], ...(run as RawSave) }
+  // 12e replaced the Central Core's route: a run inside the old one restarts at the fortress start.
+  if ((run as RawSave).stageId !== FINAL_STAGE_ID) return fields
+  return { ...fields, omegaAct: 1, rematchCleared: [], checkpointId: CAMPAIGN_STAGES[FINAL_STAGE_ID].arena.checkpoints[0]?.id, checkpointIndex: 0 }
 }
 
 export function detectSaveVersion(save: RawSave): number {
@@ -325,8 +329,8 @@ export function validateActiveRun(save: SaveData, raw: unknown): ActiveRunValida
       : typeof candidate.checkpointId === 'string'
         ? 0
         : clampInteger(candidate.checkpointIndex, 0, Math.max(0, checkpoints.length - 1), 0)
-  const checkpointId = checkpoints[checkpointIndex]?.id
-  const { omegaAct, rematchCleared } = normalizeOmegaRunFields(stage.id, checkpointId, candidate)
+  const omega = normalizeOmegaRunFields(stage.id, checkpoints[checkpointIndex]?.id, candidate)
+  const placedIndex = Math.max(0, checkpoints.findIndex((entry) => entry.id === omega.checkpointId))
 
   return {
     valid: true,
@@ -343,10 +347,10 @@ export function validateActiveRun(save: SaveData, raw: unknown): ActiveRunValida
       currentWeaponIndex,
       currentWeaponId,
       weaponEnergyById,
-      checkpointIndex,
-      checkpointId,
-      omegaAct,
-      rematchCleared
+      checkpointIndex: placedIndex,
+      checkpointId: checkpoints[placedIndex]?.id,
+      omegaAct: omega.omegaAct,
+      rematchCleared: omega.rematchCleared
     }
   }
 }
