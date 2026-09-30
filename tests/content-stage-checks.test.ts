@@ -46,25 +46,10 @@ test('checkCheckpointsOnFloor passes a checkpoint over solid ground', () => {
   assert.equal(checkCheckpointsOnFloor('t', arena, ROUTE_WIDTH).ok, true)
 })
 
-test('checkPickupsGroundedOrFloat passes a float-marked anchor regardless of height', () => {
-  const arena = { floorGaps: [], midPlatforms: [], locationAnchors: { heart_tank: { x: 100, y: -300, rest: 'float' } } }
-  assert.equal(checkPickupsGroundedOrFloat('t', arena, ROUTE_WIDTH).ok, true)
-})
-
-test('checkPickupsGroundedOrFloat fails an anchor over open pit', () => {
-  const arena = { floorGaps: [{ x: 0, width: ROUTE_WIDTH }], midPlatforms: [], locationAnchors: { heart_tank: { x: 100, y: 200 } } }
-  const result = checkPickupsGroundedOrFloat('t', arena, ROUTE_WIDTH)
-  assert.equal(result.ok, false)
-  assert.equal(result.offenders[0].category, 'heart_tank')
-})
-
-test('checkPickupsGroundedOrFloat passes an anchor resting on a platform top', () => {
-  const arena = {
-    floorGaps: [],
-    midPlatforms: [{ id: 'shelf', x: 100, y: 200, width: 40, height: 16, type: 'solid' }],
-    locationAnchors: { heart_tank: { x: 100, y: 192 } } // surface top = 200 - 16/2 = 192
+test('checkPickupsGroundedOrFloat passes every campaign stage (the 13e rule; its verdict fixtures are in pickup-placement.test.ts)', () => {
+  for (const stageId of ['tutorial_sentinel', 'pyro_maw', 'tide_reaver', 'volt_hopper', 'basalt_titan', 'ferro_blade', 'mire_wraith', 'gale_vixen', 'glacier_ronin', 'omega_fortress']) {
+    assert.deepEqual(checkPickupsGroundedOrFloat(stageId).offenders, [], stageId)
   }
-  assert.equal(checkPickupsGroundedOrFloat('t', arena, ROUTE_WIDTH).ok, true)
 })
 
 test('checkHazardsOnSolid passes a floor-mounted vent (bottom edge on the main ground)', () => {

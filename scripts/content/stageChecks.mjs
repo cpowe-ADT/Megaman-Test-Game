@@ -12,6 +12,9 @@ import {
   stageVerticalTop
 } from '../../src/stage/stageGeometry.ts'
 import { resolveHazard } from '../../src/mechanics/hazards.ts'
+import fs from 'node:fs'
+import { auditPickupPlacements } from '../../src/content/pickupPlacementRule.ts'
+import { PICKUPS_ATLAS, PICKUP_ART_GROUPS } from '../../src/ui/pickups/pickupArt.ts'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../src/config/renderPolicy.ts'
 import { GAMEPLAY_VIEWPORT_TOP } from '../../src/config/gameplayLayout.ts'
 
@@ -25,7 +28,6 @@ export const RUN_JUMP_RISE_PX = 124
 export const RUN_JUMP_DISTANCE_PX = 246
 export const DASH_JUMP_DISTANCE_PX = 336
 
-const PICKUP_SURFACE_TOLERANCE_PX = 8
 const HAZARD_SURFACE_TOLERANCE_PX = 6
 /** `GROUNDED_PLAYER_SPAWN_Y` (`src/content/campaign.ts`): every checkpoint drops the hero from here, so
  *  a checkpoint's own `y` (always this constant post-patch) carries no per-checkpoint height information. */
@@ -153,31 +155,29 @@ export function checkCheckpointsOnFloor(stageId, arena, routeWidth) {
 }
 
 /**
- * Every pickup is grounded (its anchor sits within a few px of a real surface) or marked
- * `rest: 'float'` (13e, `output/notes/lane-13e-pickups.md`: `LocationAnchors` gains that field on
- * `src/content/campaign.ts`'s type). Until 13e lands, no anchor can carry `rest` at all, so every anchor
- * is checked as if grounded; real placements are expected to fail this until that fix lands, which is
- * the point of auditing "the stages as they are now".
- *
- * TODO(13e): once the pickups lane lands its typed rest-rule module (see
- * output/notes/lane-13e-pickups.md), import and reuse it here instead of this inline tolerance check.
+ * Every pickup is grounded (its art's bottom within 2 px of the surface under it) or marked `rest: 'float'`,
+ * and none sits inside a solid or over a pit. This reuses the 13e rule (`src/content/pickupPlacementRule.ts`,
+ * the one `tests/pickup-placement.test.ts` proves) with the pickup atlas's real frame sizes.
  */
-export function checkPickupsGroundedOrFloat(stageId, arena, routeWidth) {
-  const surfaces = collectStandableSurfaces(stageId, arena, routeWidth)
-  const anchors = arena.locationAnchors ?? {}
-  const offenders = []
-  for (const [category, anchor] of Object.entries(anchors)) {
-    if (!anchor) continue
-    if (anchor.rest === 'float') continue
-    const covering = coveringSurfaces(surfaces, anchor.x)
-    const grounded = covering.some((surface) => Math.abs(surface.top - anchor.y) <= PICKUP_SURFACE_TOLERANCE_PX)
-    if (!grounded) {
-      const nearestSurfaceDeltaPx =
-        covering.length > 0 ? Math.round(Math.min(...covering.map((surface) => Math.abs(surface.top - anchor.y)))) : null
-      offenders.push({ category, x: anchor.x, y: anchor.y, nearestSurfaceDeltaPx })
-    }
-  }
+export function checkPickupsGroundedOrFloat(stageId) {
+  const offenders = pickupPlacementRows()
+    .filter((row) => row.stage === stageId && row.verdict !== 'grounded' && row.verdict !== 'floating_ok')
+    .map((row) => ({ id: row.id, category: row.category, x: row.x, y: row.y, verdict: row.verdict, gap: row.gap }))
   return { ok: offenders.length === 0, offenders }
+}
+
+let placementRowsCache = null
+function pickupPlacementRows() {
+  if (placementRowsCache) return placementRowsCache
+  const atlas = JSON.parse(fs.readFileSync(PICKUPS_ATLAS.data, 'utf8'))
+  const atlasKey = PICKUPS_ATLAS.key.replace('atlas_', '')
+  const sizes = {}
+  for (const group of PICKUP_ART_GROUPS) {
+    const frame = atlas.frames[`${atlasKey}/${group}/000`]
+    if (frame) sizes[group] = { width: frame.frame.w, height: frame.frame.h }
+  }
+  placementRowsCache = auditPickupPlacements(sizes)
+  return placementRowsCache
 }
 
 /** Every hazard anchor sits on solid: its resolved damage box's bottom edge lands on a ground or platform
@@ -247,7 +247,7 @@ export function runAllChecks(stage, report) {
   return {
     reachability: checkReachability(stage.id, arena, routeWidth),
     checkpointsOnFloor: checkCheckpointsOnFloor(stage.id, arena, routeWidth),
-    pickupsGroundedOrFloat: checkPickupsGroundedOrFloat(stage.id, arena, routeWidth),
+    pickupsGroundedOrFloat: checkPickupsGroundedOrFloat(stage.id),
     hazardsOnSolid: checkHazardsOnSolid(stage.id, arena, routeWidth),
     backdropCoversVertical: checkBackdropCoversVertical(arena),
     bossRoomInsideStage: checkBossRoomInsideStage(arena, worldWidth)
