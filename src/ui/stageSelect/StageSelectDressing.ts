@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import AudioService from '../../audio'
+import { AUTOMATION } from '../../config/automation'
 import { GAME_SIZE } from '../../config/renderPolicy'
 import { STAGE_BACKGROUND_ASSETS } from '../../content/stageBackgroundCatalog'
 import { PIXEL_FONT, pixelFontSize } from '../menu/menuTheme'
@@ -150,8 +151,12 @@ export class SelectCursor {
   }
 }
 
-/** The portraits slide into their tiles, one after another, when Stage Select opens. */
+/**
+ * The portraits slide into their tiles, one after another, when Stage Select opens. Under automation they are placed
+ * at once, so every capture and bounds read sees the finished tiles (as `storyIntro=off` does for the story beats).
+ */
 export function revealPortraits(scene: Phaser.Scene, sprites: readonly Phaser.GameObjects.Image[]): void {
+  if (AUTOMATION.enabled) return
   sprites.filter((sprite) => sprite.visible).forEach((sprite, index) => {
     const x = sprite.x
     sprite.setX(x - 18).setAlpha(0)
