@@ -130,7 +130,7 @@ export async function runBasaltRouteScenario(name, { outputDir, storyUrl, readSt
       let lastX = game.player.x
       for (; frames < plan.maxFrames; frames += 1) {
         const x = game.player.x
-        if (x >= (plan.targetX ?? Infinity) || game.playerHp <= 0) break
+        if (x >= (plan.targetX ?? Infinity) || x <= (plan.leftTo ?? -Infinity) || game.playerHp <= 0) break
         if (plan.untilCollected && (game.progressionSave?.collectedChecks ?? []).includes(plan.untilCollected)) break
         if (plan.clearEnemies) {
           for (const entry of game.enemySpawner.getEntities()) {
@@ -171,7 +171,8 @@ export async function runBasaltRouteScenario(name, { outputDir, storyUrl, readSt
         }
         const jumpHeld = hold > 0
         const dashHeld = dashFrame >= 0 && frames <= dashFrame + (plan.dashJump?.dashFrames ?? 30)
-        const held = [...(plan.right === false ? [] : ['moveRight']), ...(dashHeld ? ['dash'] : []), ...(jumpHeld ? ['jump'] : [])]
+        const walkHeld = plan.leftTo !== undefined ? ['moveLeft'] : plan.right === false ? [] : ['moveRight']
+        const held = [...walkHeld, ...(dashHeld ? ['dash'] : []), ...(jumpHeld ? ['jump'] : [])]
         window.stageDebug.replayInputs([{ frame: 0, held }, { frame: 1, held }])
         released = !jumpHeld
         if (hold > 0) hold -= 1
@@ -227,7 +228,10 @@ export async function runBasaltRouteScenario(name, { outputDir, storyUrl, readSt
     evidence.crumbleShake = shake
     const shaking = shake.filter(([phase]) => phase === 'shaking')
     assert.ok(shaking.length >= 2 && shake.at(-1)[0] === 'fallen', `the slab shook, then fell (${JSON.stringify(shake)})`)
-    assert.ok(Math.max(...shaking.map(([, ms]) => ms)) < 350, 'it falls once its 350ms shake runs out')
+    // `render_game_to_text` rounds `timerMs`: a shake at 349.6ms reads 350. The slab shakes up to 350ms and no longer
+    // (`stepCrumble` turns it at 350), and it shook well past a jump's length before it fell.
+    const lastShake = Math.max(...shaking.map(([, ms]) => ms))
+    assert.ok(lastShake > 200 && lastShake <= 350, `it falls once its 350ms shake runs out (last shaking sample ${lastShake}ms)`)
     state = await standing('dropped to the floor under the slab')
     assert.ok(state.player.y > 200, `on the floor (y ${state.player.y})`)
     mark('b')
@@ -390,14 +394,23 @@ export async function runBasaltRouteScenario(name, { outputDir, storyUrl, readSt
       dash.push(await hero())
       if (dash.length > 3 && dash.slice(-3).every(([x, y]) => x === dash.at(-1)[0] && y === dash.at(-1)[1])) break
     }
-    // In the side shaft its ledges crumble under the hero; a walk onto the tank on the shelf collects it.
-    const toTank = dash.at(-1)[0] >= 3960 && dash.at(-1)[1] < 0 ? await drive({ targetX: 4012, maxFrames: 90, stallJumps: false, untilCollected: 'basalt_titan:sub_tank' }) : null
-    // The mouth and the ledge under it crumble 350ms after the hero lands on each; the shelf under them holds the tank.
+    // In the mouth the hero stands still: the mouth and the ledge under it crumble 350ms after each landing and drop
+    // it straight onto the shelf, under the tank. A walk here would slide the hero past the tank (how far a run
+    // slides once the input ends depends on the frame timing), so only a hero that settles on the shelf off the
+    // tank walks to it, toward the tank's side.
+    let toTank = null
     let subChecks = await collected()
     for (let attempt = 0; attempt < 40 && !subChecks.includes('basalt_titan:sub_tank'); attempt += 1) {
       await advanceFrames(page, 5)
       dash.push(await hero())
       subChecks = await collected()
+      const [x, y] = dash.at(-1)
+      const onShelf = y > -66 && y < -58 && dash.slice(-3).every(([sx, sy]) => sx === x && sy === y)
+      if (!toTank && dash.length > 3 && onShelf && !subChecks.includes('basalt_titan:sub_tank')) {
+        const walk = x < 4008 ? { targetX: 4000 } : { leftTo: 4016 }
+        toTank = await drive({ ...walk, maxFrames: 60, stallJumps: false, untilCollected: 'basalt_titan:sub_tank' })
+        subChecks = await collected()
+      }
     }
     evidence.dashLanding = { dash, toTank }
     evidence.subTank = { dash, collected: subChecks }
