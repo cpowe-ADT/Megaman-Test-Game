@@ -18,6 +18,12 @@ export type RockfallDefinition = {
   triggerX?: number
   /** Default 2600 (timer mode only). */
   intervalMs?: number
+  /**
+   * Timer mode only (12d Structural Works' shaft): the wait counts only while the hero's x is inside
+   * [activeFromX, activeToX), so a room's rain does not fall, or sound, while the hero is elsewhere.
+   */
+  activeFromX?: number
+  activeToX?: number
   /** Dust puff before the drop, ms (default 400: the 02 §2.2 telegraph). */
   warnMs?: number
   /** HP per hit (default 2). */
@@ -64,6 +70,11 @@ export function rockfallBox(definition: RockfallDefinition, state: Pick<Rockfall
   return { left: definition.x - half, right: definition.x + half, top: state.y - half, bottom: state.y + half }
 }
 
+/** A timer-mode spawner counts its wait only while the hero is inside its active span (always, without one). */
+export function isRockfallActive(definition: Pick<RockfallDefinition, 'activeFromX' | 'activeToX'>, heroX: number): boolean {
+  return heroX >= (definition.activeFromX ?? -Infinity) && heroX < (definition.activeToX ?? Infinity)
+}
+
 /** The hero crossed `triggerX` this frame, in either direction. */
 export function crossedTrigger(triggerX: number, prevX: number, x: number): boolean {
   return (prevX < triggerX && x >= triggerX) || (prevX > triggerX && x <= triggerX)
@@ -79,6 +90,7 @@ export function stepRockfall(
   const timerMs = state.timerMs + deltaMs
   switch (state.phase) {
     case 'waiting': {
+      if (definition.triggerX === undefined && !isRockfallActive(definition, input.heroX)) return { state, hit: false }
       const start =
         definition.triggerX !== undefined
           ? crossedTrigger(definition.triggerX, input.prevHeroX, input.heroX)

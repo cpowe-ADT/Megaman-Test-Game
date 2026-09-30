@@ -19,10 +19,15 @@ import {
   crumbleBox,
   crumbleShakeOffset,
   crumbleTiming,
+  detectCrumbleStomps,
   isStandingOn,
+  isStompedCrumble,
+  loadLineMarks,
   stepCrumble,
   type Box,
-  type CrumbleState
+  type CrumbleState,
+  type CrumbleStomp,
+  type CrumbleTiming
 } from '../crumbleGroup'
 import { advanceStageClock, resolveHazard, ventCycleAt, type ResolvedHazard, type VentPhase } from '../hazards'
 import {
@@ -82,6 +87,8 @@ export type StageMechanicsDeps = {
   /** The death sequence runs (liquids hold); its end is the checkpoint respawn (liquids restart). */
   isDying: () => boolean
   damagePlayer: (request: PlayerDamageRequest) => unknown
+  /** 12d: the live enemies (`EnemySpawner.getEntities`); a custodian walker's stomp shakes the `stomp` crumbles it faces. */
+  enemies?: () => readonly { id: string; typeKey: string; state: string; facing: 1 | -1; sprite: { x: number; body?: { bottom: number } | null } }[]
 }
 
 type HazardEntry = { hazard: ResolvedHazard; body: Phaser.GameObjects.GameObject & { body: unknown } }
@@ -90,7 +97,7 @@ type VentEntry = HazardEntry & { flame: Phaser.GameObjects.Rectangle; nozzle: Ph
 type SlagStrip = { surface: Phaser.GameObjects.TileSprite; fill: Phaser.GameObjects.TileSprite }
 type LiquidEntry = { def: RisingLiquidDefinition; state: RisingLiquidState; fill: Phaser.GameObjects.Rectangle; surface: Phaser.GameObjects.Rectangle; art?: SlagStrip; filterSwitch?: FilterSwitchVisual }
 /** `art` replaces the platform's drawing (hidden, its body kept) and follows its shake, drop and fade. */
-type CrumbleEntry = { state: CrumbleState; box: Box; timing: { shakeMs: number; respawnMs: number }; visual?: Visual; baseX: number; baseY: number; art?: Phaser.GameObjects.Image }
+type CrumbleEntry = { state: CrumbleState; box: Box; timing: CrumbleTiming; visual?: Visual; baseX: number; baseY: number; art?: Phaser.GameObjects.Image }
 type WallEntry = { def: BreakableWallDefinition; state: BreakableWallState; box: Box; visual?: Visual; cracks: Phaser.GameObjects.Graphics; art?: Phaser.GameObjects.TileSprite }
 
 const FLAME_COLOR = 0xff7a1c
@@ -99,6 +106,8 @@ const NOZZLE_COLOR = 0x35130c
 const SLAG_COLOR = 0xff5a1f
 const SLAG_SURFACE_COLOR = 0xffe08a
 const LETHAL_DAMAGE = 99
+/** 12d Structural Works: the amber load lines on the ledges that hold. */
+const LOAD_LINE_COLOR = 0xf2b640
 /** The backdrop's pit slag strip depth (StageBackdrop.ts): the art covers the same rectangle. */
 const PIT_SLAG_DEPTH_PX = 10
 /** Pits hold slag only where the district runs on it (Heat Works, the lab that tests it); other districts' pits stay dark. */
@@ -141,6 +150,9 @@ export class StageMechanicsAdapter {
   /** The 12b mechanics: belts, ice and push zones (motor environment); rails, rockfalls and icicles (damage). */
   private readonly motion: MotionMechanicsAdapter
   private readonly drops: HazardMechanicsAdapter
+  /** 12d: each stomper's last animation state (stomp edges), and the load lines drawn on the solid path. */
+  private readonly stompers = new Map<string, string>()
+  private readonly loadLines: Phaser.GameObjects.Graphics
 
   constructor(private readonly deps: StageMechanicsDeps) {
     const { scene } = deps
@@ -159,6 +171,12 @@ export class StageMechanicsAdapter {
         const box = crumbleBox(group.platforms[index])
         this.crumbles.push({ state, box, timing, visual, baseX: visual?.x ?? 0, baseY: visual?.y ?? 0, art: this.createCrumbleArt(box, visual) })
       })
+    }
+    const loadIds = new Set((arena.crumbleGroups ?? []).flatMap((group) => group.loadLines ?? []))
+    this.loadLines = scene.add.graphics().setDepth(2).fillStyle(LOAD_LINE_COLOR, 1)
+    for (const platform of arena.midPlatforms.filter((entry) => loadIds.has(entry.id))) {
+      const half = { w: platform.width / 2, h: (platform.height ?? 8) / 2 }
+      loadLineMarks({ left: platform.x - half.w, right: platform.x + half.w, top: platform.y - half.h, bottom: platform.y + half.h }).forEach((mark) => this.loadLines.fillRect(mark.x, mark.y, mark.width, mark.height))
     }
     for (const def of arena.breakableWalls ?? []) {
       const visual = deps.platforms()?.findPlatformVisual(def.id) as Visual | undefined
@@ -440,11 +458,14 @@ export class StageMechanicsAdapter {
   }
 
   private updateCrumbles(hero: Box, grounded: boolean, delta: number): void {
+    const samples = (this.deps.enemies?.() ?? []).map((entity) => ({ id: entity.id, typeKey: entity.typeKey, state: entity.state, facing: entity.facing, x: entity.sprite.x, bottom: entity.sprite.body?.bottom ?? 0 }))
+    const stomps: CrumbleStomp[] = detectCrumbleStomps(this.stompers, samples)
     for (const crumble of this.crumbles) {
       const before = crumble.state.phase
+      const stomped = crumble.timing.trigger === 'stomp' && stomps.some((stomp) => isStompedCrumble(crumble.box, stomp, crumble.timing.stompReachPx))
       crumble.state = stepCrumble(
         crumble.state,
-        { heroStanding: isStandingOn(hero, crumble.box, grounded), heroOverlapping: boxesOverlap(hero, crumble.box), deltaMs: delta },
+        { heroStanding: isStandingOn(hero, crumble.box, grounded), heroOverlapping: boxesOverlap(hero, crumble.box), deltaMs: delta, stomped },
         crumble.timing
       )
       playMechanicSfx(this.deps.scene, crumble.box, crumblePhaseSfx(before, crumble.state.phase))
@@ -552,6 +573,7 @@ export class StageMechanicsAdapter {
     this.liquids.forEach((liquid) => { liquid.fill.destroy(); liquid.surface.destroy(); destroyStrip(liquid.art) })
     this.pitSlag.forEach(destroyStrip)
     this.crumbles.forEach((crumble) => crumble.art?.destroy())
+    this.loadLines.destroy()
     this.walls.forEach((wall) => { wall.cracks.destroy(); wall.art?.destroy() })
     this.motion.destroy()
     this.drops.destroy()

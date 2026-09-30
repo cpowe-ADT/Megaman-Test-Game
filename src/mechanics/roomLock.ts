@@ -1,4 +1,5 @@
 import type { InputBindings } from '../input/ActionState'
+import type { EnemyLevelMarker } from '../enemy/types'
 
 /**
  * `room_lock` with `requiredInput` (prompt 05 §5.7, pulled forward from 06): a gate at the end of a
@@ -23,6 +24,13 @@ export type RoomLockDefinition = {
   hitsRequired?: number
   /** Enemy marker ids: the gate opens once every one is defeated (Heat Works' mid-boss catwalk room). */
   defeatMarkers?: string[]
+  /**
+   * Waves after the first (02 §2.2 `room_lock`: waves spawn from a list, the gate opens on clear; 12d
+   * Structural Works' support pads). `defeatMarkers` is the first wave, placed in the stage's markers like
+   * any other; each wave here spawns inside the locked room once every marker of the wave before it is gone.
+   * A wave room is not the mid-boss room: arming it plays no `miniboss_callout`.
+   */
+  waves?: EnemyLevelMarker[][]
 }
 
 export type RoomLockState = {
@@ -36,25 +44,48 @@ export type RoomLockState = {
   hitsRequired: number
   /** The required input was performed (or every marker defeated) while the lock was armed. */
   satisfied: boolean
-  /** Defeat lock only: markers still standing. */
+  /** Defeat lock only: markers still standing in the current wave. */
   remainingMarkers: string[]
+  /** Wave lock: the current wave (0 is `defeatMarkers`), and the marker ids of the waves still to come. */
+  wave: number
+  pendingWaves: string[][]
 }
 
 export function isDefeatLock(definition: Pick<RoomLockDefinition, 'defeatMarkers'>): boolean {
   return (definition.defeatMarkers?.length ?? 0) > 0
 }
 
+/** A defeat lock with waves after the first (a support pad), not the mid-boss room. */
+export function isWaveLock(definition: Pick<RoomLockDefinition, 'defeatMarkers' | 'waves'>): boolean {
+  return isDefeatLock(definition) && (definition.waves ?? []).some((wave) => wave.length > 0)
+}
+
+/** The waves after the first that hold at least one marker, in order. */
+export function lockWaves(definition: Pick<RoomLockDefinition, 'defeatMarkers' | 'waves'>): EnemyLevelMarker[][] {
+  return isDefeatLock(definition) ? (definition.waves ?? []).filter((wave) => wave.length > 0) : []
+}
+
 export function createRoomLockState(definition: RoomLockDefinition): RoomLockState {
   const markers = [...new Set(definition.defeatMarkers ?? [])]
+  const pendingWaves = lockWaves(definition).map((wave) => [...new Set(wave.map((marker) => marker.id))])
+  const total = markers.length + pendingWaves.reduce((sum, wave) => sum + wave.length, 0)
   return {
     id: definition.id,
     phase: 'dormant',
     requiredInput: definition.requiredInput ?? null,
     progress: 0,
-    hitsRequired: markers.length > 0 ? markers.length : Math.max(1, Math.floor(definition.hitsRequired ?? 1)),
+    hitsRequired: markers.length > 0 ? total : Math.max(1, Math.floor(definition.hitsRequired ?? 1)),
     satisfied: false,
-    remainingMarkers: markers
+    remainingMarkers: markers,
+    wave: 0,
+    pendingWaves
   }
+}
+
+/** The markers to spawn when a lock's state moved from `before` to `after`: the wave it advanced to, or none. */
+export function roomLockWaveToSpawn(definition: Pick<RoomLockDefinition, 'defeatMarkers' | 'waves'>, before: RoomLockState, after: RoomLockState): EnemyLevelMarker[] {
+  if (after.wave <= before.wave) return []
+  return lockWaves(definition)[after.wave - 1] ?? []
 }
 
 /** The player entered the room: a dormant lock closes behind its teaching prompt. */
@@ -72,15 +103,28 @@ export function applyRoomLockInput(state: RoomLockState, input: RoomLockInput): 
 
 /**
  * Defeat lock: markers gone for good (defeated, or fallen out of the stage) count while the lock is
- * armed, including any cleared before the hero walked in; the gate opens when none remain.
+ * armed, including any cleared before the hero walked in; when the current wave is gone the next one
+ * takes its place (a wave lock), and the gate opens when no marker and no wave remain.
  */
 export function applyRoomLockDefeats(state: RoomLockState, cleared: ReadonlySet<string> | readonly string[]): RoomLockState {
   if (state.phase !== 'locked' || state.remainingMarkers.length === 0) return state
   const gone = cleared instanceof Set ? cleared : new Set(cleared as readonly string[])
-  const remainingMarkers = state.remainingMarkers.filter((id) => !gone.has(id))
-  if (remainingMarkers.length === state.remainingMarkers.length) return state
-  const satisfied = remainingMarkers.length === 0
-  return { ...state, remainingMarkers, progress: state.hitsRequired - remainingMarkers.length, satisfied, phase: satisfied ? 'open' : 'locked' }
+  const standing = state.remainingMarkers.filter((id) => !gone.has(id))
+  if (standing.length === state.remainingMarkers.length) return state
+  const advance = standing.length === 0 && state.pendingWaves.length > 0
+  const remainingMarkers = advance ? state.pendingWaves[0] : standing
+  const pendingWaves = advance ? state.pendingWaves.slice(1) : state.pendingWaves
+  const left = remainingMarkers.length + pendingWaves.reduce((sum, wave) => sum + wave.length, 0)
+  const satisfied = left === 0
+  return {
+    ...state,
+    remainingMarkers,
+    pendingWaves,
+    wave: advance ? state.wave + 1 : state.wave,
+    progress: state.hitsRequired - left,
+    satisfied,
+    phase: satisfied ? 'open' : 'locked'
+  }
 }
 
 /**

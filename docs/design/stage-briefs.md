@@ -98,6 +98,13 @@
 - Radio beat: checkpoint 2.
 - Boss room: `pits` (two rubble pits Basalt's quake knuckle shockwaves cross).
 - Difficulty rating: 2.
+- Built (12d, EVAL-P6-010; layout table in `src/content/stages/basaltTitan.ts`, rules in `tests/basalt-titan-stage.test.ts`, route smoke `57-basalt-route`): 12 screens in the order above; checkpoints at the start, after the gallery (the radio), past the shaft head's gate, and before the boss door. Five pits (64 to 128px); eight spike strips; ten rockfall spawners (a shadow grows on the landing through the 400ms dust puff and the fall). Crumbles shake 350ms and return in 2.5s; load lines (an amber rail with ticks) mark the ledges that hold. Pads A (escalate) and B (after the shaft) are wave rooms: hoppers and a hauler, then a compactor and one more dropping in. 20 streamed placements (mine 5, hopper 5, bouncer 3, laser eye 3, hauler 3, the walker) and 4 in the pads' second waves.
+- Changed from this brief, and why:
+  - The master's three screens are a climb and a descent: a descent needs height, and outside a tall room the ceiling is y 90, so the headframe (Heat Works' measured climb, without the slag) takes the hero up and the shaft brings it down, each two screens tall.
+  - The side shaft has no solid face: the motor takes a wall kick off any solid face (`body.blocked`), so a casing would let a kick climb skip the dash jump. It is one-way ledges across an open chasm; no plain jump reaches it, and a dash jump only from a ledge that crumbles under the take-off (the launch beside the landing, or the first crumbling ledge). The outer wall over it hangs above every jump's head.
+  - The walker's stomp crumbles only the shaft head's slabs (a `stomp` crumble group; the hero standing on them does not): the side it faces within 176px on its floor. Other crumble groups ignore stomps, so Heat Works is unchanged.
+  - `room_lock` waves are new in `src/mechanics/roomLock.ts`: the first wave is the room's `defeatMarkers`, later waves spawn inside the locked room when the one before is gone, and a wave room plays no mini-boss callout. Timer-mode rockfall counts only while the hero is in its room (`activeFromX`, `activeToX`), so the shaft's rain neither falls nor sounds elsewhere.
+  - Not built in this lane: the walker's Basalt skin is the 12c palette swap as it stands, and the `pits` boss room keeps its current form, as Heat Works and the Water District kept theirs.
 
 ## Transit Security (`ferro_blade`)
 

@@ -339,22 +339,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Quarry Shaft',
     rewardWeaponId: 'QuakeKnuckle',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('basalt_armored', 'enemy_armored_bot', 150, 185, 124, 186, {
-        spawnTriggerX: 58,
-        retireTriggerX: 222
-      }),
-      marker('basalt_bouncer', 'enemy_bouncer', 230, 185, 212, 258, {
-        spawnTriggerX: 116,
-        retireTriggerX: 294
-      }),
-      marker('basalt_mine', 'enemy_mine_bot', 316, 185, undefined, undefined, {
-        spawnTriggerX: 156,
-        retireTriggerX: 378
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in `src/content/stages/basaltTitan.ts`.
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#15100c',
@@ -362,12 +350,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('basalt_start', 44, 40, 0), checkpoint('basalt_mid', 146, 40, 165)],
-      hazards: [{ id: 'basalt_spike_1', x: 216, y: 230 }],
-      midPlatforms: [
-        { id: 'basalt_mid_1', x: 182, y: 170, width: 48, type: 'oneWay', color: 0x4b3c29 },
-        { id: 'basalt_mid_2', x: 256, y: 146, width: 58, type: 'solid', color: 0x4b3c29 }
-      ]
+      checkpoints: [checkpoint('basalt_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   },
   ferro_blade: {
@@ -685,45 +670,6 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       teachRoom(2, 'wall_jump', { room: { y: -252, height: 504 } }),
       teachRoom(3, 'charge'),
       teachRoom(4, 'saber', { hitsRequired: 3 })
-    ]
-  },
-  basalt_titan: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('basalt_start', 44, 40, 0),
-      checkpoint('basalt_mid_a', 208, 40, 224),
-      checkpoint('basalt_mid_b', 454, 40, 492),
-      checkpoint('basalt_mid_c', 606, 40, 650),
-      checkpoint('basalt_boss_gate', 750, 40, 804)
-    ],
-    hazards: [
-      { id: 'basalt_spike_2', x: 520, y: 230 },
-      { id: 'basalt_spike_3', x: 714, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'basalt_mid_3', x: 430, y: 176, width: 48, type: 'solid', color: 0x4b3c29 },
-      { id: 'basalt_mid_4', x: 570, y: 154, width: 58, type: 'oneWay', color: 0x4b3c29, motion: { toX: 622, duration: 2300 } },
-      { id: 'basalt_mid_5', x: 710, y: 132, width: 60, type: 'solid', color: 0x4b3c29 },
-      { id: 'basalt_mid_6', x: 826, y: 164, width: 52, type: 'solid', color: 0x4b3c29 }
-    ],
-    enemyMarkers: [
-      marker('basalt_bouncer_late', 'enemy_bouncer', 444, 185, undefined, undefined, {
-        spawnTriggerX: 256,
-        retireTriggerX: 536
-      }),
-      marker('basalt_armored_late_2', 'enemy_armored_bot', 602, 185, 574, 646, {
-        spawnTriggerX: 418,
-        retireTriggerX: 700
-      }),
-      marker('basalt_hopper_late', 'enemy_shock_hopper', 742, 185, undefined, undefined, {
-        spawnTriggerX: 564,
-        retireTriggerX: 832
-      }),
-      marker('basalt_eye_gate', 'enemy_laser_eye', 836, 144, undefined, undefined, {
-        spawnTriggerX: 648,
-        retireTriggerX: 910
-      })
     ]
   },
   ferro_blade: {

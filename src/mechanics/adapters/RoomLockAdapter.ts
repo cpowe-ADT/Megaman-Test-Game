@@ -11,9 +11,11 @@ import {
   findRoomIndex,
   isDefeatLock,
   isSaberInReach,
+  isWaveLock,
   resolveCameraRoomIndex,
   resolveWorldCeiling,
   roomLockKeyHint,
+  roomLockWaveToSpawn,
   verticalSegmentRoom,
   type RoomLockDefinition,
   type RoomLockInput,
@@ -24,6 +26,7 @@ import {
 } from '../roomLock'
 import { GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
 import { MAIN_GROUND_HEIGHT } from '../../stage/stageGeometry'
+import type { EnemyLevelMarker } from '../../enemy/types'
 import {
   MECHANICS_ATLAS,
   MECHANICS_FRAME_SIZE,
@@ -62,6 +65,8 @@ export type RoomLockAdapterDeps = {
   onDefeatLockArmed?: (lockId: string) => void
   /** Level markers gone for good this run (`EnemySpawner.getClearedMarkerIds`); a defeat lock opens when all of its are. */
   clearedMarkers?: () => ReadonlySet<string> | readonly string[]
+  /** A wave lock's next wave, handed to the spawner as level markers (`EnemySpawner.spawnFromLevelMarkers`). */
+  spawnMarkers?: (markers: EnemyLevelMarker[]) => void
   /** Hands the camera back to the host: the boss-room lock when it is on, else the stage bounds. */
   restoreCamera: () => void
 }
@@ -230,10 +235,13 @@ export class RoomLockAdapter {
       this.prevSample = null
       const lock = this.locks[index]
       if (lock.requiredInput) this.deps.onArmed(index, roomLockKeyHint(lock.requiredInput, Settings.get().bindings))
-      else this.deps.onDefeatLockArmed?.(lock.id)
+      else if (!isWaveLock(lock)) this.deps.onDefeatLockArmed?.(lock.id)
     }
     if (index >= 0 && this.states[index].phase === 'locked' && isDefeatLock(this.locks[index])) {
-      this.commit(index, applyRoomLockDefeats(this.states[index], this.deps.clearedMarkers?.() ?? []))
+      const before = this.states[index]
+      this.commit(index, applyRoomLockDefeats(before, this.deps.clearedMarkers?.() ?? []))
+      const wave = roomLockWaveToSpawn(this.locks[index], before, this.states[index])
+      if (wave.length > 0) this.deps.spawnMarkers?.(wave)
       this.prevSample = null
     } else if (index >= 0 && this.states[index].phase === 'locked') {
       const sample = this.deps.runtime()?.getVerbSample() ?? null

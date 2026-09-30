@@ -294,8 +294,8 @@ export class Game extends Phaser.Scene {
     this.bossGateLocked = false
     this.bossRoomCameraLocked = false
     this.installEntityPlatformCollisions()
-    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (lockIndex, hint) => this.storyDirector?.onRoomLockArmed(lockIndex, hint), onDefeatLockArmed: () => this.storyDirector?.onMiniBossLock(), clearedMarkers: () => this.enemySpawner?.getClearedMarkerIds() ?? [], restoreCamera: () => (this.bossRoomCameraLocked ? this.applyBossRoomCameraLock() : this.applyStageCameraBounds(stageId)) })
-    installStageMechanics({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, platforms: () => this.platformCollisionSystem, playerBullets: () => this.playerBullets, isDying: () => this.fallingToDeath, damagePlayer: (request) => this.requestPlayerDamage(request) })
+    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (lockIndex, hint) => this.storyDirector?.onRoomLockArmed(lockIndex, hint), onDefeatLockArmed: () => this.storyDirector?.onMiniBossLock(), clearedMarkers: () => this.enemySpawner?.getClearedMarkerIds() ?? [], spawnMarkers: (markers) => this.enemySpawner?.spawnFromLevelMarkers(markers), restoreCamera: () => (this.bossRoomCameraLocked ? this.applyBossRoomCameraLock() : this.applyStageCameraBounds(stageId)) })
+    installStageMechanics({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, platforms: () => this.platformCollisionSystem, playerBullets: () => this.playerBullets, isDying: () => this.fallingToDeath, damagePlayer: (request) => this.requestPlayerDamage(request), enemies: () => this.enemySpawner?.getEntities() ?? [] })
   }
 
   private rebuildBossGateBarrier(): void {

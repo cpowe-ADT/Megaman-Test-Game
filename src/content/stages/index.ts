@@ -1,4 +1,5 @@
 import type { CampaignStageId, StageExtensionPatch } from '../campaign'
+import { BASALT_TITAN_PATCH } from './basaltTitan'
 import { GLACIER_RONIN_PATCH } from './glacierRonin'
 import { HEAT_WORKS_PATCH } from './heatWorks'
 import { MIRE_WRAITH_PATCH } from './mireWraith'
@@ -15,5 +16,6 @@ export const REBUILT_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensi
   tide_reaver: TIDE_REAVER_PATCH,
   mire_wraith: MIRE_WRAITH_PATCH,
   volt_hopper: VOLT_HOPPER_PATCH,
-  glacier_ronin: GLACIER_RONIN_PATCH
+  glacier_ronin: GLACIER_RONIN_PATCH,
+  basalt_titan: BASALT_TITAN_PATCH
 }
