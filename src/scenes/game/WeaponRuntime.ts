@@ -1,5 +1,6 @@
 import type Phaser from 'phaser'
 import AudioService from '../../audio'
+import { muzzleAnchor } from '../../combat/heroCombatVisuals'
 import { getWeaponConfig, getWeaponDisplayName } from '../../content/weapons'
 import {
   getHolsteredWeaponRechargeTargets,
@@ -23,6 +24,9 @@ export interface PlayerShotRequest {
   weaponId?: 'ArcSlash'
   chargeLevel: 0 | 1 | 2 | 3 | 4
   facing: 1 | -1
+  /** The pose the muzzle flash fired from (13b.3, `EVAL-P13-004`): shared with the flash's own anchor
+   * lookup (`heroCombatVisuals.ts`), so a shot starts at the cannon tip instead of a fixed offset. */
+  pose?: 'stand' | 'run' | 'air' | 'dash'
 }
 
 /** The members of the Game scene that weapon cycling, energy, firing and the weapon labels use. */
@@ -148,12 +152,15 @@ export class WeaponRuntime {
     const currentWeapon = this.getCurrentWeaponConfig()
     const snapshot = currentWeapon.behavior === 'aim' ? host.actions.snapshot() : undefined
     const aim: -1 | 0 | 1 = snapshot?.aimUp?.held ? -1 : snapshot?.aimDown?.held ? 1 : 0
+    // 13b.3 (EVAL-P13-004): the same anchor the muzzle flash spawns at (heroCombatVisuals.ts), not a
+    // fixed offset -- the shot used to start behind and above the cannon tip, in every pose but stand.
+    const muzzle = muzzleAnchor(config.pose ?? 'stand', config.facing)
     const fired = firePlayerShot({
       request: config,
       equippedWeaponId: currentWeapon.id,
       availableEnergy: host.weaponEnergyById[currentWeapon.id] ?? currentWeapon.maxEnergy,
-      x: player.x + (config.facing === -1 ? -8 : 8),
-      y: player.y - 6,
+      x: player.x + muzzle.x,
+      y: player.y + muzzle.y,
       // The three-on-screen rule counts Buster shots only (weapon shots and their puddles do not).
       activeBusterCount: countActiveBusterShots(host.playerBullets),
       modifiers: resolveUpgradeModifiers(host.progressionSave),

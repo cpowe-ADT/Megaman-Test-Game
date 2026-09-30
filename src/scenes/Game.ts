@@ -681,15 +681,8 @@ export class Game extends Phaser.Scene {
   }
   // [REGION: STAGE-BUILDER - END]
 
-  private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => {
-    const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
-    if (!sprite) {
-      return
-    }
-    if (this.playerBullets?.contains(sprite) || this.bossBullets?.contains(sprite)) {
-      this.recycleBullet(sprite, undefined)
-    }
-  }
+  // 13b.3 (EVAL-P13-004): the world-edge kill itself moved into HitWires.ts; this stays a call.
+  private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => this.hitWires.handleWorldBounds(body)
 
   constructor() {
     super('Game')
@@ -946,7 +939,10 @@ export class Game extends Phaser.Scene {
       getPlayer: () => this.player,
       getNow: () => this.time.now,
       getFacing: () => this.facing, getEnemies: () => this.enemies?.getChildren() as Phaser.Physics.Arcade.Sprite[],
-      damageBoss: (damage, meta) => { this.cameraDirector.onContactHit('pellet'); this.applyDamageToBoss(damage, meta) },
+      // Item 5 (13b.3, EVAL-P13-004): hit-stop used to fire on every overlap, accepted or not; it now
+      // fires from inside applyDamageToBoss, only once damage actually lands.
+      damageBoss: (damage, meta) => this.applyDamageToBoss(damage, meta),
+      playDeflectSfx: () => AudioService.playSfx('saber_reflect'),
       damagePlayer: (damage, meta) =>
         this.requestPlayerDamage({
           amount: damage,
@@ -1478,7 +1474,7 @@ export class Game extends Phaser.Scene {
   private onPlayerGameOver(): void { this.deathSequence.onPlayerGameOver() }
   // [REGION: FLOW-HOOKS - END]
 
-  private applyDamageToBoss(dmg: number, hitContext: BossHitContext = {}): void { this.bossDamage.applyDamageToBoss(dmg, hitContext) }
+  private applyDamageToBoss(dmg: number, hitContext: BossHitContext = {}): boolean { return this.bossDamage.applyDamageToBoss(dmg, hitContext) }
 
   private onTargetDefeated(target: Phaser.Physics.Arcade.Sprite): void {
     const anyTarget = target as any

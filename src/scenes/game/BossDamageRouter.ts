@@ -59,7 +59,7 @@ export interface BossDamageRouterHost {
   currentPhaseName: string
   bossHitFeedbackTimer?: Phaser.Time.TimerEvent
   storyDirector?: Pick<StoryDirector, 'onWeaknessHit'>
-  readonly cameraDirector: Pick<CameraDirector, 'onBossHit'>
+  readonly cameraDirector: Pick<CameraDirector, 'onBossHit' | 'onContactHit'>
   getCurrentWeaponConfig(): { id: string }
   recordCombatHit(source: CombatHitSource, target: CombatHitTarget, amount: number, kind: string, accepted: boolean, note?: string): void
   updatePhaseHud(action?: string): void
@@ -81,7 +81,13 @@ export class BossDamageRouter {
 
   constructor(private readonly host: BossDamageRouterHost) {}
 
-  applyDamageToBoss(dmg: number, hitContext: BossHitContext = {}): void {
+  /**
+   * Returns whether damage actually landed (13b.3, `EVAL-P13-004`, items 5 and 6): a rejected hit
+   * (immune, blocked by the weakness rules, no target) is not silently the same as an accepted one --
+   * the caller (`ProjectileCollisionRouter`) uses this to deflect a rejected shot instead of recycling
+   * it, show an impact spark only on an accepted one, and gate hit-stop to damage that actually landed.
+   */
+  applyDamageToBoss(dmg: number, hitContext: BossHitContext = {}): boolean {
     const host = this.host
     const weaponId = hitContext.weaponId ?? host.getCurrentWeaponConfig().id
     const hitKind = hitContext.kind ?? 'direct'
@@ -117,7 +123,7 @@ export class BossDamageRouter {
     if (multiplier <= 0) {
       host.recordCombatHit('player', 'boss', dmg, hitKind, false, profileRejected ? 'buster-only-profile' : 'blocked-by-weakness-rules')
       this.showHitFeedback(weaponId, multiplier, profileRejected ? 'BUSTER ONLY' : 'BLOCKED')
-      return
+      return false
     }
     const damageBonus =
       save.progressionWorld?.progressionMode === 'classic' ? 0 : weaponId === 'Buster' ? getBusterDamageBonus(save) : getWeaponDamageBonus(save)
@@ -149,26 +155,34 @@ export class BossDamageRouter {
         host.recordCombatHit('player', 'boss', scaledDamage, hitKind, false, hit.reason ?? 'immune')
         this.showHitFeedback(weaponId, multiplier, 'IMMUNE')
         blinkBossHit(host.tweens as unknown as BlinkTweens | undefined, (host.bossTarget ?? host.bossArt) as unknown as BlinkTarget | undefined, 0.6, 45, 1)
-        return
+        return false
       }
       host.recordCombatHit('player', 'boss', hit.amountApplied, hitKind, true)
       host.hud?.updateBossHp(hp.current, hp.max)
       if (host.bossDeathHandled || host.victoryTriggered) {
-        return
+        return true
       }
       blinkBossHit(host.tweens as unknown as BlinkTweens | undefined, (host.bossTarget ?? host.bossArt) as unknown as BlinkTarget | undefined, 0.25, played.flashMs)
       if (played.whiteFlashMs > 0) controller.flashWhite(played.whiteFlashMs)
       AudioService.playSfx(played.sfx)
-      if (played.hitStop) host.cameraDirector.onBossHit(multiplier, hit.amountApplied)
+      // Item 5 (13b.3, EVAL-P13-004): hit-stop fires only once damage lands, here and not at the
+      // overlap call site -- and, as `played.hitStop` already gated for the weakness tier below, only
+      // when the boss's own hit reaction calls for it (a lockout-window hit still lands but stays free
+      // of hit-stop, `44-boss-beats`). onBossHit takes the max, not a second hit-stop, for a weakness hit.
+      if (played.hitStop) {
+        host.cameraDirector.onContactHit('pellet')
+        host.cameraDirector.onBossHit(multiplier, hit.amountApplied)
+      }
       this.showHitFeedback(weaponId, multiplier)
       if (hit.defeated || hp.current <= 0) {
         host.onBossDefeated()
       }
-      return
+      return true
     }
 
     // Every boss is a BossController; Game never builds a bare body, so there is nothing else to hit.
     host.recordCombatHit('player', 'boss', dmg, hitKind, false, 'missing target')
+    return false
   }
 
   /** The last hit label the phase panel showed. */

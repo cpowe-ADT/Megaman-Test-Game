@@ -2348,6 +2348,11 @@ async function runMusicCueScenario(name) {
     await page.screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
     fs.writeFileSync(path.join(scenarioDir, 'state-0.json'), JSON.stringify(finalState, null, 2))
 
+    // 13b.1 (EVAL-P13-002), production build only: Craig's report was "when i loaded the first level
+    // nothing was playing". Open item (see the result card and the handoff note): a smoke assertion
+    // here proved too unreliable in this sandbox's preview cold-start timing to gate on; the retry
+    // fix itself is in PlaceholderAudioService.ts (scheduleMusicRetry), not smoke-covered yet.
+
     if (errors.length > 0) {
       fs.writeFileSync(path.join(scenarioDir, 'errors-0.json'), JSON.stringify(errors, null, 2))
       throw new Error(`Smoke test found browser errors in ${scenarioDir}`)
@@ -4015,6 +4020,7 @@ async function main() {
     await executeSmokeScenario(summary, '63-restart-leak', () =>
       runRestartLeakScenario('63-restart-leak', { outputDir, url, readState, waitForState, advanceFrames, tapKey })
     )
+    await executeSmokeScenario(summary, '65-shot-contract', async () => (await import('./smoke/shot-contract.mjs')).runShotContractScenario('65-shot-contract', { outputDir, url, waitForState, waitForPageCheck, advanceFrames }))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     await executeSmokeScenario(summary, '37b-story-triggers', async () => (await import('./smoke/story-surfaces.mjs')).runStoryTriggersScenario('37b-story-triggers', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }

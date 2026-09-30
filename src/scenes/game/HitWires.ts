@@ -140,6 +140,21 @@ export class HitWires {
     this.host.combatDebugBus.record({ timeMs: this.host.time?.now ?? 0, source, target, amount, kind, accepted, note })
   }
 
+  /**
+   * A body touched the world's edge (13b, moved out of `Game.ts`): only a tracked bullet recycles.
+   * A standard player shot no longer registers this at all (`coreProjectiles.ts`: `ProjectileSystem`
+   * expires it on camera exit instead), so in practice this is left for lobs, waves and boomerangs.
+   */
+  handleWorldBounds(body: Phaser.Physics.Arcade.Body): void {
+    const sprite = body.gameObject as Phaser.Physics.Arcade.Sprite | null
+    if (!sprite) {
+      return
+    }
+    if (this.host.playerBullets?.contains(sprite) || this.host.bossBullets?.contains(sprite)) {
+      this.recycleBullet(sprite, undefined)
+    }
+  }
+
   recycleBullet(a: unknown, b: unknown): void {
     const bullet = asDynSprite(a) || asDynSprite(b)
     if (!bullet) {
