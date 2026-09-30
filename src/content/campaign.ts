@@ -367,22 +367,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Forge Catwalk',
     rewardWeaponId: 'MagcutDisc',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('ferro_gunner', 'enemy_gunner_bot', 144, 185, 118, 186, {
-        spawnTriggerX: 56,
-        retireTriggerX: 210
-      }),
-      marker('ferro_turret', 'enemy_frost_turret', 244, 149, undefined, undefined, {
-        spawnTriggerX: 106,
-        retireTriggerX: 304
-      }),
-      marker('ferro_eye', 'enemy_laser_eye', 326, 149, undefined, undefined, {
-        spawnTriggerX: 150,
-        retireTriggerX: 384
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in `src/content/stages/ferroBlade.ts`.
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#12131a',
@@ -390,15 +378,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('ferro_start', 44, 40, 0), checkpoint('ferro_mid', 158, 40, 188)],
-      hazards: [
-        { id: 'ferro_spike_1', x: 168, y: 230 },
-        { id: 'ferro_spike_2', x: 248, y: 230 }
-      ],
-      midPlatforms: [
-        { id: 'ferro_mid_1', x: 146, y: 172, width: 44, type: 'solid', color: 0x3d4659 },
-        { id: 'ferro_mid_2', x: 246, y: 132, width: 52, type: 'oneWay', color: 0x3d4659 }
-      ]
+      checkpoints: [checkpoint('ferro_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   },
   mire_wraith: {
@@ -670,45 +652,6 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       teachRoom(2, 'wall_jump', { room: { y: -252, height: 504 } }),
       teachRoom(3, 'charge'),
       teachRoom(4, 'saber', { hitsRequired: 3 })
-    ]
-  },
-  ferro_blade: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('ferro_start', 44, 40, 0),
-      checkpoint('ferro_mid_a', 212, 40, 240),
-      checkpoint('ferro_mid_b', 452, 40, 490),
-      checkpoint('ferro_mid_c', 606, 40, 652),
-      checkpoint('ferro_boss_gate', 748, 40, 804)
-    ],
-    hazards: [
-      { id: 'ferro_spike_3', x: 492, y: 230 },
-      { id: 'ferro_spike_4', x: 706, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'ferro_mid_3', x: 432, y: 172, width: 48, type: 'solid', color: 0x3d4659 },
-      { id: 'ferro_mid_4', x: 560, y: 146, width: 54, type: 'oneWay', color: 0x3d4659, motion: { toX: 614, duration: 2100 } },
-      { id: 'ferro_mid_5', x: 696, y: 124, width: 52, type: 'oneWay', color: 0x3d4659 },
-      { id: 'ferro_mid_6', x: 818, y: 154, width: 50, type: 'solid', color: 0x3d4659 }
-    ],
-    enemyMarkers: [
-      marker('ferro_slicer_late', 'enemy_slicer_bot', 434, 185, 404, 478, {
-        spawnTriggerX: 260,
-        retireTriggerX: 522
-      }),
-      marker('ferro_eye_late', 'enemy_laser_eye', 584, 132, undefined, undefined, {
-        spawnTriggerX: 408,
-        retireTriggerX: 678
-      }),
-      marker('ferro_drone_late', 'enemy_shield_drone', 738, 126, undefined, undefined, {
-        spawnTriggerX: 570,
-        retireTriggerX: 820
-      }),
-      marker('ferro_bouncer_gate', 'enemy_bouncer', 826, 185, undefined, undefined, {
-        spawnTriggerX: 654,
-        retireTriggerX: 904
-      })
     ]
   },
   gale_vixen: {
