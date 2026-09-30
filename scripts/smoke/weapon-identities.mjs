@@ -212,16 +212,21 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
 
   // Inferno Coil (13d, EVAL-P13-008): a stream held past chargeReadyFrames (60), then released, fires the
   // charged form instead of just stopping -- WeaponRuntime.updateStream, not the generic charge timer
-  // (Flame Serpent keeps allowCharge false so the two never race for the same release).
+  // (Flame Serpent keeps allowCharge false so the two never race for the same release). It fires from
+  // WeaponRuntime directly (not through NewPlayerRuntime's spawnProjectile hook, the way a keyboard pellet
+  // does), so `combatDebug.player.lastProjectile` never sees it -- read the live bullet instead.
   const beforeCharged = await page.evaluate(() => window.__w12.scene().weaponEnergyById.FlameSerpent)
   await page.keyboard.down('x')
   await advanceFrames(page, 70)
   await page.keyboard.up('x')
   await advanceFrames(page, 2)
-  const chargedState = await page.evaluate(() => JSON.parse(window.render_game_to_text()))
-  const chargedShot = chargedState.combatDebug?.player?.lastProjectile
+  const chargedShot = await page.evaluate(() => {
+    const shot = window.__w12.latest('player_weapon_FlameSerpent_charged')
+    if (!shot) return null
+    return { weaponId: shot.data.get('weaponId'), chargeLevel: shot.data.get('chargeLevel'), onHitTag: shot.data.get('onHitTag'), textureKey: shot.texture?.key, frame: shot.frame?.name }
+  })
   const afterCharged = await page.evaluate(() => window.__w12.scene().weaponEnergyById.FlameSerpent)
-  evidence.flameChargedRelease = { weaponId: chargedShot?.weaponId, chargeLevel: chargedShot?.chargeLevel, onHitTag: chargedShot?.onHitTag, textureKey: chargedShot?.textureKey, frame: chargedShot?.frame, spent: beforeCharged - afterCharged }
+  evidence.flameChargedRelease = { ...chargedShot, spent: beforeCharged - afterCharged }
   assert.equal(chargedShot?.weaponId, 'FlameSerpent', 'Inferno Coil keeps the FlameSerpent identity')
   assert.equal(chargedShot?.textureKey, 'atlas_weapons_charged_v1', 'Inferno Coil draws weapons_charged_v1')
   assert.ok(String(chargedShot?.frame ?? '').startsWith('weapons_charged_v1/flame_serpent_charged/'), `Inferno Coil frame ${chargedShot?.frame}`)
