@@ -9,6 +9,7 @@ import { INPUT_ACTIONS, padSampleFromNames, type InputAction } from '../../input
 import InputActions from '../../input/InputActions'
 import { getLatestActiveProjectile, spawnDebugProjectileClash, summarizeProjectilePool } from '../../projectiles/diagnostics/ProjectileDevTools'
 import { Save } from '../../systems/Save'
+import { emptySegmentTelemetrySnapshot, type SegmentTelemetry } from '../../telemetry/segmentTelemetry'
 
 /**
  * The Game scene as the automation hooks see it. The scene is still under @ts-nocheck, so this
@@ -90,6 +91,8 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
       }
       ;(window as any).stageDebug = {
         checkpointIndex: () => host.currentCheckpointIndex,
+        /** Part 13c (EVAL-P6-012): per-segment deaths, cause, killer (when known) and damage taken so far this scene. */
+        telemetry: () => (host.segmentTelemetry as SegmentTelemetry | undefined)?.snapshot() ?? emptySegmentTelemetrySnapshot(),
         enemyStream: () => host.enemySpawner?.getStreamDebugSnapshot?.() ?? null,
         projectilePools: () => ({
           player: summarizeProjectilePool(host.playerBullets),

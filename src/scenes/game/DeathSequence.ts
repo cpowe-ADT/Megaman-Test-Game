@@ -9,6 +9,7 @@ import type { PlayerDamageRequest, PlayerDamageResult } from '../../player/types
 import type { CampaignSessionStatistics } from '../../progression/statistics'
 import type { HUD } from '../../ui/HUD'
 import { Save } from '../../systems/Save'
+import { SegmentTelemetry, segmentIdFor } from '../../telemetry/segmentTelemetry'
 import { omegaActsOf } from './OmegaActs'
 import type { StoryDirector } from './StoryDirector'
 
@@ -82,6 +83,8 @@ export interface DeathSequenceHost {
   currentCheckpointId: string | null
   progressionSave: ReturnType<typeof Save.load>
   sessionStats: Pick<CampaignSessionStatistics, 'defeat' | 'respawn'>
+  /** Part 13c (EVAL-P6-012): lazily created by the first death or read this scene sees (`GameDebugHooks.ts` reads it too). */
+  segmentTelemetry?: SegmentTelemetry
   hud?: Pick<HUD, 'updatePlayerHp' | 'setLives'>
   newPlayerRuntime?: Pick<NewPlayerRuntime, 'resetForRespawn' | 'playDeath' | 'playDeathBurst' | 'playBeamIn'>
   bossProjectileController?: Pick<BossProjectileController, 'onPauseChanged' | 'stop'>
@@ -184,6 +187,13 @@ export class DeathSequence {
       return
     }
     host.sessionStats.defeat()
+    host.segmentTelemetry = host.segmentTelemetry ?? new SegmentTelemetry()
+    host.segmentTelemetry.recordDeath(
+      segmentIdFor(host.activeStageId, host.currentCheckpointIndex),
+      reason,
+      host.time?.now ?? 0,
+      { x: host.player.x, y: host.player.y }
+    )
     host.flushStatistics()
     host.playerHp = 0
     host.player.data?.set?.('hp', host.playerHp)

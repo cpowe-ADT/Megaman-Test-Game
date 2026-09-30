@@ -133,6 +133,7 @@ Blocking dialogue is also part of the automation contract. `render_game_to_text(
 | `bossDebug.hp()` / `bossDebug.unlockIntro()` | Read boss HP; skip the whole intro (dialogue, and any pending WARNING, card or bar fill, so no dialogue opens mid-fight) and start the fight. |
 | `bossDebug.forceVictory()` | Legacy direct victory bypass; do not use in new scenarios. |
 | `stageDebug.checkpointIndex()` / `stageDebug.enemyStream()` | Current checkpoint index and enemy stream snapshot. |
+| `stageDebug.telemetry()` | Part 13c (`EVAL-P6-012`): per-segment (`stageId:checkpointIndex`) deaths with position (game pixels, for `scripts/content/heatmap.mjs`), cause (`pit`/`debug`/`damage`), the killer's `sourceId` when the caller names one, and damage taken so far this scene; `{ totalDeaths: 0, ... }` before the scene's first death. Deaths are wired live (`DeathSequence.killPlayer`); damage-taken accumulation (`SegmentTelemetry.recordDamage`) is built and unit-tested but has no live source yet. |
 | `stageDebug.projectilePools()` | Active, visible, and allocated player/enemy projectile pool diagnostics. |
 | `stageDebug.playerViewport()` | Player body top/bottom, viewport top, actor ceiling, and blocked-up flag. |
 | `stageDebug.setWeaponEnergy(weaponId, amount)` | Clamp an owned special weapon's energy and reset its passive recharge accumulator; invalid IDs and Buster return `null`. |
