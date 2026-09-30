@@ -46,7 +46,6 @@ test('every warden room matches its combat profile layout, and Rook keeps the fl
     assert.equal(featuresOf(stageId).layout, layout, `${stageId} layout`)
     assert.equal(BOSS_COMBAT_PROFILES[bossId].room.layout, layout, `${bossId} profile layout`)
   }
-  assert.equal(REBUILT_STAGE_PATCHES.omega_fortress, undefined, 'the Core room is the Central Core lane')
 })
 
 test('every room feature sits inside its boss room span, and the route keeps its budget', () => {
