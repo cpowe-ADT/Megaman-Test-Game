@@ -85,4 +85,4 @@ Scene flow: `Boot` -> `Preload` -> `Title`, then `NewCampaign`, `Prologue`, `Sta
 
 ## Environment
 
-macOS: no GNU `timeout`; scope long runs with `SMOKE_ONLY`, isolate parallel runs with `SMOKE_PORT` and `SWEEP_PORT`. `npm run test` takes seconds, the sweep a few minutes, full smoke six to ten. Port 5173 can be taken by a Docker container on Craig's Mac: Vite then picks the next port, and the Claude browser pane has `omega-relay-dist` (the production build on 4180) in `.claude/launch.json`. The pane pauses Phaser while hidden. Python sprite scripts run through `.venv/bin/python`.
+macOS: no GNU `timeout`; scope long runs with `SMOKE_ONLY`, isolate parallel runs with `SMOKE_PORT` and `SWEEP_PORT`. `npm run test` takes seconds, the sweep a few minutes, full smoke six to ten. Port 5173 can be taken by a Docker container on Craig's Mac: Vite then picks the next port, and the Claude browser pane has `omega-relay-dist` in `.claude/launch.json`: Craig's play build on 4180, a snapshot in `output/play-build` that no gate rebuilds (refresh it only after a green verify). The pane pauses Phaser while hidden. Python sprite scripts run through `.venv/bin/python`.

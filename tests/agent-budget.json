@@ -55,6 +55,9 @@
     },
     "docs/prompts/12-finish-the-game.md": {
       "maxBytes": 16000
+    },
+    "docs/prompts/13-polish-from-playtest.md": {
+      "maxBytes": 16000
     }
   },
   "pathCheckedDocs": [
