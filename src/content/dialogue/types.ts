@@ -44,7 +44,11 @@ export const STAGE_DIALOGUE_TRIGGERS = [
   /** Warden stages: Iona reads the district registry on the weapon-get card, keyed by the weapon's source stage. */
   'weapon_get',
   /** Warden stages: one OMEGA line on the ticker as the warden enters phase two. */
-  'warden_phase'
+  'warden_phase',
+  /** Central Core only: one OMEGA line on the ticker entering act 2, the archive door. */
+  'omega_act_two',
+  /** Central Core only: one OMEGA line on the ticker entering act 3, the Core's approach. */
+  'omega_act_three'
 ] as const
 
 /** Triggers that belong to the campaign as a whole. */
@@ -77,6 +81,9 @@ export const DIALOGUE_LINE_LIMITS: Record<DialogueTrigger, { min: number; max: n
   capsule_pickup: { min: 1, max: 1 },
   weapon_get: { min: 1, max: 1 },
   warden_phase: { min: 1, max: 1 },
+  /** The Central Core's act hooks: two or three lines, OMEGA only. */
+  omega_act_two: { min: 2, max: 3 },
+  omega_act_three: { min: 2, max: 3 },
   prologue: { min: 4, max: 12 },
   epilogue: { min: 9, max: 12 },
   credits: { min: 1, max: 40 },

@@ -206,6 +206,25 @@ test('Water District master: the flooded shaft is two screens tall, walled both 
   assert.ok(current.length >= 1 && current.every((zone) => (zone.forceX ?? 0) < 0), 'the current pushes toward the intake')
 })
 
+test('Water District pilot: the master shaft reads a raised low line only while flagged, at "low" only', () => {
+  const { arena } = getCampaignStage('tide_reaver')
+  const water = (arena.waterLevelGates ?? []).find((entry) => entry.id === 'tide_shaft_water')!
+  assert.ok(water.lowYFlagged !== undefined && water.lowYFlagged < water.lowY, 'the flagged low line sits higher (a smaller y) than the base line')
+  const timing = water.timing!
+  const lowAtMs = timing.highMs + timing.fallMs + timing.lowMs / 2
+  assert.equal(waterLevelAt(water, lowAtMs).surfaceY, water.lowY, 'unflagged: the base low line')
+  assert.equal(waterLevelAt(water, lowAtMs, false).surfaceY, water.lowY, 'flagged=false is the same as the default')
+  assert.equal(waterLevelAt(water, lowAtMs, true).surfaceY, water.lowYFlagged, 'flagged: the raised low line')
+  // The high phase (and the gate, keyed off the phase name, not the y) never reads the flag.
+  const highAtMs = timing.highMs / 2
+  assert.equal(waterLevelAt(water, highAtMs, true).surfaceY, waterLevelAt(water, highAtMs, false).surfaceY, 'the high line is unaffected')
+  assert.deepEqual(
+    [waterLevelAt(water, lowAtMs, true).phase, waterLevelAt(water, lowAtMs, true).gateOpen],
+    ['low', true],
+    'the exit sluice still opens on the phase name, regardless of the flag'
+  )
+})
+
 test('Water District secrets: the heart needs wall kicks, the sub tank needs high water, the capsule is on the route after the mid-boss', () => {
   const { arena } = getCampaignStage('tide_reaver')
   const all = arena.midPlatforms.map(surface)

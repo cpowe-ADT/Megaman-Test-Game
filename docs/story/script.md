@@ -2,7 +2,7 @@
 
 Generated from `src/content/dialogue/dialogue.v2.json` by `npm run story:script`. Do not edit by hand; edit the JSON and regenerate. Tokens in braces are resolved at runtime: `{hero}` is the callsign from `src/content/identity.ts`, `{rewardLabel}` the reward the location placed, `{clearedCount}` and `{remainingCount}` the warden tally, `{districtName}` and `{wardenName}` the current stage.
 
-Line count: 192. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
+Line count: 197. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
 
 ## Prologue
 
@@ -463,6 +463,21 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 - **Director Iona Vale:** Every relay is listening, {hero}. Whatever it says to you, they'll hear it too.
 - **OMEGA CORE:** Welcome home, Unit 09. I left the Drill Hangar open. A city that watches one unit choose badly asks to be held.
+
+### Act 2 (entering the Warden Archive, ticker, non-blocking)
+
+_Staging: Radio ticker on entering act 2, the archive door; non-blocking, once._
+
+- **OMEGA CORE:** Unit 09. Eight originals are free. The archive holds eight copies, recorded before tonight, and replays them for you now.
+- **OMEGA CORE:** Call them corrupted if it helps you swing harder. I call them a second draft. A first attempt is rarely enough, for either of us.
+- **OMEGA CORE:** Clear the archive, or leave it standing between you and the Core. I accounted for both endings before you reached the door.
+
+### Act 3 (entering the Core's approach, ticker, non-blocking)
+
+_Staging: Radio ticker on entering act 3, the Core's approach; non-blocking, once._
+
+- **OMEGA CORE:** Eight copies, eight losses. I did not expect the archive to hold you. I expected it to cost you something before the Core.
+- **OMEGA CORE:** Whatever it cost, it does not refund at this door, Unit 09. Walk through regardless. The Core is the only room left where I have not yet lost the argument.
 
 ### Boss intro (blocking)
 

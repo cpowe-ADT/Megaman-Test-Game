@@ -165,6 +165,9 @@ export async function runTideRouteScenario(name, { outputDir, storyUrl, readStat
     }
     let state = await capture('spawn')
     assert.equal(state.stageRuntime.checkpointIndex, 0)
+    // The Water District pilot (prompt 07 7.6 item 14, EVAL-P6-011 open item): before the checkpoint-2
+    // radio, the flag is unheard and the master shaft's low line reads its base value.
+    assert.ok(!(await readState(page)).story?.flags?.includes('tide_reaver_radio'), 'the radio has not fired yet')
     mark('loaded')
 
     // (a) Spawn to the first sluice on real input: a hop onto the intro step, a jump over the pit inside the
@@ -195,6 +198,8 @@ export async function runTideRouteScenario(name, { outputDir, storyUrl, readStat
     state = await waitForState(page, (next) => next.stageRuntime?.checkpointIndex === 1, 6000, 'checkpoint 2 on real input')
     assert.ok(through.x >= 1376 && through.hp > 0, `through the open sluice to checkpoint 2 (${JSON.stringify(through)})`)
     await capture('checkpoint-2')
+    // The radio has fired: the flag is heard for the rest of the stage, including the master shaft ahead.
+    assert.ok((await readState(page)).story?.flags?.includes('tide_reaver_radio'), 'the checkpoint-2 radio intrusion fired')
     mark('c')
 
     // (b) The current's jump penalty: the same held jump from the floor, inside the teach current and on plain floor.
@@ -314,6 +319,9 @@ export async function runTideRouteScenario(name, { outputDir, storyUrl, readStat
     await setClock(45000)
     state = await readState(page)
     assert.deepEqual([water(state, 'tide_shaft_water').phase, water(state, 'tide_shaft_water').gateClosed], ['low', false], 'low water opens the exit sluice')
+    // The water pilot: the radio fired at checkpoint 2, so the low line reads 186 here, not its base 230
+    // (`tideReaver.ts`'s TIDE_SHAFT_LOW_Y minus TIDE_SHAFT_NOTCH_PX) -- one notch higher for the rest of the stage.
+    assert.equal(water(state, 'tide_shaft_water').surfaceY, 186, `the flagged low line, one notch higher (${JSON.stringify(water(state, 'tide_shaft_water'))})`)
     await capture('shaft-low')
     await setClock(45000)
     const exit = await drive({ targetX: 3640, maxFrames: 120 })

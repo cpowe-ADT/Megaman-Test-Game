@@ -43,6 +43,13 @@ export type WaterLevelGateDefinition = {
   /** Surface y at high and low water; y grows down, so `highY < lowY`. */
   highY: number
   lowY: number
+  /**
+   * Read instead of `lowY` while the caller's `flagged` is true (`waterLevelAt`'s third argument): a
+   * story consequence that raises the low line for the rest of a stage without a second definition
+   * (the Water District pilot, prompt 07 7.6 item 14 — `tideReaver.ts` sets it; `WaterLevelGateAdapter`
+   * reads a story flag through its `flagged` deps thunk). Absent, `flagged` has no effect.
+   */
+  lowYFlagged?: number
   /** The basin's floor: the water fills from the surface down to it. */
   bottomY: number
   /** No timing: still water at `highY`. */
@@ -84,8 +91,9 @@ function gateOpenAt(definition: WaterLevelGateDefinition, phase: WaterLevelPhase
   return at === 'high' ? phase === 'high' || phase === 'still' : phase === 'low'
 }
 
-/** The level at a stage-clock time: phase, surface and the gate. */
-export function waterLevelAt(definition: WaterLevelGateDefinition, clockMs: number): WaterLevelState {
+/** The level at a stage-clock time: phase, surface and the gate. `flagged` reads `lowYFlagged` in
+ * place of `lowY` when the definition sets one (the Water District pilot; default false). */
+export function waterLevelAt(definition: WaterLevelGateDefinition, clockMs: number, flagged = false): WaterLevelState {
   const state = (phase: WaterLevelPhase, surfaceY: number, untilChangeMs: number): WaterLevelState => ({
     id: definition.id,
     phase,
@@ -95,17 +103,18 @@ export function waterLevelAt(definition: WaterLevelGateDefinition, clockMs: numb
   })
   const timing = definition.timing
   if (!timing) return state('still', definition.highY, 0)
+  const lowY = flagged && definition.lowYFlagged !== undefined ? definition.lowYFlagged : definition.lowY
   const cycle = waterCycleMs(timing)
   const local = ((((clockMs + nonNegative(timing.phaseMs)) % cycle) + cycle) % cycle)
   const high = nonNegative(timing.highMs)
   const fall = nonNegative(timing.fallMs)
   const low = nonNegative(timing.lowMs)
-  const drop = definition.lowY - definition.highY
+  const drop = lowY - definition.highY
   if (local < high) return state('high', definition.highY, high - local)
   if (local < high + fall) return state('falling', definition.highY + (drop * (local - high)) / fall, high + fall - local)
-  if (local < high + fall + low) return state('low', definition.lowY, high + fall + low - local)
+  if (local < high + fall + low) return state('low', lowY, high + fall + low - local)
   const rise = cycle - high - fall - low
-  return state('rising', definition.lowY - (drop * (local - high - fall - low)) / Math.max(1, rise), cycle - local)
+  return state('rising', lowY - (drop * (local - high - fall - low)) / Math.max(1, rise), cycle - local)
 }
 
 /** The sluice column, or null with no gate. */

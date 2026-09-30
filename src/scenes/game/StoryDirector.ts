@@ -1,6 +1,7 @@
 import type Phaser from 'phaser'
 import { AUTOMATION } from '../../config/automation'
 import { getCampaignStage, resolveCheckpointRadioId, type CampaignStageId } from '../../content/campaign'
+import type { OmegaAct } from '../../content/omegaArchive'
 import {
   DIALOGUE_REGISTRY,
   resolveDialogueText,
@@ -67,13 +68,41 @@ export function currentStoryPolicy(): StoryPolicy {
  * phase-two line, the weapon-get registry line, and seen flags.
  * It never grants rewards, writes completion, or changes scenes.
  */
+/** The Water District pilot (prompt 07 7.6 item 14): the stage whose master shaft reads a raised
+ * low-water line once this flag is seen. `tideReaver.ts` owns the level parameter this gates. */
+const WATER_LEVEL_FLAG_BY_STAGE: Partial<Record<CampaignStageId, string>> = { tide_reaver: 'tide_reaver_radio' }
+
 export class StoryDirector {
   private readonly intro: StageIntroPresenter
   private introRunning = false
   private lastWeaponGetCard: WeaponGetCardData | null = null
+  /** A cheap, in-memory mirror of `Save.load().storyFlags` for per-frame reads (the water-level gate
+   * mechanic polls this every frame; it must never touch localStorage/JSON that often). Read once at
+   * construction, then kept in sync here whenever this class marks a flag seen. */
+  private readonly seenFlagsCache: Set<string>
 
   constructor(private readonly deps: StoryDirectorDeps) {
     this.intro = new StageIntroPresenter(deps.scene)
+    this.seenFlagsCache = new Set(Save.load().storyFlags)
+  }
+
+  /** Whether `id` has been marked seen, this run or an earlier one (cheap: no Save/localStorage read). */
+  hasStoryFlag(id: string): boolean {
+    return this.seenFlagsCache.has(id)
+  }
+
+  /** The Water District pilot's reader-facing flag: `src/mechanics/waterLevelGate.ts` takes a thunk like
+   * this one so the raised low line survives exactly as long as the story flag does. */
+  waterLevelFlagHeard(): boolean {
+    const flagId = WATER_LEVEL_FLAG_BY_STAGE[this.deps.stageId]
+    return Boolean(flagId && this.seenFlagsCache.has(flagId))
+  }
+
+  /** The Central Core's act hooks (`OmegaActs.ts`): the archive door (2) and the Core's approach (3)
+   * each play one OMEGA ticker line, once, as a radio intrusion that grants nothing. */
+  onOmegaActEntered(act: OmegaAct): void {
+    const trigger = act === 2 ? 'omega_act_two' : act === 3 ? 'omega_act_three' : null
+    if (trigger) this.playTickerOnce(DIALOGUE_REGISTRY.getStageSequence(this.deps.stageId, trigger))
   }
 
   /**
@@ -132,6 +161,7 @@ export class StoryDirector {
     const sequence = DIALOGUE_REGISTRY.getSequenceById(radioId)
     if (!sequence) return
     Save.markStorySeen(radioId)
+    this.seenFlagsCache.add(radioId)
     for (const line of resolvePlaybackLines(sequence.id, sequence.lines, this.deps.values())) {
       lane.enqueue({ kind: 'radio', speaker: line.speakerName, text: line.text, durationMs: RADIO_LINE_MS })
     }

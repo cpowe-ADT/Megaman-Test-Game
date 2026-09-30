@@ -53,7 +53,9 @@ export const STAGE_TRIGGER_COVERAGE: Record<StageDialogueTrigger, readonly Campa
   tutorial_coach: [TUTORIAL_STAGE_ID],
   capsule_pickup: WARDEN_STAGE_IDS,
   weapon_get: WARDEN_STAGE_IDS,
-  warden_phase: WARDEN_STAGE_IDS
+  warden_phase: WARDEN_STAGE_IDS,
+  omega_act_two: [FINAL_STAGE_ID],
+  omega_act_three: [FINAL_STAGE_ID]
 }
 
 /** The global triggers every campaign ships exactly once (finale phases are counted per phase). */
@@ -166,6 +168,7 @@ function validateTriggerSpeakers(
   const isWardenStage = Boolean(stageId && WARDEN_STAGE_IDS.includes(stageId))
   if (trigger === 'capsule_pickup' && isWardenStage) requireSpeaker(stageId as string, "the stage warden's recorded cache log")
   if (trigger === 'warden_phase') requireSpeaker('omega_core', 'the phase-two intrusion')
+  if (trigger === 'omega_act_two' || trigger === 'omega_act_three') requireSpeaker('omega_core', 'the act-transition intrusion')
   if (trigger === 'weapon_get' && isWardenStage) {
     requireSpeaker('director_iona', 'the district registry')
     const weaponId = getCampaignStage(stageId as CampaignStageId).rewardWeaponId

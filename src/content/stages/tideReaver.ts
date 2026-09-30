@@ -103,9 +103,22 @@ export const TIDE_REAVER_ROUTE_WIDTH = 12 * 448
 /** The mini-boss (`relay_turret_nest`, EVAL-P6-005): the intake room's gate opens once it falls. */
 export const TIDE_REAVER_MIDBOSS_MARKERS = ['tide_mid_nest']
 
+/**
+ * The Water District pilot (prompt 07 7.6 item 14, EVAL-P6-011 open item): the checkpoint-2 radio's
+ * sequence id, the same id `StoryDirector.waterLevelFlagHeard()` reads to raise the master shaft's low
+ * line for the rest of the stage, one notch higher, once OMEGA's intrusion has fired (this run or an
+ * earlier one). The notch is this room's own rung: `tide_shaft_2` through `tide_shaft_8` (below) sit
+ * exactly `TIDE_SHAFT_NOTCH_PX` apart, so raising the low line by one rung reads as a real rung, not an
+ * arbitrary number; it stays short of the lowest ledge (`tide_shaft_2` at 152), so the climbing puzzle
+ * is unchanged and only the drained entry pool at the bottom holds more water.
+ */
+export const TIDE_REAVER_RADIO_ID = 'tide_reaver_radio'
+const TIDE_SHAFT_LOW_Y = 230
+const TIDE_SHAFT_NOTCH_PX = 44
+
 export const TIDE_REAVER_CHECKPOINTS = [
   checkpoint('tide_start', 44, 0),
-  checkpoint('tide_mid_a', 1392, 1376, 'tide_reaver_radio'),
+  checkpoint('tide_mid_a', 1392, 1376, TIDE_REAVER_RADIO_ID),
   checkpoint('tide_mid_b', 2736, 2720),
   checkpoint('tide_boss_gate', 5296, 5264)
 ]
@@ -201,13 +214,15 @@ export const TIDE_REAVER_WATER: WaterLevelGateDefinition[] = [
   },
   // Secret: the float basin climbs to 28px over the sub tank ledge's top, then drains below the floor.
   { id: 'tide_float_basin', x: 2848, width: 128, highY: 60, lowY: 240, bottomY: FLOOR, timing: { highMs: 3000, fallMs: 2000, lowMs: 3500, riseMs: 2500 } },
-  // Master: the shaft fills to 30px over the top ledge, drains to a puddle; the exit sluice sits on the right wall.
+  // Master: the shaft fills to 30px over the top ledge, drains to a puddle (one notch higher once the
+  // radio flag fires; the same top, timing and sluice); the exit sluice sits on the right wall.
   {
     id: 'tide_shaft_water',
     x: 3184,
     width: 384,
     highY: -180,
-    lowY: 230,
+    lowY: TIDE_SHAFT_LOW_Y,
+    lowYFlagged: TIDE_SHAFT_LOW_Y - TIDE_SHAFT_NOTCH_PX,
     bottomY: FLOOR,
     timing: { highMs: 2500, fallMs: 3500, lowMs: 3500, riseMs: 3500 },
     gate: { x: 3576, top: -252, bottom: -150 }

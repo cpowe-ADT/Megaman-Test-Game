@@ -21,13 +21,14 @@ const STAGE_TITLES = {
   gale_vixen: 'Weather District (Gale Vixen)', glacier_ronin: 'Public Archives (Glacier Ronin)',
   omega_fortress: 'Central Core (OMEGA CORE)'
 }
-const STAGE_TRIGGER_ORDER = ['stage_briefing', 'tutorial_coach', 'radio', 'capsule_pickup', 'miniboss_callout', 'boss_intro', 'warden_phase', 'boss_defeat', 'weapon_get', 'district_restored']
+const STAGE_TRIGGER_ORDER = ['stage_briefing', 'tutorial_coach', 'radio', 'omega_act_two', 'omega_act_three', 'capsule_pickup', 'miniboss_callout', 'boss_intro', 'warden_phase', 'boss_defeat', 'weapon_get', 'district_restored']
 const TRIGGER_LABELS = {
   stage_briefing: 'Briefing (before control)', tutorial_coach: 'Coach (ticker as each teach lock arms, non-blocking)', radio: 'Radio (mid-stage checkpoint, non-blocking)',
   miniboss_callout: 'Mini-boss callout (gate lock, ticker)', boss_intro: 'Boss intro (blocking)',
   boss_defeat: 'Boss defeat (blocking, before the weapon card)', district_restored: 'District restored (Stage Select tile)',
   capsule_pickup: 'Capsule cache log (capsule card, above the effect label)', warden_phase: 'Boss phase two (OMEGA, ticker)',
-  weapon_get: "Weapon get (Iona reads the registry; keyed by the weapon's source stage)"
+  weapon_get: "Weapon get (Iona reads the registry; keyed by the weapon's source stage)",
+  omega_act_two: 'Act 2 (entering the Warden Archive, ticker, non-blocking)', omega_act_three: "Act 3 (entering the Core's approach, ticker, non-blocking)"
 }
 
 function speakerLabel(content, line) {

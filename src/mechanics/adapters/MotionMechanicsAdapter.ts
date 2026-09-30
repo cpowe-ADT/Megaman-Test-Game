@@ -37,6 +37,8 @@ export type MotionMechanicsDeps = {
   player: () => Phaser.Physics.Arcade.Sprite | undefined
   runtime: () => { setEnvironment?(environment: Partial<PlayerEnvironment> | null): void } | undefined
   platforms: () => { findPlatformVisual(id: string): Phaser.GameObjects.GameObject | undefined } | undefined
+  /** Forwarded to `WaterLevelGateAdapter`'s `flagged` (the Water District pilot, prompt 07 7.6 item 14). */
+  waterFlagged?: () => boolean
 }
 
 type Hideable = Phaser.GameObjects.GameObject & { setVisible(value: boolean): unknown }
@@ -107,7 +109,7 @@ export class MotionMechanicsAdapter {
       this.currents.push(entry)
     }
     for (const def of arena.windZones ?? []) this.winds.push(this.createWind(resolveWindZone(def)))
-    this.water = new WaterLevelGateAdapter({ scene: deps.scene, player: deps.player, art: this.art, depth: this.zoneDepth }, arena.waterLevelGates ?? [])
+    this.water = new WaterLevelGateAdapter({ scene: deps.scene, player: deps.player, art: this.art, depth: this.zoneDepth, flagged: deps.waterFlagged }, arena.waterLevelGates ?? [])
     this.swaps = new LaneSwapAdapter({ platforms: deps.platforms }, arena.laneSwaps ?? [])
   }
 
