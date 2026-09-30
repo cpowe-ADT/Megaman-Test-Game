@@ -61,6 +61,7 @@ import { breakableWallHitSfx, crumblePhaseSfx, risingLiquidPhaseSfx, ventPhaseSf
 import { MotionMechanicsAdapter } from './MotionMechanicsAdapter'
 import { createFilterSwitchVisual, createPitLiquid, pitLiquidColors, type FilterSwitchVisual } from './filterSwitch'
 import { frozenPitColors } from '../iceFloor'
+import { stormPitColors } from '../windZone'
 import type { PlayerEnvironment } from '../../player/environment'
 
 export { stageMechanicPlatforms } from '../stageMechanics'
@@ -159,7 +160,7 @@ export class StageMechanicsAdapter {
     this.art = mechanicsArtReady(scene)
     const arena = getCampaignStage(deps.stageId).arena
     for (const def of arena.risingLiquids ?? []) this.liquids.push(this.createLiquid(def))
-    const pitColors = pitLiquidColors(arena.risingLiquids) ?? frozenPitColors(arena.iceFloors)
+    const pitColors = pitLiquidColors(arena.risingLiquids) ?? frozenPitColors(arena.iceFloors) ?? stormPitColors(arena.windZones)
     if (pitColors) for (const gap of arena.floorGaps ?? []) createPitLiquid(scene, gap, GAME_HEIGHT, PIT_SLAG_DEPTH_PX, pitColors)
     else if (this.art && SLAG_PIT_STAGE_IDS.has(deps.stageId)) {
       for (const gap of arena.floorGaps ?? []) this.pitSlag.push(this.createSlagStrip(gap.x, gap.width, GAME_HEIGHT - PIT_SLAG_DEPTH_PX, PIT_SLAG_DEPTH_PX, true))

@@ -3,8 +3,11 @@
  * a cycle of the shared stage clock (calm, then `building` streaks for `WIND_BUILD_MS`, then blowing); a
  * `lift` pushes up, always on unless it has a timing. `style: 'magnet'` is Ferro's magnet lift: the same
  * pull with the magnet art. The push is capped and halved on the ground (`src/player/environment.ts`).
+ * 12d (Weather District): `windDriftPx` is how far a gust carries an airborne hero over one flight (the
+ * stage's widest gaps are sized with it), and a stage with gusts draws its pits as the storm below.
  * Pure; the Phaser edge is `adapters/MotionMechanicsAdapter.ts`.
  */
+import { stepPushVelocity } from '../player/environment'
 import type { Box } from './crumbleGroup'
 import { heroInZone, type ZonePush, type ZoneRect } from './forceZone'
 import { ventCycleAt, type HazardTiming } from './hazards'
@@ -87,4 +90,36 @@ export function windPushOn(zone: ResolvedWindZone, phase: WindPhase, hero: Box):
   return zone.kind === 'lift'
     ? { id: zone.id, forceX: 0, forceY: -zone.force, cap: zone.maxSpeed }
     : { id: zone.id, forceX: zone.force * zone.direction, forceY: 0, cap: zone.maxSpeed }
+}
+
+/**
+ * How far a gust carries an airborne hero over one flight, px along its direction: the push builds from
+ * `startPush` toward the cap while it blows and fades once it stops (`stepPushVelocity`, the motor's own
+ * rule), stepped at 60fps. `blowMs` is how long it keeps blowing after take-off (default: the whole
+ * flight), so a hero who jumps late in a blow gets less. A lift carries no one sideways (0).
+ */
+export function windDriftPx(
+  zone: ResolvedWindZone,
+  flightMs: number,
+  options: { startPush?: number; blowMs?: number; stepMs?: number } = {}
+): number {
+  if (zone.kind !== 'gust' || !(flightMs > 0)) return 0
+  const stepMs = options.stepMs && options.stepMs > 0 ? options.stepMs : 1000 / 60
+  const blowMs = options.blowMs ?? flightMs
+  let push = options.startPush ?? 0
+  let drift = 0
+  for (let elapsed = 0; elapsed < flightMs; elapsed += stepMs) {
+    const force = elapsed < blowMs ? zone.force * zone.direction : 0
+    push = stepPushVelocity(push, force, zone.maxSpeed, stepMs / 1000)
+    drift += (push * Math.min(stepMs, flightMs - elapsed)) / 1000
+  }
+  return Math.abs(drift)
+}
+
+/** The storm under the sky dock (12d, Weather District): a stage with gusts draws its pits as open air over it. */
+export const STORM_PIT_COLORS = Object.freeze({ fill: 0x1c2a3d, surface: 0x9cc3e6 })
+
+/** The pit colours of a stage with sideways gusts (lifts and the magnet do not count), or undefined. */
+export function stormPitColors(windZones: readonly WindZoneDefinition[] | undefined): { fill: number; surface: number } | undefined {
+  return windZones?.some((zone) => (zone.kind ?? 'gust') === 'gust' && (zone.style ?? 'wind') === 'wind') ? { ...STORM_PIT_COLORS } : undefined
 }
