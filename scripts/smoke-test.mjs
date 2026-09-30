@@ -43,7 +43,7 @@ let smokeFromMatched = smokeFromScenario == null
 const smokeFailFast = String(process.env.SMOKE_FAIL_FAST ?? '') === '1'
 const smokeScenarioTimeoutMs = Number(process.env.SMOKE_SCENARIO_TIMEOUT_MS ?? 120000) || 120000
 // Route walks that cross a whole stage get more room (50-pyro-route: six steps, about 100s on a quiet machine).
-const SMOKE_LONG_SCENARIO_TIMEOUT_MS = { '50-pyro-route': 300000, '54-mire-route': 300000, '55-tide-route': 480000, '56-volt-route': 480000, '57-basalt-route': 480000, '58-glacier-route': 300000, '59-ferro-route': 480000 }
+const SMOKE_LONG_SCENARIO_TIMEOUT_MS = { '50-pyro-route': 300000, '54-mire-route': 300000, '55-tide-route': 480000, '56-volt-route': 480000, '57-basalt-route': 480000, '58-glacier-route': 300000, '59-ferro-route': 480000, '60-gale-route': 480000 }
 const smokeForceFailScenario = String(process.env.SMOKE_FORCE_FAIL ?? '').trim() || null
 
 // scripts/smoke/*.mjs import the same 'playwright' module instance, so patching chromium.launch here
@@ -3999,6 +3999,7 @@ async function main() {
     await executeSmokeScenario(summary, '57-basalt-route', async () => (await import('./smoke/basalt-route.mjs')).runBasaltRouteScenario('57-basalt-route', storyDeps))
     await executeSmokeScenario(summary, '58-glacier-route', async () => (await import('./smoke/glacier-route.mjs')).runGlacierRouteScenario('58-glacier-route', storyDeps))
     await executeSmokeScenario(summary, '59-ferro-route', async () => (await import('./smoke/ferro-route.mjs')).runFerroRouteScenario('59-ferro-route', storyDeps))
+    await executeSmokeScenario(summary, '60-gale-route', async () => (await import('./smoke/gale-route.mjs')).runGaleRouteScenario('60-gale-route', storyDeps))
     await executeSmokeScenario(summary, '51-saber-combo', async () => (await import('./smoke/saber-combo.mjs')).runSaberComboScenario('51-saber-combo', { outputDir, url, readState, waitForState, advanceFrames }))
     await executeSmokeScenario(summary, '52-boss-telegraphs', async () => (await import('./smoke/boss-telegraphs.mjs')).runBossTelegraphsScenario('52-boss-telegraphs', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '53-boss-hazards', async () => (await import('./smoke/boss-hazards.mjs')).runBossHazardsScenario('53-boss-hazards', { outputDir, url, readState, waitForState }))
