@@ -7,6 +7,8 @@ import { DamageEvent, EnemyDefinition, EnemyLevelMarker, EnemyRuntimeContext, En
 import { getGeneratedEnemyDefinition, getPilotEnemyConfigById } from '../content/enemies'
 import { applyPilotEnemyOverride } from './EnemyDefinitionAdapters'
 import { minibossDefeatDrop } from './minibossCatalog'
+import { scaleEnemyDamage } from '../progression/difficulty'
+import { Save } from '../systems/Save'
 
 export type EnemySpawnerOptions = {
   enableAI: boolean
@@ -283,9 +285,16 @@ export class EnemySpawner {
     if (pilot) {
       const pilotDefinition = applyPilotEnemyOverride(typeKey, pilot)
       if (pilotDefinition) {
-        return pilotDefinition
+        return this.applyDifficultyToDefinition(pilotDefinition)
       }
     }
-    return getGeneratedEnemyDefinition(typeKey) ?? EnemyCatalog[typeKey]
+    const base = getGeneratedEnemyDefinition(typeKey) ?? EnemyCatalog[typeKey]
+    return base ? this.applyDifficultyToDefinition(base) : undefined
+  }
+
+  /** Part 13c (EVAL-P6-012): a regular enemy's damage stat, read at spawn (calls only; the table lives in `src/progression/difficulty.ts`). */
+  private applyDifficultyToDefinition(definition: EnemyDefinition): EnemyDefinition {
+    const scaled = scaleEnemyDamage(definition.stats.damage, Save.load().difficulty)
+    return scaled === definition.stats.damage ? definition : { ...definition, stats: { ...definition.stats, damage: scaled } }
   }
 }
