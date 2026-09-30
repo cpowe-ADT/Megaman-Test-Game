@@ -15,6 +15,7 @@ import {
   launchShockwaves,
   resolveShockwaveSpan,
   stepGroundWave,
+  waveFrameIndex,
   type GroundWave
 } from './groundShockwave'
 import type { EnemyBrain } from './types'
@@ -230,12 +231,15 @@ export class CustodianWalkerBrain implements EnemyBrain {
       : null
     this.waves = this.waves.filter((live) => {
       live.wave = stepGroundWave(live.wave, dtMs)
-      if (!live.wave.alive) {
+      // A wave's image can outlive the wave under a scene transition (13b.4, EVAL-P13-005): guard the
+      // adapter edge instead of reading properties off a destroyed Phaser GameObject.
+      if (!live.wave.alive || !live.image.active) {
         live.image.destroy()
         return false
       }
       live.image.setX(live.wave.x)
-      const frame = `${this.entity.typeKey}/${WAVE_FRAMES[Math.floor((now - live.bornAt) / WAVE_FRAME_MS) % WAVE_FRAMES.length].name}`
+      const frameIndex = waveFrameIndex(now - live.bornAt, WAVE_FRAME_MS, WAVE_FRAMES.length)
+      const frame = `${this.entity.typeKey}/${WAVE_FRAMES[frameIndex].name}`
       if (live.image.frame.name !== frame) {
         live.image.setFrame(frame)
       }
