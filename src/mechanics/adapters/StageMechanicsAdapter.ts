@@ -100,6 +100,8 @@ const SLAG_SURFACE_COLOR = 0xffe08a
 const LETHAL_DAMAGE = 99
 /** The backdrop's pit slag strip depth (StageBackdrop.ts): the art covers the same rectangle. */
 const PIT_SLAG_DEPTH_PX = 10
+/** Pits hold slag only where the district runs on it (Heat Works, the lab that tests it); other districts' pits stay dark. */
+const SLAG_PIT_STAGE_IDS: ReadonlySet<string> = new Set(['pyro_maw', 'mechanics_lab'])
 /** The collapse frame shows this long before the broken wall fades. */
 const WALL_COLLAPSE_HOLD_MS = 140
 
@@ -146,7 +148,7 @@ export class StageMechanicsAdapter {
     for (const def of arena.risingLiquids ?? []) this.liquids.push(this.createLiquid(def))
     const pitColors = pitLiquidColors(arena.risingLiquids)
     if (pitColors) for (const gap of arena.floorGaps ?? []) createPitLiquid(scene, gap, GAME_HEIGHT, PIT_SLAG_DEPTH_PX, pitColors)
-    else if (this.art) {
+    else if (this.art && SLAG_PIT_STAGE_IDS.has(deps.stageId)) {
       for (const gap of arena.floorGaps ?? []) this.pitSlag.push(this.createSlagStrip(gap.x, gap.width, GAME_HEIGHT - PIT_SLAG_DEPTH_PX, PIT_SLAG_DEPTH_PX, true))
     }
     for (const group of arena.crumbleGroups ?? []) {
