@@ -7,6 +7,8 @@ import { BossBase } from '../boss/framework/BossBase'
 import { BossDefinition, DamageEvent, HitResult } from '../boss/framework/types'
 import { clampBossXToBounds, type MovementBounds } from '../content/stageArenaLayout'
 import { normalizedId, resolveAttackDamage, toAttackPatternFromDefinition, toBossDefinition } from '../boss/framework/bossDefinitionMapper'
+import { scaleBossMaxHp } from '../progression/difficulty'
+import { Save } from '../systems/Save'
 import { defaultBossBodyPlan, resolveBossBodies, type BossBodyBoxes, type BossContactAttack } from './bossBodies'
 import { getBossJumpInterval, getBossMotionProfile } from './bossMotionProfile'
 import {
@@ -140,7 +142,12 @@ export class BossController extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, blueprint: BossBlueprint, config: BossControllerConfig) {
     super(scene, config.spawn.x, config.spawn.y)
     this.blueprint = blueprint
-    this.runtimeDefinition = config.runtimeDefinition ?? toBossDefinition(blueprint)
+    // Part 13c (EVAL-P6-012): difficulty scales HP only on the mapped-from-blueprint path; an explicit
+    // `config.runtimeDefinition` (automation configs, the Omega rematch) keeps its own authored number.
+    this.runtimeDefinition = config.runtimeDefinition ?? {
+      ...toBossDefinition(blueprint),
+      maxHP: scaleBossMaxHp(blueprint.baseStats.maxHp, Save.load().difficulty)
+    }
     this.combatProfile = BOSS_COMBAT_PROFILES[blueprint.id as BossId]
     this.motionController = this.combatProfile ? new BossMotionController(this.combatProfile.room) : undefined
     this.patternRngState = seedBossPattern(this.runtimeDefinition.boss_id) || 1
