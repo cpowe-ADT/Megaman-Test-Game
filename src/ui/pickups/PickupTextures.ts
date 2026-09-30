@@ -75,11 +75,13 @@ const FALLBACK_ART: Record<PickupArtGroup, { key: string; scale: number }> = {
   extra_life: { key: PICKUP_TEXTURE_KEYS.bonus, scale: 1 },
   heart_tank: { key: PICKUP_TEXTURE_KEYS.heartTank, scale: 1 },
   sub_tank: { key: PICKUP_TEXTURE_KEYS.subTank, scale: 1 },
-  capsule: { key: PICKUP_TEXTURE_KEYS.upgrade, scale: 1.08 }
+  capsule: { key: PICKUP_TEXTURE_KEYS.upgrade, scale: 1.08 },
+  // Part 13e: the bonus drop's own fallback (the code-drawn core it always used before the v2 art existed).
+  bonus: { key: PICKUP_TEXTURE_KEYS.bonus, scale: 1.1 }
 }
 
 /**
- * Draws a pickup as its pickups_v1 group with the two frames looping, or as the code-drawn capsule when the
+ * Draws a pickup as its pickups_v2 group with the two frames looping, or as the code-drawn capsule when the
  * atlas is missing, and fits its body to the art. `bob` floats a pickup without gravity (a stage's placed
  * items); an enemy drop is a physics body that falls and rests, so it only animates.
  */

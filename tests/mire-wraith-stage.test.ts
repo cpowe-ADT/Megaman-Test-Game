@@ -134,7 +134,8 @@ test('Medicine District secrets: the sub tank needs a dash jump before the acid,
   assert.ok(FLOOR - step.top < MAX_RISE_PX - 8 && step.top - launch.top < MAX_RISE_PX - 8, 'floor to step to launch ledge on plain jumps')
   assert.ok(ledge.left - step.right > PLAIN_JUMP_PX - 24, 'the step is no plain-jump shortcut')
   const sub = anchors.sub_tank
-  assert.ok(sub && sub.x > ledge.left && sub.x < ledge.right && sub.y + 12 < FLOOR - MAX_RISE_PX - 22, 'on the ledge, not from the floor')
+  // Part 13e: the pickup sits on (not above) the ledge, so the ledge's own unreachability (line above) covers it.
+  assert.ok(sub && sub.x > ledge.left && sub.x < ledge.right && sub.y < ledge.top, 'on the ledge, not from the floor')
   // Below the acid line, left of the switch: reached before the trip; the acid covers the ledge about 6s after it.
   assert.ok(acid?.switchBox && sub.y > acid.topY && sub.x >= acid.x && sub.x < acid.switchBox.x - acid.switchBox.width / 2)
   const coveredMs = ((acid.floorY - ledge.top) / (acid.floorY - acid.topY)) * acid.riseMs

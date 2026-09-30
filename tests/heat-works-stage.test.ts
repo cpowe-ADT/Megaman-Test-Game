@@ -67,8 +67,9 @@ test('a defeat lock opens only once every marker is gone, counts markers cleared
 
 test('Heat Works pickups sit on their anchors; ids are unchanged and other stages keep their defaults', (t) => {
   const byCategory = Object.fromEntries(getStageLocationDefinitions('pyro_maw').map((entry) => [entry.category, entry]))
-  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['pyro_maw:heart_tank', 1284, 68])
-  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [2500, -212, 4680])
+  // Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on its surface (heart_tank top 84, capsule top -196).
+  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['pyro_maw:heart_tank', 1284, 76.5])
+  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [2500, -204.5, 4680])
   if (!UNREBUILT_WARDEN) {
     t.diagnostic('every warden stage is rebuilt: no checkpoint-derived default is left to check')
     return
@@ -119,8 +120,8 @@ test('Heat Works secrets: the heart needs a dash jump, the sub tank is behind th
   assert.ok((arena.verticalSegments ?? []).some((segment) => launch.left >= segment.x && heart.right <= segment.x + segment.width), 'the heart room is tall')
   const anchors = arena.locationAnchors ?? {}
   assert.ok(anchors.heart_tank && anchors.heart_tank.x > heart.left && anchors.heart_tank.x < heart.right)
-  // A held jump from the floor puts the hero's head (22px body) at 236 - 127 - 22 = 87: under the pickup.
-  assert.ok(anchors.heart_tank.y + 12 < FLOOR - MAX_RISE_PX - 22, 'the heart cannot be grabbed from the floor')
+  // Part 13e: the pickup sits on (not above) the ledge, so the ledge's own unreachability (line above) covers it.
+  assert.ok(anchors.heart_tank.y < heart.top, 'the heart cannot be grabbed from the floor')
   const wall = (arena.breakableWalls ?? [])[0]
   assert.ok(wall && anchors.sub_tank && anchors.sub_tank.x > wall.x && (wall.minChargeLevel ?? 0) >= 1)
   const climb = (arena.risingLiquids ?? [])[0]

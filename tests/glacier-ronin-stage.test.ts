@@ -246,7 +246,8 @@ test('Public Archives secrets: the sub tank needs a dash jump off the ice over a
   assert.ok(store && store.verticalScreens === 2 && launch.left >= store.x && back.right <= store.x + store.width, 'the cold store is two screens tall')
   assert.equal(iceFloorUnder(arena.iceFloors ?? [], heroAt(1840, launch.top), true), 'glacier_store_launch', 'standing on the launch ledge is standing on ice')
   const sub = anchors.sub_tank
-  assert.ok(sub && sub.x > ledge.left && sub.x < ledge.right && sub.y + 12 < FLOOR - MAX_RISE_PX - 22, 'on the ledge, not from the floor')
+  // Part 13e: the pickup sits on (not above) the ledge, so the ledge's own unreachability (line above) covers it.
+  assert.ok(sub && sub.x > ledge.left && sub.x < ledge.right && sub.y < ledge.top, 'on the ledge, not from the floor')
   const wall = (arena.breakableWalls ?? []).find((entry) => entry.id === 'glacier_ice_wall')
   const roof = platform('glacier_vault_roof')
   const bulkhead = platform('glacier_vault_bulkhead')

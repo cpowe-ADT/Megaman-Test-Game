@@ -9,6 +9,8 @@ export type DropRewardEffects = {
   heal: (amount: number) => number
   /** Refills the first special weapon that needs it and returns which one and by how much. */
   restoreEnergy: (amount: number) => { weaponId: string | null; restored: number }
+  /** Grants an extra life and returns how many were actually added (0 if a cap exists and was already hit). */
+  addLife: () => number
 }
 
 export type DropRewardOutcome = { sfx: 'pickup_health' | 'pickup_ammo' | 'pickup_bonus'; message: string }
@@ -22,6 +24,10 @@ function energyMessage(ammo: { weaponId: string | null; restored: number }): str
  * A health drop at full HP gives weapon energy instead; an energy drop with nothing to refill gives 1 HP.
  */
 export function applyDropReward(dropType: EnemyDropType, effects: DropRewardEffects): DropRewardOutcome {
+  if (dropType === 'life') {
+    const granted = effects.addLife()
+    return granted > 0 ? { sfx: 'pickup_bonus', message: '1UP' } : { sfx: 'pickup_bonus', message: 'LIFE MAX' }
+  }
   if (dropType === 'health' || dropType === 'health_large') {
     const healed = effects.heal(DROP_HEAL[dropType])
     if (healed > 0) return { sfx: 'pickup_health', message: `HP +${healed}` }

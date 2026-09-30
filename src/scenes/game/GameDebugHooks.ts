@@ -230,11 +230,11 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
         hp: host.playerHp,
         maxHp: host.playerMaxHp
       }),
-      spawnPickup: (type: 'health' | 'health_large' | 'ammo' | 'bonus' = 'health', offsetX = 0) => {
+      spawnPickup: (type: 'health' | 'health_large' | 'ammo' | 'bonus' | 'life' = 'health', offsetX = 0) => {
         if (!host.player) {
           return null
         }
-        const pickup = host.spawnEnemyDrop(host.player.x + Number(offsetX || 0), host.player.y - 18, type)
+        const pickup = host.pickupSystem.spawnEnemyDrop(host.player.x + Number(offsetX || 0), host.player.y - 18, type)
         return pickup
           ? { type, x: pickup.x, y: pickup.y, active: pickup.active, textureKey: pickup.texture.key, frame: pickup.frame?.name ?? null }
           : null

@@ -69,9 +69,7 @@ import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD, formatDistrictLabel } from '../ui/HUD'
 import { StageClearCards } from '../ui/StageClearCards'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
-import { applyPickupArt } from '../ui/pickups/PickupTextures'
-import { DROP_ART, LOCATION_ART, rollEnemyDrop, type EnemyDropType } from '../ui/pickups/pickupArt'
-import { applyDropReward } from '../ui/pickups/dropRewards'
+import { applyExtraLifePickup } from '../ui/pickups/extraLife'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import {
   claimLocationCheck,
@@ -82,7 +80,6 @@ import {
   getLocationCheckId,
   getProgressionItemLabel,
   getPlayerMaxHpFromSave,
-  getStageLocationDefinitions,
   getMovementSpeedMultiplier,
   getStageBossRewardLabel,
   getWeaponDamageBonus,
@@ -95,6 +92,7 @@ import { BossSceneEventBindings } from '../boss/framework/BossSceneEventBindings
 import { BossUIBinder } from '../boss/framework/BossUIBinder'
 import { JumpController } from './game/JumpController'
 import { BossBeats } from './game/BossBeats'
+import { PickupSystem } from './game/PickupSystem'
 import { BossDamageRouter, type BossHitContext } from './game/BossDamageRouter'
 import { HitWires } from './game/HitWires'
 import { WeaponRuntime } from './game/WeaponRuntime'
@@ -148,8 +146,11 @@ export class Game extends Phaser.Scene {
   private projectileCollisionRouter!: ProjectileCollisionRouter
   private hazards!: Phaser.Physics.Arcade.StaticGroup
   private enemies!: Phaser.Physics.Arcade.Group
-  private drops?: Phaser.Physics.Arcade.Group
-  private progressionPickups?: Phaser.Physics.Arcade.Group
+  /** Part 13e: spawn/bob/collect for both pickup kinds moved to PickupSystem; `drops` stays a property here
+   *  because scripts/smoke/*.mjs read `game.drops` straight off the scene. */
+  private readonly pickupSystem = new PickupSystem(this)
+  private get drops(): Phaser.Physics.Arcade.Group | undefined { return this.pickupSystem.dropsGroup }
+  private set drops(group: Phaser.Physics.Arcade.Group | undefined) { this.pickupSystem.dropsGroup = group }
   private stagePlatforms?: Phaser.Physics.Arcade.StaticGroup
   private stageOneWayPlatforms?: Phaser.Physics.Arcade.StaticGroup
   private platformCollisionSystem?: PlatformCollisionSystem
@@ -461,54 +462,13 @@ export class Game extends Phaser.Scene {
   }
 
   private applySelectedCheckpoint(stageId: string, checkpointId?: string | null): void { this.deathSequence.applySelectedCheckpoint(stageId, checkpointId) }
-  private spawnProgressionPickups(stageId: string): void {
-    if (!this.progressionPickups) {
-      return
-    }
-    const collected = new Set(this.progressionSave.collectedChecks)
-    getStageLocationDefinitions(stageId)
-      .filter((location) => location.category !== 'boss_clear' && location.x != null && location.y != null)
-      .filter((location) => !collected.has(location.id))
-      .forEach((location) => {
-        const pickup = this.progressionPickups?.create(Number(location.x), Number(location.y)) as Phaser.Physics.Arcade.Sprite | undefined
-        if (!pickup) {
-          return
-        }
-        pickup.setActive(true).setVisible(true).setDepth(5)
-        applyPickupArt(pickup, LOCATION_ART[location.category], { bob: true })
-        pickup.setDataEnabled()
-        pickup.data?.set('locationId', location.id)
-        pickup.data?.set('locationCategory', location.category)
-        pickup.clearTint()
-        const body = pickup.body as Phaser.Physics.Arcade.Body | undefined
-        if (body) {
-          body.enable = true
-          body.setAllowGravity(false)
-          body.setImmovable(true)
-        }
-      })
-  }
 
-  private onProgressionPickupCollected(
-    _playerObj: Phaser.GameObjects.GameObject,
-    pickupObj: Phaser.GameObjects.GameObject
-  ): void {
-    const pickup = pickupObj as Phaser.Physics.Arcade.Sprite
-    if (!pickup?.active) {
-      return
-    }
-    const locationId = String(pickup.data?.get?.('locationId') ?? '') as Parameters<typeof claimLocationCheck>[1]
-    if (!locationId) {
-      return
-    }
-    const body = pickup.body as Phaser.Physics.Arcade.Body | undefined
-    body?.setVelocity(0, 0)
-    if (body) {
-      body.enable = false
-    }
-    pickup.setActive(false).setVisible(false)
-    this.tweens.killTweensOf(pickup)
-    this.collectProgressionLocation(locationId)
+  /** Grants one extra life, uncapped (no maximum exists anywhere in this save yet); part 13e, EVAL-P13-010. */
+  private grantExtraLife(): number {
+    const before = this.playerLives
+    this.playerLives = applyExtraLifePickup(before)
+    this.hud?.setLives(this.playerLives)
+    return this.playerLives - before
   }
 
   private collectProgressionLocation(locationId: string): void {
@@ -527,6 +487,11 @@ export class Game extends Phaser.Scene {
       const effect = upgradeEffectLabel(itemId, next.progressionWorld?.progressionMode === 'classic')
       const label = effect ? `${getProgressionItemLabel(itemId).toUpperCase()} · ${effect}` : `CHECK SECURED • ${getProgressionItemLabel(itemId).toUpperCase()}`
       if (!this.storyDirector?.showCapsuleCard(locationId, label, effect ? 1800 : 1100)) this.showStageToast(label, effect ? 1800 : 1100)
+      // Part 13e (EVAL-P13-010): a placed extra life grants immediately, same as a dropped one; the claim
+      // itself leaves the save otherwise unchanged (src/progression/state.ts), so this is the only grant.
+      if (itemId === 'extra_life') {
+        this.grantExtraLife()
+      }
     }
 
     if (previous.weaponsUnlocked.join(',') !== next.weaponsUnlocked.join(',')) {
@@ -994,17 +959,7 @@ export class Game extends Phaser.Scene {
     this.hazards = buildStageHazards(this, stageId)
 
     this.enemies = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite })
-    this.drops = this.physics.add.group({
-      classType: Phaser.Physics.Arcade.Sprite,
-      maxSize: 24,
-      allowGravity: true
-    })
-    this.progressionPickups = this.physics.add.group({
-      classType: Phaser.Physics.Arcade.Sprite,
-      maxSize: 32,
-      allowGravity: false,
-      immovable: true
-    })
+    this.pickupSystem.install()
     this.installEntityPlatformCollisions()
 
     this.initializeEnemyFramework(stageId)
@@ -1022,15 +977,6 @@ export class Game extends Phaser.Scene {
 
     this.physics.add.overlap(this.player, this.hazards, (p, h) => this.hitWires.onHazardContact(p, h))
     this.physics.add.overlap(this.player, this.enemies, (p, e) => this.hitWires.onEnemyContact(p, e))
-    if (this.drops) {
-      this.physics.add.overlap(this.player, this.drops, this.onPickupCollected, undefined, this)
-      if (this.stagePlatforms) {
-        this.physics.add.collider(this.drops, this.stagePlatforms)
-      }
-    }
-    if (this.progressionPickups) {
-      this.physics.add.overlap(this.player, this.progressionPickups, this.onProgressionPickupCollected, undefined, this)
-    }
     this.physics.add.overlap(this.playerBullets, this.enemies, this.onBulletHitsEnemy, undefined, this)
 
     this.installProjectilePlatformCollisions()
@@ -1106,7 +1052,7 @@ export class Game extends Phaser.Scene {
     }
     this.initializeHud()
     this.applySelectedCheckpoint(stageId, activeRun?.checkpointId ?? (data as any)?.checkpointId ?? null)
-    this.spawnProgressionPickups(stageId)
+    this.pickupSystem.spawnProgressionPickups(stageId)
     this.applyActiveRunSnapshot(activeRun)
     attachOmegaActs(this, data, activeRun)
     this.flushPendingProgressionItems()
@@ -1529,76 +1475,6 @@ export class Game extends Phaser.Scene {
     })
   }
 
-  private spawnEnemyDrop(x: number, y: number, forcedType?: EnemyDropType): Phaser.Physics.Arcade.Sprite | null {
-    if (!this.drops) {
-      return null
-    }
-    const dropType = forcedType ?? rollEnemyDrop(Phaser.Math.FloatBetween(0, 1))
-    const drop = dropType ? (this.drops.get(x, y) as Phaser.Physics.Arcade.Sprite | null) : null
-    if (!drop) {
-      return null
-    }
-
-    this.clearDropExpireTimer(drop)
-    drop.setActive(true).setVisible(true).setDepth(5)
-    drop.setPosition(x, y)
-    applyPickupArt(drop, DROP_ART[dropType])
-    drop.setDataEnabled()
-    drop.data?.set('dropType', dropType)
-    drop.clearTint()
-
-    const body = drop.body as Phaser.Physics.Arcade.Body | undefined
-    if (body) {
-      body.enable = true
-      body.allowGravity = true
-      body.setBounce(0.1, 0.16)
-      body.setDrag(24, 0)
-      body.setVelocity(Phaser.Math.Between(-30, 30), Phaser.Math.Between(-120, -72))
-    }
-
-    ;(drop as any).__expireTimer = this.time.delayedCall(4200, () => {
-      if (!drop.active) {
-        ;(drop as any).__expireTimer = undefined
-        return
-      }
-      body?.setVelocity(0, 0)
-      if (body) {
-        body.enable = false
-      }
-      drop.setActive(false).setVisible(false)
-      ;(drop as any).__expireTimer = undefined
-    })
-
-    return drop
-  }
-
-  private onPickupCollected(
-    _playerObj: Phaser.GameObjects.GameObject,
-    dropObj: Phaser.GameObjects.GameObject
-  ): void {
-    const drop = dropObj as Phaser.Physics.Arcade.Sprite
-    if (!drop?.active) {
-      return
-    }
-
-    this.clearDropExpireTimer(drop)
-    const dropType = (drop.data?.get?.('dropType') as EnemyDropType | undefined) ?? 'bonus'
-    const outcome = applyDropReward(dropType, { heal: (amount) => this.restorePlayerHealth(amount), restoreEnergy: (amount) => this.restoreWeaponEnergy(amount) })
-    const body = drop.body as Phaser.Physics.Arcade.Body | undefined
-    body?.setVelocity(0, 0)
-    if (body) {
-      body.enable = false
-    }
-    drop.setActive(false).setVisible(false)
-
-    if (outcome.sfx) {
-      AudioService.playSfx(outcome.sfx)
-    }
-    if (outcome.message) {
-      this.showStageToast(outcome.message, 650)
-    }
-  }
-
   private restorePlayerHealth(amount: number): number {
     if (!this.player || amount <= 0) {
       return 0
@@ -1655,15 +1531,6 @@ export class Game extends Phaser.Scene {
     }
 
     return { weaponId: null, restored: 0 }
-  }
-
-  private clearDropExpireTimer(drop?: Phaser.Physics.Arcade.Sprite | null): void {
-    const timer = (drop as any)?.__expireTimer as Phaser.Time.TimerEvent | undefined
-    if (!timer) {
-      return
-    }
-    timer.remove(false)
-    ;(drop as any).__expireTimer = undefined
   }
 
   private flashEnemy(enemy: Phaser.Physics.Arcade.Sprite): void {
@@ -1739,7 +1606,7 @@ export class Game extends Phaser.Scene {
         applyDamageToPlayer: (request) => this.requestPlayerDamage(request),
         onEnemyDefeated: (sprite: Phaser.Physics.Arcade.Sprite) => {
           if (this.enemyFeatureFlags.enableEnemyDrops) {
-            this.spawnEnemyDrop(sprite.x, sprite.y - 8, this.enemySpawner?.defeatDropFor(sprite))
+            this.pickupSystem.spawnEnemyDrop(sprite.x, sprite.y - 8, this.enemySpawner?.defeatDropFor(sprite))
           }
           this.onTargetDefeated(sprite)
         },

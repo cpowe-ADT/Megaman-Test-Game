@@ -29,6 +29,7 @@ export type ProgressionItemId =
   | ProgressionUpgradeId
   | 'heart_tank'
   | 'sub_tank'
+  | 'extra_life'
   | ProgressionConsumableId
 
 export type LocationCheckCategory =
@@ -37,6 +38,7 @@ export type LocationCheckCategory =
   | 'heart_tank'
   | 'sub_tank'
   | 'pickup_bonus'
+  | 'extra_life'
 
 export type LocationCheckId = `${CampaignStageId}:${LocationCheckCategory}`
 
@@ -77,6 +79,8 @@ export type ProgressionLocationDefinition = {
   x: number | null
   y: number | null
   label: string
+  /** Part 13e: ground sits exactly on the surface below and does not bob; float is marked and bobs. */
+  rest: 'ground' | 'float'
 }
 
 export type ProgressionWorldSnapshot = {

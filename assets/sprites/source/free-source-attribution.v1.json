@@ -688,11 +688,21 @@
       "license": "original-generated",
       "attribution": "Original pickups (energy capsules, extra life, heart tank, sub tank, upgrade capsule), generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [],
+      "notes": "Retired part 13e (EVAL-P13-009): replaced end to end by pickups-v2-hf below (too tiny, health/energy shared a can silhouette, the sub tank read as a lantern, the capsule was energy-cyan, the extra life a dark blob). assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with pickups_v1.json; was drawn by src/ui/pickups/pickupArt.ts from part 12h."
+    },
+    {
+      "id": "pickups-v2-hf",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original pickups v2 (health, weapon energy, extra life helmet, heart tank, lettered sub tank, amber capsule, bonus star), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/pickups_v2_a.png",
       "runtimeOutputs": [
-        "assets/sprites/pickups/pickups_v1/pickups_v1.png",
-        "assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json"
+        "assets/sprites/pickups/pickups_v2/pickups_v2.png",
+        "assets/sprites/pickups/pickups_v2/pickups_v2.atlas.json"
       ],
-      "notes": "assets/ui/source/ui_v1.prompts.md; cut_vfx_sheet.py with pickups_v1.json; drawn by src/ui/pickups/pickupArt.ts since part 12h"
+      "notes": "Job 141b288e-d586-4c03-8919-0936fc3970fc, prompt in assets/ui/source/ui_v2.prompts.md; cut_vfx_sheet.py with pickups_v2.json (bottom-aligned, no pad, native size); drawn by src/ui/pickups/pickupArt.ts since part 13e (EVAL-P13-009)."
     },
     {
       "id": "hud-icons-v1-hf",

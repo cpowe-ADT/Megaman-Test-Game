@@ -210,11 +210,16 @@ export const MIRE_WRAITH_ROOM_LOCKS: RoomLockDefinition[] = [
   { id: 'mire_midboss_lock', room: { x: 2240, y: 0, width: 448, height: 252 }, gateX: 2688, defeatMarkers: MIRE_WRAITH_MIDBOSS_MARKERS }
 ]
 
+// Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on the surface under each anchor (capsule/
+// pickup_bonus top 236, heart_tank top 236, sub_tank top 84); x is unchanged.
 export const MIRE_WRAITH_LOCATION_ANCHORS: LocationAnchors = {
-  capsule: { x: 2024, y: 218 },
-  heart_tank: { x: 2944, y: 218 },
-  sub_tank: { x: 3516, y: 68 },
-  pickup_bonus: { x: 4600, y: 218 }
+  capsule: { x: 2024, y: 227.5, rest: 'ground' },
+  heart_tank: { x: 2944, y: 228.5, rest: 'ground' },
+  sub_tank: { x: 3516, y: 75, rest: 'ground' },
+  pickup_bonus: { x: 4600, y: 227, rest: 'ground' },
+  // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage on a detour; a short side trip on
+  // the main ground, verified grounded against the real stage geometry.
+  extra_life: { x: 4250, y: 228, rest: 'ground' }
 }
 
 /**

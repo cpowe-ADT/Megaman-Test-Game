@@ -52,8 +52,9 @@ export type StagePlatformDefinition = {
 }
 
 /** Pickup categories a stage may place by hand (`src/progression/catalog.ts`); ids are unchanged, so saves are too. */
-export type LocationAnchorCategory = 'capsule' | 'heart_tank' | 'sub_tank' | 'pickup_bonus'
-export type LocationAnchors = Partial<Record<LocationAnchorCategory, { x: number; y: number }>>
+export type LocationAnchorCategory = 'capsule' | 'heart_tank' | 'sub_tank' | 'pickup_bonus' | 'extra_life'
+/** Part 13e: `ground` sits exactly on the surface under it and does not bob; `float` is marked and bobs. */
+export type LocationAnchors = Partial<Record<LocationAnchorCategory, { x: number; y: number; rest: 'ground' | 'float' }>>
 
 export type StageArenaDefinition = {
   width?: number

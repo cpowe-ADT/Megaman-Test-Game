@@ -220,8 +220,9 @@ test('Power District secrets: the heart needs wall kicks, the sub tank is behind
   const lock = (arena.roomLocks ?? [])[0]
   assert.ok(anchors.capsule && anchors.capsule.x > lock.gateX && anchors.capsule.x > bulkhead.left && anchors.capsule.x < bulkhead.right && anchors.capsule.y < bulkhead.top)
   const byCategory = Object.fromEntries(getStageLocationDefinitions('volt_hopper').map((entry) => [entry.category, entry]))
-  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['volt_hopper:heart_tank', 2344, 44])
-  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [3400, 152, 5040])
+  // Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on its surface (heart_tank top 60, capsule top 168).
+  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['volt_hopper:heart_tank', 2344, 52.5])
+  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [3400, 159.5, 5040])
 })
 
 test('Power District enemies: 19+ placements of the five brief families and the twins, each spawning 448px+ ahead and retiring behind', () => {

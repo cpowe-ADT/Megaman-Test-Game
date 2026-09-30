@@ -250,11 +250,16 @@ export const TIDE_REAVER_ROOM_LOCKS: RoomLockDefinition[] = [
   { id: 'tide_midboss_lock', room: { x: 2240, y: 0, width: 448, height: 252 }, gateX: 2688, defeatMarkers: TIDE_REAVER_MIDBOSS_MARKERS }
 ]
 
+// Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on the surface under each anchor (heart_tank
+// top 60, sub_tank top 88, capsule top -196, pickup_bonus top 236); x is unchanged.
 export const TIDE_REAVER_LOCATION_ANCHORS: LocationAnchors = {
-  heart_tank: { x: 2024, y: 44 },
-  sub_tank: { x: 3008, y: 72 },
-  capsule: { x: 3208, y: -212 },
-  pickup_bonus: { x: 4560, y: 218 }
+  heart_tank: { x: 2024, y: 52.5, rest: 'ground' },
+  sub_tank: { x: 3008, y: 79, rest: 'ground' },
+  capsule: { x: 3208, y: -204.5, rest: 'ground' },
+  pickup_bonus: { x: 4560, y: 227, rest: 'ground' },
+  // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage on a detour; a short side trip on
+  // the main ground, verified grounded against the real stage geometry.
+  extra_life: { x: 4360, y: 228, rest: 'ground' }
 }
 
 /**

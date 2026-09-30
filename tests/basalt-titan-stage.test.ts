@@ -314,8 +314,9 @@ test('Structural Works secrets: the heart is sealed behind a breakable wall, the
   const midboss = (arena.roomLocks ?? []).find((entry) => entry.id === 'basalt_midboss_lock')!
   assert.ok(anchors.capsule.x < midboss.room.x, 'the capsule comes before the mid-boss')
   const byCategory = Object.fromEntries(getStageLocationDefinitions('basalt_titan').map((entry) => [entry.category, entry]))
-  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['basalt_titan:heart_tank', 2472, 218])
-  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [4008, 104, 4560])
+  // Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on its surface (heart_tank top 236, capsule top 120).
+  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['basalt_titan:heart_tank', 2472, 228.5])
+  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [4008, 111.5, 4560])
 })
 
 test('Structural Works enemies: 18+ placements of the five brief families, the walker locked in the shaft head, waves at both pads', () => {

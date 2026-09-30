@@ -67,23 +67,37 @@ function makePickupLocation(
   const late = checkpoints[Math.max(0, checkpoints.length - 2)] ?? checkpoints[checkpoints.length - 1]
   const start = checkpoints[0]
 
-  const positions: Record<LocationCheckCategory, { x: number | null; y: number | null }> = {
-    boss_clear: { x: null, y: null },
+  // Only the tutorial falls through to these (every warden stage hands-places its own anchor below); both of
+  // its categories rest on a real ledge (part 13e, EVAL-P13-010): the capsule on the dash bay's main ground
+  // (x954 unchanged, y sits its art on surface top 236) and the bonus on tutorial_mid_1 (top 172).
+  const positions: Record<LocationCheckCategory, { x: number | null; y: number | null; rest: 'ground' | 'float' }> = {
+    boss_clear: { x: null, y: null, rest: 'float' },
     capsule: {
       x: Math.min(Number(stage.arena.width ?? 448) - 70, (middle?.x ?? 120) + 26),
-      y: 144
+      y: 227.5,
+      rest: 'ground'
     },
     heart_tank: {
       x: Math.min(Number(stage.arena.width ?? 448) - 84, (middle?.x ?? 140) + 92),
-      y: 132
+      y: 132,
+      rest: 'ground'
     },
     sub_tank: {
       x: Math.max(52, (late?.x ?? 240) - 14),
-      y: 128
+      y: 128,
+      rest: 'ground'
     },
     pickup_bonus: {
       x: Math.min(Number(stage.arena.width ?? 448) - 72, (start?.x ?? 44) + 124),
-      y: 132
+      y: 163,
+      rest: 'ground'
+    },
+    // Not exercised today: every robot-master stage hands-places its own extra_life anchor (part 13e,
+    // EVAL-P13-010), and the tutorial never places one. Kept for type completeness if a future stage omits it.
+    extra_life: {
+      x: Math.min(Number(stage.arena.width ?? 448) - 72, (late?.x ?? 240) + 60),
+      y: 228,
+      rest: 'ground'
     }
   }
 
@@ -96,6 +110,7 @@ function makePickupLocation(
     category,
     x: position.x,
     y: position.y,
+    rest: position.rest,
     label
   }
 }
@@ -109,7 +124,8 @@ export const PROGRESSION_LOCATIONS: ProgressionLocationDefinition[] = [
     makePickupLocation(stage.id as CampaignStageId, 'capsule', `${stage.title} Capsule`),
     makePickupLocation(stage.id as CampaignStageId, 'heart_tank', `${stage.title} Heart Tank`),
     makePickupLocation(stage.id as CampaignStageId, 'sub_tank', `${stage.title} Sub Tank`),
-    makePickupLocation(stage.id as CampaignStageId, 'pickup_bonus', `${stage.title} Bonus Pickup`)
+    makePickupLocation(stage.id as CampaignStageId, 'pickup_bonus', `${stage.title} Bonus Pickup`),
+    makePickupLocation(stage.id as CampaignStageId, 'extra_life', `${stage.title} Extra Life`)
   ]),
   makePickupLocation(FINAL_STAGE_ID, 'boss_clear', 'Central Core Boss Clear')
 ]

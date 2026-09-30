@@ -235,11 +235,16 @@ export const GALE_VIXEN_ROOM_LOCKS: RoomLockDefinition[] = [
   { id: 'gale_midboss_lock', room: { x: 2688, y: 0, width: 448, height: 252 }, gateX: 3136, defeatMarkers: GALE_VIXEN_MIDBOSS_MARKERS }
 ]
 
+// Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on the surface under each anchor (heart_tank
+// top 84, sub_tank/pickup_bonus top 236, capsule top -180); x is unchanged.
 export const GALE_VIXEN_LOCATION_ANCHORS: LocationAnchors = {
-  heart_tank: { x: 2448, y: 68 },
-  sub_tank: { x: 3392, y: 218 },
-  capsule: { x: 3984, y: -196 },
-  pickup_bonus: { x: 5144, y: 218 }
+  heart_tank: { x: 2448, y: 76.5, rest: 'ground' },
+  sub_tank: { x: 3392, y: 227, rest: 'ground' },
+  capsule: { x: 3984, y: -188.5, rest: 'ground' },
+  pickup_bonus: { x: 5144, y: 227, rest: 'ground' },
+  // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage on a detour; a short side trip on
+  // the main ground, verified grounded against the real stage geometry.
+  extra_life: { x: 4420, y: 228, rest: 'ground' }
 }
 
 /**
