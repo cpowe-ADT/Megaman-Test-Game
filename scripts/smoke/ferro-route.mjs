@@ -346,7 +346,15 @@ export async function runFerroRouteScenario(name, { outputDir, storyUrl, readSta
     const overBelt = shotTrack.steps.filter((step) => step.x > 3624 && step.x < 4024)
     const meanExtra = overBelt.reduce((sum, step) => sum + step.extra, 0) / Math.max(1, overBelt.length)
     evidence.shotOnBelt.meanExtraPerStep = Math.round(meanExtra * 100) / 100
-    assert.ok(overBelt.length >= 6 && shotTrack.shotFrames >= overBelt.length - 2, `the belt counted the shot (${JSON.stringify(shotTrack)})`)
+    // Derive how many of the sampled frames the belt (3624..4024, this filter's own width) must cover, instead
+    // of a count picked for the pellet's old, slower speed: its real per-frame step (belt drag included, same
+    // steps the next assertion checks) times the sample window tells us whether it can even cross the belt
+    // within it. 13b's 370 px/s still cannot (the belt is wider than 24 frames of travel), so every sampled
+    // frame should land on it; a shot fast enough to exit early would earn a smaller, still-derived count.
+    const netPxPerFrame = overBelt.length > 1 ? (overBelt[overBelt.length - 1].x - overBelt[0].x) / (overBelt.length - 1) : 0
+    const framesToCrossBelt = netPxPerFrame > 0 ? (4024 - 3624) / netPxPerFrame : shotTrack.steps.length
+    const expectedOverBelt = Math.max(1, Math.min(shotTrack.steps.length, Math.floor(framesToCrossBelt)))
+    assert.ok(overBelt.length >= expectedOverBelt - 2 && shotTrack.shotFrames >= overBelt.length - 2, `the belt counted the shot (${JSON.stringify(shotTrack)})`)
     assert.ok(Math.abs(meanExtra + 1) < 0.35, `each step adds the belt's -1px (60px/s) to the shot's own (${JSON.stringify(evidence.shotOnBelt)})`)
     await place(3700, 214)
     await standing('standing on the first floor belt again')

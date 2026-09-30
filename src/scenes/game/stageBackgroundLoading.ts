@@ -64,17 +64,33 @@ export function backgroundKeysToEvict(loadedKeys: readonly string[], stageId: st
 }
 
 /**
+ * Background keys any scene's loader is mid-fetch for. Phaser's TextureManager is game-global but each
+ * scene's LoaderPlugin is its own queue, so a stage revisit (Game preloads a layer, the player bounces back
+ * to Stage Select before the file lands, its district preview sees the same key still missing and queues it
+ * again) has two loaders racing to add the same key; the second `addImage` then logs "Texture key already
+ * in use". Module-level so it is shared across every scene instance in the page, not per Game/Title/Stage
+ * Select object: whichever loader asks first wins, everyone else skips until `textures.exists` is true.
+ */
+const pendingBackgroundLoads = new Set<string>()
+
+/** Queues `key` from `path` unless it is already loaded or another scene's loader is already fetching it. */
+export function loadBackgroundImageOnce(scene: Phaser.Scene, key: string, path: string): void {
+  if (scene.textures.exists(key) || pendingBackgroundLoads.has(key)) return
+  pendingBackgroundLoads.add(key)
+  const release = () => pendingBackgroundLoads.delete(key)
+  scene.load.once(`filecomplete-image-${key}`, release)
+  scene.load.once('loaderror', (file: { key: string }) => { if (file.key === key) release() })
+  scene.load.image(key, path)
+}
+
+/**
  * Called from Game.preload(): drops the previous stage's layers (its objects were destroyed at
- * shutdown) and queues this stage's. Keys already loaded are skipped, so a restart loads nothing
- * and Phaser runs create() in the same step.
+ * shutdown) and queues this stage's. Keys already loaded, or already loading for another scene, are
+ * skipped, so a restart loads nothing and Phaser runs create() in the same step.
  */
 export function queueStageBackgrounds(scene: Phaser.Scene, stageId: string): void {
   backgroundKeysToEvict(scene.textures.getTextureKeys(), stageId).forEach((key) => scene.textures.remove(key))
-  stageBackgroundAssets(stageId).forEach((asset) => {
-    if (!scene.textures.exists(asset.key)) {
-      scene.load.image(asset.key, asset.path)
-    }
-  })
+  stageBackgroundAssets(stageId).forEach((asset) => loadBackgroundImageOnce(scene, asset.key, asset.path))
 }
 
 /**

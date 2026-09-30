@@ -178,13 +178,20 @@ export async function runClassicUpgradeScenario(name, { outputDir, titleUrl, rea
     assert.equal(evidence.pellet.hp,3);assert.equal(evidence.pellet.active,true)
     assert.equal((await readState(page)).combatDebug.player.lastProjectile.damage,2)
     await capture('buster-enemy')
-    await page.evaluate(()=>{window.stageDebug.grantWeapon('HydroLance');window.stageDebug.grantUpgrade('chip_weapon_plus')})
+    await page.evaluate(()=>window.stageDebug.grantWeapon('HydroLance'))
     await tapKey(page,'e');await waitForState(page,s=>s.playerState?.weapon==='HydroLance')
-    // HydroLance's authored cost is 4 (Tide Reaver in src/bosses/roster.ts; applied as written since 12f wave 3); the Weapon Plus chip takes 1 off.
-    await page.evaluate(()=>window.stageDebug.setWeaponEnergy('HydroLance',3))
+    // Read HydroLance's authored cost from the game itself (13d changed it; docs/design/weapons.md is not loaded here):
+    // fire one plain shot at a full bar before the chip exists, then compare against a shot after it.
+    await page.evaluate(()=>window.stageDebug.setWeaponEnergy('HydroLance',999))
     await tapKey(page,'x',2)
-    const shot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance')
-    assert.equal(shot.combatDebug.player.lastProjectile.energyCost,3);assert.equal(shot.combatDebug.player.lastProjectile.energyRemaining,0)
+    const baseShot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance')
+    const baseCost=baseShot.combatDebug.player.lastProjectile.energyCost
+    await page.evaluate(()=>window.stageDebug.grantUpgrade('chip_weapon_plus'))
+    await page.evaluate((cost)=>window.stageDebug.setWeaponEnergy('HydroLance',cost),baseCost-1)
+    await tapKey(page,'x',2)
+    const shot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance'&&s.combatDebug?.player?.lastProjectile?.energyRemaining===0)
+    assert.equal(shot.combatDebug.player.lastProjectile.energyCost,baseCost-1,'the Weapon Plus chip must take exactly 1 off the authored cost')
+    assert.equal(shot.combatDebug.player.lastProjectile.energyRemaining,0,'the discounted shot must empty a bar set to exactly its cost')
     evidence.discount=shot.combatDebug.player.lastProjectile
     // The boss adapter receives the same resolved pellet damage: neutral Buster is exactly two, once.
     await page.evaluate(()=>{window.stageDebug.crossBossGate();window.bossDebug.unlockIntro()});await advanceFrames(page,15)
