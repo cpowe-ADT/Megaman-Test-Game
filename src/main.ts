@@ -27,6 +27,8 @@ import { getStageContentRetentionReport } from './content/campaign'
 import { ROOM_LOCK_DATA_KEY } from './mechanics/adapters/RoomLockAdapter'
 import { STAGE_MECHANICS_DATA_KEY } from './mechanics/adapters/StageMechanicsAdapter'
 import { stepGameFrames, type StepGameFramesOptions } from './config/frameStepping'
+import { computeFrameTimeStats, type FrameTimeStats } from './perf/frameStats'
+import { createRuntimeLeakCounters } from './perf/runtimeLeakTracker'
 
 const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
 const rendererType = query?.get('renderer') === 'canvas' ? Phaser.CANVAS : Phaser.AUTO
@@ -83,6 +85,7 @@ type DebugWindow = Window & {
   __phaserGame?: Phaser.Game
   render_game_to_text?: () => string
   advanceTime?: (ms: number) => Promise<void>
+  perfDebug?: () => PerfDebugSnapshot
   stepFrames?: (frames: number, options?: StepGameFramesOptions) => number
   stepFramesActive?: boolean
 }
@@ -133,6 +136,147 @@ function installDevCrashOverlay(enable: boolean): void {
         : String(event.reason ?? 'Unknown rejection')
     showError('Unhandled Rejection', reason)
   })
+}
+
+// Part 12i (prompt 08 8.5, prompt 04 4.4): `window.perfDebug()` beside `advanceTime`, and
+// `render_game_to_text().runtime` for smoke `63-restart-leak`. Both install unconditionally, the
+// same tier as `render_game_to_text`/`advanceTime` (not gated on `?automation=1` the way
+// `__phaserGame`/`stepFrames` are), so either works from a devtools console against any build.
+const PERF_FRAME_SAMPLE_CAP = 600 // about 10s at 60fps: enough for a stable p95/p99 without unbounded growth.
+const perfFrameSamplesMs: number[] = []
+const perfRuntimeCounters = createRuntimeLeakCounters()
+const perfPreloadTiming: { ms: number | null; bytes: number | null } = { ms: null, bytes: null }
+
+/** `game.events` fires 'prestep' before the update/render step and 'postrender' after submission,
+ * the same pair `scripts/perf/footprint.mjs`'s `stepTimes` samples from outside the page. */
+function installPerfFrameSampling(targetGame: Phaser.Game): void {
+  let stepStartedAt = 0
+  targetGame.events.on('prestep', () => {
+    stepStartedAt = performance.now()
+  })
+  targetGame.events.on('postrender', () => {
+    if (!stepStartedAt) return
+    perfFrameSamplesMs.push(performance.now() - stepStartedAt)
+    if (perfFrameSamplesMs.length > PERF_FRAME_SAMPLE_CAP) perfFrameSamplesMs.shift()
+  })
+}
+
+/** Time from navigation start to the Preload scene's own shutdown (it hands off to Title once every
+ * asset load resolves), and the transfer bytes of every resource that finished by then. Reads the
+ * scene's lifecycle event from outside it; Preload.ts is untouched. */
+function installPerfPreloadTiming(targetGame: Phaser.Game): void {
+  // `game.scene.getScene('Preload')` can miss its own scene object read synchronously right after
+  // `new Phaser.Game(config)` (the SceneManager's initial boot queue has not run yet); waiting for the
+  // loop's own first 'prestep' guarantees it has, without depending on exactly when that boot queue
+  // drains.
+  targetGame.events.once('prestep', () => {
+    const preloadScene = targetGame.scene.getScene('Preload')
+    preloadScene?.events.once('shutdown', () => {
+      const doneAtMs = performance.now()
+      perfPreloadTiming.ms = Math.round(doneAtMs)
+      const bytes = (performance.getEntriesByType('resource') as PerformanceResourceTiming[])
+        .filter((entry) => entry.responseEnd <= doneAtMs)
+        .reduce((total, entry) => total + (entry.transferSize || entry.encodedBodySize || 0), 0)
+      perfPreloadTiming.bytes = Math.round(bytes)
+    })
+  })
+}
+
+/** Sum of every decoded texture source's width*height*4 (prompt 08 8.5's formula), the same
+ * computation `scripts/perf/footprint.mjs`'s snapshot() already uses for its own textureMB budget. */
+function computePerfTextureMB(targetGame: Phaser.Game): number {
+  let bytes = 0
+  targetGame.textures.getTextureKeys().forEach((key) => {
+    targetGame.textures.get(key).source.forEach((source: { width?: number; height?: number }) => {
+      bytes += (source.width ?? 0) * (source.height ?? 0) * 4
+    })
+  })
+  return bytes / (1024 * 1024)
+}
+
+/**
+ * Wraps the global listener and timer APIs once at module load so a leak anywhere (not only
+ * Phaser's own emitters) shows up. `setTimeout`/`setInterval` track their own id so a natural
+ * `setTimeout` firing ends its count the same as an explicit `clearTimeout` (an interval only ends on
+ * `clearInterval`); `addEventListener`/`removeEventListener` count 1:1 per call, so registering the
+ * exact same (type, listener, capture) twice -- which the DOM itself dedupes -- over-counts by one.
+ * That is the safe direction for a leak check: a rare false add, never a hidden real one.
+ */
+function installPerfRuntimeLeakTracking(): void {
+  if (typeof window === 'undefined') return
+  const originalAddEventListener = EventTarget.prototype.addEventListener
+  const originalRemoveEventListener = EventTarget.prototype.removeEventListener
+  EventTarget.prototype.addEventListener = function (this: EventTarget, ...args: Parameters<typeof originalAddEventListener>) {
+    perfRuntimeCounters.addListener()
+    return originalAddEventListener.apply(this, args)
+  }
+  EventTarget.prototype.removeEventListener = function (this: EventTarget, ...args: Parameters<typeof originalRemoveEventListener>) {
+    perfRuntimeCounters.removeListener()
+    return originalRemoveEventListener.apply(this, args)
+  }
+
+  const originalSetTimeout = window.setTimeout.bind(window)
+  const originalClearTimeout = window.clearTimeout.bind(window)
+  const originalSetInterval = window.setInterval.bind(window)
+  const originalClearInterval = window.clearInterval.bind(window)
+  const pendingTimeoutIds = new Set<number>()
+  const pendingIntervalIds = new Set<number>()
+
+  window.setTimeout = ((handler: TimerHandler, timeout?: number, ...rest: unknown[]) => {
+    let id = 0
+    id = originalSetTimeout(
+      (...callbackArgs: unknown[]) => {
+        pendingTimeoutIds.delete(id)
+        perfRuntimeCounters.endTimer()
+        if (typeof handler === 'function') handler(...callbackArgs)
+      },
+      timeout,
+      ...rest
+    ) as unknown as number
+    pendingTimeoutIds.add(id)
+    perfRuntimeCounters.startTimer()
+    return id
+  }) as typeof window.setTimeout
+
+  window.clearTimeout = ((id?: Parameters<typeof originalClearTimeout>[0]) => {
+    if (typeof id === 'number' && pendingTimeoutIds.delete(id)) {
+      perfRuntimeCounters.endTimer()
+    }
+    return originalClearTimeout(id)
+  }) as typeof window.clearTimeout
+
+  window.setInterval = ((handler: TimerHandler, timeout?: number, ...rest: unknown[]) => {
+    const id = originalSetInterval(handler, timeout, ...rest) as unknown as number
+    pendingIntervalIds.add(id)
+    perfRuntimeCounters.startTimer()
+    return id
+  }) as typeof window.setInterval
+
+  window.clearInterval = ((id?: Parameters<typeof originalClearInterval>[0]) => {
+    if (typeof id === 'number' && pendingIntervalIds.delete(id)) {
+      perfRuntimeCounters.endTimer()
+    }
+    return originalClearInterval(id)
+  }) as typeof window.clearInterval
+}
+
+type PerfDebugSnapshot = {
+  frameMs: FrameTimeStats
+  renderScale: number
+  textureMB: number
+  jsHeapMB: number | null
+  preload: { ms: number | null; bytes: number | null }
+}
+
+function buildPerfDebugSnapshot(targetGame: Phaser.Game, measure: () => { scale: number }): PerfDebugSnapshot {
+  const memory = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory
+  return {
+    frameMs: computeFrameTimeStats(perfFrameSamplesMs),
+    renderScale: measure().scale,
+    textureMB: Math.round(computePerfTextureMB(targetGame) * 100) / 100,
+    jsHeapMB: memory ? Math.round((memory.usedJSHeapSize / (1024 * 1024)) * 100) / 100 : null,
+    preload: { ...perfPreloadTiming }
+  }
 }
 
 type SceneWithOptionalState = Phaser.Scene & {
@@ -418,6 +562,9 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
   }
 
   payload.audio = AudioService.getDebugState()
+  // Part 12i, smoke `63-restart-leak`: native listener/timer counts from installPerfRuntimeLeakTracking,
+  // zeroed only if that installer has not run yet (it is called once, unconditionally, at module load).
+  payload.runtime = perfRuntimeCounters.snapshot()
 
   return payload
 }
@@ -429,6 +576,7 @@ function installDebugHooks(targetGame: Phaser.Game): void {
 
   const debugWindow = window as DebugWindow
   debugWindow.render_game_to_text = () => JSON.stringify(createStatePayload(targetGame))
+  debugWindow.perfDebug = () => buildPerfDebugSnapshot(targetGame, measureRenderScale)
   debugWindow.advanceTime = async (ms: number) => {
     const frameMs = 1000 / 60
     const frames = Math.max(1, Math.round(ms / frameMs))
@@ -462,4 +610,7 @@ function installDebugHooks(targetGame: Phaser.Game): void {
 }
 
 installDebugHooks(game)
+installPerfFrameSampling(game)
+installPerfPreloadTiming(game)
+installPerfRuntimeLeakTracking()
 installDevCrashOverlay(false)

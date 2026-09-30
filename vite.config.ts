@@ -75,6 +75,11 @@ function stripSpriteManifestDocsPlugin(): Plugin {
 
 export default defineConfig(({ command }) => ({
   plugins: [stripSpriteManifestDocsPlugin(), copyRuntimeAssetsPlugin()],
+  // Relative asset URLs: GitHub Pages serves the repo under a subpath and itch.io's zip upload has no
+  // fixed path at all. index.html's CSP (`script-src 'self'`, `connect-src 'self'`) matches either way:
+  // it does not depend on the document root, and Vite never inserts a <base> element (`base-uri 'none'`
+  // only restricts that element, which this build does not use).
+  base: './',
   // Production builds fetch the dialogue lines and the enemy catalog in Preload instead of bundling them
   // (src/content/dialogue/index.ts, src/content/enemies/catalog.ts), and ship the sprite manifest without its notes.
   define: command === 'build' ? { __FETCH_CONTENT__: 'true' } : {},

@@ -15,6 +15,8 @@ import { chromium } from 'playwright'
 import { assertPelletHitEvidence } from './smoke/assert-pellet-hit.mjs'
 import { runInputLifecycleScenario } from './smoke/input-lifecycle.mjs'
 import { runWeaponIdentityMatrix } from './smoke/weapon-identities.mjs'
+import { runPerfBudgetScenario } from './smoke/perf-budget.mjs'
+import { runRestartLeakScenario } from './smoke/restart-leak.mjs'
 
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT ?? 4173)
@@ -4007,6 +4009,12 @@ async function main() {
     await executeSmokeScenario(summary, '53-boss-hazards', async () => (await import('./smoke/boss-hazards.mjs')).runBossHazardsScenario('53-boss-hazards', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '44-boss-beats', async () => (await import('./smoke/boss-beats.mjs')).runBossBeatsScenario('44-boss-beats', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '45-beats-flow', async () => (await import('./smoke/beats-flow.mjs')).runBeatsFlowScenario('45-beats-flow', storyDeps))
+    await executeSmokeScenario(summary, '62-perf-budget', () =>
+      runPerfBudgetScenario('62-perf-budget', { outputDir, url, readState, waitForState, advanceFrames })
+    )
+    await executeSmokeScenario(summary, '63-restart-leak', () =>
+      runRestartLeakScenario('63-restart-leak', { outputDir, url, readState, waitForState, advanceFrames, tapKey })
+    )
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     await executeSmokeScenario(summary, '37b-story-triggers', async () => (await import('./smoke/story-surfaces.mjs')).runStoryTriggersScenario('37b-story-triggers', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }
