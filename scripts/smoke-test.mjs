@@ -872,7 +872,8 @@ async function runTitleControlsScenario(name) {
     const titleState = await waitForState(page, (state) => state.scene === 'Title')
     const titleEvidence = await page.evaluate(() => {
       const scene = window.__phaserGame.scene.getScene('Title')
-      const describe = name => { const text = scene.children.getByName(name); const b = text.getBounds(); return { text: text.text, x:b.x,y:b.y,width:b.width,height:b.height } }
+      // Part 12i: identity-title is the logo image; its label carries the title text.
+      const describe = name => { const text = scene.children.getByName(name); const b = text.getBounds(); return { text: text.text ?? text.getData?.('label'), x:b.x,y:b.y,width:b.width,height:b.height } }
       return { title:describe('identity-title'), subtitle:describe('identity-subtitle') }
     })
     assert.equal(titleEvidence.title.text, 'OMEGA RELAY')
@@ -881,6 +882,12 @@ async function runTitleControlsScenario(name) {
     assert.ok(titleEvidence.subtitle.x >= 56 && titleEvidence.subtitle.x + titleEvidence.subtitle.width <= 392, 'full subtitle must fit rail')
     assert.ok(titleEvidence.title.y + titleEvidence.title.height < titleEvidence.subtitle.y, 'title and subtitle must not overlap')
     await page.locator('canvas').screenshot({ path: path.join(scenarioDir, 'shot-0.png') })
+    // Part 12i (EVAL-P8-003): the drawn logo, and the attract cycle loading Heat Works one beat ahead and fading it in.
+    const attract = await page.evaluate(() => { const title = window.__phaserGame.scene.getScene('Title'); title.seekAttract(5450); return title.getDebugState() })
+    assert.equal(attract.logo, true, 'the logo texture is resident from Preload')
+    assert.equal(attract.attract.stageId, 'pyro_maw', 'the second attract beat is Heat Works')
+    await waitForPageCheck(page, () => window.__phaserGame.scene.getScene('Title').getDebugState().attract.built.includes('pyro_maw'), 5000, 'Heat Works built for the attract cycle')
+    await page.locator('canvas').screenshot({ path: path.join(scenarioDir, 'shot-0b-attract.png') })
     await tapKey(page, 'c')
 
     const controlsState = await waitForState(
@@ -907,6 +914,11 @@ async function runTitleControlsScenario(name) {
     assert.equal(stageHeader.title.text,'WARDEN SELECT');assert.equal(stageHeader.caption.text,'8 WARDENS + OMEGA')
     assert.ok(stageHeader.title.x+stageHeader.title.width<stageHeader.caption.x,'stage title and descriptor must not overlap')
     for(const text of [stageHeader.title,stageHeader.caption]) assert.ok(text.y+text.height<=stageHeader.progress.y,`stage descriptor must fit above progress ('${text.text}' bottom ${text.y+text.height}, progress top ${stageHeader.progress.y}; font metrics differ by OS)`)
+    // Part 12i: the selected warden's district is composed behind the grid from its own layers.
+    await waitForPageCheck(page,()=>window.__phaserGame.scene.getScene('StageSelect').getPanelEvidence().district?.ready===true,5000,'district preview up')
+    const district=await page.evaluate(()=>{const scene=window.__phaserGame.scene.getScene('StageSelect');return {evidence:scene.getPanelEvidence(),selected:scene.stages[scene.index].id}})
+    assert.equal(district.evidence.district.stageId,district.selected,'the district behind the grid is the selected one')
+    assert.ok(district.evidence.cursor&&Math.abs(district.evidence.cursor.x-(district.evidence.selectionOutline.x+district.evidence.selectionOutline.width/2))<=1,'the cursor sits on the selected tile')
     await page.locator('canvas').screenshot({ path:path.join(scenarioDir,'shot-2-stage-select.png') })
     await tapKey(page,'Enter')
     await waitForState(page,state=>state.scene==='Game'&&state.newPlayer?.locomotion?.grounded===true)

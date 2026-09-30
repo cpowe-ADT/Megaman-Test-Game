@@ -9,12 +9,15 @@ import { Save } from '../systems/Save'
 import { addMenuBackdrop, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 import { resolvePlaybackLines } from './game/StoryDirector'
 import { GAME_SIZE } from '../config/renderPolicy'
+import { StoryPanelLayer } from '../ui/story/StoryPanelLayer'
+import { PROLOGUE_PANEL_IDS, prologuePanel } from '../ui/story/storyPanels'
 
 export type PrologueSceneData = {
   next: { stageId: string; bossId: string; runtimeBossConfigId?: string }
 }
 
-export type PrologueSnapshot = { pageIndex: number; pageCount: number; sequenceId: string | null }
+/** `panel`: the story panel behind the page (part 12i, `src/ui/story/storyPanels.ts`). */
+export type PrologueSnapshot = { pageIndex: number; pageCount: number; sequenceId: string | null; panel: string | null }
 
 /** The opening pages. Enter advances, Esc skips; both mark the prologue seen and start the tutorial. */
 export class PrologueScene extends Phaser.Scene {
@@ -26,9 +29,15 @@ export class PrologueScene extends Phaser.Scene {
   private counterText!: Phaser.GameObjects.Text
   private drift?: Phaser.GameObjects.TileSprite
   private entry!: PrologueSceneData
+  private panels?: StoryPanelLayer
 
   constructor() {
     super('Prologue')
+  }
+
+  /** The four prologue panels load with this scene and are evicted at its shutdown (StoryPanelLayer). */
+  preload(): void {
+    StoryPanelLayer.queue(this, PROLOGUE_PANEL_IDS)
   }
 
   create(data: PrologueSceneData): void {
@@ -43,18 +52,20 @@ export class PrologueScene extends Phaser.Scene {
 
     const { width, height } = GAME_SIZE
     this.cameras.main.setBackgroundColor('#02050c')
-    addMenuBackdrop(this, 0.55)
+    // Under the panels: the backdrop and the dock drift only show if a panel failed to load.
+    addMenuBackdrop(this, 0.55).setDepth(-20)
     if (this.textures.exists('bg_dock_0')) {
-      this.drift = this.add.tileSprite(width / 2, height / 2 + 20, width, height, 'bg_dock_0').setAlpha(0.22)
+      this.drift = this.add.tileSprite(width / 2, height / 2 + 20, width, height, 'bg_dock_0').setAlpha(0.22).setDepth(-15)
     }
-    this.speakerText = this.add.text(width / 2, 74, '', {
+    this.panels = new StoryPanelLayer(this, PROLOGUE_PANEL_IDS, 158)
+    this.speakerText = this.add.text(width / 2, 170, '', {
       fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff', letterSpacing: 2
     }).setOrigin(0.5)
-    this.bodyText = this.add.text(width / 2, 118, '', {
+    this.bodyText = this.add.text(width / 2, 203, '', {
       fontFamily: 'monospace', fontSize: '12px', color: '#f4f8ff', align: 'center', lineSpacing: 4,
-      wordWrap: { width: width - 96, useAdvancedWrap: true }
+      wordWrap: { width: width - 56, useAdvancedWrap: true }
     }).setOrigin(0.5)
-    this.counterText = this.add.text(width / 2, height - 22, '', {
+    this.counterText = this.add.text(width / 2, height - 11, '', {
       fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#8faed8', letterSpacing: 1
     }).setOrigin(0.5)
 
@@ -79,7 +90,7 @@ export class PrologueScene extends Phaser.Scene {
   }
 
   getDebugState(): PrologueSnapshot {
-    return { pageIndex: this.pageIndex, pageCount: this.pages.length, sequenceId: this.pages[0]?.sequenceId ?? null }
+    return { pageIndex: this.pageIndex, pageCount: this.pages.length, sequenceId: this.pages[0]?.sequenceId ?? null, panel: this.panels?.current ?? null }
   }
 
   advance(): void {
@@ -101,6 +112,7 @@ export class PrologueScene extends Phaser.Scene {
 
   private render(): void {
     const page = this.pages[this.pageIndex]
+    this.panels?.show(prologuePanel(this.pageIndex, page?.speakerId))
     this.speakerText.setText(page?.speakerName ? page.speakerName.toUpperCase() : '')
     this.bodyText.setText(page?.text ?? '')
     this.counterText.setText(`${this.pageIndex + 1} / ${this.pages.length}   ENTER NEXT   ESC SKIP`)

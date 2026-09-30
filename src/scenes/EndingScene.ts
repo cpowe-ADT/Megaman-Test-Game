@@ -12,12 +12,14 @@ import { Save, type SaveData } from '../systems/Save'
 import { addMenuBackdrop, MENU_COLORS, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 import { resolvePlaybackLines, currentStoryPolicy, epilogueSecret } from './game/StoryDirector'
 import { campaignRecordRows, creditsLineOnScreenMs, creditsMsPerPx, TITLE_CARD_MS, type CampaignRecordRow } from '../ui/beats/campaignRecord'
+import { StoryPanelLayer } from '../ui/story/StoryPanelLayer'
+import { endingCardPanel, endingClosePanel, EPILOGUE_PANEL_IDS } from '../ui/story/storyPanels'
 
 export type EndingPhase = 'cards' | 'close' | 'record' | 'credits' | 'title' | 'done'
 /**
  * `card`: the stage whose district card is on screen (cards phase only). `record`: the CAMPAIGN RECORD rows (record
  * phase); `credits`: the scroll pace and how long one line stays whole on screen (credits phase); `title`: the final
- * title card's text (title phase).
+ * title card's text (title phase). `panel`: the story panel behind the cards and the close (part 12i), null after them.
  */
 export type EndingSnapshot = {
   phase: EndingPhase
@@ -27,6 +29,7 @@ export type EndingSnapshot = {
   record: CampaignRecordRow[] | null
   credits: { msPerPx: number; lineOnScreenMs: number } | null
   title: { title: string; subtitle: string } | null
+  panel: string | null
 }
 
 /** The credits band: the view less the footer band the scroll passes behind. */
@@ -38,8 +41,8 @@ type CardPage = { kind: 'card'; stageId: string; text: string }
 type LinePage = { kind: 'line'; line: DialoguePlaybackLine }
 type EndingPage = CardPage | LinePage
 
-/** Reserved layout: the district card art occupies the top 120px (prompt 03 fills it); text lives below. */
-export const ENDING_CARD_HEIGHT = 120
+/** Part 12i: the story panel fills the frame; the district plate sits at its top and the caption band starts here. */
+export const ENDING_CARD_HEIGHT = 150
 
 /** The record as text lines (the rows and rank rule live in `src/ui/beats/campaignRecord.ts`). */
 export function buildCampaignRecord(save: SaveData): string[] {
@@ -70,9 +73,15 @@ export class EndingScene extends Phaser.Scene {
   private phaseCard?: Phaser.GameObjects.Container
   private creditsPace: EndingSnapshot['credits'] = null
   private titleTimer?: Phaser.Time.TimerEvent
+  private panels?: StoryPanelLayer
 
   constructor() {
     super('EndingScene')
+  }
+
+  /** The four epilogue panels load with this scene and are evicted at its shutdown (StoryPanelLayer). */
+  preload(): void {
+    StoryPanelLayer.queue(this, EPILOGUE_PANEL_IDS)
   }
 
   create(): void {
@@ -101,16 +110,18 @@ export class EndingScene extends Phaser.Scene {
 
     const { width, height } = GAME_SIZE
     this.cameras.main.setBackgroundColor('#050913')
-    addMenuBackdrop(this, 0.6)
-    this.cardBox = this.add.rectangle(width / 2, ENDING_CARD_HEIGHT / 2 + 6, width - 24, ENDING_CARD_HEIGHT - 4, MENU_COLORS.panel, 0.9)
+    addMenuBackdrop(this, 0.6).setDepth(-20)
+    this.panels = new StoryPanelLayer(this, EPILOGUE_PANEL_IDS, ENDING_CARD_HEIGHT)
+    // The district's name plate over the panel (it was a 120px box that the panel art now fills).
+    this.cardBox = this.add.rectangle(width / 2, 20, 200, 22, MENU_COLORS.panel, 0.9)
       .setStrokeStyle(1, MENU_COLORS.cyan, 0.7)
-    this.cardLabel = this.add.text(width / 2, ENDING_CARD_HEIGHT / 2 + 6, '', {
+    this.cardLabel = this.add.text(width / 2, 20, '', {
       fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color: '#f5f8ff'
     }).setOrigin(0.5)
-    this.speakerText = this.add.text(width / 2, ENDING_CARD_HEIGHT + 14, '', {
+    this.speakerText = this.add.text(width / 2, ENDING_CARD_HEIGHT + 12, '', {
       fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff', letterSpacing: 2
     }).setOrigin(0.5)
-    this.bodyText = this.add.text(width / 2, ENDING_CARD_HEIGHT + 48, '', {
+    this.bodyText = this.add.text(width / 2, ENDING_CARD_HEIGHT + 46, '', {
       fontFamily: 'monospace', fontSize: '11px', color: '#f4f8ff', align: 'center', lineSpacing: 3,
       wordWrap: { width: width - 72, useAdvancedWrap: true }
     }).setOrigin(0.5)
@@ -137,7 +148,7 @@ export class EndingScene extends Phaser.Scene {
     const record = this.phase === 'record' ? campaignRecordRows(Save.load()) : null
     const credits = this.phase === 'credits' ? this.creditsPace : null
     const title = this.phase === 'title' ? { title: IDENTITY.GAME_TITLE, subtitle: IDENTITY.GAME_SUBTITLE } : null
-    return { phase: this.phase, page: this.page, pageCount, card, record, credits, title }
+    return { phase: this.phase, page: this.page, pageCount, card, record, credits, title, panel: this.panels?.current ?? null }
   }
 
   advance(): void {
@@ -185,6 +196,8 @@ export class EndingScene extends Phaser.Scene {
       const stage = getCampaignStage(card.stageId)
       this.cardBox.setFillStyle(Phaser.Display.Color.HexStringToColor(stage.arena.background.baseColor ?? '#0a2345').color, 0.95)
       this.cardLabel.setText(stage.district.toUpperCase())
+      this.cardBox.setSize(this.cardLabel.width + 28, 22)
+      this.panels?.show(endingCardPanel(card.stageId))
       this.speakerText.setText('')
       this.bodyText.setText(card.text)
       this.footer.setText(`${this.page + 1} / ${this.pages.length}   ENTER NEXT   ESC CREDITS`)
@@ -192,11 +205,13 @@ export class EndingScene extends Phaser.Scene {
     }
     if (this.phase === 'close') {
       const line = this.closeLines[this.page]
+      this.panels?.show(endingClosePanel(this.page, this.closeLines.length))
       this.speakerText.setText(line.speakerName.toUpperCase())
       this.bodyText.setText(line.text)
       this.footer.setText('ENTER NEXT   ESC CREDITS')
       return
     }
+    this.panels?.show(null)
     if (this.phase === 'record') {
       this.speakerText.setText('')
       this.bodyText.setText('')

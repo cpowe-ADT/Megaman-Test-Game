@@ -41,6 +41,7 @@ import {
 import type { SystemMenuAction } from './menu/systemMenuSelector'
 import { StageSelectLogic } from './stage-select/StageSelectLogic'
 import { resolveSlotClick, truncateLabel } from './stage-select/selectionContract'
+import { DistrictBackdrop, playRestoredFlip, revealPortraits, SelectCursor } from '../ui/stageSelect/StageSelectDressing'
 import { GAME_SIZE } from '../config/renderPolicy'
 
 type SlotEntry = {
@@ -133,6 +134,9 @@ export class StageSelect extends Phaser.Scene {
   private footerControls?: Phaser.GameObjects.Text
   private footerStatus?: Phaser.GameObjects.Text
   private toastHandle?: Phaser.GameObjects.Container
+  /** Part 12i (EVAL-P8-003): the selected warden's district behind the grid, and the cursor that glides between tiles. */
+  private district?: DistrictBackdrop
+  private cursor?: SelectCursor
 
   private requestedTransition: { scene: string; data: Record<string, unknown> } | null = null
   private transitionRequestedAt = 0
@@ -166,14 +170,17 @@ export class StageSelect extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050d1a')
 
     this.layout = this.computeLayout(width, height)
+    this.district = new DistrictBackdrop(this)
     this.createBackdrop(width, height)
     this.createHeader()
     this.createGrid()
+    this.cursor = new SelectCursor(this, this.layout.slotWidth, this.layout.slotHeight)
     this.createPreviewPanel()
     this.createFooter()
 
     this.refreshPage()
     this.setSelection(this.index)
+    revealPortraits(this, this.slotEntries.map((slot) => slot.portraitSprite))
     this.applyPostReturnState()
     this.events.on(Phaser.Scenes.Events.RESUME, this.refreshFromSave, this)
 
@@ -226,10 +233,11 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private createBackdrop(width: number, height: number): void {
-    const top = this.add.rectangle(width / 2, height / 2, width, height, COLOR.bgTop, 1)
+    // A veil, not a wall: the selected district (DistrictBackdrop, depth -40) shows through it.
+    const top = this.add.rectangle(width / 2, height / 2, width, height, COLOR.bgTop, 0.22)
     top.setDepth(-30)
 
-    const stripe = this.add.rectangle(width / 2, height * 0.82, width, height * 0.45, COLOR.bgBottom, 0.9)
+    const stripe = this.add.rectangle(width / 2, height * 0.82, width, height * 0.45, COLOR.bgBottom, 0.2)
     stripe.setDepth(-29)
 
     const scan = this.add.graphics()
@@ -275,7 +283,7 @@ export class StageSelect extends Phaser.Scene {
     const layout = this.layout!
 
     this.add
-      .rectangle(layout.gridRect.centerX, layout.gridRect.centerY, layout.gridRect.width, layout.gridRect.height, COLOR.panelInner, 0.7)
+      .rectangle(layout.gridRect.centerX, layout.gridRect.centerY, layout.gridRect.width, layout.gridRect.height, COLOR.panelInner, 0.12)
       .setStrokeStyle(1, COLOR.borderMuted, 0.7)
 
     this.slots = []
@@ -598,15 +606,17 @@ export class StageSelect extends Phaser.Scene {
         )
         .setFillStyle(
           isSelected ? (isCleared ? 0x3b465f : 0x2a57a6) : isCleared ? COLOR.clearedFill : 0x0d2247,
-          isSelected ? 0.6 : isCleared ? 0.65 : 0.5
+          // Idle tiles let the selected warden's district read through (part 12i).
+          isSelected ? 0.6 : isCleared ? 0.58 : 0.36
         )
+      if (isSelected) this.cursor?.moveTo(slot.rect.x, slot.rect.y)
     })
-
   }
 
   private updatePreview(): void {
     const stage = this.stages[this.index]
     if (!stage || !this.infoText || !this.detailsText) return
+    this.district?.show(stage.id)
     const cleared = isCampaignStageCleared(this.saveData, stage.id)
     const checks = this.getStageCheckProgress(stage.id)
     const checkpoint = formatCheckpointLabel(this.getSelectedCheckpointForStage(stage.id))
@@ -622,7 +632,7 @@ export class StageSelect extends Phaser.Scene {
   }
 
   getPanelEvidence() {
-    return { selectionOutline: this.slotEntries.find(slot => slot.stageIndex === this.index)?.rect.getBounds(), preview: this.layout?.previewRect, footer: this.layout?.footerRect, description: this.infoText?.getBounds(), details: this.detailsText?.getBounds(), footerControls: this.footerControls?.getBounds(), footerStatus: this.footerStatus?.getBounds() }
+    return { selectionOutline: this.slotEntries.find(slot => slot.stageIndex === this.index)?.rect.getBounds(), preview: this.layout?.previewRect, footer: this.layout?.footerRect, description: this.infoText?.getBounds(), details: this.detailsText?.getBounds(), footerControls: this.footerControls?.getBounds(), footerStatus: this.footerStatus?.getBounds(), district: this.district?.getDebugState() ?? null, cursor: this.cursor?.position ?? null }
   }
 
   getLayoutEvidence() {
@@ -655,6 +665,7 @@ export class StageSelect extends Phaser.Scene {
       if (focusIndex >= 0) {
         const next = this.findNextUnclearedIndex(focusIndex)
         this.setSelection(next ?? focusIndex)
+        if (returnReason === 'victory') this.flipRestoredTile(focusIndex)
       }
     }
 
@@ -670,6 +681,15 @@ export class StageSelect extends Phaser.Scene {
     const milestoneCount = this.registry.get('ui.stageSelect.milestoneCount') as number | null | undefined
     this.registry.remove('ui.stageSelect.milestoneCount')
     this.playMilestone(milestoneCount ?? null)
+  }
+
+  /** Part 12i: the district-restored tile flip and its sting, once, on the return from the clear that restored it. */
+  private flipRestoredTile(stageIndex: number): void {
+    const stage = this.stages[stageIndex]
+    const slot = this.slotEntries.find((entry) => entry.stageIndex === stageIndex)
+    if (!stage || !slot || !isCampaignStageCleared(this.saveData, stage.id)) return
+    const primary = ORDERED_BOSSES.find((boss) => boss.id === stage.bossId)?.blueprint.theme.primary ?? COLOR.clearedStroke
+    playRestoredFlip(this, slot.rect, 0x0d2247, primary)
   }
 
   private findNextUnclearedIndex(fromIndex: number): number | null {
@@ -772,6 +792,7 @@ export class StageSelect extends Phaser.Scene {
   private startSceneTransition(scene: string, data: Record<string, unknown>): void {
     this.requestedTransition = { scene, data }
     this.transitionRequestedAt = performance.now()
+    if (scene === 'Game') this.district?.keep(typeof data.stageId === 'string' ? data.stageId : null)
     this.scene.start(scene, data)
   }
 
