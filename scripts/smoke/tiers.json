@@ -1,0 +1,25 @@
+{
+  "$comment": "13h.1 (prompt 06 §6.9, EVAL-P6-013): SMOKE_TIER=fast runs this list only; unset or any other value runs every registered scenario ('full'). Categories the fast list must cover: boot, input, one stage, one boss, profiles, HD render, the shot contract. Edit scripts/smoke-test.mjs's tier check, not this comment, to change matching rules; SMOKE_ONLY still takes full names or numeric prefixes on top of this filter.",
+  "fast": [
+    "1-click-select",
+    "2-keyboard-enter-start",
+    "3-enter-then-charge-shot",
+    "4-title-controls",
+    "4b-stage-select-progression",
+    "4d-progression-import-truth",
+    "9-checkpoint-respawn",
+    "12-weapon-switch-energy",
+    "13d-movement-feel",
+    "13e-input-source-lifecycle",
+    "13f-input-focus-loss",
+    "46-gamepad-and-remap",
+    "8-boss-room-activation",
+    "39-boss-grounded",
+    "21-boss-gate-lock",
+    "50-pyro-route",
+    "41-profiles",
+    "40-hd-render",
+    "65-shot-contract",
+    "38-options-persist"
+  ]
+}

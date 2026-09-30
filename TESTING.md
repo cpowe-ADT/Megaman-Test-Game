@@ -18,17 +18,37 @@ The goal is fast feedback from deterministic tests, with browser automation rese
 | `npm run test:smoke` | Automated browser smoke pass with screenshots, state capture, and console checks | Gameplay flow, stage flow, input, UI, pause/victory/game-over flow, automation-hook-sensitive changes |
 | `npm run test:smoke:preview` | Builds, checks `dist/assets`, then runs the smoke suite against `vite preview` | Production packaging, deploy, runtime asset loading, or release-readiness changes |
 | `npm run test:visual-sweep` | Cross-mission visual sweep and artifact capture | Sprite pipeline, atlas changes, boss/enemy presentation, mission-wide visual changes |
-| `npm run verify` | Combined validation gate | Required before merge for substantive gameplay, tooling, content, or asset-pipeline work |
+| `npm run content:audit` | Report-only table (screens, secrets, checkpoints, mechanics, enemies) over every compiled campaign stage (`getCampaignStage`), plus every `content:lint` rule's findings; writes `output/content/audit.md`. Never fails on content (a script crash still exits 1) | Stage content changes; part of `npm run verify` |
+| `npm run content:lint` | The same rules as `content:audit`, enforcing: reachability (no gap past a dash-jump without a bridging platform, wall, vertical segment or room lock), checkpoints on floor, pickups grounded or `rest: 'float'`, hazards on solid, the backdrop covering every vertical segment, boss rooms inside the stage. Fails (exit 1) on any offender; pure rules in `scripts/content/stageChecks.mjs`, unit-tested in `tests/content-stage-checks.test.ts` | Stage content changes; part of `npm run verify` |
+| `npm run verify` | Combined validation gate (now including `content:audit`/`content:lint`; `SMOKE_TIER` unset runs the full smoke suite) | Required before merge for substantive gameplay, tooling, content, or asset-pipeline work |
+| `npm run verify:fast` | The same gate with `SMOKE_TIER=fast` (about twenty scenarios, under three minutes) | Quick local check before the full `npm run verify`; CI's `browser-gates` job uses this tier on every pull request |
 | `npm run perf:footprint` | Builds nothing: serves `dist/` with `vite preview` and measures download before Title, time to Title, decoded audio, textures, JS heap, per-step CPU, growth across stage revisits and the hi-DPI canvas against `tests/perf-budget.json`; fails on a breach or any page error | After `npm run build`, for loading, asset, audio, render-scale or render-loop changes; `PERF_REPORT_ONLY=1` records a baseline without failing. Plan: `docs/prompts/09-footprint-and-performance.md` |
 | `npm run audio:check` | Needs ffmpeg. Every `.ogg`/`.wav` under `assets/audio` is credited in `assets/audio/credits/README.md` and every credited path exists; every runtime music file meets the one loudness target (-16 LUFS within 1 LU, true peak at most -1dBTP) and a loop seam of at most 3dB (waivers print on every run); report `output/audio/check-credits.md` | Any change under `assets/audio/`, `scripts/audio/` or `src/audio/`; part of `npm run verify`. `tests/audio-cue-map.test.ts` checks the credits and cue map without ffmpeg, and development builds (so smoke) throw on an SFX key missing from `src/audio/sfxLibrary.ts` |
+
+## Smoke Tiers
+
+`SMOKE_TIER=fast` (`scripts/smoke/tiers.json`) runs about twenty scenarios in under three minutes: boot
+(`1-click-select`, `2-keyboard-enter-start`), input (`3-enter-then-charge-shot`, `4-title-controls`,
+`13d-movement-feel`, `13e-input-source-lifecycle`, `13f-input-focus-loss`, `46-gamepad-and-remap`), one
+stage route (`50-pyro-route`), one boss (`8-boss-room-activation`, `39-boss-grounded`,
+`21-boss-gate-lock`), profiles (`41-profiles`), HD render (`40-hd-render`), the shot contract
+(`65-shot-contract`), plus a handful of cheap regressions (`4b`, `4d`, `9`, `12`, `38`). `SMOKE_TIER=full`
+or unset runs every registered scenario, including `66-production-music` (the full tier only: it always
+serves its own `vite preview` of the real `dist/`, so run `npm run build` first). `npm run verify` and
+`npm run verify:fast` are the two full-suite entry points; `content:audit` and `content:lint` run in
+both. Add a scenario to the fast list only if it keeps the whole tier under three minutes; edit
+`scripts/smoke/tiers.json`, not `scripts/smoke-test.mjs`'s matching rule.
 
 ## Continuous Integration
 
 `.github/workflows/ci.yml` runs on every push and pull request with Node 22 and `npm ci`.
-The automatic job runs `npm run test` and `npm run build`; `npm run ci` runs the same checks locally.
-Use GitHub's manual `workflow_dispatch` trigger for the separate browser job; smoke does not run on pushes.
-That job installs Playwright Chromium, runs smoke with `SMOKE_PORT=4400`, then runs the visual sweep even if smoke fails.
-The browser job uploads `output/` even on failure; record the remote run URL after pushing, without treating local results as a remote pass.
+The automatic `test-and-build` job runs `npm run test` and `npm run build`; `npm run ci` runs the same
+checks locally. The `browser-gates` job runs automatically on a pull request to `main`
+(`SMOKE_TIER=fast`, `SMOKE_PORT=4400`, no sweep) and, at the full tier plus the visual sweep, on a
+nightly `schedule` trigger, a `v*` tag push, or GitHub's manual `workflow_dispatch`. Every run installs
+Playwright Chromium, builds `dist/` (the full tier's `66-production-music` needs it), then runs smoke;
+the sweep runs only at the full tier, even if smoke fails. The browser job uploads `output/` even on
+failure; record the remote run URL after pushing, without treating local results as a remote pass.
 
 ## Current Test Surface
 - `tests/`
@@ -107,6 +127,8 @@ Do not break these without updating scripts and docs together:
 | `SMOKE_FORCE_FAIL=<name>` | Test-only: forces the named scenario to throw instead of running, to prove continue-on-failure and `SMOKE_FAIL_FAST` without editing a real scenario. |
 | `SMOKE_OUTPUT_DIR=<path>` | Overrides the smoke run folder instead of the default `output/smoke-runs/<ISO timestamp>`. |
 | `SMOKE_PORT=4400` | Smoke server port; default `4173`, bound to `127.0.0.1` with strict port selection. |
+| `SMOKE_TIER=fast` | Runs only `scripts/smoke/tiers.json`'s `fast` list (full names or numeric prefix); unset or any other value runs every registered scenario. See "Smoke Tiers" above. |
+| `MUSIC_PROBE_PORT=4191` | `66-production-music`'s own `vite preview` port (default `4191`); distinct from `SMOKE_PORT` because this scenario always serves the real `dist/`, never the ambient `SMOKE_SERVER`. |
 | `SWEEP_PORT=4401` | Visual-sweep server port; default `4173`. Use different ports for concurrent browser runs. |
 | `SWEEP_CLEANUP_TIMEOUT_MS=30000` | How long the sweep waits for the browser to close before failing as `hung_after_artifacts`; default `5000`. CI `browser-gates` sets 30000. |
 | `SWEEP_FAIL_FAST=1` | Stops the visual sweep at the first mission failure instead of continuing to the rest; default continues past a failure and exits `1` if any mission failed. |
