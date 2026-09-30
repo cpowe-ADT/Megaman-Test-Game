@@ -14,7 +14,7 @@ import {
   resolveDesperationArena,
   warningVisibleAt
 } from '../src/boss/fightBeats'
-import { NORMAL_CLEAR_TARGET_SECONDS, attackIdFromName, estimateNormalClearSeconds, resolvePhaseKits } from '../src/boss/phaseKit'
+import { NORMAL_CLEAR_TARGET_SECONDS, ROOK_CLEAR_TARGET_SECONDS, attackIdFromName, estimateNormalClearSeconds, resolvePhaseKits } from '../src/boss/phaseKit'
 import { BOSS_COMBAT_PROFILES, getBossAttackCombatProfile } from '../src/bosses/bossCombatProfiles'
 import { BOSS_ROSTER } from '../src/bosses/roster'
 import { BOSS_HIT_FLASH_MS, BOSS_PLAYER_HIT_IFRAME_MS, bossHitReaction, bossPhaseHudText } from '../src/scenes/game/combatRules'
@@ -49,7 +49,9 @@ test('desperation at 20% adds one new attack with a combat contract, the arena c
   bosses.forEach((boss) => {
     const desperation = boss.desperation
     assert.ok(desperation, `${boss.id} has a desperation plan`)
-    assert.equal(desperation.threshold, 0.2)
+    // Part 13c (EVAL-P13-006): Rook's desperation moved to 15% so the easier tutorial fight keeps a
+    // last-stand beat inside its shorter clear time; every other warden keeps 20%.
+    assert.equal(desperation.threshold, boss.id === 'sentinel_rook' ? 0.15 : 0.2)
     assert.ok(desperation.name.length <= 12, `${boss.id} desperation HUD label fits`)
     assert.ok(desperation.flashPalette.length >= 2)
     const id = attackIdFromName(desperation.attack.name)
@@ -59,7 +61,7 @@ test('desperation at 20% adds one new attack with a combat contract, the arena c
     const definition = getBossDefinitionById(boss.id) as BossDefinition
     const last = definition.phases[definition.phases.length - 1]
     assert.equal(last.desperation, true)
-    assert.equal(last.threshold, 0.2)
+    assert.equal(last.threshold, boss.id === 'sentinel_rook' ? 0.15 : 0.2)
     assert.deepEqual(last.unlockAttacks, [id])
     assert.ok(!definition.phases[0].unlockAttacks?.includes(id), `${boss.id} desperation attack is locked until 20%`)
     arenaByBoss[boss.id] = resolveDesperationArena(BOSS_COMBAT_PROFILES[boss.id].room).kind
@@ -235,10 +237,13 @@ test('intro, bar fill, death and desperation beats keep their timings', () => {
   assert.equal(resolveDesperationArena({ kind: 'mine_lanes', maxActiveHazards: 3, anchorFractions: [0.22, 0.5, 0.78] }).hazardFractions.length, 5)
 })
 
-test('boss HP keeps a Normal clear inside 60 to 90 seconds on the reference model', () => {
+test('boss HP keeps a Normal clear inside 60 to 90 seconds on the reference model, except the easier tutorial boss', () => {
   bosses.forEach((boss) => {
     const seconds = estimateNormalClearSeconds(boss.baseStats.maxHp)
-    assert.ok(seconds >= NORMAL_CLEAR_TARGET_SECONDS.min && seconds <= NORMAL_CLEAR_TARGET_SECONDS.max, `${boss.id}: ${seconds}s`)
+    // Part 13c (EVAL-P13-006): Rook targets 30 to 40s (a deliberately shorter first fight); every
+    // other warden, including Pyro Maw, keeps the general 60 to 90s band.
+    const target = boss.id === 'sentinel_rook' ? ROOK_CLEAR_TARGET_SECONDS : NORMAL_CLEAR_TARGET_SECONDS
+    assert.ok(seconds >= target.min && seconds <= target.max, `${boss.id}: ${seconds}s`)
   })
 })
 

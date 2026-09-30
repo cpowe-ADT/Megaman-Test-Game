@@ -28,7 +28,9 @@ test('every warden authors a hurtbox and an idle hitbox inside its floor body: t
     assert.ok(hitbox.width < floor.x && hitbox.height <= floor.y, `${boss.id}: the hitbox is inside the floor body`)
     assert.ok(hurtbox.width > hitbox.width, `${boss.id}: the hurtbox is wider than the hitbox, so a saber reaches it without contact`)
     assert.ok(hurtbox.width <= floor.x && hurtbox.height <= floor.y, `${boss.id}: the hurtbox is inside the floor body`)
-    assert.equal(boss.baseStats.contactDamage, 2, `${boss.id}: idle contact keeps today's 2 (the hero has 8 HP)`)
+    // Part 13c (EVAL-P13-006): Rook's contact halved to 1 (the easier first fight); every other warden keeps 2.
+    const expectedContact = boss.id === 'sentinel_rook' ? 1 : 2
+    assert.equal(boss.baseStats.contactDamage, expectedContact, `${boss.id}: idle contact keeps today's ${expectedContact} (the hero has 8 HP)`)
   }
 })
 
@@ -48,7 +50,9 @@ test('idle contact uses the roster contactDamage; an active strike uses its own 
   assert.equal(resolveBossBodies({ ...input, activeAttackId: 'serpent_stream', lifecycle: 'active' }).attack, null, 'a shot keeps the idle box')
   const rook = BOSS_ROSTER.sentinel_rook as BossBlueprint
   const hop = resolveBossBodies({ ...input, plan: rook.bodies!, attacks: contactAttacks(rook), activeAttackId: 'giga_hop', lifecycle: 'active' })
-  assert.equal(hop.damage, 2, 'an authored hitbox damage wins over the hop\'s hit damage of 1')
+  // Part 13c (EVAL-P13-006): the hop's authored hitbox damage was rebalanced from 2 to 1, matching the
+  // state's generic fallback; still the authored value (resolveAttackDamage's 'jump' fallback, not read here).
+  assert.equal(hop.damage, 1, "the hop's authored hitbox damage after the 13c balance pass")
 })
 
 test('every dash that crosses the hero strikes with a hitbox on the boss (the dash_strike bullet is retired)', () => {

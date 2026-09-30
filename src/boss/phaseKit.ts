@@ -84,6 +84,12 @@ export function resolvePhaseKits(blueprint: BossBlueprint): PhaseKit[] {
 export const NORMAL_REFERENCE_DPS = 1.6
 export const NORMAL_CLEAR_TARGET_SECONDS = { min: 60, max: 90 } as const
 
+/**
+ * Part 13c (EVAL-P13-006): the tutorial boss is deliberately below the warden band above, so first-time
+ * players clear it quickly. Rook's 60 HP against the reference DPS lands at 37.5s.
+ */
+export const ROOK_CLEAR_TARGET_SECONDS = { min: 30, max: 40 } as const
+
 export function estimateNormalClearSeconds(maxHp: number, dps = NORMAL_REFERENCE_DPS): number {
   return Math.round((maxHp / dps) * 10) / 10
 }

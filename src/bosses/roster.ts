@@ -13,9 +13,12 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     damageProfile: { onlyWeapons: ['Buster'] },
     introCallout: 'AUTONOMOUS GATEKEEPER',
     theme: { primary: 0x7d8cff, accent: 0xfff0b3, glow: 0x96a2ff, trail: 0x4552d4 },
+    // Part 13c (EVAL-P13-006): Craig's first-boss note. HP and contact halved so the tutorial fight
+    // clears in 30 to 40s at the reference DPS instead of about 62s, and the hero survives twice as
+    // many touches while learning the read.
     baseStats: {
-      maxHp: 100,
-      contactDamage: 2,
+      maxHp: 60,
+      contactDamage: 1,
       moveSpeed: 60,
       dashSpeed: 90,
       jumpHeight: 120
@@ -37,7 +40,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
     attacks: [
       {
         name: 'Giga Hop',
-        hitbox: { width: 30, height: 34, damage: 2 },
+        hitbox: { width: 30, height: 34, damage: 1 },
         state: 'jump',
         description: 'A short, slow hop that aims to land near the player.',
         telegraph: { telegraphMs: 350, warningFx: 'wave', anchor: 'self' },
@@ -49,9 +52,9 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         name: 'Guard Shot',
         state: 'shoot',
         description: 'Single pellet fired straight at the player. Used to tutorialize parries.',
-        telegraph: { telegraphMs: 260, warningFx: 'fan-lines', anchor: 'target' },
+        telegraph: { telegraphMs: 400, warningFx: 'fan-lines', anchor: 'target' },
         executeMs: 180,
-        cooldownMs: 480,
+        cooldownMs: 700,
         spawns: ['slow_bullet']
       },
       {
@@ -59,7 +62,7 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
         hitbox: { width: 34, height: 26 },
         state: 'special',
         description: 'Slow stomp that emits a low shockwave across the floor.',
-        telegraph: { telegraphMs: 420, warningFx: 'glow', anchor: 'self' },
+        telegraph: { telegraphMs: 520, warningFx: 'glow', anchor: 'self' },
         executeMs: 320,
         cooldownMs: 1200,
         // Movement: Locks in place; after landing spawn ground ripple.
@@ -79,20 +82,20 @@ export const BOSS_ROSTER: Record<BossId, BossBlueprint> = {
       {
         name: 'Override Mode',
         shortName: 'OVERRIDE',
-        threshold: 0.55,
+        threshold: 0.4,
         enraged: true,
         description: 'Combines stomp shock with hop follow-ups; shorter warning windows.',
         newAttacks: ['Stomp Shock'],
         retireAttacks: ['Giga Hop'],
-        retimeAttacks: { 'Guard Shot': { telegraphMs: 200, cooldownMs: 380 } },
-        cadenceMultiplier: 1.2
+        retimeAttacks: { 'Guard Shot': { telegraphMs: 300, cooldownMs: 560 } },
+        cadenceMultiplier: 1.1
       }
     ],
     desperation: {
       name: 'Last Stand',
-      threshold: 0.2,
-      description: 'Desperation at 20% HP: Rook Barrage.',
-      cadenceMultiplier: 1.3,
+      threshold: 0.15,
+      description: 'Desperation at 15% HP: Rook Barrage.',
+      cadenceMultiplier: 1.15,
       flashPalette: [0xffffff, 0x96a2ff, 0xfff0b3],
       attack: {
         name: 'Rook Barrage',
