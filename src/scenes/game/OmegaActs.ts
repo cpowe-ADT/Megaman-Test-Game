@@ -11,15 +11,16 @@ import {
   initialOmegaRunState,
   isArchiveExitOpen,
   isOmegaRematch,
-  isRematchCheckpoint,
+  keepRunOnGameOver,
   omegaActOfCheckpoint,
   omegaRunSnapshot,
   readOmegaEntry,
+  shouldCheckpointOnReturn,
   type OmegaAct,
   type OmegaRunState
 } from '../../content/omegaArchive'
 import { rematchConfigId } from '../../content/omegaRematch'
-import { OMEGA_CHECKPOINTS, OMEGA_HUB_GATE } from '../../content/stages/omegaFortress'
+import { OMEGA_HUB_GATE } from '../../content/stages/omegaFortress'
 import { getWeaponMaxEnergy } from '../../progression'
 import { Save, type ActiveRunSaveData } from '../../systems/Save'
 import { DROP_HEAL } from '../../ui/pickups/dropRewards'
@@ -86,23 +87,21 @@ export class OmegaActs {
     this.drawArchive()
     const entry = this.state.entry
     if (entry?.mode === 'rematch') {
-      // The fight is in the Core's room; the archive stays the checkpoint, so no crossing on the way saves or unlocks.
+      // The fight is in the Core's room. The archive stays the checkpoint (index and id), and no checkpoint is
+      // crossed while in a rematch (`DeathSequence.updateRespawnCheckpoint` asks `isRematch`); a death respawns here.
       this.placeHero(OMEGA_REMATCH_START_X)
       host.respawnPoint = { x: OMEGA_REMATCH_START_X, y: GROUNDED_Y }
-      host.currentCheckpointIndex = OMEGA_CHECKPOINTS.length - 1
       host.showStageToast(`${OMEGA_DOORS[entry.door].label} REMATCH`, 1100)
     } else if (entry?.mode === 'return') {
       const door = OMEGA_DOORS[entry.door]
       this.placeHero(door.x)
       this.spawnRefills(door.x)
       const count = this.state.cleared.length
-      if (isRematchCheckpoint(count) && this.state.saved.length < count) {
+      // Sub-tank fills are already in the save (written when they change), so the run is all a checkpoint writes.
+      if (shouldCheckpointOnReturn(count, this.state.saved.length)) {
         this.state.saved = [...this.state.cleared]
         const snapshot = host.captureActiveRunSnapshot()
         this.checkpointSaved = Boolean(snapshot && Save.saveActiveRun(snapshot))
-        // The checkpoint also keeps the sub tanks as they stand (they are written when drunk, too).
-        Save.setSubTankFill([...(host.progressionSave.subTankFill ?? [])])
-        host.progressionSave = Save.load()
       }
       host.showStageToast(`${door.label} COPY DOWN • ${count}/${OMEGA_DOORS.length}${this.checkpointSaved ? ' • CHECKPOINT' : ''}`, 1400)
     }
@@ -135,10 +134,10 @@ export class OmegaActs {
     this.host.scene.restart(buildReturnEntry(run, this.state, entry.door))
   }
 
-  /** Game over from act 2 on keeps the run at its checkpoint (clears included) for the continue, at full HP. */
+  /** A game over from act 2 on keeps the run at its checkpoint for the continue, at full HP; not on Veteran. */
   keepRunAtGameOver(): boolean {
     const snapshot = this.host.captureActiveRunSnapshot()
-    if (!snapshot || (snapshot.omegaAct ?? 1) < 2) return false
+    if (!snapshot || !keepRunOnGameOver(this.host.progressionSave.difficulty, snapshot.omegaAct ?? 1)) return false
     return Save.saveActiveRun({ ...snapshot, playerHp: snapshot.playerMaxHp, playerLives: CONTINUE_LIVES })
   }
 

@@ -1,5 +1,6 @@
 import { BOSS_ROSTER } from '../bosses/roster'
 import type { BossId } from '../bosses/types'
+import type { Difficulty } from '../progression/types'
 import type { ActiveRunSaveData } from '../systems/Save'
 import { CAMPAIGN_STAGES, FINAL_STAGE_ID, ROBOT_MASTER_STAGE_IDS } from './campaign'
 import {
@@ -20,9 +21,12 @@ import {
  *   re-entered with the door index and the run in memory (scene data `omega`), and the warden fights in the Core's
  *   room (`src/content/omegaRematch.ts`: full profile, phase-two cadence, maxHp x0.7). Doors open in any order.
  * - A clear re-enters the hub at its door with a large HP refill and a full weapon-energy refill beside it.
- * - After every second clear the hub re-entry is a checkpoint: the run is saved with its clears (and the sub
- *   tanks). A save between checkpoints keeps the clears of the last one, as a checkpoint keeps its position.
- * - The archive's exit opens when all eight are cleared.
+ * - After every second clear the hub re-entry is a checkpoint: the run is saved with its clears. A save between
+ *   checkpoints keeps the clears of the last one, as a checkpoint keeps its position. Sub-tank fills need no
+ *   checkpoint: they are written to the save whenever they change (a drink, a top-up at full HP).
+ * - The archive's exit opens when all eight are cleared; a run in act 3 without all eight goes back to the archive.
+ * - A game over from act 2 on keeps the run at its checkpoint for the continue, except on Veteran, whose continue is
+ *   the stage start (`resolveContinueCheckpoint`): there, as on every stage, nothing past the start survives.
  */
 
 export type { OmegaAct }
@@ -57,16 +61,24 @@ export function normalizeRematchCleared(value: unknown): BossId[] {
 
 /**
  * `validateActiveRun`'s rule for the two Central Core fields. The checkpoint places the hero, so it decides the
- * act; a run in act 1 has no clears. Other stages always carry act 1 and no clears.
+ * act; a run in act 1 has no clears; act 3 lies past the archive's sealed exit, so a run there without all eight
+ * clears is placed back at the archive. Other stages always carry act 1, no clears and their own checkpoint.
  */
 export function normalizeOmegaRunFields(
   stageId: string,
   checkpointId: string | undefined,
   raw: { omegaAct?: unknown; rematchCleared?: unknown }
-): { omegaAct: OmegaAct; rematchCleared: BossId[] } {
-  if (stageId !== FINAL_STAGE_ID) return { omegaAct: 1, rematchCleared: [] }
-  const omegaAct = omegaActOfCheckpoint(checkpointId)
-  return { omegaAct, rematchCleared: omegaAct === 1 ? [] : normalizeRematchCleared(raw.rematchCleared) }
+): { omegaAct: OmegaAct; rematchCleared: BossId[]; checkpointId: string | undefined } {
+  if (stageId !== FINAL_STAGE_ID) return { omegaAct: 1, rematchCleared: [], checkpointId }
+  const act = omegaActOfCheckpoint(checkpointId)
+  const rematchCleared = act === 1 ? [] : normalizeRematchCleared(raw.rematchCleared)
+  if (act === 3 && !isArchiveExitOpen(rematchCleared)) return { omegaAct: 2, rematchCleared, checkpointId: OMEGA_ARCHIVE_CHECKPOINT_ID }
+  return { omegaAct: act, rematchCleared, checkpointId }
+}
+
+/** Whether a game over keeps the Central Core run at its checkpoint (see the header): act 2 on, and not Veteran. */
+export function keepRunOnGameOver(difficulty: Difficulty, act: OmegaAct): boolean {
+  return act >= 2 && difficulty !== 'veteran'
 }
 
 export function recordRematchClear(cleared: readonly BossId[], bossId: BossId): BossId[] {
@@ -76,6 +88,11 @@ export function recordRematchClear(cleared: readonly BossId[], bossId: BossId): 
 /** The hub re-entry after clears 2, 4, 6 and 8 is a checkpoint. */
 export function isRematchCheckpoint(clearedCount: number): boolean {
   return clearedCount > 0 && clearedCount % 2 === 0
+}
+
+/** A hub re-entry saves the run when its clear count is a checkpoint count that the last checkpoint did not save. */
+export function shouldCheckpointOnReturn(clearedCount: number, savedCount: number): boolean {
+  return isRematchCheckpoint(clearedCount) && savedCount < clearedCount
 }
 
 export function isArchiveExitOpen(cleared: readonly BossId[]): boolean {

@@ -5,7 +5,8 @@
 // (b) act 2: the hub (eight doors by element, the exit sealed); door 1 by real input (Up) re-enters Game as the Fire
 //     rematch in the Core's room at maxHp x0.7; `bossDebug.damage(999)`; back at its door with two refills; door 2 the
 //     same, and the second clear is a checkpoint (the save holds two clears); a pause-menu save, a page reload, a load:
-//     `rematchCleared` has length 2 and the hub shows two doors CLEAR;
+//     `rematchCleared` has length 2 and the hub shows two doors CLEAR; a game over there on Normal keeps the run at
+//     the archive, and Continue starts there with the two clears;
 // (c) the other six doors (door entry by the adapter, the gate crossing by `stageDebug`), a time per rematch; the exit opens;
 // (d) act 3: real input through the exit over checkpoint 4 (the save has act 3 and eight clears), one capture per screen
 //     (`act3-00.png` to `act3-03.png`), then the Core's door and room;
@@ -192,6 +193,25 @@ export async function runOmegaActsScenario(name, { outputDir, storyUrl, readStat
     await advanceFrames(page, 20)
     await capture('act2-hub-reloaded')
     mark('act2-two-doors')
+
+    // (b2) A game over in the archive on Normal, then Continue: the two clears survive (Veteran's rule, where the run
+    // is not kept, is the unit test `keepRunOnGameOver`).
+    await page.evaluate(() => { window.stageDebug?.setLives?.(0); window.stageDebug?.forcePlayerDeath?.() })
+    await waitForState(page, (next) => next.scene === 'GameOver', 30000, 'game over in the archive')
+    const kept = await savedRun()
+    assert.equal(kept?.checkpointId, 'omega_archive', 'the game over keeps the run at the archive')
+    assert.deepEqual(kept?.rematchCleared, ['pyro_maw', 'tide_reaver'])
+    await page.locator('canvas').screenshot({ path: path.join(dir, 'act2-game-over.png') })
+    await tapKey(page, 'Enter')
+    await waitForState(page, (next) => next.scene === 'Game' && next.stageRuntime?.stageId === 'omega_fortress', 30000, 'continued')
+    await settle('after the continue')
+    hub = await omega()
+    assert.equal(hub.act, 2)
+    assert.deepEqual(hub.cleared, ['pyro_maw', 'tide_reaver'], 'the continue starts at the archive with the two clears')
+    assert.equal((await readState(page)).stageRuntime.checkpointIndex, 2)
+    evidence.continueAfterGameOver = { checkpointId: kept.checkpointId, cleared: hub.cleared }
+    await capture('act2-continued')
+    mark('act2-continue')
 
     // (c) The other six doors, in reverse order (any order opens).
     for (const door of [7, 6, 5, 4, 3, 2]) {

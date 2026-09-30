@@ -45,6 +45,23 @@ test('archive: a door opens in any order until its warden is cleared; the exit o
   assert.equal(archive.isRematchCheckpoint(0), false)
 })
 
+test('archive: a game over keeps the fortress run from act 2 on, except on Veteran (its continue is the stage start)', () => {
+  const expected: Record<string, [boolean, boolean, boolean]> = { assist: [false, true, true], normal: [false, true, true], veteran: [false, false, false] }
+  for (const [difficulty, acts] of Object.entries(expected)) {
+    assert.deepEqual(([1, 2, 3] as const).map((act) => archive.keepRunOnGameOver(difficulty as any, act)), acts, difficulty)
+  }
+})
+
+test('archive: a hub re-entry is a checkpoint at clears 2, 4, 6 and 8, once each', () => {
+  assert.equal(archive.shouldCheckpointOnReturn(2, 0), true)
+  assert.equal(archive.shouldCheckpointOnReturn(2, 2), false, 'already saved (a reload at the archive)')
+  assert.equal(archive.shouldCheckpointOnReturn(3, 2), false, 'an odd clear waits for the next checkpoint')
+  assert.equal(archive.shouldCheckpointOnReturn(4, 2), true)
+  assert.equal(archive.shouldCheckpointOnReturn(8, 6), true)
+  assert.equal(archive.shouldCheckpointOnReturn(1, 0), false)
+  assert.equal(archive.shouldCheckpointOnReturn(0, 0), false)
+})
+
 test('archive: a door re-enters Game as the rematch with the run in memory; a clear re-enters the hub', () => {
   const state = { cleared: ['tide_reaver'] as any[], saved: [] as any[], entry: null }
   const into = archive.buildRematchEntry({ ...RUN, playerHp: 3 }, state, 2, rematch.rematchConfigId('volt_hopper'))

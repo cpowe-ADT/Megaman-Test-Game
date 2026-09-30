@@ -114,7 +114,8 @@ export class DeathSequence {
     }
     const stage = getCampaignStage(host.activeStageId)
     const nextCheckpoint = stage.arena.checkpoints[host.currentCheckpointIndex + 1]
-    if (!nextCheckpoint || host.player.x < nextCheckpoint.triggerX) {
+    // A Warden Archive rematch fights past the later checkpoints' triggers; its checkpoint stays the archive (12e).
+    if (!nextCheckpoint || host.player.x < nextCheckpoint.triggerX || omegaActsOf(host)?.isRematch()) {
       return
     }
     host.currentCheckpointIndex += 1
