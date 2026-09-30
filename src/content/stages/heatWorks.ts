@@ -186,11 +186,13 @@ export const HEAT_WORKS_ROOM_LOCKS: RoomLockDefinition[] = [
   { id: 'pyro_midboss_lock', room: { x: 3200, y: 0, width: 448, height: 252 }, gateX: 3648, defeatMarkers: HEAT_WORKS_MIDBOSS_MARKERS }
 ]
 
+// Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on the surface the probe found under each anchor
+// (heart_tank top 84, sub_tank/pickup_bonus top 236, capsule top -196); x is unchanged.
 export const HEAT_WORKS_LOCATION_ANCHORS: LocationAnchors = {
-  heart_tank: { x: 1284, y: 68 },
-  sub_tank: { x: 2500, y: 218 },
-  capsule: { x: 3776, y: -212 },
-  pickup_bonus: { x: 4680, y: 218 }
+  heart_tank: { x: 1284, y: 76.5, rest: 'ground' },
+  sub_tank: { x: 2500, y: 227, rest: 'ground' },
+  capsule: { x: 3776, y: -204.5, rest: 'ground' },
+  pickup_bonus: { x: 4680, y: 227, rest: 'ground' }
 }
 
 /**

@@ -244,11 +244,13 @@ export const GLACIER_RONIN_ROOM_LOCKS: RoomLockDefinition[] = [
   { id: 'glacier_midboss_lock', room: { x: 2688, y: 0, width: 448, height: 252 }, gateX: 3136, defeatMarkers: GLACIER_RONIN_MIDBOSS_MARKERS }
 ]
 
+// Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on the surface under each anchor (capsule top
+// 236, heart_tank top 236, sub_tank top 84, pickup_bonus top 236); x is unchanged.
 export const GLACIER_RONIN_LOCATION_ANCHORS: LocationAnchors = {
-  capsule: { x: 1704, y: 218 },
-  heart_tank: { x: 2448, y: 218 },
-  sub_tank: { x: 2176, y: 68 },
-  pickup_bonus: { x: 4560, y: 218 }
+  capsule: { x: 1704, y: 227.5, rest: 'ground' },
+  heart_tank: { x: 2448, y: 228.5, rest: 'ground' },
+  sub_tank: { x: 2176, y: 75, rest: 'ground' },
+  pickup_bonus: { x: 4560, y: 227, rest: 'ground' }
 }
 
 /**

@@ -232,11 +232,13 @@ export const FERRO_BLADE_ROOM_LOCKS: RoomLockDefinition[] = [
   { id: 'ferro_midboss_lock', room: { x: 2688, y: 0, width: 448, height: 252 }, gateX: 3136, defeatMarkers: FERRO_BLADE_MIDBOSS_MARKERS }
 ]
 
+// Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on the surface under each anchor (heart_tank
+// top 96, sub_tank/pickup_bonus top 236, capsule top 168); x is unchanged.
 export const FERRO_BLADE_LOCATION_ANCHORS: LocationAnchors = {
-  heart_tank: { x: 2674, y: 80 },
-  sub_tank: { x: 3400, y: 218 },
-  capsule: { x: 3536, y: 152 },
-  pickup_bonus: { x: 5008, y: 218 }
+  heart_tank: { x: 2674, y: 88.5, rest: 'ground' },
+  sub_tank: { x: 3400, y: 227, rest: 'ground' },
+  capsule: { x: 3536, y: 159.5, rest: 'ground' },
+  pickup_bonus: { x: 5008, y: 227, rest: 'ground' }
 }
 
 /**

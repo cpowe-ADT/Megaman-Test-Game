@@ -77,6 +77,8 @@ export type ProgressionLocationDefinition = {
   x: number | null
   y: number | null
   label: string
+  /** Part 13e: ground sits exactly on the surface below and does not bob; float is marked and bobs. */
+  rest: 'ground' | 'float'
 }
 
 export type ProgressionWorldSnapshot = {

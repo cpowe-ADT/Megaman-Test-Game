@@ -278,8 +278,9 @@ test('Water District secrets: the heart needs wall kicks, the sub tank needs hig
   const lock = (arena.roomLocks ?? [])[0]
   assert.ok(anchors.capsule.x > lock.gateX, 'the capsule comes after the mid-boss')
   const byCategory = Object.fromEntries(getStageLocationDefinitions('tide_reaver').map((entry) => [entry.category, entry]))
-  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['tide_reaver:heart_tank', 2024, 44])
-  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [3008, -212, 4560])
+  // Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on its surface (heart_tank top 60, capsule top -196).
+  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['tide_reaver:heart_tank', 2024, 52.5])
+  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [3008, -204.5, 4560])
 })
 
 test('Water District enemies: 18+ placements of the five brief families and the nest, each spawning 448px+ ahead and retiring behind', () => {

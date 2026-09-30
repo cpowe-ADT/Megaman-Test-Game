@@ -290,11 +290,13 @@ export const BASALT_TITAN_ROOM_LOCKS: RoomLockDefinition[] = [
   }
 ]
 
+// Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on the surface under each anchor (heart_tank/
+// pickup_bonus top 236, sub_tank top -40, capsule top 120); x is unchanged.
 export const BASALT_TITAN_LOCATION_ANCHORS: LocationAnchors = {
-  heart_tank: { x: 2472, y: 218 },
-  sub_tank: { x: 4008, y: -56 },
-  capsule: { x: 2448, y: 104 },
-  pickup_bonus: { x: 4560, y: 218 }
+  heart_tank: { x: 2472, y: 228.5, rest: 'ground' },
+  sub_tank: { x: 4008, y: -49, rest: 'ground' },
+  capsule: { x: 2448, y: 111.5, rest: 'ground' },
+  pickup_bonus: { x: 4560, y: 227, rest: 'ground' }
 }
 
 /**

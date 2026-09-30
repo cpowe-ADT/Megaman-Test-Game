@@ -235,8 +235,9 @@ test('Transit Security secrets: the heart past the wrong-way belt takes a dash j
   const lock = (arena.roomLocks ?? [])[0]
   assert.ok(anchors.capsule && anchors.capsule.x > lock.gateX && anchors.capsule.x > bulkhead.left && anchors.capsule.x < bulkhead.right && anchors.capsule.y < bulkhead.top)
   const byCategory = Object.fromEntries(getStageLocationDefinitions('ferro_blade').map((entry) => [entry.category, entry]))
-  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['ferro_blade:heart_tank', 2674, 80])
-  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [3400, 3536, 152, 5008])
+  // Part 13e (EVAL-P13-010): y sits the v2 art's frame exactly on its surface (heart_tank top 96, capsule top 168).
+  assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['ferro_blade:heart_tank', 2674, 88.5])
+  assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [3400, 3536, 159.5, 5008])
 })
 
 test('Transit Security enemies: 19+ placements of the six brief families and the Ferro nest, each spawning 448px+ ahead and retiring behind', () => {
