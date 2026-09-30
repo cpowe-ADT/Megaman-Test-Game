@@ -76,7 +76,8 @@ export const DIALOGUE_LINE_LIMITS: Record<DialogueTrigger, { min: number; max: n
   miniboss_callout: { min: 1, max: 1 },
   boss_intro: { min: 2, max: 4 },
   boss_defeat: { min: 2, max: 4 },
-  district_restored: { min: 1, max: 1 },
+  // Part 13g (EVAL-P13-014): Iona's status line, extended into a skippable 2-3 line return debrief (Iona, WREN).
+  district_restored: { min: 2, max: 3 },
   tutorial_coach: { min: 4, max: 6 },
   capsule_pickup: { min: 1, max: 1 },
   weapon_get: { min: 1, max: 1 },

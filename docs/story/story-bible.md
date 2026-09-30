@@ -62,6 +62,24 @@ Sentinel Rook, the Drill Hangar's gatekeeper, runs the Sentinel Drill and is the
 6. **Epilogue**: one card per district; with all eight capsule caches, a Drill Hangar card (the eight cache logs sit in the public record) and Iona's line about them; Iona's reckoning, her report that the network is holding, WREN's last line.
 7. **Credits.**
 
+## The return debrief (part 13g)
+
+After a warden's defeat, on the way back to Stage Select and before any milestone line, Iona's district-restored
+line (used elsewhere as passive Stage Select preview text) extends into a skippable 2 to 3 line exchange: Iona's
+status, WREN answering with the district's forged evidence, and a short Iona close. Order-independent like every
+other stage-bound line; plays once (the sequence's own seen flag), so a replay clear never repeats it.
+
+| Warden | WREN's line |
+| --- | --- |
+| Pyro Maw | "The vent logs were edited nine minutes before the alarm. The order came first." |
+| Tide Reaver | "Pressure held steady until the lock command. The command came before the flood." |
+| Volt Hopper | "The blackout order predates the surge. Someone called the storm before it hit." |
+| Basalt Titan | "The load sensors were recalibrated a week before the towers moved." |
+| Ferro Blade | "Eight thousand intrusion records, one serial, filed in one second. That's not a count. That's a stamp." |
+| Mire Wraith | "The antidote was quarantined the day before the first case. The cure waited for a reason to exist." |
+| Gale Vixen | "The sky was clear when the alarm fired. The forecast was written, not measured." |
+| Glacier Ronin | "The crisis summary was filed before the crisis. The record knew the ending first." |
+
 ## Rules for order independence
 
 - A warden's lines may reference only local evidence, OMEGA's override, the current reward, and count-based milestones.
