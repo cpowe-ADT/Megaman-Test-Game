@@ -4004,6 +4004,7 @@ async function main() {
     await executeSmokeScenario(summary, '52-boss-telegraphs', async () => (await import('./smoke/boss-telegraphs.mjs')).runBossTelegraphsScenario('52-boss-telegraphs', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '53-boss-hazards', async () => (await import('./smoke/boss-hazards.mjs')).runBossHazardsScenario('53-boss-hazards', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '44-boss-beats', async () => (await import('./smoke/boss-beats.mjs')).runBossBeatsScenario('44-boss-beats', { outputDir, url, readState, waitForState }))
+    await executeSmokeScenario(summary, '45-beats-flow', async () => (await import('./smoke/beats-flow.mjs')).runBeatsFlowScenario('45-beats-flow', storyDeps))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     await executeSmokeScenario(summary, '37b-story-triggers', async () => (await import('./smoke/story-surfaces.mjs')).runStoryTriggersScenario('37b-story-triggers', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }

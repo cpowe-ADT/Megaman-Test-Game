@@ -297,32 +297,19 @@ export async function runStoryTriggersScenario(name, { outputDir, storyUrl, read
     assert.ok(omega.save.storyFlags.includes('pyro_maw_phase_two'))
     evidence.phaseTwo = omega.ticker
 
-    // weapon_get: Iona's registry line closes the defeat dialogue; the card contract is in story.weaponGetCard.
+    // weapon_get: Iona's registry line is on the weapon-get card now (part 12i: victory.weaponGet.registry, read
+    // through buildWeaponGetCard), not trailing the defeat dialogue.
     await page.evaluate(() => window.bossDebug.damage(999))
     await waitForState(page, (state) => state.dialogue?.active === true && state.dialogue.sequenceId === 'pyro_maw_defeat', 15000)
-    let registry = null
-    for (let attempt = 0; attempt < 60 && !registry; attempt += 1) {
-      const state = await readState(page)
-      if (state.dialogue?.sequenceId === 'pyro_maw_weapon_get') registry = state
-      else {
-        await page.evaluate(() => window.stageDebug?.advanceDialogue?.())
-        await advanceFrames(page, 12)
-      }
-    }
-    assert.ok(registry, 'the registry line closes the defeat dialogue')
-    await capture('weapon-get-line')
-    assert.equal(registry.dialogue.speakerId, 'director_iona')
-    assert.equal(registry.dialogue.lineIndex, registry.dialogue.lineCount - 1)
-    assert.equal(registry.dialogue.text, authored('pyro_maw_weapon_get', 0, callsign))
-    const contract = registry.story.weaponGetCard
-    assert.deepEqual(
-      { weaponId: contract.weaponId, weaponName: contract.weaponName, sourceStageId: contract.sourceStageId },
-      { weaponId: 'FlameSerpent', weaponName: 'Flame Serpent', sourceStageId: 'pyro_maw' }
-    )
-    assert.equal(contract.registry.text, registry.dialogue.text)
-    evidence.weaponGet = { dialogue: registry.dialogue, contract }
     await page.evaluate(() => window.stageDebug?.skipDialogue?.())
-    const victory = await waitForState(page, (state) => state.victory?.modalOpen === true, 8000)
+    const victory = await waitForState(page, (state) => state.victory?.modalOpen === true && state.victory.card === 'weapon_get', 8000)
+    await capture('weapon-get-line')
+    const weaponCard = victory.victory.weaponGet
+    assert.deepEqual({ itemId: weaponCard.itemId, name: weaponCard.name }, { itemId: 'FlameSerpent', name: 'FLAME SERPENT' })
+    assert.equal(weaponCard.registry.sequenceId, 'pyro_maw_weapon_get')
+    assert.match(weaponCard.registry.speakerName, /iona/i)
+    assert.equal(weaponCard.registry.text, authored('pyro_maw_weapon_get', 0, callsign))
+    evidence.weaponGet = weaponCard
     for (const id of ['pyro_maw_defeat', 'pyro_maw_weapon_get']) assert.ok(victory.save.storyFlags.includes(id), id)
 
     // game_over: the first game over on this save shows OMEGA's line over the Continue row, the second Iona's.

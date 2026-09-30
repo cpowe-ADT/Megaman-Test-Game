@@ -359,9 +359,13 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
           }
         : null
     }
+    // Part 12i: `card` is 'weapon_get' then 'results' (StageClearCards.getDebugState); `bossIntro` is the WARNING,
+    // name card and bar fill beat (BossPresentation.getDebugState).
     payload.victory = {
-      modalOpen: Boolean((scene as any).victoryModal?.isOpen?.())
+      modalOpen: Boolean((scene as any).victoryModal?.isOpen?.()),
+      ...((scene as any).victoryModal?.getDebugState?.() ?? {})
     }
+    payload.bossIntro = (scene as any).bossBeats?.presentation?.getDebugState?.() ?? null
     payload.dialogue = (scene as any).dialogueOverlay?.getDebugState?.() ?? {
       active: false,
       lineIndex: 0,

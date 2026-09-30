@@ -118,6 +118,8 @@ export class StoryDirector {
 
   advanceIntro(): void { this.intro.advance() }
   skipIntro(): void { this.intro.skip() }
+  /** A checkpoint respawn's READY (part 12i): the intro presenter blinks it without the card or a control lock. */
+  playReady(durationMs: number): boolean { return this.intro.playReady(durationMs) }
 
   /** Checkpoint reached: the toast always shows; the radio pair fires once at the mid checkpoint. */
   onCheckpoint(index: number, checkpoint: { id: string; radioSequenceId?: string }): void {
@@ -191,8 +193,8 @@ export class StoryDirector {
   }
 
   /**
-   * The defeat lines, then (story on) Iona's registry line for each weapon gained since `previousWeapons`: until
-   * prompt 08's weapon-get card exists, the line closes the defeat dialogue, so one skip covers both.
+   * The defeat lines, then (story on, with `previousWeapons`) Iona's registry line for each weapon gained since. The
+   * victory path no longer passes `previousWeapons`: part 12i's weapon-get card shows the line instead.
    */
   playBossDefeat(then: () => void, previousWeapons?: readonly string[]): void {
     this.playBlocking(`${this.deps.stageId}_defeat`, 'boss_defeat', then, previousWeapons ? this.weaponGetLines(previousWeapons) : [])

@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { GAME_WIDTH, GAME_HEIGHT, GAME_SIZE } from '../config/renderPolicy'
+import { GAME_SIZE } from '../config/renderPolicy'
 import AudioService from '../audio'
 import { AUTOMATION } from '../config/automation'
 import { TUTORIAL_STAGE_ID, getCampaignStage } from '../content/campaign'
@@ -9,12 +9,30 @@ import { IDENTITY } from '../content/identity'
 import InputActions from '../input/InputActions'
 import type { DialoguePlaybackLine } from '../narrative/DialoguePlayback'
 import { Save, type SaveData } from '../systems/Save'
-import { addMenuBackdrop, addMenuPanel, MENU_COLORS, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
+import { addMenuBackdrop, MENU_COLORS, PIXEL_FONT, pixelFontSize } from '../ui/menu/menuTheme'
 import { resolvePlaybackLines, currentStoryPolicy, epilogueSecret } from './game/StoryDirector'
+import { campaignRecordRows, creditsLineOnScreenMs, creditsMsPerPx, TITLE_CARD_MS, type CampaignRecordRow } from '../ui/beats/campaignRecord'
 
-export type EndingPhase = 'cards' | 'close' | 'record' | 'credits' | 'done'
-/** `card`: the stage whose district card is on screen (cards phase only). */
-export type EndingSnapshot = { phase: EndingPhase; page: number; pageCount: number; card: string | null }
+export type EndingPhase = 'cards' | 'close' | 'record' | 'credits' | 'title' | 'done'
+/**
+ * `card`: the stage whose district card is on screen (cards phase only). `record`: the CAMPAIGN RECORD rows (record
+ * phase); `credits`: the scroll pace and how long one line stays whole on screen (credits phase); `title`: the final
+ * title card's text (title phase).
+ */
+export type EndingSnapshot = {
+  phase: EndingPhase
+  page: number
+  pageCount: number
+  card: string | null
+  record: CampaignRecordRow[] | null
+  credits: { msPerPx: number; lineOnScreenMs: number } | null
+  title: { title: string; subtitle: string } | null
+}
+
+/** The credits band: the view less the footer band the scroll passes behind. */
+const CREDITS_FOOTER_BAND = 24
+/** One credits row: the 8px pixel font and its 6px line spacing. */
+const CREDITS_LINE_HEIGHT = 14
 
 type CardPage = { kind: 'card'; stageId: string; text: string }
 type LinePage = { kind: 'line'; line: DialoguePlaybackLine }
@@ -23,20 +41,14 @@ type EndingPage = CardPage | LinePage
 /** Reserved layout: the district card art occupies the top 120px (prompt 03 fills it); text lives below. */
 export const ENDING_CARD_HEIGHT = 120
 
+/** The record as text lines (the rows and rank rule live in `src/ui/beats/campaignRecord.ts`). */
 export function buildCampaignRecord(save: SaveData): string[] {
-  const minutes = Math.floor(save.stats.playTimeMs / 60000)
-  const capsules = save.upgradeUnlocks.filter((id) => id.startsWith('armor_') || id.startsWith('chip_')).length
-  const rank = save.stats.deaths === 0 ? 'FLAWLESS' : save.stats.deaths < 10 ? 'STEADY' : 'RELENTLESS'
-  return [
-    `PLAY TIME  ${Math.floor(minutes / 60)}H ${String(minutes % 60).padStart(2, '0')}M`,
-    `HEARTS  ${save.heartTanks}/8    SUB TANKS  ${save.subTanks}/4    CAPSULES  ${capsules}/8`,
-    `DEATHS  ${save.stats.deaths}    DIFFICULTY  ${save.difficulty.toUpperCase()}`,
-    `RANK  ${rank}`
-  ]
+  return campaignRecordRows(save).map((row) => `${row.label}  ${row.value}`)
 }
 
 /**
- * The epilogue: one card per district, the close, the campaign record, the credits, then Title.
+ * The epilogue: one card per district, the close, the CAMPAIGN RECORD card, the credits, the OMEGA RELAY title card,
+ * then Title.
  * With all eight capsule caches collected, the secret adds a Drill Hangar card after the eighth and Iona's
  * line opens the close. With the automation story switch off it opens on the record so smoke can still
  * assert completion.
@@ -54,6 +66,10 @@ export class EndingScene extends Phaser.Scene {
   private footer!: Phaser.GameObjects.Text
   private creditsText?: Phaser.GameObjects.Text
   private creditsTween?: Phaser.Tweens.Tween
+  /** The record card and the title card: built when their phase renders, destroyed when it ends. */
+  private phaseCard?: Phaser.GameObjects.Container
+  private creditsPace: EndingSnapshot['credits'] = null
+  private titleTimer?: Phaser.Time.TimerEvent
 
   constructor() {
     super('EndingScene')
@@ -118,7 +134,10 @@ export class EndingScene extends Phaser.Scene {
   getDebugState(): EndingSnapshot {
     const pageCount = this.phase === 'cards' ? this.pages.length : this.phase === 'close' ? this.closeLines.length : 1
     const card = this.phase === 'cards' ? (this.pages[this.page] as CardPage | undefined)?.stageId ?? null : null
-    return { phase: this.phase, page: this.page, pageCount, card }
+    const record = this.phase === 'record' ? campaignRecordRows(Save.load()) : null
+    const credits = this.phase === 'credits' ? this.creditsPace : null
+    const title = this.phase === 'title' ? { title: IDENTITY.GAME_TITLE, subtitle: IDENTITY.GAME_SUBTITLE } : null
+    return { phase: this.phase, page: this.page, pageCount, card, record, credits, title }
   }
 
   advance(): void {
@@ -133,16 +152,18 @@ export class EndingScene extends Phaser.Scene {
     } else if (this.phase === 'record') {
       this.phase = 'credits'
     } else if (this.phase === 'credits') {
+      this.phase = 'title'
+    } else if (this.phase === 'title') {
       this.phase = 'done'
     }
     this.render()
   }
 
-  /** Esc jumps to the credits; a second Esc during the credits ends them. */
+  /** Esc jumps to the credits; Esc during the credits ends them on the title card; Esc there finishes. */
   skip(): void {
     if (this.finished) return
     this.page = 0
-    this.phase = this.phase === 'credits' ? 'done' : 'credits'
+    this.phase = this.phase === 'credits' ? 'title' : this.phase === 'title' ? 'done' : 'credits'
     this.render()
   }
 
@@ -151,6 +172,11 @@ export class EndingScene extends Phaser.Scene {
     this.creditsTween?.stop()
     this.creditsText?.destroy()
     this.creditsText = undefined
+    this.phaseCard?.destroy(true)
+    this.phaseCard = undefined
+    this.titleTimer?.remove(false)
+    this.titleTimer = undefined
+    this.creditsPace = null
     const showCard = this.phase === 'cards'
     this.cardBox.setVisible(showCard)
     this.cardLabel.setVisible(showCard)
@@ -172,8 +198,9 @@ export class EndingScene extends Phaser.Scene {
       return
     }
     if (this.phase === 'record') {
-      this.speakerText.setText('CAMPAIGN RECORD')
-      this.bodyText.setText(buildCampaignRecord(Save.load()).join('\n'))
+      this.speakerText.setText('')
+      this.bodyText.setText('')
+      this.phaseCard = this.drawRecordCard(campaignRecordRows(Save.load()))
       this.footer.setText('ENTER CREDITS')
       return
     }
@@ -184,29 +211,70 @@ export class EndingScene extends Phaser.Scene {
       // The credits scroll behind a band so they never run through the footer text.
       this.add.rectangle(width / 2, height - 12, width, 24, 0x050913, 0.96).setDepth(10)
       const authored = DIALOGUE_REGISTRY.getGlobalSequence('credits')?.lines.map((line) => line.text) ?? []
-      const lines = [...authored, '', ...ASSET_CREDITS, '', IDENTITY.GAME_TITLE, IDENTITY.GAME_SUBTITLE]
+      // The title and subtitle close on their own card after the scroll, not in it.
+      const lines = [...authored, '', ...ASSET_CREDITS]
       this.creditsText = this.add.text(width / 2, height + 8, lines.join('\n'), {
         fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#dbeafe', align: 'center', lineSpacing: 6,
         wordWrap: { width: width - 60, useAdvancedWrap: true }
       }).setOrigin(0.5, 0)
-      // The shortest line stays readable for at least 2.5s at this speed (prompt 04 tunes it against real credits).
+      // Every line stays whole on screen at least 2.5 s at this pace (creditsMsPerPx, part 12i).
+      const span = height - CREDITS_FOOTER_BAND
+      const msPerPx = creditsMsPerPx(span, CREDITS_LINE_HEIGHT)
+      this.creditsPace = { msPerPx, lineOnScreenMs: creditsLineOnScreenMs(span, CREDITS_LINE_HEIGHT, msPerPx) }
       const distance = this.creditsText.height + height + 20
       this.creditsTween = this.tweens.add({
-        targets: this.creditsText, y: -this.creditsText.height - 12, duration: distance * 28, ease: 'Linear',
-        onComplete: () => { if (this.phase === 'credits') { this.phase = 'done'; this.render() } }
+        targets: this.creditsText, y: -this.creditsText.height - 12, duration: distance * msPerPx, ease: 'Linear',
+        onComplete: () => { if (this.phase === 'credits') { this.phase = 'title'; this.render() } }
       })
+      return
+    }
+    if (this.phase === 'title') {
+      this.speakerText.setText('')
+      this.bodyText.setText('')
+      this.footer.setText('ENTER FINISH')
+      this.phaseCard = this.drawTitleCard()
+      this.titleTimer = this.time.delayedCall(TITLE_CARD_MS, () => { if (this.phase === 'title') { this.phase = 'done'; this.render() } })
       return
     }
     this.finish()
   }
 
+  /** CAMPAIGN RECORD: one panel, a row per figure, the rank last and in gold. */
+  private drawRecordCard(rows: CampaignRecordRow[]): Phaser.GameObjects.Container {
+    const { width } = GAME_SIZE
+    const style = (color: string) => ({ fontFamily: PIXEL_FONT, fontSize: pixelFontSize(2), color })
+    const panel = this.add.rectangle(width / 2, 116, width - 48, 196, MENU_COLORS.panel, 0.94).setStrokeStyle(1, MENU_COLORS.cyan, 0.7)
+    const heading = this.add.text(width / 2, 34, 'CAMPAIGN RECORD', style('#7de8ff')).setOrigin(0.5)
+    const items: Phaser.GameObjects.GameObject[] = [panel, heading]
+    rows.forEach((row, index) => {
+      const y = 62 + index * 22
+      items.push(this.add.text(56, y, row.label, style('#f5f8ff')).setOrigin(0, 0.5))
+      items.push(this.add.text(width - 56, y, row.value, style(row.label === 'RANK' ? '#ffc857' : '#7de8ff')).setOrigin(1, 0.5))
+    })
+    return this.add.container(0, 0, items)
+  }
+
+  /** The last card: the game's title and subtitle (`src/content/identity.ts`). */
+  private drawTitleCard(): Phaser.GameObjects.Container {
+    const { width, height } = GAME_SIZE
+    const title = this.add.text(width / 2, height / 2 - 14, IDENTITY.GAME_TITLE, {
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(4), color: '#f5f8ff', stroke: '#0a2345', strokeThickness: 4, letterSpacing: 2
+    }).setOrigin(0.5)
+    const rule = this.add.rectangle(width / 2, height / 2 + 12, 240, 1, MENU_COLORS.cyan, 0.8)
+    const subtitle = this.add.text(width / 2, height / 2 + 28, IDENTITY.GAME_SUBTITLE, {
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#7de8ff', letterSpacing: 1
+    }).setOrigin(0.5)
+    return this.add.container(0, 0, [title, rule, subtitle])
+  }
+
   private finish(): void {
     if (this.finished) return
     this.finished = true
+    // The title card stays up through the fade (part 12i: the final beat is the OMEGA RELAY card).
     this.speakerText.setText('')
-    this.bodyText.setText(`${IDENTITY.ANTAGONIST_NAME} DEFEATED\n\nThe districts choose their future.`)
+    this.bodyText.setText('')
     this.footer.setText('')
-    addMenuPanel(this, GAME_WIDTH / 2, GAME_HEIGHT / 2, 260, 70, 0.0)
+    if (!this.phaseCard) this.phaseCard = this.drawTitleCard()
     this.cameras.main.fadeOut(420, 5, 9, 19)
     this.time.delayedCall(440, () => this.scene.start('Title'))
   }

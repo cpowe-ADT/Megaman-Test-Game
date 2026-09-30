@@ -7,6 +7,9 @@ export { formatDistrictLabel } from './hudLayout'
 import { BakedGraphics, type BakeBounds } from './BakedGraphics'
 import { getRenderScale } from '../config/hdRender'
 import { HUD_ICONS_ATLAS, weaponHudIconFrame } from '../projectiles/weaponArt'
+import AudioService from '../audio'
+import { Settings } from '../systems/Settings'
+import { isLowHp, LOW_HP_BEEP_SFX, LowHpPulse, type LowHpSnapshot } from './beats/lowHp'
 
 export class HUD {
   private scene: Phaser.Scene
@@ -36,6 +39,8 @@ export class HUD {
   private weaponColor = 0x58d8ff
   /** What each bar last baked (values and render scale); the boss bar was rebuilt every frame with an unchanged value. */
   private drawnBars = new WeakMap<BakedGraphics, string>()
+  /** Low HP (part 12i): the health bar pulses and a soft beep plays every 1.5 s at or under 25%; off under Reduced Flashing. */
+  private readonly lowHp = new LowHpPulse()
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -57,6 +62,8 @@ export class HUD {
     }
     scene.game.renderer?.on?.('restorewebgl', rebake)
     scene.events.once('shutdown', () => scene.game.renderer?.off?.('restorewebgl', rebake))
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this.tickLowHp, this)
+    scene.events.once('shutdown', () => scene.events.off(Phaser.Scenes.Events.UPDATE, this.tickLowHp, this))
 
     const hasBitmap = this.scene.cache.bitmapFont.exists('font')
     const mkText = (
@@ -128,7 +135,7 @@ export class HUD {
     this.root.add(this.tBoss)
 
     // In the HUD band under the boss panel: on the floor it covered the boss spawn point in most rooms.
-    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'RETRY ×03', PIXEL_FONT_PX, 1, 0)
+    this.tLives = mkText(layout.livesLabel.x, layout.livesLabel.y, 'LIVES ×03', PIXEL_FONT_PX, 1, 0)
     this.root.add(this.tLives)
   }
 
@@ -171,7 +178,23 @@ export class HUD {
 
   setLives(n: number): void {
     const count = Math.max(0, n)
-    this.tLives.setText(`RETRY ×${count.toString().padStart(2, '0')}`)
+    this.tLives.setText(`LIVES ×${count.toString().padStart(2, '0')}`)
+  }
+
+  /** The low-HP pulse and beep state (smoke 45 reads it). */
+  getLowHpState(): LowHpSnapshot {
+    return this.lowHp.snapshot()
+  }
+
+  /** Once a frame: the pulse holds (and the bar is solid) while the world is paused, frozen or in hit-stop. */
+  private tickLowHp(_time: number, deltaMs: number): void {
+    const world = (this.scene as Phaser.Scene & { physics?: { world?: { isPaused?: boolean } } }).physics?.world
+    const { current, max } = this.playerSnapshot
+    // Settings reads storage, so only at low HP.
+    const reducedFlashing = isLowHp(current, max) && Settings.get().reducedFlashing
+    const frame = this.lowHp.tick(deltaMs, { current, max, live: world?.isPaused !== true, reducedFlashing })
+    if (this.gPlayer.image.alpha !== frame.alpha) this.gPlayer.image.setAlpha(frame.alpha)
+    if (frame.beep) AudioService.playSfx(LOW_HP_BEEP_SFX)
   }
 
   drawBar(

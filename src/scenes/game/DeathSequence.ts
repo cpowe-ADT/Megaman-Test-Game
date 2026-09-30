@@ -84,7 +84,7 @@ export interface DeathSequenceHost {
   hud?: Pick<HUD, 'updatePlayerHp' | 'setLives'>
   newPlayerRuntime?: Pick<NewPlayerRuntime, 'resetForRespawn' | 'playDeath' | 'playDeathBurst' | 'playBeamIn'>
   bossProjectileController?: Pick<BossProjectileController, 'onPauseChanged' | 'stop'>
-  storyDirector?: Pick<StoryDirector, 'onCheckpoint'>
+  storyDirector?: Pick<StoryDirector, 'onCheckpoint'> & Partial<Pick<StoryDirector, 'playReady'>>
   requestPlayerDamage(request: PlayerDamageRequest): PlayerDamageResult
   flushStatistics(): void
   autosaveActiveRun(): boolean
@@ -316,7 +316,8 @@ export class DeathSequence {
     host.newPlayerRuntime?.resetForRespawn(1000)
     host.newPlayerRuntime?.playBeamIn()
     host.cameras?.main?.fadeIn(DEATH_TIMELINE.fadeInMs, 0, 0, 0)
-    host.showStageToast('READY', DEATH_TIMELINE.readyMs)
+    // The blinking READY (part 12i); the toast stays the fallback for a host without the story director.
+    if (!host.storyDirector?.playReady?.(DEATH_TIMELINE.readyMs)) host.showStageToast('READY', DEATH_TIMELINE.readyMs)
     this.resumeRespawnCombatState()
     host.syncWeaponHud()
     host.fallingToDeath = false

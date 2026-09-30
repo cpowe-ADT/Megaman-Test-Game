@@ -66,7 +66,7 @@ import { ActiveRunSaveData, Save } from '../systems/Save'
 import { queueStageAssets, resolveGameStageAndBoss } from './game/stageBackgroundLoading'
 import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD, formatDistrictLabel } from '../ui/HUD'
-import { VictoryModal } from '../ui/VictoryModal'
+import { StageClearCards } from '../ui/StageClearCards'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
 import { applyPickupArt } from '../ui/pickups/PickupTextures'
 import { DROP_ART, LOCATION_ART, rollEnemyDrop, type EnemyDropType } from '../ui/pickups/pickupArt'
@@ -167,7 +167,7 @@ export class Game extends Phaser.Scene {
   private victoryTriggered = false
   private bossDeathHandled = false
   private gameOverTriggered = false
-  private victoryModal?: VictoryModal
+  private victoryModal?: StageClearCards
   private dialogueOverlay?: DialogueOverlayController
   private bossHitFeedbackTimer?: Phaser.Time.TimerEvent
   private hitstopRemainingFrames = 0
@@ -814,8 +814,7 @@ export class Game extends Phaser.Scene {
     this.activeBossRoom = stage.arena.bossRoom
     this.bossActivationX = getBossRoomActivationX(stage.arena.bossRoom)
     this.bossRoomCameraLocked = false
-    this.victoryModal?.destroy()
-    this.victoryModal = undefined
+    this.victoryModal = new StageClearCards(this, this.progressionSave)
 
     AudioService.playMusic(this, stage.id === FINAL_STAGE_ID ? 'final' : 'stage', { stageId: stage.id })
     const unlockAudio = () => AudioService.unlock()
@@ -1235,14 +1234,9 @@ export class Game extends Phaser.Scene {
   }
 
   private openSystemMenu(): void {
-    if (this.dialogueOverlay?.isActive()) {
-      this.dialogueOverlay.skip()
-      return
-    }
-    if (this.victoryModal?.isOpen()) {
-      this.victoryModal.confirm()
-      return
-    }
+    if (this.storyDirector?.isBlocking()) return this.storyDirector.skipIntro()
+    if (this.dialogueOverlay?.isActive()) return this.dialogueOverlay.skip()
+    if (this.victoryModal?.isOpen()) return this.victoryModal.confirm()
     if (this.scene.isActive('SystemMenu')) {
       AudioService.playSfx('pause_resume')
       this.scene.stop('SystemMenu')

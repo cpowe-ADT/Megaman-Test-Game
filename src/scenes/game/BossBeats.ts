@@ -9,16 +9,19 @@ import type { BossController } from '../../bosses/BossController'
 import { countClearedRobotMasters, FINAL_STAGE_ID, getCampaignStage, TUTORIAL_STAGE_ID } from '../../content/campaign'
 import { IDENTITY } from '../../content/identity'
 import { evaluateFinalGate, getLocationCheckId } from '../../progression'
+import type { CampaignSessionStatistics } from '../../progression/statistics'
 import type { ProjectileSystem } from '../../projectiles'
 import { Save } from '../../systems/Save'
 import type { HUD } from '../../ui/HUD'
-import { VictoryModal } from '../../ui/VictoryModal'
+import { StageClearCards } from '../../ui/StageClearCards'
+import { clearRewardItemId, computeStageResults } from '../../ui/beats/stageResults'
+import { buildWeaponGetView, isSpecialWeaponId, type WeaponGetView } from '../../ui/beats/weaponGet'
 import { BossBodies } from './BossBodies'
 import { BossHazards } from './BossHazards'
 import { BossPresentation } from './BossPresentation'
 import { BossTelegraphs } from './BossTelegraphs'
 import type { CameraDirector } from './CameraDirector'
-import { pendingMilestoneId, type StoryDirector } from './StoryDirector'
+import { currentStoryPolicy, pendingMilestoneId, type StoryDirector } from './StoryDirector'
 
 /** Icicles hang from this far below the camera's top: under the HUD panels, not over them. */
 const HAZARD_CEILING_BELOW_VIEW_TOP = 66
@@ -47,8 +50,10 @@ export interface BossBeatsState {
   hitstopRemainingFrames: number
   readonly cameraDirector: Pick<CameraDirector, 'onHitstop'>
   bossUiBinder?: Pick<BossUIBinder, 'onFightStart' | 'onBossDeath'>
-  storyDirector?: Pick<StoryDirector, 'playBossIntro' | 'playBossDefeat' | 'onBossPhaseTwo'>
-  victoryModal?: VictoryModal
+  storyDirector?: Pick<StoryDirector, 'playBossIntro' | 'playBossDefeat' | 'onBossPhaseTwo' | 'buildWeaponGetCard'>
+  /** The weapon-get card and stage results (part 12i); `Game` builds it at stage entry with the entry save. */
+  victoryModal?: StageClearCards
+  sessionStats?: Pick<CampaignSessionStatistics, 'stageElapsedMs'>
   progressionSave: ReturnType<typeof Save.load>
   bossUsingPlaceholder: boolean
   lockBossGate(): void
@@ -322,22 +327,25 @@ export class BossBeats {
     const bossName = host.bossName ?? stageId
     const stage = getCampaignStage(stageId)
     const previousClearedCount = countClearedRobotMasters(host.progressionSave)
-    const previousWeapons = [...host.progressionSave.weaponsUnlocked]
-    host.collectProgressionLocation(getLocationCheckId(stage.id as Parameters<typeof getLocationCheckId>[0], 'boss_clear'))
+    const bossClearId = getLocationCheckId(stage.id as Parameters<typeof getLocationCheckId>[0], 'boss_clear')
+    const beforeClaim = host.progressionSave
+    host.collectProgressionLocation(bossClearId)
     Save.clearActiveRun()
     host.progressionSave = Save.load()
+    const rewardId = clearRewardItemId(beforeClaim, host.progressionSave, bossClearId)
     const clearedCount = countClearedRobotMasters(host.progressionSave)
     const gate = evaluateFinalGate(Save.load())
     const milestoneCount = clearedCount !== previousClearedCount ? clearedCount : null
     host.registry.set('ui.stageSelect.milestoneCount', milestoneCount !== null && pendingMilestoneId(milestoneCount) ? milestoneCount : null)
-    const showVictory = () => this.showBossVictory(stage, bossName, gate.unlocked)
-    // The boss stays for its defeat frames and chained explosion; the defeat dialogue follows the freeze.
+    const showVictory = () => this.showBossVictory(stage, bossName, gate.unlocked, rewardId)
+    // The boss stays for its defeat frames and chained explosion; the defeat dialogue follows the freeze. Iona's
+    // registry line for the weapon is on the weapon-get card now (part 12i), not trailing the defeat dialogue.
     this.presentation.playDeath(
       () => host.disableBossCombatActors(),
       () => {
         AudioService.playSfx('stage_clear')
         if (host.storyDirector) {
-          host.storyDirector.playBossDefeat(showVictory, previousWeapons)
+          host.storyDirector.playBossDefeat(showVictory)
         } else {
           showVictory()
         }
@@ -345,12 +353,14 @@ export class BossBeats {
     )
   }
 
-  private showBossVictory(stage: ReturnType<typeof getCampaignStage>, bossName: string, finalRouteUnlocked: boolean): void {
+  /** The weapon-get card (what the claim gave, if anything), the stage results, then the victory return. */
+  private showBossVictory(stage: ReturnType<typeof getCampaignStage>, bossName: string, finalRouteUnlocked: boolean, rewardId: string | null): void {
     const host = this.host
-    host.victoryModal?.destroy()
-    host.victoryModal = new VictoryModal(host)
+    host.victoryModal ??= new StageClearCards(host, host.progressionSave)
     host.victoryModal.show({
-      bossName,
+      stageTitle: stage.district || stage.title,
+      reward: rewardId ? this.rewardView(rewardId) : null,
+      results: computeStageResults({ stageId: stage.id, entry: host.victoryModal.entry, clear: host.progressionSave, elapsedMs: host.sessionStats?.stageElapsedMs ?? 0 }),
       onNext: () => {
         if (stage.id === FINAL_STAGE_ID) {
           host.scene.start('EndingScene')
@@ -368,5 +378,14 @@ export class BossBeats {
         })
       }
     })
+  }
+
+  /** A weapon reads Iona's registry line through `buildWeaponGetCard` (story on; marked seen as the card shows it). */
+  private rewardView(itemId: string): WeaponGetView {
+    const storyOn = currentStoryPolicy().enabled
+    const card = isSpecialWeaponId(itemId) ? this.host.storyDirector?.buildWeaponGetCard(itemId) ?? null : null
+    if (storyOn && card?.registry) Save.markStorySeen(card.registry.sequenceId)
+    const classic = this.host.progressionSave.progressionWorld?.progressionMode === 'classic'
+    return buildWeaponGetView(itemId, { card, storyOn, classic })
   }
 }
