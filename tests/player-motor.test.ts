@@ -930,3 +930,25 @@ test('12b headroom: a belt raises the body cap by its drift while it applies, re
   motor.update(createIntent({ moveAxis: 1, dashHeld: true }), FRAME_60, false)
   assert.equal(maxVelocity.x, 400, 'restored once neutral')
 })
+
+test('PlayerMotor air dash along a dash-jump keeps the carry after it; an air dash back ends it', () => {
+  const afterAirDash = (airDashAxis: 1 | -1) => {
+    const { motor, state } = createMotor(groundedBody())
+    motor.update(createIntent({ moveAxis: 1, dashPressed: true, dashHeld: true }), FRAME_60, true)
+    motor.update(createIntent({ moveAxis: 1, dashHeld: true, jumpPressed: true, jumpHeld: true }), FRAME_60, true)
+    state.onFloor = false
+    state.blocked.down = false
+    for (let frames = 0; state.velocity.y < 0 && frames < 120; frames += 1) {
+      stepBody(state, FRAME_60 / 1000)
+      motor.update(createIntent({ moveAxis: 1, jumpHeld: true }), FRAME_60, true)
+    }
+    motor.update(createIntent({ moveAxis: airDashAxis, dashPressed: true, dashHeld: true }), FRAME_60, true)
+    for (let frame = 0; frame < 40; frame += 1) {
+      stepBody(state, FRAME_60 / 1000)
+      motor.update(createIntent({ moveAxis: airDashAxis }), FRAME_60, true)
+    }
+    return state.velocity.x
+  }
+  assert.equal(afterAirDash(1), DASH.dashSpeed, 'the dash-jump carry resumes once the air dash ends')
+  assert.ok(Math.abs(afterAirDash(-1)) < DASH.dashSpeed, 'an air dash against the carry ends it')
+})

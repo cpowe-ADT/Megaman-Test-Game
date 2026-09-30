@@ -274,7 +274,9 @@ export class PlayerMotor {
         this.isAirDashing = !grounded
         if (!grounded) {
           this.airDashConsumed = true
-          this.dashJumpCarry = false
+          // An air dash along a dash-jump keeps its carry for the fall after the dash, so it always reaches further
+          // (the Power District lane measured 4173 against 4184 when it did not); one the other way ends it.
+          if (dashDir !== this.dashJumpDirection) this.dashJumpCarry = false
           this.jumpCutArmed = false
         }
       }
