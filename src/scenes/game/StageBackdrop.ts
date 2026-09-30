@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { getCampaignStage } from '../../content/campaign'
-import { backdropLayerSpans, stageVerticalTop } from '../../stage/stageGeometry'
+import { backdropLayerSpans, blendOpaqueColor, stageVerticalTop } from '../../stage/stageGeometry'
 import { hazardStripPattern } from '../../mechanics/mechanicsVisuals'
 import { killPitGaps } from '../../boss/bossRoomLayout'
 
@@ -39,6 +39,7 @@ export class StageBackdrop {
   private followingCamera = false
   private graphics?: Phaser.GameObjects.Graphics
   private slag?: Phaser.GameObjects.Graphics
+  private hudMask?: Phaser.GameObjects.Graphics
 
   constructor(private readonly scene: Phaser.Scene) {}
 
@@ -60,6 +61,8 @@ export class StageBackdrop {
     this.graphics = undefined
     this.slag?.destroy()
     this.slag = undefined
+    this.hudMask?.destroy()
+    this.hudMask = undefined
   }
 
   render(stageId: string, worldWidth: number): void {
@@ -75,10 +78,10 @@ export class StageBackdrop {
     backdrop.fillStyle(baseColor, 1).fillRect(0, top, worldWidth, height - top)
     // The first screen keeps its look exactly (under the HUD band it is the opaque base colour only, so
     // the 1x and 2x renders match there); a tall stage repeats the band above the first screen.
-    this.drawBand(backdrop, accentColor, worldWidth, GAMEPLAY_VIEWPORT_TOP, height)
+    this.drawBand(backdrop, baseColor, accentColor, worldWidth, GAMEPLAY_VIEWPORT_TOP, height)
     // 13b.2 (EVAL-P13-003): the upward repeat joins the first screen's band at the viewport top, not at
     // world y 0, or a tall room shows a flat, pattern-less strip between them (13a-music-backdrop.md).
-    if (top < 0) this.drawBand(backdrop, accentColor, worldWidth, top, GAMEPLAY_VIEWPORT_TOP)
+    if (top < 0) this.drawBand(backdrop, baseColor, accentColor, worldWidth, top, GAMEPLAY_VIEWPORT_TOP)
     backdrop.fillStyle(accentColor, 0.45).fillRect(0, GAMEPLAY_VIEWPORT_TOP, worldWidth, 2)
     this.graphics = backdrop
     layers.forEach((layer, index) => {
@@ -111,6 +114,15 @@ export class StageBackdrop {
       scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.clear, this)
       this.followingCamera = true
     }
+    // EVAL-P13-003 fix (40-hd-render): redraw the strip under the HUD in plain, opaque baseColor, above
+    // the band and layers. That strip is covered by the tall-room upward copies above so a climb has no
+    // gap (13b.2), but the HUD's own chrome blends over it at a live alpha (HUD.ts drawChrome): Phaser's
+    // Canvas and WebGL renderers round that blend a channel or two apart for the new tinted/textured
+    // colours underneath, which 40-hd-render reads as a 1x/2x pixel mismatch. This keeps the HUD's input
+    // exactly what it was before 13b.2 (the one combination already proven to round the same both ways),
+    // while the upward band and layers stay intact for the part of the room a climb actually reveals.
+    this.hudMask = scene.add.graphics().setDepth(-20)
+    this.hudMask.fillStyle(baseColor, 1).fillRect(0, 0, worldWidth, GAMEPLAY_VIEWPORT_TOP)
     // A boss room channel (12f wave 6) has a bed under its cut: no kill-plane strip there.
     this.renderPitSlag(killPitGaps(stage.arena), height)
   }
@@ -125,12 +137,20 @@ export class StageBackdrop {
     }
   }
 
-  /** The accent band between `from` and `to`: a faint fill, horizontal rules getting stronger downward, diagonals. */
-  private drawBand(backdrop: Phaser.GameObjects.Graphics, accentColor: number, worldWidth: number, from: number, to: number): void {
-    backdrop.fillStyle(accentColor, 0.1).fillRect(0, from, worldWidth, to - from)
+  /**
+   * The accent band between `from` and `to`: a faint fill, horizontal rules getting stronger downward,
+   * diagonals. The fill and rules are pre-blended to opaque colours against `baseColor` (EVAL-P13-003
+   * fix, `blendOpaqueColor`): this band's upward copy now covers the strip under the HUD in a tall room,
+   * where a live alpha fill rounds a channel or two apart between the Canvas and WebGL renderers that
+   * 40-hd-render compares. The diagonal hazard lines stay a live low-alpha stroke (unsampled by that
+   * check, same as the existing half-pixel accent-bar edge it already tolerates).
+   */
+  private drawBand(backdrop: Phaser.GameObjects.Graphics, baseColor: number, accentColor: number, worldWidth: number, from: number, to: number): void {
+    const bandColor = blendOpaqueColor(baseColor, accentColor, 0.1)
+    backdrop.fillStyle(bandColor, 1).fillRect(0, from, worldWidth, to - from)
     for (let y = from; y < to; y += 14) {
       const depthAlpha = 0.08 + ((y - from) / Math.max(1, to - from)) * 0.1
-      backdrop.fillStyle(accentColor, depthAlpha).fillRect(0, y, worldWidth, 1)
+      backdrop.fillStyle(blendOpaqueColor(bandColor, accentColor, depthAlpha), 1).fillRect(0, y, worldWidth, 1)
     }
     backdrop.lineStyle(1, accentColor, 0.1)
     for (let x = 0; x < worldWidth; x += 64) {

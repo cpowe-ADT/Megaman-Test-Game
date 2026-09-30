@@ -79,3 +79,17 @@ export function backdropLayerSpans(
 export function backdropCoverageTop(spans: readonly { y: number }[]): number {
   return Math.min(...spans.map((span) => span.y))
 }
+
+/**
+ * Alpha-composites `overlay` over `base` (both 0xRRGGBB) at `alpha` and returns an opaque 0xRRGGBB
+ * result (`StageBackdrop.drawBand`, EVAL-P13-003 fix). The accent band's upward copy now joins the
+ * first screen's band at the gameplay viewport top instead of world y 0 (13b.2), so it covers the strip
+ * that sits under the HUD at rest; left as a live alpha fill there, Phaser's Canvas and WebGL renderers
+ * round the blend a channel or two apart, which 40-hd-render reads as a 1x/2x pixel mismatch. Blending
+ * once, here, in plain arithmetic, and filling opaque removes the renderer from the rounding.
+ */
+export function blendOpaqueColor(base: number, overlay: number, alpha: number): number {
+  const mix = (shift: number) =>
+    Math.round(((base >> shift) & 0xff) * (1 - alpha) + ((overlay >> shift) & 0xff) * alpha)
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0)
+}
