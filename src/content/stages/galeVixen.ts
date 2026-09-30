@@ -241,7 +241,10 @@ export const GALE_VIXEN_LOCATION_ANCHORS: LocationAnchors = {
   heart_tank: { x: 2448, y: 76.5, rest: 'ground' },
   sub_tank: { x: 3392, y: 227, rest: 'ground' },
   capsule: { x: 3984, y: -188.5, rest: 'ground' },
-  pickup_bonus: { x: 5144, y: 227, rest: 'ground' }
+  pickup_bonus: { x: 5144, y: 227, rest: 'ground' },
+  // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage on a detour; a short side trip on
+  // the main ground, verified grounded against the real stage geometry.
+  extra_life: { x: 4420, y: 228, rest: 'ground' }
 }
 
 /**

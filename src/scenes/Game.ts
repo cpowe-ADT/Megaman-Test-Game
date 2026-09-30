@@ -487,6 +487,11 @@ export class Game extends Phaser.Scene {
       const effect = upgradeEffectLabel(itemId, next.progressionWorld?.progressionMode === 'classic')
       const label = effect ? `${getProgressionItemLabel(itemId).toUpperCase()} · ${effect}` : `CHECK SECURED • ${getProgressionItemLabel(itemId).toUpperCase()}`
       if (!this.storyDirector?.showCapsuleCard(locationId, label, effect ? 1800 : 1100)) this.showStageToast(label, effect ? 1800 : 1100)
+      // Part 13e (EVAL-P13-010): a placed extra life grants immediately, same as a dropped one; the claim
+      // itself leaves the save otherwise unchanged (src/progression/state.ts), so this is the only grant.
+      if (itemId === 'extra_life') {
+        this.grantExtraLife()
+      }
     }
 
     if (previous.weaponsUnlocked.join(',') !== next.weaponsUnlocked.join(',')) {

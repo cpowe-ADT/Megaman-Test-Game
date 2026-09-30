@@ -91,6 +91,13 @@ function makePickupLocation(
       x: Math.min(Number(stage.arena.width ?? 448) - 72, (start?.x ?? 44) + 124),
       y: 163,
       rest: 'ground'
+    },
+    // Not exercised today: every robot-master stage hands-places its own extra_life anchor (part 13e,
+    // EVAL-P13-010), and the tutorial never places one. Kept for type completeness if a future stage omits it.
+    extra_life: {
+      x: Math.min(Number(stage.arena.width ?? 448) - 72, (late?.x ?? 240) + 60),
+      y: 228,
+      rest: 'ground'
     }
   }
 
@@ -117,7 +124,8 @@ export const PROGRESSION_LOCATIONS: ProgressionLocationDefinition[] = [
     makePickupLocation(stage.id as CampaignStageId, 'capsule', `${stage.title} Capsule`),
     makePickupLocation(stage.id as CampaignStageId, 'heart_tank', `${stage.title} Heart Tank`),
     makePickupLocation(stage.id as CampaignStageId, 'sub_tank', `${stage.title} Sub Tank`),
-    makePickupLocation(stage.id as CampaignStageId, 'pickup_bonus', `${stage.title} Bonus Pickup`)
+    makePickupLocation(stage.id as CampaignStageId, 'pickup_bonus', `${stage.title} Bonus Pickup`),
+    makePickupLocation(stage.id as CampaignStageId, 'extra_life', `${stage.title} Extra Life`)
   ]),
   makePickupLocation(FINAL_STAGE_ID, 'boss_clear', 'Central Core Boss Clear')
 ]

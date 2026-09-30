@@ -238,7 +238,10 @@ export const FERRO_BLADE_LOCATION_ANCHORS: LocationAnchors = {
   heart_tank: { x: 2674, y: 88.5, rest: 'ground' },
   sub_tank: { x: 3400, y: 227, rest: 'ground' },
   capsule: { x: 3536, y: 159.5, rest: 'ground' },
-  pickup_bonus: { x: 5008, y: 227, rest: 'ground' }
+  pickup_bonus: { x: 5008, y: 227, rest: 'ground' },
+  // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage on a detour; a short side trip on
+  // the main ground, verified grounded against the real stage geometry.
+  extra_life: { x: 4808, y: 228, rest: 'ground' }
 }
 
 /**

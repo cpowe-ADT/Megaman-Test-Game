@@ -54,7 +54,8 @@ export const LOCATION_ART: Record<Exclude<LocationCheckCategory, 'boss_clear'>, 
   capsule: 'capsule',
   heart_tank: 'heart_tank',
   sub_tank: 'sub_tank',
-  pickup_bonus: 'health_large'
+  pickup_bonus: 'health_large',
+  extra_life: 'extra_life'
 }
 
 /** Part 13e: native size, no runtime shrink. The v2 cut already trims each frame to its final on-screen size. */

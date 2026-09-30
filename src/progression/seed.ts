@@ -93,6 +93,7 @@ export function generateProgressionWorld(seed = PROGRESSION_SEED_DEFAULT): Progr
     ...ALL_UPGRADE_IDS,
     ...Array.from({ length: 8 }, () => 'heart_tank' as const),
     ...Array.from({ length: 4 }, () => 'sub_tank' as const),
+    ...Array.from({ length: 8 }, () => 'extra_life' as const),
     ...Array.from({ length: 4 }, () => 'hp_refill_small' as const),
     ...Array.from({ length: 2 }, () => 'hp_refill_large' as const),
     ...Array.from({ length: 4 }, () => 'weapon_refill_small' as const),
@@ -155,6 +156,7 @@ export function generateClassicWorld(): ProgressionWorldSnapshot {
     placements[getLocationCheckId(stageId, 'heart_tank')] = 'heart_tank'
     placements[getLocationCheckId(stageId, 'sub_tank')] = index % 2 ? 'sub_tank' : 'hp_refill_large'
     placements[getLocationCheckId(stageId, 'pickup_bonus')] = 'hp_refill_large'
+    placements[getLocationCheckId(stageId, 'extra_life')] = 'extra_life'
     const weakElement = WeaknessTable[BOSS_ROSTER[stage.bossId].element]
     const weapon = stages.find(candidate => getWeaponConfig(candidate.rewardWeaponId!).element === weakElement)!.rewardWeaponId!
     weaknessProfiles[stage.bossId] = createBossWeaknessProfile(stage.bossId, weapon)

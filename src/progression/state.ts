@@ -403,6 +403,14 @@ export function applyProgressionItem<T extends ProgressionSaveLike>(
     } as T
   }
 
+  // Part 13e (EVAL-P13-010): an extra life is a per-run counter (Game.playerLives, resets on continue), not
+  // permanent progression like heart_tank/sub_tank, so claiming one leaves the save otherwise unchanged; the
+  // scene grants it immediately (Game.applyProgressionStateToRuntime -> grantExtraLife) the moment it sees
+  // this itemId, same turn as the claim.
+  if (itemId === 'extra_life') {
+    return next as T
+  }
+
   if (itemId === 'arc_slash' || itemId.startsWith('armor_') || itemId.startsWith('chip_')) {
     return {
       ...next,

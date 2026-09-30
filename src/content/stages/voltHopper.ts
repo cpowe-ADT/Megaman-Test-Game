@@ -212,7 +212,10 @@ export const VOLT_HOPPER_LOCATION_ANCHORS: LocationAnchors = {
   heart_tank: { x: 2344, y: 52.5, rest: 'ground' },
   sub_tank: { x: 3400, y: 227, rest: 'ground' },
   capsule: { x: 3520, y: 159.5, rest: 'ground' },
-  pickup_bonus: { x: 5040, y: 227, rest: 'ground' }
+  pickup_bonus: { x: 5040, y: 227, rest: 'ground' },
+  // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage on a detour; a short side trip on
+  // the main ground, verified grounded against the real stage geometry.
+  extra_life: { x: 4840, y: 228, rest: 'ground' }
 }
 
 /**

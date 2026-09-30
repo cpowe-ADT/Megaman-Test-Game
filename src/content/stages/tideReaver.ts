@@ -256,7 +256,10 @@ export const TIDE_REAVER_LOCATION_ANCHORS: LocationAnchors = {
   heart_tank: { x: 2024, y: 52.5, rest: 'ground' },
   sub_tank: { x: 3008, y: 79, rest: 'ground' },
   capsule: { x: 3208, y: -204.5, rest: 'ground' },
-  pickup_bonus: { x: 4560, y: 227, rest: 'ground' }
+  pickup_bonus: { x: 4560, y: 227, rest: 'ground' },
+  // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage on a detour; a short side trip on
+  // the main ground, verified grounded against the real stage geometry.
+  extra_life: { x: 4360, y: 228, rest: 'ground' }
 }
 
 /**

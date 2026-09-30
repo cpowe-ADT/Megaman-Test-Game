@@ -39,9 +39,10 @@ test('every glow frame (001) is exactly the same size as its base frame (000): n
 
 test('every campaign pickup placement is grounded within 2px or marked float, never inside a solid or over a pit', () => {
   const rows = auditPickupPlacements(readAtlasFrameSizes())
-  // 2 tutorial defaults + 8 warden stages x 4 anchors = 34 (13a's count; omega_fortress's hub refills are a
-  // separate hand-rolled mechanism and never reach getStageLocationDefinitions).
-  assert.equal(rows.length, 34, 'every placed pickup the probe counted')
+  // 2 tutorial defaults + 8 warden stages x 5 anchors (13a's 4 plus the extra life the part's Decision adds)
+  // = 42; omega_fortress's hub refills are a separate hand-rolled mechanism and never reach
+  // getStageLocationDefinitions.
+  assert.equal(rows.length, 42, 'every placed pickup, the original 34 plus one extra life per warden stage')
   for (const row of rows) {
     assert.notEqual(row.verdict, 'inside_solid', `${row.id}: ${JSON.stringify(row)}`)
     assert.notEqual(row.verdict, 'over_pit', `${row.id}: ${JSON.stringify(row)}`)
@@ -51,7 +52,7 @@ test('every campaign pickup placement is grounded within 2px or marked float, ne
     )
   }
   // 13e's fix grounds every one of them (none is a designed float today).
-  assert.equal(rows.filter((r) => r.verdict === 'grounded').length, 34)
+  assert.equal(rows.filter((r) => r.verdict === 'grounded').length, 42)
 })
 
 // --- classifyPlacement in isolation: fabricated surfaces, so the rule's own branches are proven regardless

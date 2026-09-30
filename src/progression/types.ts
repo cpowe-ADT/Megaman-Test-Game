@@ -29,6 +29,7 @@ export type ProgressionItemId =
   | ProgressionUpgradeId
   | 'heart_tank'
   | 'sub_tank'
+  | 'extra_life'
   | ProgressionConsumableId
 
 export type LocationCheckCategory =
@@ -37,6 +38,7 @@ export type LocationCheckCategory =
   | 'heart_tank'
   | 'sub_tank'
   | 'pickup_bonus'
+  | 'extra_life'
 
 export type LocationCheckId = `${CampaignStageId}:${LocationCheckCategory}`
 

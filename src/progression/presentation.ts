@@ -62,6 +62,10 @@ export function getProgressionItemLabel(itemId: ProgressionItemId | string): str
     return 'Sub Tank'
   }
 
+  if (itemId === 'extra_life') {
+    return 'Extra Life'
+  }
+
   if (itemId in UPGRADE_LABELS) {
     return UPGRADE_LABELS[itemId as ProgressionUpgradeId]
   }

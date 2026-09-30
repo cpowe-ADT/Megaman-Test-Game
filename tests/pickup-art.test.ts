@@ -33,7 +33,7 @@ test('each drop type and placed pickup draws its own group', () => {
     ENEMY_DROP_TYPES.map((type) => DROP_ART[type]),
     ['health_small', 'health_large', 'energy_small', 'bonus', 'extra_life']
   )
-  assert.deepEqual(LOCATION_ART, { capsule: 'capsule', heart_tank: 'heart_tank', sub_tank: 'sub_tank', pickup_bonus: 'health_large' })
+  assert.deepEqual(LOCATION_ART, { capsule: 'capsule', heart_tank: 'heart_tank', sub_tank: 'sub_tank', pickup_bonus: 'health_large', extra_life: 'extra_life' })
 })
 
 test('the random drop keeps its odds and never rolls the large capsule', () => {
