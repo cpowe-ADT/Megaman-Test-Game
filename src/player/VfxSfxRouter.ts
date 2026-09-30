@@ -6,6 +6,7 @@ import { resolveSwordTrailPose } from './SwordTrailProfile'
 import { SHAKES, resolveChargeAuraFrequencyMs } from './hitFeel'
 import { FEEL_FRAME_MS, LANDING_SQUASH_FRAMES } from './config'
 import { explosionFlashStyle, Settings } from '../systems/Settings'
+import { chargeRingStyle } from '../ui/effects/flashSafety'
 import {
   CHARGE_AURA,
   CHARGE_AURA_BY_LEVEL,
@@ -117,7 +118,10 @@ export class VfxSfxRouter {
     aura.setPosition(this.player.x, this.player.y).setDepth(this.player.depth - 1).setVisible(true)
     if (level !== this.chargeAuraLevel) {
       const style = CHARGE_AURA_BY_LEVEL[level]
-      aura.setTint(style.tint).setScale(style.scale).setAlpha(Settings.get().reducedFlashing ? style.alpha * 0.6 : style.alpha)
+      // Reduced Flashing (part 12i): dimmer, and no additive glow.
+      const flash = chargeRingStyle(Settings.get().reducedFlashing)
+      aura.setTint(style.tint).setScale(style.scale).setAlpha(flash.additive ? style.alpha : style.alpha * 0.6)
+      aura.setBlendMode(flash.additive ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL)
       aura.anims.timeScale = style.frameRate / CHARGE_AURA.frameRate
       this.chargeAuraLevel = level
     }
@@ -218,6 +222,7 @@ export class VfxSfxRouter {
         const level = Math.max(1, Number(key.slice(-1)) || 1)
         const colors = [0x63e7ff, 0x79f5d3, 0xffef7a, 0xff8df4]
         const color = colors[level - 1]
+        const flash = chargeRingStyle(Settings.get().reducedFlashing)
         const emitter = this.own(this.scene.add.particles(0, 0, GAMEPLAY_TEXTURE_KEYS.chargeParticle, {
           follow: this.player,
           lifespan: 360 + level * 45,
@@ -226,13 +231,13 @@ export class VfxSfxRouter {
           speed: { min: 22 + level * 5, max: 52 + level * 8 },
           radial: true,
           tint: color,
-          alpha: { start: 0.95, end: 0 },
+          alpha: { start: 0.95 * flash.alphaScale, end: 0 },
           scale: { start: 0.75 + level * 0.12, end: 0 },
-          blendMode: Phaser.BlendModes.ADD
+          blendMode: flash.additive ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL
         }))
         const ring = this.own(this.scene.add.graphics({ x: this.player.x, y: this.player.y }))
         ring.setDepth(this.player.depth + 1)
-        ring.lineStyle(level >= 4 ? 3 : 2, color, 0.9)
+        ring.lineStyle(level >= 4 ? 3 : 2, color, 0.9 * flash.alphaScale)
         ring.strokeCircle(0, 0, 11 + level * 3)
         this.scene.tweens.add({
           targets: ring,
