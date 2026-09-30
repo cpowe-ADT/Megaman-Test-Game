@@ -5,6 +5,7 @@ import { getCampaignStage } from '../../content/campaign'
 import type { CampaignSessionStatistics } from '../../progression/statistics'
 import type { ProjectileSystem } from '../../projectiles'
 import { ActiveRunSaveData, Save } from '../../systems/Save'
+import { omegaActsOf } from './OmegaActs'
 import { drinkSubTank } from '../../systems/subTanks'
 import type { HUD } from '../../ui/HUD'
 
@@ -172,7 +173,7 @@ export class RunState {
     }
     host.flushStatistics()
     const stageId = host.activeStageId
-    return {
+    const run: ActiveRunSaveData = {
       version: 2,
       savedAt: Date.now(),
       stageElapsedMs: host.sessionStats.stageElapsedMs,
@@ -187,6 +188,8 @@ export class RunState {
       checkpointId: host.currentCheckpointId ?? undefined,
       weaponEnergyById: { ...host.weaponEnergyById }
     }
+    // In the Central Core a rematch saves as the archive, with the clears of the last checkpoint (12e).
+    return omegaActsOf(host)?.snapshot(run) ?? run
   }
 
   applyActiveRunSnapshot(run: ActiveRunSaveData | null): void {
