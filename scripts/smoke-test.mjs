@@ -17,6 +17,8 @@ import { runInputLifecycleScenario } from './smoke/input-lifecycle.mjs'
 import { runWeaponIdentityMatrix } from './smoke/weapon-identities.mjs'
 import { runPerfBudgetScenario } from './smoke/perf-budget.mjs'
 import { runRestartLeakScenario } from './smoke/restart-leak.mjs'
+import { runProductionMusicScenario } from './smoke/production-music.mjs'
+import smokeTiers from './smoke/tiers.json' with { type: 'json' }
 
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT ?? 4173)
@@ -38,6 +40,12 @@ const smokeOnlyScenarios = new Set(
     .map((value) => value.trim())
     .filter(Boolean)
 )
+// SMOKE_TIER=fast runs only scripts/smoke/tiers.json's `fast` list (about twenty scenarios, under three
+// minutes: boot, input, one stage, one boss, profiles, HD render, the shot contract; 13h.1, prompt 06
+// §6.9). Unset or any other value runs every registered scenario ('full'); SMOKE_ONLY/SMOKE_FROM still
+// apply on top of this filter.
+const smokeTier = String(process.env.SMOKE_TIER ?? 'full').trim() || 'full'
+const smokeFastScenarios = new Set(smokeTiers.fast ?? [])
 const smokeFromScenario = String(process.env.SMOKE_FROM ?? '').trim() || null
 let smokeFromMatched = smokeFromScenario == null
 // Continue-on-failure harness controls: SMOKE_FAIL_FAST=1 restores stop-at-first-failure; every
@@ -413,6 +421,19 @@ async function executeSmokeScenario(summary, name, runScenario) {
       writeSmokeSummary(summary)
       return null
     }
+  }
+
+  // SMOKE_TIER=fast keeps only scripts/smoke/tiers.json's `fast` list (full names or numeric prefix,
+  // same matching rule as SMOKE_ONLY below).
+  if (smokeTier === 'fast' && !smokeFastScenarios.has(name) && !smokeFastScenarios.has(name.split('-')[0])) {
+    summary.scenarios.push({
+      name,
+      status: 'skipped',
+      artifactDir: path.join(outputDir, name),
+      reason: 'Skipped by SMOKE_TIER=fast filter'
+    })
+    writeSmokeSummary(summary)
+    return null
   }
 
   // SMOKE_ONLY takes full names or their numeric prefix (35 matches 35-radio-ticker).
@@ -4033,6 +4054,10 @@ async function main() {
       runRestartLeakScenario('63-restart-leak', { outputDir, url, readState, waitForState, advanceFrames, tapKey })
     )
     await executeSmokeScenario(summary, '65-shot-contract', async () => (await import('./smoke/shot-contract.mjs')).runShotContractScenario('65-shot-contract', { outputDir, url, waitForState, waitForPageCheck, advanceFrames }))
+    // 13h.1, the rest of EVAL-P13-002: full tier only (scripts/smoke/tiers.json's fast list omits it),
+    // and always against its own `vite preview` of the real production build, never the ambient
+    // SMOKE_SERVER for the rest of this run.
+    await executeSmokeScenario(summary, '66-production-music', () => runProductionMusicScenario('66-production-music', { outputDir }))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     await executeSmokeScenario(summary, '37b-story-triggers', async () => (await import('./smoke/story-surfaces.mjs')).runStoryTriggersScenario('37b-story-triggers', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }

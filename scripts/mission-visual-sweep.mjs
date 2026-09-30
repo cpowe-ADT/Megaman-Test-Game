@@ -451,6 +451,33 @@ async function sampleBossMovement(page, bossId, artifactDir) {
   return samples
 }
 
+/**
+ * Sweep v2 (13h.1, prompt 06 §6.9): every segment reachable by warp. Warps with the real
+ * `stageDebug.setPlayerX` hook (the old spec's `warpTo` alias was never added: it needs a `src/` change
+ * this lane's file list does not cover) to five evenly spaced points across the route and requires the
+ * hero to actually be there a few frames later, not mid-fall into a kill plane or a respawn. Writes
+ * `segment-sweep-v2.json` evidence and throws (failing the mission, like every other assertion here) on
+ * an unreachable sample.
+ */
+async function assertSegmentsReachableByWarp(page, stageId, dir, routeWidth) {
+  const sampleCount = 5
+  const samples = []
+  for (let i = 0; i < sampleCount; i += 1) {
+    const target = Math.round((routeWidth * (i + 0.5)) / sampleCount)
+    await page.evaluate((x) => window.stageDebug?.setPlayerX?.(x), target)
+    await advanceFrames(page, 3)
+    const state = await readState(page)
+    const actual = state.player?.x ?? null
+    const reached = state.scene === 'Game' && actual != null && Math.abs(actual - target) <= 40
+    samples.push({ target, actual, reached })
+  }
+  fs.writeFileSync(path.join(dir, 'segment-sweep-v2.json'), JSON.stringify({ stageId, routeWidth, samples }, null, 2))
+  const unreachable = samples.filter((sample) => !sample.reached)
+  if (unreachable.length > 0) {
+    throw new Error(`[${stageId}] segment sweep v2: warp sample(s) not reachable: ${JSON.stringify(unreachable)}`)
+  }
+}
+
 async function captureMission(browser, slot, summary) {
   const { stageId, bossId, runtimeBossConfigId, direct } = slot
   const context = await browser.newContext()
@@ -542,6 +569,8 @@ async function captureMission(browser, slot, summary) {
     fs.writeFileSync(path.join(dir, 'state-mid.json'), JSON.stringify(midState, null, 2))
     await page.screenshot({ path: path.join(dir, 'mid.png') })
     await capturePerfSnapshot(page, dir, 'mid')
+
+    await assertSegmentsReachableByWarp(page, stageId, dir, routeWidth)
 
     await page.evaluate((x) => window.stageDebug?.setPlayerX?.(x), routeWidth - 64)
     await advanceFrames(page, 2)
