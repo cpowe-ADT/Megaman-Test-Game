@@ -10,6 +10,12 @@ import { GAME_SIZE } from '../config/renderPolicy'
 import { dialoguePanelLayout, type DialoguePlacement } from './overlayLayout'
 import { PORTRAIT_ATLAS_KEY, PORTRAIT_FRAME_SIZE, portraitForSpeaker } from './dialoguePortraits'
 import { ensurePortraitAtlas } from './portraitAtlasLoader'
+import { typewriterBlipTicked, typewriterConfirmAction, typewriterVisibleChars } from './dialogueTypewriter'
+import AudioService from '../audio'
+import { Settings } from '../systems/Settings'
+
+/** An existing, quiet, short UI tick (already used for menu cursor moves): the typewriter's blip. */
+const TYPEWRITER_BLIP_SFX = 'ui_move'
 
 /** Left margin shared by the portrait slot and the text column (matches the panel's accent bar). */
 const TEXT_LEFT = 27
@@ -29,6 +35,10 @@ export class DialogueOverlayController {
   private completing = false
   private nextAdvanceAtMs = 0
   private readonly panelRows: { top: number; bottom: number }
+  /** The current line's full text and how much of it the typewriter has revealed (`dialogueTypewriter.ts`). */
+  private currentText = ''
+  private visibleChars = 0
+  private lineStartedAtMs = 0
 
   /** `top` in play (the floor row, where the hero and the boss stand, stays visible); `bottom` on Stage Select. */
   constructor(private readonly scene: Phaser.Scene, placement: DialoguePlacement = 'top') {
@@ -82,9 +92,13 @@ export class DialogueOverlayController {
     const unbindAdvance = InputActions.forScene(scene).onPressed('confirm', advanceHandler)
     panel.setInteractive({ useHandCursor: true })
     panel.on('pointerdown', pointerHandler)
+    // The typewriter's own clock: it must keep ticking even while Game.update() early-returns for a
+    // blocking dialogue (the same self-hook OmegaActs uses), so it is never a call Game.ts has to make.
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this.tick, this)
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       unbindAdvance()
       panel.off('pointerdown', pointerHandler)
+      scene.events.off(Phaser.Scenes.Events.UPDATE, this.tick, this)
       this.destroy()
     })
   }
@@ -106,10 +120,15 @@ export class DialogueOverlayController {
     return this.playback.snapshot().active
   }
 
+  /** Confirm: while the line is still typing this completes it; a second confirm advances (prompt 07 7.5). */
   advance(): void {
     if (!this.isActive() || this.scene.time.now < this.nextAdvanceAtMs) return
-    this.playback.advance()
     this.nextAdvanceAtMs = this.scene.time.now + 130
+    if (typewriterConfirmAction(this.visibleChars, this.currentText.length) === 'complete') {
+      this.completeTyping()
+      return
+    }
+    this.playback.advance()
     this.renderOrComplete()
   }
 
@@ -119,9 +138,20 @@ export class DialogueOverlayController {
     this.renderOrComplete()
   }
 
-  /** Playback plus the panel's rows in game pixels (automation: smoke 49 checks the hero stays visible under it). */
-  getDebugState(): DialoguePlaybackSnapshot & { panel: { top: number; bottom: number } } {
-    return { ...this.playback.snapshot(), panel: { top: this.panelRows.top, bottom: this.panelRows.bottom } }
+  /**
+   * Playback plus the panel's rows in game pixels (automation: smoke 49 checks the hero stays visible
+   * under it) and the typewriter's reveal (`text` is always the full line; `typewriter.visibleChars`
+   * is how much of it is drawn so a smoke can catch a genuine mid-line capture).
+   */
+  getDebugState(): DialoguePlaybackSnapshot & {
+    panel: { top: number; bottom: number }
+    typewriter: { visibleChars: number; length: number; complete: boolean }
+  } {
+    return {
+      ...this.playback.snapshot(),
+      panel: { top: this.panelRows.top, bottom: this.panelRows.bottom },
+      typewriter: { visibleChars: this.visibleChars, length: this.currentText.length, complete: this.visibleChars >= this.currentText.length }
+    }
   }
 
   destroy(): void {
@@ -142,12 +172,33 @@ export class DialogueOverlayController {
     complete?.()
   }
 
+  /** A new current line: the speaker and portrait show at once; the body starts its typewriter reveal
+   * (instantly complete under Reduced Flashing, the Options flag prompt 07 7.5 asks it to honour). */
   private render(): void {
     const state = this.playback.snapshot()
     this.speakerText.setText(state.speakerName ?? '')
-    this.bodyText.setText(state.text ?? '')
+    this.currentText = state.text ?? ''
+    this.lineStartedAtMs = this.scene.time.now
+    this.visibleChars = Settings.get().reducedFlashing ? this.currentText.length : 0
+    this.bodyText.setText(this.currentText.slice(0, this.visibleChars))
     this.progressText.setText(`${state.lineIndex + 1}/${state.lineCount}  ENTER / CLICK • ESC SKIP`)
     this.renderPortrait(state.speakerId)
+  }
+
+  /** Every frame a line is typing: advances the reveal on the typewriter's clock and blips on its ticks. */
+  private tick(time: number): void {
+    if (!this.isActive() || this.visibleChars >= this.currentText.length) return
+    const next = typewriterVisibleChars(this.currentText.length, time - this.lineStartedAtMs)
+    if (next === this.visibleChars) return
+    if (typewriterBlipTicked(this.visibleChars, next)) AudioService.playSfx(TYPEWRITER_BLIP_SFX)
+    this.visibleChars = next
+    this.bodyText.setText(this.currentText.slice(0, this.visibleChars))
+  }
+
+  /** Confirm mid-line: reveal the rest of the current line now, without advancing to the next. */
+  private completeTyping(): void {
+    this.visibleChars = this.currentText.length
+    this.bodyText.setText(this.currentText)
   }
 
   private renderPortrait(speakerId: string | null): void {

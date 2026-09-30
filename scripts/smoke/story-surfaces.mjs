@@ -78,9 +78,21 @@ export async function runPrologueFlowScenario(name, { outputDir, storyUrl, readS
     assert.equal(briefing.dialogue.sequenceId, 'tutorial_sentinel_briefing')
     assert.equal(briefing.dialogue.lineCount, 3)
     await capture('briefing')
+    // The typewriter (prompt 07 7.5, EVAL-P7-006): 10 frames (about 167ms) into a line types some of it,
+    // never all (40 chars/s would need over a second for this line); `dialogue.text` stays the full line
+    // regardless (the pure playback model), only `typewriter.visibleChars` tracks the reveal.
+    await advanceFrames(page, 10)
+    const typing = await readState(page)
+    assert.ok(
+      typing.dialogue.typewriter.visibleChars > 0 && typing.dialogue.typewriter.visibleChars < typing.dialogue.typewriter.length,
+      `typewriter mid-line (${JSON.stringify(typing.dialogue.typewriter)})`
+    )
+    assert.equal(typing.dialogue.text, briefing.dialogue.text, 'the underlying line is already the full text')
+    await capture('briefing-typing')
     // The overlay ignores advance for 160ms of scene time after a line opens (one key press must not skip two
     // lines). Retry against the state instead of guessing a delay: a fixed wait is timing-dependent (09 review).
-    for (let attempt = 0; attempt < 40; attempt += 1) {
+    // advanceDialogue() now follows the confirm rule: it completes the typing line, then a second call advances.
+    for (let attempt = 0; attempt < 60; attempt += 1) {
       await page.evaluate(() => window.stageDebug?.advanceDialogue?.())
       if ((await readState(page))?.dialogue?.lineIndex === 1) break
       await advanceFrames(page, 2)
