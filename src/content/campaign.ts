@@ -510,29 +510,13 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     title: 'Central Core',
     selectLabel: 'FINAL',
     introCallout: IDENTITY.ANTAGONIST_NAME,
-    description: 'Remixed final route that cashes in on the full unlocked toolkit and ends the campaign.',
+    description: 'Three acts: the Relay Spire, the Warden Archive and its eight rematches, then the Core.',
     arenaLabel: 'Core Command Vault',
     rewardEnabled: false,
-    enemyMarkers: [
-      marker('omega_armored', 'enemy_armored_bot', 142, 185, 116, 176, {
-        spawnTriggerX: 56,
-        retireTriggerX: 214
-      }),
-      marker('omega_shield', 'enemy_shield_drone', 220, 116, undefined, undefined, {
-        spawnTriggerX: 102,
-        retireTriggerX: 284
-      }),
-      marker('omega_bouncer', 'enemy_bouncer', 292, 185, undefined, undefined, {
-        spawnTriggerX: 138,
-        retireTriggerX: 348
-      }),
-      marker('omega_laser', 'enemy_laser_eye', 350, 148, undefined, undefined, {
-        spawnTriggerX: 162,
-        retireTriggerX: 400
-      })
-    ],
+    // The route is `src/content/stages/omegaFortress.ts` (prompt 12 part 12e).
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#100b18',
@@ -540,16 +524,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('omega_start', 44, 40, 0), checkpoint('omega_mid', 164, 40, 192)],
-      hazards: [
-        { id: 'omega_spike_1', x: 132, y: 230 },
-        { id: 'omega_spike_2', x: 320, y: 230 }
-      ],
-      midPlatforms: [
-        { id: 'omega_mid_1', x: 162, y: 178, width: 54, type: 'oneWay', color: 0x4b3868 },
-        { id: 'omega_mid_2', x: 244, y: 138, width: 58, type: 'oneWay', color: 0x4b3868, motion: { toX: 304, duration: 1600 } },
-        { id: 'omega_mid_3', x: 334, y: 112, width: 42, type: 'oneWay', color: 0x4b3868 }
-      ]
+      checkpoints: [checkpoint('omega_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   }
 }
@@ -743,46 +720,6 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       marker('gale_rocket_late', 'enemy_rocket_bot', 786, 166, undefined, undefined, {
         spawnTriggerX: 642,
         retireTriggerX: 868
-      })
-    ]
-  },
-  omega_fortress: {
-    width: 1088,
-    bossSpawnX: 996,
-    checkpoints: [
-      checkpoint('omega_start', 44, 40, 0),
-      checkpoint('omega_mid_a', 250, 40, 274),
-      checkpoint('omega_mid_b', 520, 40, 566),
-      checkpoint('omega_mid_c', 772, 40, 828),
-      checkpoint('omega_mid_d', 876, 40, 910),
-      checkpoint('omega_boss_gate', 930, 40, 964)
-    ],
-    hazards: [
-      { id: 'omega_spike_3', x: 522, y: 230 },
-      { id: 'omega_spike_4', x: 838, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'omega_mid_4', x: 438, y: 178, width: 54, type: 'oneWay', color: 0x4b3868 },
-      { id: 'omega_mid_5', x: 588, y: 142, width: 58, type: 'oneWay', color: 0x4b3868, motion: { toX: 664, duration: 2600 } },
-      { id: 'omega_mid_6', x: 748, y: 118, width: 50, type: 'oneWay', color: 0x4b3868 },
-      { id: 'omega_mid_7', x: 892, y: 146, width: 56, type: 'oneWay', color: 0x4b3868 }
-    ],
-    enemyMarkers: [
-      marker('omega_drone_late', 'enemy_drone', 470, 118, undefined, undefined, {
-        spawnTriggerX: 278,
-        retireTriggerX: 552
-      }),
-      marker('omega_fly_late', 'enemy_fly_trap', 626, 164, undefined, undefined, {
-        spawnTriggerX: 432,
-        retireTriggerX: 712
-      }),
-      marker('omega_rocket_late', 'enemy_rocket_bot', 802, 185, undefined, undefined, {
-        spawnTriggerX: 646,
-        retireTriggerX: 890
-      }),
-      marker('omega_armored_late_2', 'enemy_armored_bot', 920, 185, 892, 968, {
-        spawnTriggerX: 786,
-        retireTriggerX: 1018
       })
     ]
   }
