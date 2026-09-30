@@ -23,6 +23,25 @@ Update 2026-09-22: a folder-based `manualChunks` split (boss, content, gameplay)
 - Any future bundle-splitting work must validate scene flow, smoke automation, and asset loading behavior.
 - Docs should continue to call this out as current debt so future agents do not assume the warning is accidental or already resolved.
 
+## v1.0 bundle budget (part 12i, prompt 08 8.5 / prompt 04 4.4)
+Chunk sizes from `npm run build:public` at the part-12i commit, recorded here as the budget
+`scripts/check-dist-runtime-assets.mjs` enforces (fails only past 15% over the total; lower it with a
+new row here when a slice earns it, never raise it without one, charter rule 14):
+
+| Chunk | Raw bytes | Gzip KB |
+| --- | --- | --- |
+| `phaser-*.js` (manual chunk, `phaser-arcade-physics.min.js`) | 1,085,692 | 295.92 |
+| `index-*.js` (everything else, incl. the part-12i `perfDebug`/runtime-leak hooks) | 812,442 | 236.91 |
+| **Total (the budget)** | **1,898,134** | **532.83** |
+
+No CSS chunk exists. `dist/` total is 10MB (`assets/sprites`, `assets/audio`, etc. are copied runtime
+folders, not Rollup output, and are governed by `tests/perf-budget.json`'s `distTotalMB`/`jsGzipKB`
+instead of this ADR). JS gzip (532.83KB) is under prompt 08 8.5's 600KB ceiling. `npm run build:public`
+(`VITE_PUBLIC_BUILD=1`) runs about 90 bytes above this table: nothing in the source reads that flag
+(05c already retired the only thing it gated, the developer skin), but Vite's injected `import.meta.env`
+object gains the one extra key regardless, since other modules already reference `import.meta.env`.
+Comfortably inside the 15% ceiling either way.
+
 ## Alternatives Considered
 ### Raise `chunkSizeWarningLimit`
 Rejected because it hides the signal without reducing bundle size.

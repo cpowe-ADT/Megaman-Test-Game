@@ -1,0 +1,12 @@
+{
+  "$comment": "Baseline for smoke 62-perf-budget (prompt 08 8.5): CI regresses only past 1.25x these p95/p99 numbers. Recorded with PERF_BASELINE_WRITE=1; lower it when a slice earns it, never raise it without a docs/prompts/EVAL_LEDGER.md row (charter rule 14).",
+  "recordedAt": "2026-09-30T17:03:13.092Z",
+  "frameMs": {
+    "frames": 201,
+    "p50": 0.6000000089406967,
+    "p95": 3.2999999970197678,
+    "p99": 5.300000011920929,
+    "longFrames": 1
+  },
+  "textureMB": 8.64
+}

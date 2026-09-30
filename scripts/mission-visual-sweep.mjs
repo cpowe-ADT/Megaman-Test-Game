@@ -98,6 +98,16 @@ async function advanceFrames(page, frames = 1) {
   }
 }
 
+// Part 12i (prompt 08 8.5): a `window.perfDebug()` snapshot at each of this function's three existing
+// checkpoints (mid, pre-boss, boss room), so texture memory is measured with every biome loaded, not
+// only Pyro Maw (smoke `62-perf-budget`'s single stage). Recorded per mission, not gated: the sweep's
+// other assertions already cover correctness, and this machine runs other lanes at the same time.
+async function capturePerfSnapshot(page, dir, label) {
+  const perf = await page.evaluate(() => window.perfDebug?.() ?? null)
+  fs.writeFileSync(path.join(dir, `perf-${label}.json`), JSON.stringify(perf, null, 2))
+  return perf
+}
+
 async function readState(page) {
   const text = await page.evaluate(() => {
     if (typeof window.render_game_to_text === 'function') {
@@ -531,6 +541,7 @@ async function captureMission(browser, slot, summary) {
     const midState = await readState(page)
     fs.writeFileSync(path.join(dir, 'state-mid.json'), JSON.stringify(midState, null, 2))
     await page.screenshot({ path: path.join(dir, 'mid.png') })
+    await capturePerfSnapshot(page, dir, 'mid')
 
     await page.evaluate((x) => window.stageDebug?.setPlayerX?.(x), routeWidth - 64)
     await advanceFrames(page, 2)
@@ -538,6 +549,7 @@ async function captureMission(browser, slot, summary) {
     assertPreBossState(preBossState, stageId)
     fs.writeFileSync(path.join(dir, 'state-pre-boss.json'), JSON.stringify(preBossState, null, 2))
     await page.screenshot({ path: path.join(dir, 'pre-boss.png') })
+    await capturePerfSnapshot(page, dir, 'pre-boss')
 
     await page.evaluate(() => {
       window.stageDebug?.crossBossGate?.()
@@ -562,6 +574,7 @@ async function captureMission(browser, slot, summary) {
     )
     assertBossRoomState(bossRoomState, stageId)
     fs.writeFileSync(path.join(dir, 'state-boss-room.json'), JSON.stringify(bossRoomState, null, 2))
+    await capturePerfSnapshot(page, dir, 'boss-room')
 
     await sampleBossMovement(page, stageId, dir)
     await page.evaluate(() => {

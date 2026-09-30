@@ -11,6 +11,13 @@ const excludedRuntimeRoots = [
   path.join(sourceRoot, 'private')
 ]
 
+// v1.0 bundle budget (prompt 08 8.5, prompt 04 4.4): the emitted JS/CSS chunk total recorded in
+// docs/adr/0002-bundle-size-strategy.md at the part-12i commit (index-*.js + phaser-*.js, 1,898,134
+// bytes). This fails only past 15% over that, not on every byte of drift; lower it with a new ADR
+// row when a slice earns it (charter rule 14), never raise it without one.
+const BUNDLE_BUDGET_BYTES = 1898134
+const BUNDLE_BUDGET_TOLERANCE = 1.15
+
 function isInside(parent, candidate) {
   const relativePath = path.relative(parent, candidate)
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
@@ -109,6 +116,22 @@ if (missingEmittedAssets.length > 0) {
   process.exit(1)
 }
 
+// Top-level dist/assets/*.js and *.css are Rollup's emitted chunks; the copied runtime folders
+// (audio, backgrounds, fonts, sprites, ui) are subdirectories, so a non-recursive, extension-filtered
+// read of distRoot cannot see into them.
+const bundleFiles = fs
+  .readdirSync(distRoot, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && /\.(js|css)$/.test(entry.name))
+const bundleTotalBytes = bundleFiles.reduce((total, entry) => total + fs.statSync(path.join(distRoot, entry.name)).size, 0)
+const bundleBudgetCeiling = Math.round(BUNDLE_BUDGET_BYTES * BUNDLE_BUDGET_TOLERANCE)
+
+if (bundleTotalBytes > bundleBudgetCeiling) {
+  console.error(
+    `Bundle total ${bundleTotalBytes} bytes is more than 15% over the ${BUNDLE_BUDGET_BYTES}-byte v1.0 budget (docs/adr/0002-bundle-size-strategy.md), ceiling ${bundleBudgetCeiling}: ${bundleFiles.map((entry) => entry.name).join(', ')}`
+  )
+  process.exit(1)
+}
+
 console.log(
-  `Checked ${runtimeFiles.length} runtime asset files and ${emittedAssetRefs.length} emitted build refs in dist/.`
+  `Checked ${runtimeFiles.length} runtime asset files and ${emittedAssetRefs.length} emitted build refs in dist/. Bundle ${bundleTotalBytes} bytes (budget ${BUNDLE_BUDGET_BYTES}, ceiling ${bundleBudgetCeiling}).`
 )

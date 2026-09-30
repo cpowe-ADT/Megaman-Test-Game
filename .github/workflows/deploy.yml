@@ -1,0 +1,76 @@
+name: Deploy
+
+"on":
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A tag never gets superseded the way a branch push does: let a second tag queue behind the first
+# instead of cancelling a deploy already in flight.
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # sprites:validate, test, build:public, check-public-build.mjs, then the full suite against
+      # the built dist/ (SMOKE_SERVER=preview) -- prompt 08 8.5 / prompt 04 4.4's verify:public.
+      - run: npm run verify:public
+      - run: npm run test:visual-sweep
+        env:
+          SWEEP_CLEANUP_TIMEOUT_MS: '30000'
+      # 47-full-campaign lands with the Central Core lane (12e), not this one: guard it on the
+      # scenario actually being registered so this workflow does not fail on a scenario that does
+      # not exist yet, and does not silently stop guarding it once it does.
+      - name: Check for the full-campaign smoke scenario
+        id: full-campaign-check
+        run: |
+          if grep -q "'47-full-campaign'" scripts/smoke-test.mjs; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Full-campaign smoke (47, SMOKE_LONG=1)
+        if: steps.full-campaign-check.outputs.exists == 'true'
+        run: npm run test:smoke
+        env:
+          SMOKE_SERVER: preview
+          SMOKE_LONG: '1'
+          SMOKE_ONLY: '47-full-campaign'
+      - run: npm run package:itch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: itch-zip-${{ github.ref_name }}
+          path: output/release/*.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deploy-evidence-${{ github.run_id }}
+          path: output/
+          if-no-files-found: warn
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - uses: actions/deploy-pages@v4
+        id: deployment
