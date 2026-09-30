@@ -6,6 +6,7 @@ import type { CrumbleGroupDefinition } from '../../mechanics/crumbleGroup'
 import type { BreakableWallDefinition } from '../../mechanics/breakableWall'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomChannel, BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Medicine District (`mire_wraith`), rebuilt to the Heat Works standard (prompt 12 part 12d, EVAL-P6-010;
@@ -244,10 +245,35 @@ export const MIRE_WRAITH_ENEMIES: EnemyLevelMarker[] = [
   enemy('mire_pre_bouncer', 'enemy_bouncer', 5080, standingOn(FLOOR), 4630, 5160)
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `pits` with acid): two shallow acid channels (12px on a
+ * solid bed; the stage's pit liquid draws the acid in every cut) between the combat profile's anchors (0.2, 0.5,
+ * 0.8). The acid hurts as a hazard does (1 HP from a box on the bed). 32px wide, narrower than the Wraith's floor
+ * body, so she slides across a channel on its banks while the hero can drop in.
+ */
+const MIRE_ROOM_X = MIRE_WRAITH_ROUTE_WIDTH
+const MIRE_BOSS_CHANNELS: BossRoomChannel[] = [
+  { id: 'mire_boss_channel_1', x: MIRE_ROOM_X + 150, width: 32, depth: 12, color: 0x2c3a1e },
+  { id: 'mire_boss_channel_2', x: MIRE_ROOM_X + 266, width: 32, depth: 12, color: 0x2c3a1e }
+]
+export const MIRE_WRAITH_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'channels',
+  channels: MIRE_BOSS_CHANNELS,
+  hazards: MIRE_BOSS_CHANNELS.map((channel) => ({
+    id: `${channel.id}_acid`,
+    x: channel.x + channel.width / 2,
+    y: FLOOR + channel.depth - 3,
+    width: channel.width - 4,
+    height: 6,
+    damage: 1
+  }))
+}
+
 /** The whole Medicine District route as one patch, registered in `src/content/stages/index.ts`. */
 export const MIRE_WRAITH_PATCH: StageExtensionPatch = {
   width: MIRE_WRAITH_ROUTE_WIDTH,
   bossSpawnX: MIRE_WRAITH_ROUTE_WIDTH - 84,
+  bossRoom: MIRE_WRAITH_BOSS_ROOM,
   checkpoints: MIRE_WRAITH_CHECKPOINTS,
   hazards: MIRE_WRAITH_HAZARDS,
   midPlatforms: MIRE_WRAITH_PLATFORMS,

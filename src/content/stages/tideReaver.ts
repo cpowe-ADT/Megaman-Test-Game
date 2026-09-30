@@ -6,6 +6,7 @@ import type { CurrentZoneDefinition } from '../../mechanics/currentZone'
 import type { WaterLevelGateDefinition } from '../../mechanics/waterLevelGate'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomChannel, BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Water District (`tide_reaver`), rebuilt to the Heat Works standard (prompt 12 part 12d, EVAL-P6-010;
@@ -268,10 +269,36 @@ export const TIDE_REAVER_ENEMIES: EnemyLevelMarker[] = [
   enemy('tide_pre_drone', 'enemy_drone', 5150, 120)
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `pits` with water): two shallow channels (12px on a solid
+ * bed, still water over it) between the combat profile's height anchors (0.22, 0.5, 0.78) and the half-gap shift
+ * desperation gives them, so the Reaver's hover and lance read over water. 32px wide, narrower than her floor body: she stands across a channel on its banks and
+ * Riptide Crash lands on them, while the hero can drop in.
+ */
+const TIDE_ROOM_X = TIDE_REAVER_ROUTE_WIDTH
+const tideChannel = (id: string, left: number): BossRoomChannel => ({ id, x: TIDE_ROOM_X + left, width: 32, depth: 12, color: 0x1d3446 })
+const TIDE_BOSS_CHANNELS = [tideChannel('tide_boss_channel_1', 126), tideChannel('tide_boss_channel_2', 290)]
+export const TIDE_REAVER_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'channels',
+  channels: TIDE_BOSS_CHANNELS,
+  mechanics: {
+    waterLevelGates: TIDE_BOSS_CHANNELS.map((channel) => ({
+      id: `${channel.id}_water`,
+      x: channel.x,
+      width: channel.width,
+      highY: FLOOR + 4,
+      lowY: FLOOR + 4,
+      bottomY: FLOOR + channel.depth,
+      buoyancy: 0
+    }))
+  }
+}
+
 /** The whole Water District route as one patch, registered in `src/content/stages/index.ts`. */
 export const TIDE_REAVER_PATCH: StageExtensionPatch = {
   width: TIDE_REAVER_ROUTE_WIDTH,
   bossSpawnX: TIDE_REAVER_ROUTE_WIDTH - 84,
+  bossRoom: TIDE_REAVER_BOSS_ROOM,
   checkpoints: TIDE_REAVER_CHECKPOINTS,
   hazards: TIDE_REAVER_HAZARDS,
   midPlatforms: TIDE_REAVER_PLATFORMS,

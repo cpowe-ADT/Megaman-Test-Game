@@ -6,6 +6,7 @@ import type { CrumbleGroupDefinition } from '../../mechanics/crumbleGroup'
 import type { BreakableWallDefinition } from '../../mechanics/breakableWall'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Heat Works (`pyro_maw`), the pilot stage (EVAL-P6-009; brief in `docs/design/stage-briefs.md`, segment
@@ -218,10 +219,32 @@ export const HEAT_WORKS_ENEMIES: EnemyLevelMarker[] = [
   enemy('pyro_pre_armored', 'enemy_armored_bot', 4760, standingOn(FLOOR), 4500, 4880, [4700, 4800])
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `pillars`): two vents on the combat profile's inner lanes
+ * (`lane_vents` 0.38 and 0.62, where desperation's four vents fire too), half a cycle apart, and a pillar either
+ * side of them: a one-way cap 60px up on a drawn post (not solid), so Ignition Dash runs through the pillars and
+ * the hero clears it from a cap. The entry, the boss spawn and the outer lanes stay open floor.
+ */
+const PYRO_ROOM_X = HEAT_WORKS_ROUTE_WIDTH
+const PILLAR_TOP = FLOOR - 60
+const pillar = (id: string, x: number): StagePlatformDefinition[] => [
+  { id: `${id}_post`, x, y: (PILLAR_TOP + FLOOR) / 2 + 4, width: 16, height: FLOOR - PILLAR_TOP - 8, type: 'passThrough', color: 0x4a2a1c },
+  { id: `${id}_cap`, x, y: PILLAR_TOP + 4, width: 36, height: 8, type: 'oneWay', color: 0x8a4a28 }
+]
+export const HEAT_WORKS_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'pillars',
+  platforms: [...pillar('pyro_boss_pillar_1', PYRO_ROOM_X + 132), ...pillar('pyro_boss_pillar_2', PYRO_ROOM_X + 316)],
+  hazards: [
+    vent('pyro_boss_vent_1', PYRO_ROOM_X + 176, FLOOR, { onMs: 1000, offMs: 1600, phaseMs: 0 }),
+    vent('pyro_boss_vent_2', PYRO_ROOM_X + 272, FLOOR, { onMs: 1000, offMs: 1600, phaseMs: 1300 })
+  ]
+}
+
 /** The whole Heat Works route as one patch, registered in `src/content/stages/index.ts`. */
 export const HEAT_WORKS_PATCH: StageExtensionPatch = {
   width: HEAT_WORKS_ROUTE_WIDTH,
   bossSpawnX: HEAT_WORKS_ROUTE_WIDTH - 84,
+  bossRoom: HEAT_WORKS_BOSS_ROOM,
   checkpoints: HEAT_WORKS_CHECKPOINTS,
   hazards: HEAT_WORKS_HAZARDS,
   midPlatforms: HEAT_WORKS_PLATFORMS,

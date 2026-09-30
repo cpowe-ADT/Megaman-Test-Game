@@ -25,7 +25,7 @@
 - Mini-boss: none.
 - Secrets: 1 (`capsule`, saber wall). `pickup_bonus` on the route.
 - Radio beat: after the dash segment (checkpoint 2).
-- Boss room: `flat`. Rook's hop, shot and stomp read best on a flat floor.
+- Boss room: `flat`. Rook's hop, shot and stomp read best on a flat floor. Unchanged in 12f wave 6: the tutorial room stays flat.
 - Difficulty rating: 1.
 
 ## Heat Works (`pyro_maw`) — the pilot stage
@@ -38,7 +38,7 @@
 - Mini-boss: `custodian_walker`, Pyro skin (heat-scarred plating), in a locked catwalk room; it stomps before it turns.
 - Secrets: `heart_tank` behind a `dash_jump` gap in the teach segment (visible from the platform below); `sub_tank` location (`hp_refill_large` in Classic) in the `secret` room behind a `breakable_wall` off the escalate segment. `capsule` (`chip_buster_plus`) in an alcove at the top of the climb.
 - Radio beat: checkpoint 2, top of the escalate segment.
-- Boss room: `pillars` with two vent hazards from the combat profile; Pyro's dash-through uses the pillars.
+- Boss room: `pillars` with two vent hazards from the combat profile; Pyro's dash-through uses the pillars. Built (12f wave 6, EVAL-P7-005; each room is data in its stage file, `HEAT_WORKS_BOSS_ROOM` here, with the rules in `src/boss/bossRoomLayout.ts` and `tests/boss-room-layout.test.ts`): two timed vents on the profile's inner lanes (0.38 and 0.62, where desperation fires all four), half a cycle apart, and a pillar either side of them (room x 132 and 316): a one-way cap 60px up on a drawn, non-solid post, so Ignition Dash runs through the pillars and the hero clears it from a cap.
 - Difficulty rating: 1. First clear 5 to 6 minutes.
 
 ## Water District (`tide_reaver`)
@@ -52,7 +52,7 @@
 - Secrets: `heart_tank` behind a `wall_jump` climb in the escalate segment; `sub_tank` (a real Sub Tank in Classic) in a room only reachable while the water is high (swim up, then the gate).
 - `capsule` (`chip_quick_charge`) on the route after the mid-boss.
 - Radio beat: checkpoint 2.
-- Boss room: `pits` with shallow water channels; Tide's hover-and-lance reads over water.
+- Boss room: `pits` with shallow water channels; Tide's hover-and-lance reads over water. Built (12f wave 6): two channels 32px wide and 12px deep (room x 126 and 290) on a solid bed with still water, clear of the height anchors and their desperation shift; narrower than the Reaver's floor body, so she stands and lands on the banks while the hero can drop in.
 - Difficulty rating: 2.
 - Built (12d, EVAL-P6-010; layout table in `src/content/stages/tideReaver.ts`, rules in `tests/tide-reaver-stage.test.ts`, route smoke `55-tide-route`): 12 screens in the order above; checkpoints at the start, after the teach lock (the radio), past the intake room's gate, and before the boss door. Five pits (64 to 160px), each with a still pool; ten spike strips. Currents: with the hero over the first pit, against it everywhere after (toward the intake). Water-level gates (`src/mechanics/waterLevelGate.ts`): the teach sluice, the float basin, the shaft (exit sluice on the right wall, open only while the water holds low) and the lower lock. Carry belts over the widest pit and a belt feeding the intake housing. 19 placements: drone 5, gunner 4, fly trap 3, shock hopper 3, mine 3, and the nest.
 - Changed from this brief, and why:
@@ -74,7 +74,7 @@
 - Secrets: `heart_tank` above the yard behind a `wall_jump`; `sub_tank` location (`hp_refill_large` in Classic) behind a `breakable_wall` in the secret room.
 - `capsule` (`armor_legs`, the air dash) on the route after the mid-boss; the master segment is easier with it and possible without.
 - Radio beat: checkpoint 2.
-- Boss room: `rails` (two floor rails on the boss's phase; Volt's static orbs arc between them).
+- Boss room: `rails` (two floor rails on the boss's phase; Volt's static orbs arc between them). Built (12f wave 6): one timed rail group of two floor rails (room x 140 and 308), 1.2s arcing and 2.4s quiet on the stage clock; a jump clears an arc, and every mine lane stays solid floor.
 - Difficulty rating: 2.
 - Built (12d, EVAL-P6-010; layout table in `src/content/stages/voltHopper.ts`, rules in `tests/volt-hopper-stage.test.ts`, route smoke `56-volt-route`): 13 screens in the order above; checkpoints at the start, at the escalate's start (the radio), past the rail room's gate, and before the boss door. The stage beat is 3s: rails quiet 1.4s (arming the last 0.3s), arcing 1.6s; the swap platforms hold 1.4s and slide 1.6s on the same clock. Rails: an idle one in the intro, two teach bays with insulated sockets, the escalate bay, two pairs in the rail room, the master, the full-speed lane. Swap pairs (`src/mechanics/laneSwap.ts`): the ferry over the widest pit (a plain jump clears it too), one in the walled escalate bay, one per master bay. Three yard belts (two against the hero, one with him). Four pits (64 to 160px), each over pit rails; five spike strips. 20 placements: shock hopper 5, shield drone 4, laser eye 4 (three over pylons), bouncer 3, rocket bot 3, and the twins.
 - Master as built: four insulated pylons (walls, tops at y 200) and three 264px bays of rails between them, one swap pair per bay (low lane level with the pylon tops, high lane 36px above). A platform waits beside each pylon at every hold; the one by the near pylon slides to the far one while the rails arc, so the hero boards in the quiet and rides the arc (low, high, low lane). Outside a tall room the actor ceiling (y 90) caps a jump from a pylon top at 88px: a dash jump from a pylon falls short of the next pylon (smoke 56: x 4184 against the pylon face at 4240) and lands on the far station's platform only while one waits there. So the master is possible without the air dash: the ride, or a dash jump onto the far platform.
@@ -96,7 +96,7 @@
 - Secrets: `heart_tank` behind a `breakable_wall` in the secret room; `sub_tank` (real Sub Tank) at the bottom of a crumbling side shaft reached by a `dash_jump` before the ledges fall.
 - `capsule` (`armor_body`) on the route before the mid-boss.
 - Radio beat: checkpoint 2.
-- Boss room: `pits` (two rubble pits Basalt's quake knuckle shockwaves cross).
+- Boss room: `pits` (two rubble pits Basalt's quake knuckle shockwaves cross). Built (12f wave 6): two rubble channels 32px wide and 12px deep (room x 160 and 256) between the pillar lanes; the shockwaves run along the floor line over them, and the Titan (a 60px floor body) walks and lands across them on the banks (smoke 39: he crosses and never drops in; the hero stands on a bed). A channel's cut draws no kill-plane strip.
 - Difficulty rating: 2.
 - Built (12d, EVAL-P6-010; layout table in `src/content/stages/basaltTitan.ts`, rules in `tests/basalt-titan-stage.test.ts`, route smoke `57-basalt-route`): 12 screens in the order above; checkpoints at the start, after the gallery (the radio), past the shaft head's gate, and before the boss door. Five pits (64 to 128px); eight spike strips; ten rockfall spawners (a shadow grows on the landing through the 400ms dust puff and the fall). Crumbles shake 350ms and return in 2.5s; load lines (an amber rail with ticks) mark the ledges that hold. Pads A (escalate) and B (after the shaft) are wave rooms: hoppers and a hauler, then a compactor and one more dropping in. 20 streamed placements (mine 5, hopper 5, bouncer 3, laser eye 3, hauler 3, the walker) and 4 in the pads' second waves.
 - Changed from this brief, and why:
@@ -117,7 +117,7 @@
 - Secrets: `heart_tank` at the end of a belt that runs the wrong way (`dash_jump` against the belt); `sub_tank` location (`hp_refill_large` in Classic) behind a `breakable_wall` in the inspection station.
 - `capsule` (`armor_arms`, charge tier 4) on the route after the mid-boss.
 - Radio beat: checkpoint 2.
-- Boss room: `rails` (two conveyor strips on the floor; Ferro's returning disc and dash use them).
+- Boss room: `rails` (two conveyor strips on the floor; Ferro's returning disc and dash use them). Built (12f wave 6): two belts flush with the floor (room x 120-200 at 40px/s and 248-328 at -40px/s), both running toward the middle lane, clear of the teleport anchors.
 - Difficulty rating: 2.
 - Built (12d, EVAL-P6-010; layout table in `src/content/stages/ferroBlade.ts`, rules in `tests/ferro-blade-stage.test.ts`, route smoke `59-ferro-route`): 13 screens in the order above; checkpoints at the start, at the escalate's start (the radio), past the inspection station's gate, and before the boss door. Sixteen belts (both directions; a blade strip at the downstream end of seven, so a hero who stands still is carried into it), five magnet lifts, four pits (64 to 112px) over the sealed rail lines, seven blade strips and twelve cutting torches. The wrong-way belt is a shelf 140px over the heart room's floor running back toward its step (20px/s); the heart ledge is 292px past its far end, level with it. A dash jump against the belt (the belt's speed rides the whole flight) covers about 308px and lands from a takeoff in the belt's last 24px or its coyote window (smoke 59: 10px to spare from 14px before the end); a plain jump covers about 246 and falls short even from the coyote window (`tests/ferro-blade-stage.test.ts`). The inspection station is the mid-boss room: the Ferro nest on its housing at the end of a belt that feeds it; the office wall past it hides the sub tank, and the capsule stands on the office bulkhead. 20 placements: slicer bot 5, laser eye 3 (two over the hall's housings), gunner bot 3, shield drone 3, bouncer 3, coolant nozzle (`enemy_frost_turret`) 2, and the nest.
 - Master as built: four machine housings (walls, tops at y 168) and three bays. In each bay the upper belt leaves the housing top and runs with the hero (70px/s) over a floor belt running back (60px/s) into blades at the bay's left wall; past the upper belt's end is a drop gap, then a magnet lift against the next housing's face. The cutter lane: torches on each upper belt fire in turn left to right (500ms each, 250ms apart, every 2.4s), so a rider goes just behind the sweep or drops to the floor belt, walks back into the lift and is lifted onto the next housing (smoke 59 does both, unhurt).
@@ -140,7 +140,7 @@
 - Secrets: `heart_tank` in a crate room behind a `breakable_wall`; `sub_tank` (real Sub Tank) below the acid line, reached by a `dash_jump` before the acid rises.
 - `capsule` (`chip_weapon_plus`) on the route in the escalate segment.
 - Radio beat: checkpoint 2.
-- Boss room: `pits` with acid channels; Mire's glob puddles pool in them.
+- Boss room: `pits` with acid channels; Mire's glob puddles pool in them. Built (12f wave 6): two acid channels 32px wide and 12px deep (room x 150 and 266); the stage's acid draws in each cut and a 1 HP hazard box on the bed hurts as a hazard does; the Wraith slides across them on the banks. Not built: Toxic Slide's trail pieces still lie on the floor line and do not sink into a channel (the spawn spec comes from `scenes/game/BossBeats.ts`).
 - Difficulty rating: 3.
 - Built (12d, `EVAL-P6-010`, `src/content/stages/mireWraith.ts`, layout table in its header; `tests/mire-wraith-stage.test.ts`, smoke `54-mire-route`). What changed from this brief, and why:
   - The filter switch is a floor plate in the hatch between the tower's pre-chamber and its shaft, and the hatch wall runs to the tower's top, so every way up trips it and the rise cannot be skipped. `rising_liquid` gained `switchBox` (the rise starts when the hero's body touches it, not at `triggerX`; the respawn re-arms it).
@@ -162,7 +162,7 @@
 - Secrets: `heart_tank` on a platform only reachable by riding a gust (`dash_jump` timed with the wind); `sub_tank` location (`hp_refill_large` in Classic) behind a `breakable_wall` in the dock office.
 - `capsule` (`chip_speedster`) on the route after the mid-boss.
 - Radio beat: checkpoint 2.
-- Boss room: `shaft`, the wall-jumping boss room Craig asked for (06 §6.1, 07 §7.4): Gale's dive and gusts use the height, and the two moving platforms from the combat profile become wall-side ledges.
+- Boss room: `shaft`, the wall-jumping boss room Craig asked for (06 §6.1, 07 §7.4): Gale's dive and gusts use the height, and the two moving platforms from the combat profile become wall-side ledges. Built (12f wave 6): the room is a two-screen vertical segment (the camera follows the hero up) with a kickable wall each side the full height (the left one stops 86px over the floor for the entry) and two wall-side ledges, the right one 132px up and the left one 196px up, both over the Vixen's highest hover (112px), so she always comes down on the shaft floor (smoke 39: every grounded sample on the floor; the hero stands on the right ledge with the camera raised). Her hover heights are unchanged (attack motion is not room data).
 - Difficulty rating: 3.
 - Built (12d, `EVAL-P6-010`, `src/content/stages/galeVixen.ts`, layout table in its header; `tests/gale-vixen-stage.test.ts`, smoke `60-gale-route`): 13 screens in the order above; checkpoints at the start, at 1392 (the radio), at the office door right after the mid-boss (3184), and before the boss door (5744). Five gaps over the open sky: two gust gaps (272 and 352px), two carrier ferries (272 and 304px), one plain pit (96px); eight cable spikes, seven gusts, four carrier pairs. 19 placements (drone 5, shock hopper 4, shield drone 3, laser eye 3, gunner 2, rocket 2) and the twins in their Gale skin, in the wind. What changed from this brief, and why:
   - The gusts are sized on this build's measured jumps (a running jump 224px, a dash jump 325px, on the floor under the actor ceiling): the stage gust builds to 200px/s (the 12b default is 150), so a running jump it carries crosses a 352px gap that a dash jump misses. `windDriftPx` (`src/mechanics/windZone.ts`) models the carry and the smoke measures the real crossing. Every gust over a gap starts 8px past the take-off rim, so a hero waiting on the edge is never blown off it, and the floor after it holds a dash jump the gust over-carried.
@@ -184,7 +184,7 @@
 - Secrets: `heart_tank` behind a `breakable_wall` of ice in the secret room; `sub_tank` (real Sub Tank) across a frozen pit that only a `dash_jump` on ice clears.
 - `capsule` (`armor_helmet`) on the route before the mid-boss.
 - Radio beat: checkpoint 2.
-- Boss room: `flat` ice floor (Glacier's shard volleys and the player's slide are the fight).
+- Boss room: `flat` ice floor (Glacier's shard volleys and the player's slide are the fight). Built (12f wave 6): one ice floor flush with the ground, wall to wall.
 - Difficulty rating: 3.
 - Built (12d, `EVAL-P6-010`, `src/content/stages/glacierRonin.ts`, layout table in its header; `tests/glacier-ronin-stage.test.ts`, smoke `58-glacier-route`): 12 screens in the order above; checkpoints at the start, at 1400 (the radio), at the gallery door right after the mid-boss, and before the boss door. Five frozen pits (80 to 164px), eight frost spikes, eleven icicles, fifteen ice floors. 20 placements (armored bot 4, frost turret 4, drone 3, gunner 3, laser eye 2, bouncer 2, mine bot 2) and the custodian in its Glacier skin, on an ice floor. What changed from this brief, and why:
   - The gallery's walls are four record stacks hanging from its low ceiling to an 18px slot over the floor: the dash body (14px) passes under, the crouch (18) and stand (22) bodies do not, so the player literally slides from bay to bay. Each bay is ice lanes under the icicles with grip patches (plain floor) between them to stop on; a dash started on the ice before a stack runs 40% further. The gallery is walled, not tall (the brief gives the master no `verticalScreens`).

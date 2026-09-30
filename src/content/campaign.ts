@@ -28,6 +28,7 @@ import type { RockfallDefinition } from '../mechanics/rockfall'
 import type { IcicleDefinition } from '../mechanics/icicle'
 import type { FloorGap } from '../stage/stageGeometry'
 import { REBUILT_STAGE_PATCHES } from './stages/index'
+import { applyBossRoomFeatures, type BossRoomFeatures } from '../boss/bossRoomLayout'
 import { MINIBOSS_LAB_STAGE_ID, minibossLabStage } from './stages/minibossLab'
 
 export type CampaignStageKind = 'tutorial' | 'robot_master' | 'final'
@@ -547,6 +548,8 @@ export type StageExtensionPatch = {
     | 'rockfalls'
     | 'icicles'
   >
+  /** The warden's boss room (12f wave 6): features inside the room span, added after the route budget check. */
+  bossRoom?: BossRoomFeatures
 }
 
 const TEACH_SCREEN = 448
@@ -765,6 +768,8 @@ for (const stage of Object.values(CAMPAIGN_STAGES)) {
     hazards: retainedHazards,
     midPlatforms: retainedPlatforms
   }
+  const roomFeatures = STAGE_EXTENSION_PATCHES[stage.id as CampaignStageId]?.bossRoom
+  if (roomFeatures) stage.arena = applyBossRoomFeatures(stage.arena, roomFeatures)
   STAGE_CONTENT_RETENTION.set(stage.id, {
     stageId: stage.id,
     routeWidth,

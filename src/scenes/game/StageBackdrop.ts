@@ -4,6 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { getCampaignStage } from '../../content/campaign'
 import { stageVerticalTop } from '../../stage/stageGeometry'
 import { hazardStripPattern } from '../../mechanics/mechanicsVisuals'
+import { killPitGaps } from '../../boss/bossRoomLayout'
 
 const PIT_SLAG_COLOR = 0xff5a1f
 const PIT_SLAG_SURFACE_COLOR = 0xffe08a
@@ -108,7 +109,8 @@ export class StageBackdrop {
       scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.clear, this)
       this.followingCamera = true
     }
-    this.renderPitSlag(stage.arena.floorGaps ?? [], height)
+    // A boss room channel (12f wave 6) has a bed under its cut: no kill-plane strip there.
+    this.renderPitSlag(killPitGaps(stage.arena), height)
   }
 
   /** Keeps each view-wide strip under the camera and its texture in phase with the world-wide layer it replaces. */

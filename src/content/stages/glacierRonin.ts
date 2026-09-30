@@ -7,6 +7,7 @@ import type { IceFloorDefinition } from '../../mechanics/iceFloor'
 import type { IcicleDefinition, IcicleRhythm } from '../../mechanics/icicle'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Public Archives (`glacier_ronin`), rebuilt to the Heat Works standard (prompt 12 part 12d, EVAL-P6-010;
@@ -280,10 +281,20 @@ export const GLACIER_RONIN_ENEMIES: EnemyLevelMarker[] = [
   enemy('glacier_pre_armored', 'enemy_armored_bot', 5220, standingOn(FLOOR), [5150, 5240])
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `flat` ice floor): one 12b ice floor flush with the ground,
+ * wall to wall, so the hero's slide and footing on the ice are the fight against the shard volleys.
+ */
+export const GLACIER_RONIN_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'ice_floor',
+  mechanics: { iceFloors: [ice('glacier_boss_ice', GLACIER_RONIN_ROUTE_WIDTH, GLACIER_RONIN_ROUTE_WIDTH + 448)] }
+}
+
 /** The whole Public Archives route as one patch, registered in `src/content/stages/index.ts`. */
 export const GLACIER_RONIN_PATCH: StageExtensionPatch = {
   width: GLACIER_RONIN_ROUTE_WIDTH,
   bossSpawnX: GLACIER_RONIN_ROUTE_WIDTH - 84,
+  bossRoom: GLACIER_RONIN_BOSS_ROOM,
   checkpoints: GLACIER_RONIN_CHECKPOINTS,
   hazards: GLACIER_RONIN_HAZARDS,
   midPlatforms: GLACIER_RONIN_PLATFORMS,

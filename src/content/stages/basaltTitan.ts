@@ -6,6 +6,7 @@ import type { RockfallDefinition } from '../../mechanics/rockfall'
 import type { BreakableWallDefinition } from '../../mechanics/breakableWall'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Structural Works (`basalt_titan`), rebuilt to the Heat Works standard (prompt 12 part 12d, EVAL-P6-010;
@@ -324,10 +325,26 @@ export const BASALT_TITAN_ENEMIES: EnemyLevelMarker[] = [
   enemy('basalt_lane_hopper', 'enemy_shock_hopper', 5090, standingOn(FLOOR))
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `pits`): two shallow rubble channels (12px on a solid bed)
+ * between the combat profile's pillar lanes (0.25, 0.5, 0.75), which stay solid for desperation's rising pillars.
+ * Quake Knuckle's shockwaves run along the floor line and cross them; 32px wide, narrower than the Titan's floor
+ * body, so he walks and lands across a channel on its banks while the hero can drop in.
+ */
+const BASALT_ROOM_X = BASALT_TITAN_ROUTE_WIDTH
+export const BASALT_TITAN_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'channels',
+  channels: [
+    { id: 'basalt_boss_channel_1', x: BASALT_ROOM_X + 160, width: 32, depth: 12, color: 0x4a3b30 },
+    { id: 'basalt_boss_channel_2', x: BASALT_ROOM_X + 256, width: 32, depth: 12, color: 0x4a3b30 }
+  ]
+}
+
 /** The whole Structural Works route as one patch, registered in `src/content/stages/index.ts`. */
 export const BASALT_TITAN_PATCH: StageExtensionPatch = {
   width: BASALT_TITAN_ROUTE_WIDTH,
   bossSpawnX: BASALT_TITAN_ROUTE_WIDTH - 84,
+  bossRoom: BASALT_TITAN_BOSS_ROOM,
   checkpoints: BASALT_TITAN_CHECKPOINTS,
   hazards: BASALT_TITAN_HAZARDS,
   midPlatforms: BASALT_TITAN_PLATFORMS,

@@ -7,6 +7,7 @@ import type { TimedRailGroupDefinition } from '../../mechanics/timedRailGroup'
 import type { WindZoneDefinition } from '../../mechanics/windZone'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Transit Security (`ferro_blade`), rebuilt to the Heat Works standard (prompt 12 part 12d, EVAL-P6-010;
@@ -266,10 +267,27 @@ export const FERRO_BLADE_ENEMIES: EnemyLevelMarker[] = [
   enemy('ferro_pre_gunner', 'enemy_gunner_bot', 5560, standingOn(FLOOR))
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `rails`, as conveyor strips): two belts flush with the floor
+ * running opposite ways, both toward the middle, between the combat profile's teleport anchors (0.16, 0.5, 0.84),
+ * so a hero who stands still is carried into the middle lane that Ferro's disc and dash sweep.
+ */
+const FERRO_ROOM_X = FERRO_BLADE_ROUTE_WIDTH
+export const FERRO_BLADE_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'belts',
+  mechanics: {
+    conveyors: [
+      belt('ferro_boss_belt_left', FERRO_ROOM_X + 120, FERRO_ROOM_X + 200, 40),
+      belt('ferro_boss_belt_right', FERRO_ROOM_X + 248, FERRO_ROOM_X + 328, -40)
+    ]
+  }
+}
+
 /** The whole Transit Security route as one patch, registered in `src/content/stages/index.ts`. */
 export const FERRO_BLADE_PATCH: StageExtensionPatch = {
   width: FERRO_BLADE_ROUTE_WIDTH,
   bossSpawnX: FERRO_BLADE_ROUTE_WIDTH - 84,
+  bossRoom: FERRO_BLADE_BOSS_ROOM,
   checkpoints: FERRO_BLADE_CHECKPOINTS,
   hazards: FERRO_BLADE_HAZARDS,
   midPlatforms: FERRO_BLADE_PLATFORMS,

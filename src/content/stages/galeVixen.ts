@@ -6,6 +6,7 @@ import type { LaneSwapDefinition, LaneSwapTiming } from '../../mechanics/laneSwa
 import type { WindZoneDefinition } from '../../mechanics/windZone'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Weather District (`gale_vixen`), rebuilt to the Heat Works standard (prompt 12 part 12d, EVAL-P6-010;
@@ -270,10 +271,32 @@ export const GALE_VIXEN_ENEMIES: EnemyLevelMarker[] = [
   enemy('gale_pre_rocket', 'enemy_rocket_bot', 5690, standingOn(FLOOR), [5670, 5710])
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `shaft`, the wall-jumping room): two screens tall (a vertical
+ * segment, so the camera follows the hero up), a kickable wall both sides the whole height (the left one stops 86px
+ * over the floor, so the hero walks in under it) and two wall-side ledges, the combat profile's moving platforms made
+ * fast to the walls. The ledges sit over the Vixen's highest hover (her feet stay under y 124), so she always comes
+ * down to the shaft's floor; the hero fights her from the floor, the ledges and wall kicks.
+ */
+const GALE_ROOM_X = GALE_VIXEN_ROUTE_WIDTH
+const SHAFT_TOP = 252 - 2 * 252
+const LEFT_WALL_BOTTOM = FLOOR - 86
+export const GALE_VIXEN_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'shaft',
+  platforms: [
+    { id: 'gale_boss_wall_left', x: GALE_ROOM_X + 6, y: (SHAFT_TOP + LEFT_WALL_BOTTOM) / 2, width: 12, height: LEFT_WALL_BOTTOM - SHAFT_TOP, type: 'wall', color: 0x2e3a4a },
+    { id: 'gale_boss_wall_right', x: GALE_ROOM_X + 442, y: (SHAFT_TOP + FLOOR) / 2, width: 12, height: FLOOR - SHAFT_TOP, type: 'wall', color: 0x2e3a4a },
+    { id: 'gale_boss_ledge_right', x: GALE_ROOM_X + 412, y: 108, width: 48, type: 'oneWay', color: 0x5a6f86 },
+    { id: 'gale_boss_ledge_left', x: GALE_ROOM_X + 36, y: 44, width: 48, type: 'oneWay', color: 0x5a6f86 }
+  ],
+  mechanics: { verticalSegments: [{ id: 'gale_boss_shaft', x: GALE_ROOM_X, width: 448, verticalScreens: 2 }] }
+}
+
 /** The whole Weather District route as one patch, registered in `src/content/stages/index.ts`. */
 export const GALE_VIXEN_PATCH: StageExtensionPatch = {
   width: GALE_VIXEN_ROUTE_WIDTH,
   bossSpawnX: GALE_VIXEN_ROUTE_WIDTH - 84,
+  bossRoom: GALE_VIXEN_BOSS_ROOM,
   checkpoints: GALE_VIXEN_CHECKPOINTS,
   hazards: GALE_VIXEN_HAZARDS,
   midPlatforms: GALE_VIXEN_PLATFORMS,
