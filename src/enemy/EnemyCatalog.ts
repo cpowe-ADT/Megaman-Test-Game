@@ -293,7 +293,8 @@ export const EnemyCatalog: Record<string, EnemyDefinition> = {
       recoveryMs: 240,
       range: 220,
       projectileKey: 'enemy_shot_frost',
-      burstCount: 3,
+      // The Glacier brief's "pressure nozzle: fixed two-shot pattern" (`docs/design/stage-briefs.md`).
+      burstCount: 2,
       burstSpacingMs: 100
     },
     deathBehavior: 'explode',
@@ -311,7 +312,12 @@ export const EnemyCatalog: Record<string, EnemyDefinition> = {
     movementType: 'turret',
     collider: { width: 14, height: 14, offsetX: 1, offsetY: 1 },
     hurtbox: { width: 14, height: 14, offsetX: 1, offsetY: 1 },
-    hitboxes: { melee: { width: 48, height: 6, offsetX: 10, offsetY: 6 } },
+    // `beam` is its own named hitbox (a timed line): `attackHitbox.resolveHitboxKey` reaches for it on a
+    // `beam` attack; `melee` stays for any generic reader that still expects the key.
+    hitboxes: {
+      melee: { width: 48, height: 6, offsetX: 10, offsetY: 6 },
+      beam: { width: 48, height: 6, offsetX: 10, offsetY: 6 }
+    },
     stats: {
       hp: 7,
       damage: 2,
@@ -326,7 +332,8 @@ export const EnemyCatalog: Record<string, EnemyDefinition> = {
     attack: {
       type: 'beam',
       cooldownMs: 1800,
-      windupMs: 320,
+      // The telegraph before the line hitbox goes active (phase 6.3): 400 ms.
+      windupMs: 400,
       activeMs: 280,
       recoveryMs: 300,
       range: 250,
@@ -407,6 +414,8 @@ export const EnemyCatalog: Record<string, EnemyDefinition> = {
       projectileKey: 'enemy_shot_shield'
     },
     deathBehavior: 'explode',
+    // A fixed shield over its front (phase 6.3): `shieldArc.frontShieldGapSide` reads its facing.
+    shieldArc: true,
     animations: {
       idle: 'enemy_shield_drone_idle',
       move: 'enemy_shield_drone_hover',

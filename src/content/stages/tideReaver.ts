@@ -254,7 +254,8 @@ export const TIDE_REAVER_ENEMIES: EnemyLevelMarker[] = [
   enemy('tide_escalate_drone', 'enemy_drone', 1880, 116),
   enemy('tide_grate_trap', 'enemy_fly_trap', 1968, 200),
   enemy('tide_catwalk_hopper', 'enemy_shock_hopper', 2192, standingOn(204)),
-  enemy('tide_mid_nest', 'relay_turret_nest', 2608, standingOn(196)),
+  // 12c: "a rotating shield with one gap per beat" (the brief's mini-boss line) — the Tide skin's shield variant.
+  { ...enemy('tide_mid_nest', 'relay_turret_nest', 2608, standingOn(196)), variant: 'tide_shield' },
   enemy('tide_shallows_mine', 'enemy_mine_bot', 2912, standingOn(FLOOR)),
   enemy('tide_secret_drone', 'enemy_drone', 3080, 128),
   enemy('tide_shaft_trap', 'enemy_fly_trap', 3232, 8),

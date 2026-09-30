@@ -114,6 +114,9 @@ export interface EnemyDefinition {
   brain?: EnemyBrainKey
   /** A mini-boss (12c): its defeat forces a health drop (`minibossCatalog.ts`). */
   role?: 'miniboss'
+  /** A static front-facing shield arc (12c, `shieldArc.ts`): blocks a shot from the side it faces unless
+   * the shot is charged (damage 2 or more, the buster clash rule's threshold) or arrives from behind. */
+  shieldArc?: boolean
 }
 
 export type EnemyBrainKey = 'custodian_walker' | 'relay_turret_nest' | 'sentry_twins' | 'drill_serpent'
@@ -128,6 +131,8 @@ export interface EnemyBrain {
   isInvulnerable?(): boolean
   /** An animation key that replaces the one its state maps to (frames the family's set does not name). */
   animationKey?(): string | undefined
+  /** A rotating shield's open side right now (12c, the Tide nest variant), or `null` while it carries none. */
+  shieldGapSide?(): 1 | -1 | null
 }
 
 export interface DamageEvent {
@@ -166,6 +171,9 @@ export interface EnemyLevelMarker {
   spawnLeadX?: number
   retireTriggerX?: number
   persistent?: boolean
+  /** The stage brief's named behaviour for this placement (12c), e.g. a mini-boss skin's `shieldArc`
+   * gap-rotation ('tide_shield') or its extra ice momentum ('glacier_slide'); a brain reads `entity.variant`. */
+  variant?: string
 }
 
 export interface EnemyPatrolBounds {

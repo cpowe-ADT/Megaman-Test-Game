@@ -267,7 +267,8 @@ export const GLACIER_RONIN_ENEMIES: EnemyLevelMarker[] = [
   enemy('glacier_store_turret', 'enemy_frost_turret', 2228, 180),
   enemy('glacier_secret_bouncer', 'enemy_bouncer', 2470, standingOn(168)),
   enemy('glacier_secret_eye', 'enemy_laser_eye', 2580, 120),
-  enemy('glacier_mid_custodian', 'custodian_walker_glacier', 3056, standingOn(FLOOR), [2768, 3104]),
+  // 12c: "it slides further than it means to" (the brief's mini-boss line) — the Glacier skin's ice-slide variant.
+  { ...enemy('glacier_mid_custodian', 'custodian_walker_glacier', 3056, standingOn(FLOOR), [2768, 3104]), variant: 'glacier_slide' },
   enemy('glacier_gallery_mine', 'enemy_mine_bot', 3440, standingOn(FLOOR)),
   enemy('glacier_gallery_turret_1', 'enemy_frost_turret', 3590, 164),
   enemy('glacier_gallery_scraper', 'enemy_armored_bot', 3850, standingOn(FLOOR), [3790, 3910]),
