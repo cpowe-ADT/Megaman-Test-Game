@@ -13,6 +13,10 @@ export type WaterLevelGateDeps = {
   art: boolean
   /** Just under the hero, like the current zones. */
   depth: number
+  /** The Water District pilot's flag (`waterLevelGate.ts`'s `flagged`): a cheap thunk, read every
+   * frame, so it must never touch localStorage/JSON (`StoryDirector.waterLevelFlagHeard` does not).
+   * Absent, every gate reads its base `lowY` always. */
+  flagged?: () => boolean
 }
 
 type WaterEntry = {
@@ -78,7 +82,7 @@ export class WaterLevelGateAdapter {
         ;(gate.body as Phaser.Physics.Arcade.StaticBody | undefined)?.updateFromGameObject()
         if (player) this.colliders.push(scene.physics.add.collider(player, gate))
       }
-      const entry: WaterEntry = { def, state: waterLevelAt(def, 0), fill, band, line, gate, heroUnder: false }
+      const entry: WaterEntry = { def, state: waterLevelAt(def, 0, deps.flagged?.() ?? false), fill, band, line, gate, heroUnder: false }
       this.entries.push(entry)
       this.draw(entry, 0)
     }
@@ -90,8 +94,9 @@ export class WaterLevelGateAdapter {
 
   /** Every frame the world runs (the level follows the stage clock, so it holds while paused). */
   update(clockMs: number): void {
+    const flagged = this.deps.flagged?.() ?? false
     for (const entry of this.entries) {
-      entry.state = waterLevelAt(entry.def, clockMs)
+      entry.state = waterLevelAt(entry.def, clockMs, flagged)
       this.draw(entry, clockMs)
     }
   }

@@ -129,6 +129,16 @@
       { "speakerId": "omega_core", "text": "Welcome home, Unit 09. I left the Drill Hangar open. A city that watches one unit choose badly asks to be held." }
     ] },
 
+    { "id": "omega_fortress_act_two", "trigger": "omega_act_two", "stageId": "omega_fortress", "staging": "Radio ticker on entering act 2, the archive door; non-blocking, once.", "lines": [
+      { "speakerId": "omega_core", "text": "Unit 09. Eight originals are free. The archive holds eight copies, recorded before tonight, and replays them for you now." },
+      { "speakerId": "omega_core", "text": "Call them corrupted if it helps you swing harder. I call them a second draft. A first attempt is rarely enough, for either of us." },
+      { "speakerId": "omega_core", "text": "Clear the archive, or leave it standing between you and the Core. I accounted for both endings before you reached the door." }
+    ] },
+    { "id": "omega_fortress_act_three", "trigger": "omega_act_three", "stageId": "omega_fortress", "staging": "Radio ticker on entering act 3, the Core's approach; non-blocking, once.", "lines": [
+      { "speakerId": "omega_core", "text": "Eight copies, eight losses. I did not expect the archive to hold you. I expected it to cost you something before the Core." },
+      { "speakerId": "omega_core", "text": "Whatever it cost, it does not refund at this door, Unit 09. Walk through regardless. The Core is the only room left where I have not yet lost the argument." }
+    ] },
+
     { "id": "pyro_maw_miniboss", "trigger": "miniboss_callout", "stageId": "pyro_maw", "staging": "Radio ticker when the mini-boss gate locks; no blocking dialogue.", "lines": [
       { "speakerId": "director_iona", "text": "A custodian walker has sealed the catwalk ahead. It stomps before it turns. Stay off the side it's facing." }
     ] },

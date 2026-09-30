@@ -158,6 +158,17 @@ export async function runOmegaActsScenario(name, { outputDir, storyUrl, readStat
     assert.equal(hub.doors.length, 8)
     assert.deepEqual(hub.doors.map((door) => door.label), ['FIRE', 'WATER', 'LIGHTNING', 'EARTH', 'METAL', 'TOXIC', 'WIND', 'ICE'])
     assert.equal(hub.gateClosed, true, 'the exit is sealed')
+    // OMEGA's act lines (prompt 07 7.6 item 14 "OMEGA acts"; EVAL-P6-011 open item): the archive door, once,
+    // on the radio lane; wait for its own turn in the queue (other items are already ahead of it) so the
+    // capture shows the line itself, not whatever the lane happens to be on.
+    assert.ok((await readState(page)).story?.flags?.includes('omega_fortress_act_two'), 'the archive-door line fired entering act 2')
+    const act2Line = await until(
+      async () => { const next = await readState(page); return next.ticker?.text?.includes('Eight originals are free') ? next : null },
+      'the archive-door line reaches the ticker',
+      450
+    )
+    evidence.omegaActTwoLine = act2Line.ticker
+    await capture('act2-omega-line')
     await place(4760, 214)
     await advanceFrames(page, 20)
     await capture('act2-hub')
@@ -236,6 +247,15 @@ export async function runOmegaActsScenario(name, { outputDir, storyUrl, readStat
     assert.equal(act3Run?.omegaAct, 3)
     assert.equal(act3Run?.rematchCleared?.length, 8)
     assert.equal((await omega()).act, 3)
+    // OMEGA's act lines: the Core's approach, once, on the radio lane.
+    assert.ok((await readState(page)).story?.flags?.includes('omega_fortress_act_three'), 'the Core-approach line fired entering act 3')
+    const act3Line = await until(
+      async () => { const next = await readState(page); return next.ticker?.text?.includes('Eight copies, eight losses') ? next : null },
+      'the Core-approach line reaches the ticker',
+      450
+    )
+    evidence.omegaActThreeLine = act3Line.ticker
+    await capture('act3-omega-line')
     for (const [index, [x, y]] of ACT3_SHOTS.entries()) {
       await place(x, y)
       await advanceFrames(page, 20)

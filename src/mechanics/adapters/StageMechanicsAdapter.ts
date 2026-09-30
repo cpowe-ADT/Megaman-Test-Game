@@ -90,6 +90,8 @@ export type StageMechanicsDeps = {
   damagePlayer: (request: PlayerDamageRequest) => unknown
   /** 12d: the live enemies (`EnemySpawner.getEntities`); a custodian walker's stomp shakes the `stomp` crumbles it faces. */
   enemies?: () => readonly { id: string; typeKey: string; state: string; facing: 1 | -1; sprite: { x: number; body?: { bottom: number } | null } }[]
+  /** Forwarded to `MotionMechanicsAdapter`'s `waterFlagged` (the Water District pilot, prompt 07 7.6 item 14). */
+  waterFlagged?: () => boolean
 }
 
 type HazardEntry = { hazard: ResolvedHazard; body: Phaser.GameObjects.GameObject & { body: unknown } }
@@ -185,7 +187,7 @@ export class StageMechanicsAdapter {
       const box = wallBox(def)
       this.walls.push({ def, state: createBreakableWallState(def), box, visual, cracks, art: this.createWallArt(box, visual) })
     }
-    this.motion = new MotionMechanicsAdapter({ scene, player: deps.player, runtime: deps.runtime, platforms: deps.platforms }, arena)
+    this.motion = new MotionMechanicsAdapter({ scene, player: deps.player, runtime: deps.runtime, platforms: deps.platforms, waterFlagged: deps.waterFlagged }, arena)
     this.drops = new HazardMechanicsAdapter({ scene, damagePlayer: deps.damagePlayer }, arena)
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.update, this)
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this)

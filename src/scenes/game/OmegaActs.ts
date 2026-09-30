@@ -56,6 +56,10 @@ export interface OmegaActsHost extends Phaser.Scene {
   restorePlayerHealth(amount: number): number
   showStageToast(message: string, durationMs?: number): void
   syncWeaponHud(): void
+  /** The archive door (act 2) and the Core's approach (act 3) ask it for one radio-ticker line each,
+   * once (prompt 07 7.6 item "OMEGA acts"; EVAL-P6-011 open item). Game already owns one (its private
+   * field satisfies this the same way `showStageToast` does); a host without one simply skips it. */
+  storyDirector?: { onOmegaActEntered(act: OmegaAct): void }
 }
 
 type Refill = { kind: 'hp' | 'energy'; sprite: Phaser.GameObjects.Image }
@@ -168,6 +172,7 @@ export class OmegaActs {
     if (act > this.act) {
       this.act = act
       host.showStageToast(ACT_TITLES[act], 1600)
+      host.storyDirector?.onOmegaActEntered(act)
       if (act >= 2 && !isArchiveExitOpen(this.state.cleared)) this.sealExit()
     }
     this.collectRefills(player)
