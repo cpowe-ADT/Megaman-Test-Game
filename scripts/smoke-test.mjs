@@ -3287,8 +3287,8 @@ async function runViewportAndEnergyEconomyScenario(name) {
       }
     })
     if (
-      !String(pickupVisuals.health?.frame).startsWith('pickups_v1/health_small/') ||
-      !String(pickupVisuals.weapon?.frame).startsWith('pickups_v1/energy_small/')
+      !String(pickupVisuals.health?.frame).startsWith('pickups_v2/health_small/') ||
+      !String(pickupVisuals.weapon?.frame).startsWith('pickups_v2/energy_small/')
     ) {
       throw new Error(`Expected distinct capsule textures, got ${JSON.stringify(pickupVisuals)}.`)
     }

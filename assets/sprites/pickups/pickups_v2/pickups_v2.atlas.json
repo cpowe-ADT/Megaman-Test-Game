@@ -1,0 +1,380 @@
+{
+  "frames": {
+    "pickups_v2/health_small/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 13
+      }
+    },
+    "pickups_v2/health_small/001": {
+      "frame": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 13
+      }
+    },
+    "pickups_v2/health_large/000": {
+      "frame": {
+        "x": 16,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 18
+      }
+    },
+    "pickups_v2/health_large/001": {
+      "frame": {
+        "x": 27,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 18
+      }
+    },
+    "pickups_v2/energy_small/000": {
+      "frame": {
+        "x": 38,
+        "y": 0,
+        "w": 7,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 7,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 7,
+        "h": 13
+      }
+    },
+    "pickups_v2/energy_small/001": {
+      "frame": {
+        "x": 45,
+        "y": 0,
+        "w": 7,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 7,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 7,
+        "h": 13
+      }
+    },
+    "pickups_v2/energy_large/000": {
+      "frame": {
+        "x": 52,
+        "y": 0,
+        "w": 11,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 19
+      }
+    },
+    "pickups_v2/energy_large/001": {
+      "frame": {
+        "x": 63,
+        "y": 0,
+        "w": 11,
+        "h": 19
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 19
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 19
+      }
+    },
+    "pickups_v2/extra_life/000": {
+      "frame": {
+        "x": 74,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "pickups_v2/extra_life/001": {
+      "frame": {
+        "x": 90,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "pickups_v2/heart_tank/000": {
+      "frame": {
+        "x": 106,
+        "y": 0,
+        "w": 15,
+        "h": 15
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 15
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 15
+      }
+    },
+    "pickups_v2/heart_tank/001": {
+      "frame": {
+        "x": 121,
+        "y": 0,
+        "w": 15,
+        "h": 15
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 15
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 15
+      }
+    },
+    "pickups_v2/sub_tank/000": {
+      "frame": {
+        "x": 136,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 18
+      }
+    },
+    "pickups_v2/sub_tank/001": {
+      "frame": {
+        "x": 147,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 11,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 11,
+        "h": 18
+      }
+    },
+    "pickups_v2/capsule/000": {
+      "frame": {
+        "x": 0,
+        "y": 19,
+        "w": 8,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 17
+      }
+    },
+    "pickups_v2/capsule/001": {
+      "frame": {
+        "x": 8,
+        "y": 19,
+        "w": 8,
+        "h": 17
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 17
+      },
+      "sourceSize": {
+        "w": 8,
+        "h": 17
+      }
+    },
+    "pickups_v2/bonus/000": {
+      "frame": {
+        "x": 16,
+        "y": 19,
+        "w": 15,
+        "h": 15
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 15
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 15
+      }
+    },
+    "pickups_v2/bonus/001": {
+      "frame": {
+        "x": 31,
+        "y": 19,
+        "w": 15,
+        "h": 15
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 15,
+        "h": 15
+      },
+      "sourceSize": {
+        "w": 15,
+        "h": 15
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "pickups_v2.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 160,
+      "h": 36
+    },
+    "scale": "1",
+    "source": [
+      "assets/ui/source/pickups_v2_a.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "scripts/sprites/pickups_v2.json"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "_note": "Pickups v2 (2026-09-30, prompt 13 part 13e; fixes 13a's tiny/confusable v1 set). Higgsfield gpt_image_2 sheet assets/ui/source/pickups_v2_a.png (assets/ui/source/ui_v2.prompts.md), 5x4 grid: row0/row1 the nine bases (row1 cell 5 unused), row2/row3 their glow twins in the same columns. Bottom-aligned, no pad, so PICKUP_ART_SCALE 1 (native) sits every frame's art exactly on its rest y minus half the cut frame height.",
+  "key": "pickups_v2",
+  "outDir": "assets/sprites/pickups/pickups_v2",
+  "atlasWidth": 160,
+  "groups": [
+    { "name": "health_small", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [0, 10], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "health_large", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [1, 11], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "energy_small", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [2, 12], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "energy_large", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [3, 13], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "extra_life", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [4, 14], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "heart_tank", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [5, 15], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "sub_tank", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [6, 16], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "capsule", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [7, 17], "scale": 0.1, "pad": 0, "align": "bottom" },
+    { "name": "bonus", "sheet": "assets/ui/source/pickups_v2_a.png", "grid": "5x4", "cells": [8, 18], "scale": 0.1, "pad": 0, "align": "bottom" }
+  ]
+}

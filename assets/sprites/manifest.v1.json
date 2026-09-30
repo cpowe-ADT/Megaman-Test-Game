@@ -678,21 +678,21 @@
       "notes": "Higgsfield gpt_image_2 warden weapon shots (arc_slash, flame_serpent, hydro_lance, thunder_spike, quake_knuckle, magcut_disc, acid_glob, aero_darts, frost_shatter) and boss_orb, four frames each; cut by scripts/sprites/cut_vfx_sheet.py (weapons_v1.json). Loaded by the Game scene; wired by prompt 12 part 12f."
     },
     {
-      "id": "pickups-pickups_v1",
-      "atlasKey": "atlas_pickups_v1",
+      "id": "pickups-pickups_v2",
+      "atlasKey": "atlas_pickups_v2",
       "frame": {
-        "width": 38,
-        "height": 38
+        "width": 16,
+        "height": 19
       },
       "status": "ready",
       "source": {
-        "runtimeImage": "/assets/sprites/pickups/pickups_v1/pickups_v1.png",
-        "runtimeData": "/assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json",
-        "localImagePath": "assets/sprites/pickups/pickups_v1/pickups_v1.png",
-        "localDataPath": "assets/sprites/pickups/pickups_v1/pickups_v1.atlas.json"
+        "runtimeImage": "/assets/sprites/pickups/pickups_v2/pickups_v2.png",
+        "runtimeData": "/assets/sprites/pickups/pickups_v2/pickups_v2.atlas.json",
+        "localImagePath": "assets/sprites/pickups/pickups_v2/pickups_v2.png",
+        "localDataPath": "assets/sprites/pickups/pickups_v2/pickups_v2.atlas.json"
       },
       "loadScope": "game",
-      "notes": "Higgsfield gpt_image_2 pickups (health_small, health_large, energy_small, energy_large, extra_life, heart_tank, sub_tank, capsule), two frames each (the second glows); cut by scripts/sprites/cut_vfx_sheet.py (pickups_v1.json). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by src/ui/pickups (prompt 12 part 12h)."
+      "notes": "Part 13e (EVAL-P13-009): Higgsfield gpt_image_2 pickups v2 (health_small, health_large, energy_small, energy_large, extra_life, heart_tank, sub_tank, capsule, bonus), two frames each (the second glows, always the same frame size as the first); cut by scripts/sprites/cut_vfx_sheet.py (pickups_v2.json), native size (PICKUP_ART_SCALE 1). Variable frame sizes, largest listed. Loaded by the Game scene; drawn by src/ui/pickups."
     },
     {
       "id": "ui-hud_icons_v1",
