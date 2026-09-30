@@ -11,6 +11,7 @@ import {
   getCampaignStage,
   getSelectableBossStages,
   isCampaignStageCleared,
+  ROBOT_MASTER_STAGE_IDS,
   TUTORIAL_STAGE_ID
 } from '../content/campaign'
 import { DEBUG_UI } from '../config/debug'
@@ -41,6 +42,9 @@ import {
 import type { SystemMenuAction } from './menu/systemMenuSelector'
 import { StageSelectLogic } from './stage-select/StageSelectLogic'
 import { resolveSlotClick, truncateLabel } from './stage-select/selectionContract'
+import { resolveDistrictDebriefStageId } from './stage-select/districtDebrief'
+import { AUTOMATION } from '../config/automation'
+import { shouldPlayBossIntro } from './bossIntro/BossIntroLogic'
 import { DistrictBackdrop, playRestoredFlip, revealPortraits, SelectCursor } from '../ui/stageSelect/StageSelectDressing'
 import { GAME_SIZE } from '../config/renderPolicy'
 
@@ -680,7 +684,30 @@ export class StageSelect extends Phaser.Scene {
     this.registry.remove('ui.stageSelect.requireConfirmRelease')
     const milestoneCount = this.registry.get('ui.stageSelect.milestoneCount') as number | null | undefined
     this.registry.remove('ui.stageSelect.milestoneCount')
-    this.playMilestone(milestoneCount ?? null)
+    const debriefStageId = resolveDistrictDebriefStageId({ returnReason, focusStageId: focusBossId, wardenStageIds: ROBOT_MASTER_STAGE_IDS })
+    this.playDebrief(debriefStageId, () => this.playMilestone(milestoneCount ?? null))
+  }
+
+  /**
+   * The return debrief (part 13g, EVAL-P13-014): the just-cleared warden's extended `district_restored`
+   * exchange (Iona, WREN), skippable, blocking, before any milestone line. Plays once (the sequence's own
+   * seen flag), so a replay clear never repeats it; `after` always runs, whether or not it played.
+   */
+  private playDebrief(stageId: string | null, after: () => void): void {
+    const sequence = stageId ? DIALOGUE_REGISTRY.getStageSequence(stageId as any, 'district_restored') : undefined
+    if (!sequence || !shouldPlayStory(this.saveData.storyFlags, sequence.id, currentStoryPolicy())) {
+      after()
+      return
+    }
+    Save.markStorySeen(sequence.id)
+    this.saveData = Save.load()
+    const stage = getCampaignStage(stageId as string)
+    const lines = resolvePlaybackLines(sequence.id, sequence.lines, {
+      hero: IDENTITY.HERO_CALLSIGN,
+      districtName: stage.district
+    })
+    this.dialogueOverlay = new DialogueOverlayController(this, 'bottom')
+    this.dialogueOverlay.play(lines, after)
   }
 
   /** Part 12i: the district-restored tile flip and its sting, once, on the return from the clear that restored it. */
@@ -793,7 +820,27 @@ export class StageSelect extends Phaser.Scene {
     this.requestedTransition = { scene, data }
     this.transitionRequestedAt = performance.now()
     if (scene === 'Game') this.district?.keep(typeof data.stageId === 'string' ? data.stageId : null)
+    if (scene === 'Game' && this.shouldShowBossIntro(data)) {
+      this.scene.start('BossIntro', data)
+      return
+    }
     this.scene.start(scene, data)
+  }
+
+  /**
+   * The pre-stage boss card (part 13g, EVAL-P13-012): a warden entry, story on, and (under automation) a smoke
+   * that asked for it. `BossIntroScene` starts `Game` itself with this same `data` when it ends or is skipped.
+   */
+  private shouldShowBossIntro(data: Record<string, unknown>): boolean {
+    return shouldPlayBossIntro({
+      stageId: typeof data.stageId === 'string' ? data.stageId : null,
+      bossId: typeof data.bossId === 'string' ? data.bossId : null,
+      tutorialStageId: TUTORIAL_STAGE_ID,
+      loadFromSave: Boolean(data.loadFromSave),
+      storyIntroEnabled: currentStoryPolicy().enabled,
+      automationEnabled: AUTOMATION.enabled,
+      automationBossIntro: AUTOMATION.bossIntro
+    })
   }
 
   private getAccessibleCheckpointIdsForStage(stageId: string): string[] {

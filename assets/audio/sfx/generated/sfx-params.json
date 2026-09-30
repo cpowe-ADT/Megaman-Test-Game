@@ -126,6 +126,10 @@
     "boss_warning": { "file": "assets/audio/sfx/generated/boss_warning.ogg", "seed": 12304, "peakDb": -3, "voices": [
       { "wave": "square", "duty": 0.5, "freq": 440, "repeat": 0.24, "arp": [{ "at": 0.12, "ratio": 1.335 }], "attack": 0.01, "sustain": 0.8, "decay": 0.1, "curve": 1, "gain": 0.6 },
       { "wave": "square", "duty": 0.125, "freq": 880, "repeat": 0.24, "arp": [{ "at": 0.12, "ratio": 1.335 }], "attack": 0.01, "sustain": 0.8, "decay": 0.1, "curve": 1, "gain": 0.25 }
+    ] },
+    "boss_intro_sting": { "file": "assets/audio/sfx/generated/boss_intro_sting.ogg", "seed": 13077, "peakDb": -3, "voices": [
+      { "wave": "square", "duty": 0.5, "freq": 330, "arp": [{ "at": 0.06, "ratio": 1.5 }, { "at": 0.14, "ratio": 1.3333 }], "attack": 0.01, "sustain": 0.22, "decay": 0.16, "curve": 1.2, "gain": 0.55 },
+      { "wave": "square", "duty": 0.25, "freq": 660, "arp": [{ "at": 0.06, "ratio": 1.5 }, { "at": 0.14, "ratio": 1.3333 }], "attack": 0.01, "sustain": 0.22, "decay": 0.16, "curve": 1.2, "gain": 0.28 }
     ] }
   }
 }

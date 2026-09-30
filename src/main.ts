@@ -6,6 +6,7 @@ import { Boot } from './scenes/Boot'
 import { Preload } from './scenes/Preload'
 import { Title } from './scenes/Title'
 import { StageSelect } from './scenes/StageSelect'
+import { BossIntroScene } from './scenes/BossIntroScene'
 import { Game } from './scenes/Game'
 import { SystemMenu } from './scenes/SystemMenu'
 import { ControlsScene } from './scenes/ControlsScene'
@@ -68,7 +69,7 @@ const config: Phaser.Types.Core.GameConfig = {
     }
   },
   pixelArt: STRICT_PIXEL_RENDER_POLICY.pixelArt,
-  scene: [Boot, Preload, Title, ProfileScene, NewCampaignScene, StageSelect, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, GameOverScene, PrologueScene, EndingScene, OptionsScene]
+  scene: [Boot, Preload, Title, ProfileScene, NewCampaignScene, StageSelect, BossIntroScene, Game, SystemMenu, ControlsScene, ProgressionSummaryScene, GameOverScene, PrologueScene, EndingScene, OptionsScene]
 }
 
 ;(config as any).resolution = runtimeResolution
@@ -415,6 +416,10 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
   if (scene.scene.key === 'GameOver') payload.gameOver = (scene as any).getDebugState?.() ?? null
   if (scene.scene.key === 'EndingScene') payload.ending = (scene as any).getDebugState?.() ?? null
   if (scene.scene.key === 'StageSelect') payload.dialogue = (scene as any).dialogueOverlay?.getDebugState?.() ?? { active: false }
+  // Part 13g, EVAL-P13-012: the pre-stage boss card's own bossIntro (phase, name, visibleCharacters); the
+  // Game scene's bossIntro (the in-stage door WARNING, BossPresentation.getDebugState) is set further down
+  // and the two are never active together.
+  if (scene.scene.key === 'BossIntro') payload.bossIntro = (scene as any).getDebugState?.() ?? null
 
   const newCampaign = activeScenes.find(active => active.scene.key === 'NewCampaign') as NewCampaignScene | undefined
   if (newCampaign) payload.newCampaign = { ...newCampaign.model.selection(), randomizerAvailable: newCampaign.model.randomizerAvailable, confirmArmed: newCampaign.confirmArmed }
