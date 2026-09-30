@@ -2,6 +2,8 @@ export type AutomationConfig = {
   enabled: boolean
   /** Story surfaces (prologue, stage card, briefing, radio, milestones, ending pages) play. `?storyIntro=off` disables them for automation. */
   storyIntro: boolean
+  /** The pre-stage boss card (part 13g) is skipped under automation by default; `?bossIntro=on` asks a smoke to see it. */
+  bossIntro: boolean
 }
 
 function readBool(raw: string | boolean | undefined, fallback: boolean): boolean {
@@ -35,6 +37,12 @@ function readStoryIntro(search: string | undefined): boolean {
   return readBool(new URLSearchParams(search).get('storyIntro') ?? undefined, true)
 }
 
+/** Unlike `storyIntro`, this defaults off: a smoke opts in with `?bossIntro=on` instead of opting out. */
+function readBossIntro(search: string | undefined): boolean {
+  if (!search) return false
+  return readBool(new URLSearchParams(search).get('bossIntro') ?? undefined, false)
+}
+
 export function resolveAutomationConfig(
   env: Record<string, string | boolean | undefined> = (import.meta.env ?? {}) as Record<
     string,
@@ -47,7 +55,8 @@ export function resolveAutomationConfig(
       readQueryFlag(search) ||
       readBool(env.VITE_AUTOMATION, false) ||
       readBool(env.VITE_SMOKE, false),
-    storyIntro: readStoryIntro(search)
+    storyIntro: readStoryIntro(search),
+    bossIntro: readBossIntro(search)
   }
 }
 
