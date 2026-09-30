@@ -21,6 +21,7 @@ import { BossHazards } from './BossHazards'
 import { BossPresentation } from './BossPresentation'
 import { BossTelegraphs } from './BossTelegraphs'
 import type { CameraDirector } from './CameraDirector'
+import { omegaActsOf } from './OmegaActs'
 import { currentStoryPolicy, pendingMilestoneId, type StoryDirector } from './StoryDirector'
 
 /** Icicles hang from this far below the camera's top: under the HUD panels, not over them. */
@@ -50,7 +51,7 @@ export interface BossBeatsState {
   hitstopRemainingFrames: number
   readonly cameraDirector: Pick<CameraDirector, 'onHitstop'>
   bossUiBinder?: Pick<BossUIBinder, 'onFightStart' | 'onBossDeath'>
-  storyDirector?: Pick<StoryDirector, 'playBossIntro' | 'playBossDefeat' | 'onBossPhaseTwo' | 'buildWeaponGetCard'>
+  storyDirector?: Pick<StoryDirector, 'playBossIntro' | 'playBossDefeat' | 'onBossPhaseTwo' | 'onFinalePhase' | 'buildWeaponGetCard'>
   /** The weapon-get card and stage results (part 12i); `Game` builds it at stage entry with the entry save. */
   victoryModal?: StageClearCards
   sessionStats?: Pick<CampaignSessionStatistics, 'stageElapsedMs'>
@@ -108,6 +109,8 @@ export class BossBeats {
       if (Number(event?.phaseIndex ?? 0) >= 1) AudioService.setMusicPhase(2)
       if (event?.phaseData?.desperation) this.presentation.beginDesperation()
       if (event?.phaseIndex === 1) host.storyDirector?.onBossPhaseTwo()
+      // The Core's three transitions carry the three `finale_phase` lines; a rematch in the archive carries none.
+      if (host.stageId === FINAL_STAGE_ID && !omegaActsOf(host)?.isRematch()) host.storyDirector?.onFinalePhase(Number(event?.phaseIndex ?? 0))
     }
     host.events.on('boss-attack-interrupted', onInterrupted)
     host.events.on('boss-phase-change', onPhase)
@@ -276,7 +279,8 @@ export class BossBeats {
       color: blueprint?.theme.accent ?? 0xffffff
     }
     this.presentation.playIntro(card, () => {
-      if (!host.storyDirector) {
+      // A rematch in the Warden Archive has no intro dialogue (the Core's belongs to the Core).
+      if (!host.storyDirector || omegaActsOf(host)?.isRematch()) {
         host.showStageToast('Boss room sealed', 800)
         this.fillBarThenFight()
         return
@@ -323,6 +327,15 @@ export class BossBeats {
     host.unlockBossGate()
     host.disableProjectileGroups()
     host.freezeCombatWorld()
+    const omega = omegaActsOf(host)
+    if (omega?.isRematch()) {
+      // A rematch claims nothing and keeps the run: after the death chain, back to the archive at its door.
+      this.presentation.playDeath(() => host.disableBossCombatActors(), () => {
+        AudioService.playSfx('stage_clear')
+        omega.onRematchCleared()
+      })
+      return
+    }
     const stageId = host.stageId ?? 'unknown'
     const bossName = host.bossName ?? stageId
     const stage = getCampaignStage(stageId)

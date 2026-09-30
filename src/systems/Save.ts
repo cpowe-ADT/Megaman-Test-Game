@@ -14,12 +14,14 @@ import {
 } from '../progression/index'
 import { freshStatistics, normalizeStatistics, type CampaignStatistics } from '../progression/statistics'
 import type { Difficulty, ProgressionMode } from '../progression/types'
-import { CAMPAIGN_STAGES, type CampaignStageId } from '../content/campaign'
+import { CAMPAIGN_STAGES, FINAL_STAGE_ID, type CampaignStageId } from '../content/campaign'
 import { buildWeaponOrder } from '../content/weapons'
 import { DIALOGUE_REGISTRY } from '../content/dialogue/index'
 import { markStorySeen, sanitizeStoryFlags } from '../narrative/storyFlags'
 import { normalizeSubTankFill } from './subTanks'
 import { IDENTITY, setHeroCallsignResolver } from '../content/identity'
+import { normalizeOmegaRunFields } from '../content/omegaArchive'
+import type { BossId } from '../bosses/types'
 import {
   buildProfileExport,
   DEFAULT_PILOT_NAME,
@@ -84,6 +86,10 @@ export type ActiveRunSaveData = {
   weaponEnergyById?: Record<string, number>
   checkpointIndex?: number
   checkpointId?: string
+  /** The Central Core's act (12e, save v6): the checkpoint's act; 1 on every other stage. Set by `validateActiveRun`. */
+  omegaAct?: 1 | 2 | 3
+  /** Warden Archive rematches cleared as of the last checkpoint (12e, save v6); empty outside acts 2 and 3. */
+  rematchCleared?: BossId[]
 }
 
 export type ActiveRunValidationReason =
@@ -138,7 +144,7 @@ const memoryCaches = new Map<string, SaveData>()
  * fields, one shape per era found in git history, and walked forward one step at a time, so an old
  * save loads instead of being dropped. A save from a newer build loads with the fields this build knows.
  */
-export const SAVE_VERSION = 5
+export const SAVE_VERSION = 6
 type RawSave = Record<string, unknown>
 const SAVE_MIGRATIONS: ReadonlyArray<{ to: number; note: string; apply: (save: RawSave) => RawSave }> = [
   // v1 (cd18309): weapons and game-over counts only.
@@ -148,12 +154,24 @@ const SAVE_MIGRATIONS: ReadonlyArray<{ to: number; note: string; apply: (save: R
   // v3 (35a1fba): progression without difficulty, statistics or story flags.
   { to: 4, note: 'difficulty, statistics, story flags', apply: (save) => ({ difficulty: 'normal', stats: freshStatistics(), storyFlags: [], ...save }) },
   // v4 (475ab82): sub tanks without a stored fill.
-  { to: 5, note: 'sub tank fill', apply: (save) => ({ ...save, subTankFill: normalizeSubTankFill(save.subTankFill, Number(save.subTanks ?? 0)) }) }
+  { to: 5, note: 'sub tank fill', apply: (save) => ({ ...save, subTankFill: normalizeSubTankFill(save.subTankFill, Number(save.subTanks ?? 0)) }) },
+  // v5 (3ac9b03): an active run without the Central Core's act and rematch record (12e); validation places it.
+  { to: 6, note: 'central core act and rematch clears', apply: (save) => ({ ...save, activeRun: withOmegaRunFields(save.activeRun) }) }
 ]
+
+function withOmegaRunFields(run: unknown): unknown {
+  if (!run || typeof run !== 'object') return run ?? null
+  const fields = { omegaAct: 1, rematchCleared: [], ...(run as RawSave) }
+  // 12e replaced the Central Core's route: a run inside the old one restarts at the fortress start.
+  if ((run as RawSave).stageId !== FINAL_STAGE_ID) return fields
+  return { ...fields, omegaAct: 1, rematchCleared: [], checkpointId: CAMPAIGN_STAGES[FINAL_STAGE_ID].arena.checkpoints[0]?.id, checkpointIndex: 0 }
+}
 
 export function detectSaveVersion(save: RawSave): number {
   const stamped = Number(save.saveVersion)
   if (Number.isInteger(stamped) && stamped >= 1) return stamped
+  const run = save.activeRun as RawSave | null | undefined
+  if (run && typeof run === 'object' && ('omegaAct' in run || 'rematchCleared' in run)) return 6
   if (Array.isArray(save.subTankFill)) return 5
   if ('difficulty' in save || 'stats' in save || Array.isArray(save.storyFlags)) return 4
   if ('progressionWorld' in save || Array.isArray(save.collectedChecks) || Array.isArray(save.stageAccessUnlocked)) return 3
@@ -227,6 +245,8 @@ function cloneActiveRun(run: ActiveRunSaveData | null | undefined): ActiveRunSav
     checkpointIndex: Number(run.checkpointIndex ?? 0),
     checkpointId:
       typeof run.checkpointId === 'string' && run.checkpointId.length > 0 ? run.checkpointId : undefined,
+    omegaAct: run.omegaAct === 2 || run.omegaAct === 3 ? run.omegaAct : 1,
+    rematchCleared: Array.isArray(run.rematchCleared) ? [...run.rematchCleared] : [],
     weaponEnergyById:
       run.weaponEnergyById && typeof run.weaponEnergyById === 'object'
         ? Object.fromEntries(
@@ -309,7 +329,8 @@ export function validateActiveRun(save: SaveData, raw: unknown): ActiveRunValida
       : typeof candidate.checkpointId === 'string'
         ? 0
         : clampInteger(candidate.checkpointIndex, 0, Math.max(0, checkpoints.length - 1), 0)
-  const checkpointId = checkpoints[checkpointIndex]?.id
+  const omega = normalizeOmegaRunFields(stage.id, checkpoints[checkpointIndex]?.id, candidate)
+  const placedIndex = Math.max(0, checkpoints.findIndex((entry) => entry.id === omega.checkpointId))
 
   return {
     valid: true,
@@ -326,8 +347,10 @@ export function validateActiveRun(save: SaveData, raw: unknown): ActiveRunValida
       currentWeaponIndex,
       currentWeaponId,
       weaponEnergyById,
-      checkpointIndex,
-      checkpointId
+      checkpointIndex: placedIndex,
+      checkpointId: checkpoints[placedIndex]?.id,
+      omegaAct: omega.omegaAct,
+      rematchCleared: omega.rematchCleared
     }
   }
 }

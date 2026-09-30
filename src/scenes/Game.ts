@@ -21,7 +21,7 @@ import { StoryDirector, pendingMilestoneId } from './game/StoryDirector'
 import { ToastLane } from '../ui/ToastLane'
 import { fillSubTankFromPickup } from '../systems/subTanks'
 import type { PauseInventory } from './menu/systemMenuSelector'
-import { getBossDefinitionById } from '../boss/config'
+import { attachOmegaActs, resolveBossDefinition, resolveOmegaEntryRun } from './game/OmegaActs'
 import {
   countClearedRobotMasters,
   FINAL_STAGE_ID,
@@ -136,7 +136,6 @@ const JUMP_VELOCITY = -420
 interface GameData {
   bossId: BossId
 }
-
 
 export class Game extends Phaser.Scene {
   private actions!: SceneInputActions
@@ -713,7 +712,7 @@ export class Game extends Phaser.Scene {
   /** Loads only this stage's background layers and biome tile atlas; see stageBackgroundLoading.ts and stageTileLoading.ts. */
   preload(): void {
     const data = this.sys.settings.data as GameData
-    queueStageAssets(this, ...resolveGameStageAndBoss(data, (data as any)?.loadFromSave ? Save.loadActiveRun() : null))
+    queueStageAssets(this, ...resolveGameStageAndBoss(data, resolveOmegaEntryRun(data) ?? ((data as any)?.loadFromSave ? Save.loadActiveRun() : null)))
   }
 
   create(data: GameData): void {
@@ -783,7 +782,7 @@ export class Game extends Phaser.Scene {
     const loadFromSave = Boolean((data as any)?.loadFromSave)
     this.loadedFromSave = loadFromSave
     this.progressionSave = Save.load()
-    const activeRun = loadFromSave ? Save.loadActiveRun() : null
+    const activeRun = resolveOmegaEntryRun(data) ?? (loadFromSave ? Save.loadActiveRun() : null)
     this.sessionStats = new CampaignSessionStatistics(activeRun?.stageElapsedMs)
     installProgressionDebugHooks(this, (previous, next, item) => { this.progressionSave = next; this.applyProgressionStateToRuntime(previous, next, item) })
     const [stageId, resolvedBossId] = resolveGameStageAndBoss(data as any, activeRun)
@@ -796,7 +795,7 @@ export class Game extends Phaser.Scene {
       (AUTOMATION.enabled ? params?.get('bossConfig') : null) ??
       (data as any)?.runtimeBossConfigId ??
       stage.runtimeBossConfigId
-    const runtimeDefinition = runtimeDefinitionId ? getBossDefinitionById(runtimeDefinitionId) : undefined
+    const runtimeDefinition = runtimeDefinitionId ? resolveBossDefinition(runtimeDefinitionId) : undefined
     const bossMaxHp = runtimeDefinition?.maxHP ?? blueprint.baseStats?.maxHp ?? 20
     const bossCodename = runtimeDefinition?.displayName ?? blueprint.codename ?? blueprint.id
     const width = GAME_WIDTH
@@ -1112,6 +1111,7 @@ export class Game extends Phaser.Scene {
     this.applySelectedCheckpoint(stageId, activeRun?.checkpointId ?? (data as any)?.checkpointId ?? null)
     this.spawnProgressionPickups(stageId)
     this.applyActiveRunSnapshot(activeRun)
+    attachOmegaActs(this, data, activeRun)
     this.flushPendingProgressionItems()
     if (!activeRun) this.autosaveActiveRun()
     this.currentPhaseName = this.bossController.currentPhase.name.toUpperCase()

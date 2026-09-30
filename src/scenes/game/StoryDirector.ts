@@ -166,6 +166,11 @@ export class StoryDirector {
     this.playTickerOnce(DIALOGUE_REGISTRY.getStageSequence(this.deps.stageId, 'warden_phase'))
   }
 
+  /** The Core's phase transitions (1, 2, then desperation 3): the `finale_phase` line for each, once, on the radio lane. */
+  onFinalePhase(phaseIndex: number): void {
+    if (phaseIndex === 1 || phaseIndex === 2 || phaseIndex === 3) this.playTickerOnce(DIALOGUE_REGISTRY.getFinalePhase(phaseIndex))
+  }
+
   /**
    * An item location was claimed. A warden stage's capsule cache makes the capsule card: the warden's recorded
    * cache log above the effect label, one lane item (story on). Returns false when the caller shows its plain

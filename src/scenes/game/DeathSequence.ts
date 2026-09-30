@@ -9,6 +9,7 @@ import type { PlayerDamageRequest, PlayerDamageResult } from '../../player/types
 import type { CampaignSessionStatistics } from '../../progression/statistics'
 import type { HUD } from '../../ui/HUD'
 import { Save } from '../../systems/Save'
+import { omegaActsOf } from './OmegaActs'
 import type { StoryDirector } from './StoryDirector'
 
 /** A plain 2D point, used instead of `Phaser.Math.Vector2` so this module has no runtime Phaser dependency. */
@@ -113,7 +114,8 @@ export class DeathSequence {
     }
     const stage = getCampaignStage(host.activeStageId)
     const nextCheckpoint = stage.arena.checkpoints[host.currentCheckpointIndex + 1]
-    if (!nextCheckpoint || host.player.x < nextCheckpoint.triggerX) {
+    // A Warden Archive rematch fights past the later checkpoints' triggers; its checkpoint stays the archive (12e).
+    if (!nextCheckpoint || host.player.x < nextCheckpoint.triggerX || omegaActsOf(host)?.isRematch()) {
       return
     }
     host.currentCheckpointIndex += 1
@@ -210,7 +212,8 @@ export class DeathSequence {
     }
     host.gameOverTriggered = true
     host.bossProjectileController?.stop()
-    Save.clearActiveRun()
+    // From the Warden Archive on, the run stays at its checkpoint so a continue keeps the rematch clears (12e).
+    if (!omegaActsOf(host)?.keepRunAtGameOver()) Save.clearActiveRun()
     AudioService.stopMusic()
     AudioService.playSfx('game_over')
     const stageId = host.activeStageId ?? 'unknown'
