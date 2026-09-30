@@ -295,14 +295,16 @@ export class HazardMechanicsAdapter {
         frame: mechanicsFrameName(art),
         shadow: shadow.visible
       })),
-      icicles: this.icicles.map(({ def, state, spike, shards }) => ({
+      icicles: this.icicles.map(({ def, state, spike, shards, shadow }) => ({
         ...state,
         dropY: Math.round(state.dropY),
         timerMs: Math.round(state.timerMs),
         velocityY: Math.round(state.velocityY),
         tipY: Math.round(def.y + state.dropY + ICICLE_LENGTH),
         frame: state.phase === 'shattered' ? mechanicsFrameName(shards) : mechanicsFrameName(spike),
-        frameIndex: icicleFrameIndex(state.phase)
+        frameIndex: icicleFrameIndex(state.phase),
+        rhythm: Boolean(def.rhythm),
+        shadow: shadow.visible
       }))
     }
   }
