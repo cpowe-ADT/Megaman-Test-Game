@@ -25,6 +25,8 @@ export type TimedRailGroupDefinition = {
   damage?: number
   /** Arc box height above the rail line, px (default 26). */
   arcHeight?: number
+  /** Default true; false draws the rails without a damage box (a pit floor's rails: the fall is what kills). */
+  live?: boolean
 }
 
 export type RailPhase = 'off' | 'arming' | 'arcing'
@@ -32,7 +34,7 @@ export type RailPhase = 'off' | 'arming' | 'arcing'
 /** A rail's damage box (centre and size, like a hazard) and the line it stands on. */
 export type ResolvedRail = { id: string; x: number; y: number; width: number; height: number; floorY: number }
 
-export type ResolvedRailGroup = { id: string; damage: number; timing: Required<HazardTiming>; rails: ResolvedRail[] }
+export type ResolvedRailGroup = { id: string; damage: number; live: boolean; timing: Required<HazardTiming>; rails: ResolvedRail[] }
 
 export const RAIL_DEFAULTS = { width: 56, arcHeight: 26, damage: 2, timing: { onMs: 1200, offMs: 1800, phaseMs: 0 } } as const
 
@@ -45,6 +47,7 @@ export function resolveRailGroup(definition: TimedRailGroupDefinition): Resolved
   return {
     id: definition.id,
     damage: Math.max(1, Math.round(positive(definition.damage, RAIL_DEFAULTS.damage))),
+    live: definition.live !== false,
     timing: {
       onMs: positive(definition.timing?.onMs, RAIL_DEFAULTS.timing.onMs),
       offMs: positive(definition.timing?.offMs, RAIL_DEFAULTS.timing.offMs),

@@ -2,6 +2,7 @@ import type { CampaignStageId, StageExtensionPatch } from '../campaign'
 import { HEAT_WORKS_PATCH } from './heatWorks'
 import { MIRE_WRAITH_PATCH } from './mireWraith'
 import { TIDE_REAVER_PATCH } from './tideReaver'
+import { VOLT_HOPPER_PATCH } from './voltHopper'
 
 /**
  * Stages rebuilt to the Heat Works standard (prompt 12 part 12d, `docs/prompts/12-finish-the-game.md`): each stage's
@@ -11,5 +12,6 @@ import { TIDE_REAVER_PATCH } from './tideReaver'
 export const REBUILT_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
   pyro_maw: HEAT_WORKS_PATCH,
   tide_reaver: TIDE_REAVER_PATCH,
-  mire_wraith: MIRE_WRAITH_PATCH
+  mire_wraith: MIRE_WRAITH_PATCH,
+  volt_hopper: VOLT_HOPPER_PATCH
 }

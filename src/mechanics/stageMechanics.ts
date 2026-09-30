@@ -3,6 +3,7 @@ import type { BreakableWallDefinition } from './breakableWall'
 import { CONVEYOR_DEFAULT_HEIGHT, type ConveyorDefinition } from './conveyor'
 import { CRUMBLE_DEFAULT_HEIGHT, type CrumbleGroupDefinition } from './crumbleGroup'
 import { ICE_FLOOR_DEFAULT_HEIGHT, type IceFloorDefinition } from './iceFloor'
+import { laneSwapPlatformDefinitions, type LaneSwapDefinition } from './laneSwap'
 
 /** The stage mechanics that stand in the platform list (so every actor and shot collides with them). */
 export type StageMechanicPlatformSource = {
@@ -10,12 +11,14 @@ export type StageMechanicPlatformSource = {
   breakableWalls?: readonly BreakableWallDefinition[]
   conveyors?: readonly ConveyorDefinition[]
   iceFloors?: readonly IceFloorDefinition[]
+  laneSwaps?: readonly LaneSwapDefinition[]
 }
 
 export const CRUMBLE_COLOR = 0x7a4a2c
 export const BREAKABLE_WALL_COLOR = 0x6b5a48
 export const CONVEYOR_COLOR = 0x3a3f4a
 export const ICE_FLOOR_COLOR = 0x9fd8ff
+export const LANE_SWAP_COLOR = 0x3f6fb8
 
 /**
  * Crumble platforms and breakable walls as platform definitions for `PlatformCollisionSystem.rebuild`:
@@ -55,5 +58,9 @@ export function stageMechanicPlatforms(source: StageMechanicPlatformSource): Pla
   })
   const belts = (source.conveyors ?? []).map(surface('belt'))
   const ice = (source.iceFloors ?? []).map(surface('ice'))
-  return [...crumbles, ...walls, ...belts, ...ice]
+  // Lane-swap platforms (12d) start where the clock's zero puts them; `LaneSwapAdapter` moves them.
+  const swaps = (source.laneSwaps ?? []).flatMap((pair) =>
+    laneSwapPlatformDefinitions(pair).map((platform) => ({ ...platform, type: 'oneWay' as const, color: pair.color ?? LANE_SWAP_COLOR }))
+  )
+  return [...crumbles, ...walls, ...belts, ...ice, ...swaps]
 }

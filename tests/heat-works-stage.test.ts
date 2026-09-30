@@ -6,6 +6,15 @@ import { getCampaignStage, getStageContentRetentionReport, MECHANICS_LAB_STAGE_I
 import { getStageLocationDefinitions } from '../src/progression/catalog.ts'
 import { resolveHazard } from '../src/mechanics/hazards.ts'
 import { HEAT_WORKS_MIDBOSS_MARKERS } from '../src/content/stages/heatWorks.ts'
+import { REBUILT_STAGE_PATCHES } from '../src/content/stages/index.ts'
+
+/**
+ * A warden stage still on its first-pass inline route, picked at test time (prompt 12 part 12d rebuilds them one
+ * lane at a time, so no stage lane has to edit these checks); undefined once every warden stage is rebuilt.
+ */
+const UNREBUILT_WARDEN = (['pyro_maw', 'tide_reaver', 'volt_hopper', 'basalt_titan', 'ferro_blade', 'mire_wraith', 'gale_vixen', 'glacier_ronin'] as const).find(
+  (stageId) => !(stageId in REBUILT_STAGE_PATCHES)
+)
 
 // Measured on this build (output/measure-jump.mjs, 2026-09-24): held running jump 246px across, 124-127px up;
 // held dash jump 336px across. A gap is "plain" if a running jump clears it with a body width to spare.
@@ -30,10 +39,14 @@ test('floor gaps split the main ground: clipped, merged, sorted, the first span 
   ])
 })
 
-test('a stage world reaches up to its tallest room; one-screen stages stay at 0', () => {
+test('a stage world reaches up to its tallest room; one-screen stages stay at 0', (t) => {
   assert.equal(stageVerticalTop(getCampaignStage('pyro_maw').arena, 252), -252)
   assert.equal(stageVerticalTop(getCampaignStage(TUTORIAL_STAGE_ID).arena, 252), -252)
-  assert.equal(stageVerticalTop(getCampaignStage('volt_hopper').arena, 252), 0)
+  if (!UNREBUILT_WARDEN) {
+    t.skip('every warden stage is rebuilt: no one-screen warden stage is left to check')
+    return
+  }
+  assert.equal(stageVerticalTop(getCampaignStage(UNREBUILT_WARDEN).arena, 252), 0, `${UNREBUILT_WARDEN} is one screen tall`)
 })
 
 test('a defeat lock opens only once every marker is gone, counts markers cleared before arming, ignores verbs', () => {
@@ -52,12 +65,16 @@ test('a defeat lock opens only once every marker is gone, counts markers cleared
   assert.equal(applyRoomLockDefeats(verb, ['a']), verb, 'a verb lock ignores defeats')
 })
 
-test('Heat Works pickups sit on their anchors; ids are unchanged and other stages keep their defaults', () => {
+test('Heat Works pickups sit on their anchors; ids are unchanged and other stages keep their defaults', (t) => {
   const byCategory = Object.fromEntries(getStageLocationDefinitions('pyro_maw').map((entry) => [entry.category, entry]))
   assert.deepEqual([byCategory.heart_tank.id, byCategory.heart_tank.x, byCategory.heart_tank.y], ['pyro_maw:heart_tank', 1284, 68])
   assert.deepEqual([byCategory.sub_tank.x, byCategory.capsule.y, byCategory.pickup_bonus.x], [2500, -212, 4680])
-  const volt = getStageLocationDefinitions('volt_hopper').find((entry) => entry.category === 'heart_tank')
-  assert.equal(volt?.y, 132)
+  if (!UNREBUILT_WARDEN) {
+    t.diagnostic('every warden stage is rebuilt: no checkpoint-derived default is left to check')
+    return
+  }
+  const unrebuilt = getStageLocationDefinitions(UNREBUILT_WARDEN).find((entry) => entry.category === 'heart_tank')
+  assert.equal(unrebuilt?.y, 132, `${UNREBUILT_WARDEN} keeps its checkpoint-derived default`)
 })
 
 test('Heat Works route: twelve screens, four checkpoints clear of every mechanic, pits a plain jump clears', () => {

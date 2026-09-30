@@ -23,6 +23,7 @@ import type { CurrentZoneDefinition } from '../mechanics/currentZone'
 import type { WaterLevelGateDefinition } from '../mechanics/waterLevelGate'
 import type { WindZoneDefinition } from '../mechanics/windZone'
 import type { TimedRailGroupDefinition } from '../mechanics/timedRailGroup'
+import type { LaneSwapDefinition } from '../mechanics/laneSwap'
 import type { RockfallDefinition } from '../mechanics/rockfall'
 import type { IcicleDefinition } from '../mechanics/icicle'
 import type { FloorGap } from '../stage/stageGeometry'
@@ -89,6 +90,8 @@ export type StageArenaDefinition = {
   windZones?: WindZoneDefinition[]
   /** Electrified floor rails on one shared timer, for Volt (12b `timed_rail_group`). */
   timedRailGroups?: TimedRailGroupDefinition[]
+  /** Pairs of carry platforms on two lanes that trade stations on the stage clock, for Volt (12d `laneSwap.ts`). */
+  laneSwaps?: LaneSwapDefinition[]
   /** Ceiling spawners: dust puff, boulder, rubble (12b `rockfall`). */
   rockfalls?: RockfallDefinition[]
   /** Icicles that shake when the hero passes under, fall and shatter; back on the checkpoint respawn (12b `icicle`). */
@@ -308,22 +311,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Conduit Lattice',
     rewardWeaponId: 'ThunderSpike',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('volt_eye', 'enemy_laser_eye', 152, 136, undefined, undefined, {
-        spawnTriggerX: 54,
-        retireTriggerX: 214
-      }),
-      marker('volt_bouncer', 'enemy_bouncer', 228, 185, 210, 258, {
-        spawnTriggerX: 104,
-        retireTriggerX: 286
-      }),
-      marker('volt_drone', 'enemy_shield_drone', 312, 116, undefined, undefined, {
-        spawnTriggerX: 146,
-        retireTriggerX: 368
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in `src/content/stages/voltHopper.ts`.
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#0c1020',
@@ -331,15 +322,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('volt_start', 44, 40, 0), checkpoint('volt_mid', 154, 40, 172)],
-      hazards: [
-        { id: 'volt_spike_1', x: 132, y: 230 },
-        { id: 'volt_spike_2', x: 320, y: 230 }
-      ],
-      midPlatforms: [
-        { id: 'volt_mid_1', x: 166, y: 170, width: 54, type: 'oneWay', color: 0x314b86 },
-        { id: 'volt_mid_2', x: 242, y: 132, width: 54, type: 'oneWay', color: 0x314b86, motion: { toX: 292, duration: 1800 } }
-      ]
+      checkpoints: [checkpoint('volt_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   },
   basalt_titan: {
@@ -626,6 +611,7 @@ export type StageExtensionPatch = {
     | 'waterLevelGates'
     | 'windZones'
     | 'timedRailGroups'
+    | 'laneSwaps'
     | 'rockfalls'
     | 'icicles'
   >
@@ -717,40 +703,6 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       teachRoom(2, 'wall_jump', { room: { y: -252, height: 504 } }),
       teachRoom(3, 'charge'),
       teachRoom(4, 'saber', { hitsRequired: 3 })
-    ]
-  },
-  volt_hopper: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('volt_start', 44, 40, 0),
-      checkpoint('volt_mid_a', 212, 40, 230),
-      checkpoint('volt_mid_b', 462, 40, 500),
-      checkpoint('volt_mid_c', 618, 40, 656),
-      checkpoint('volt_boss_gate', 742, 40, 790)
-    ],
-    hazards: [
-      { id: 'volt_spike_3', x: 478, y: 230 },
-      { id: 'volt_spike_4', x: 748, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'volt_mid_3', x: 420, y: 176, width: 56, type: 'oneWay', color: 0x314b86 },
-      { id: 'volt_mid_4', x: 538, y: 144, width: 56, type: 'oneWay', color: 0x314b86, motion: { toX: 606, duration: 2600 } },
-      { id: 'volt_mid_5', x: 688, y: 118, width: 50, type: 'oneWay', color: 0x314b86 }
-    ],
-    enemyMarkers: [
-      marker('volt_turret_late', 'enemy_frost_turret', 440, 149, undefined, undefined, {
-        spawnTriggerX: 260,
-        retireTriggerX: 536
-      }),
-      marker('volt_drone_late', 'enemy_drone', 586, 110, undefined, undefined, {
-        spawnTriggerX: 398,
-        retireTriggerX: 682
-      }),
-      marker('volt_rocket_late', 'enemy_rocket_bot', 742, 185, undefined, undefined, {
-        spawnTriggerX: 582,
-        retireTriggerX: 828
-      })
     ]
   },
   basalt_titan: {

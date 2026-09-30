@@ -138,6 +138,7 @@ export class HazardMechanicsAdapter {
   addToHazardGroup(group: Phaser.Physics.Arcade.StaticGroup): void {
     const { scene } = this.deps
     for (const entry of this.railGroups) {
+      if (!entry.group.live) continue
       for (const railEntry of entry.rails) {
         const { rail } = railEntry
         const body = scene.add.rectangle(rail.x, rail.y, rail.width, rail.height, 0x9fe6ff, 0).setDepth(HAZARD_DEPTH)
