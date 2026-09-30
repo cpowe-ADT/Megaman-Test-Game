@@ -7,6 +7,7 @@ import {
   ICICLE_HALF_WIDTH,
   ICICLE_LENGTH,
   createIcicleState,
+  icicleShadow,
   icicleShakeOffset,
   resetIcicle,
   stepIcicle,
@@ -48,13 +49,25 @@ export type HazardMechanicsDeps = {
 type RailEntry = { rail: ResolvedRail; body?: Phaser.GameObjects.Rectangle; art?: Phaser.GameObjects.Image; plain?: Phaser.GameObjects.Rectangle }
 type RailGroupEntry = { group: ResolvedRailGroup; phase: RailPhase; untilArcMs: number; rails: RailEntry[] }
 type RockEntry = { def: RockfallDefinition; state: RockfallState; art?: Phaser.GameObjects.Image; plain?: Phaser.GameObjects.Rectangle; shadow: Phaser.GameObjects.Ellipse }
-type IcicleEntry = { def: IcicleDefinition; state: IcicleState; mount?: Phaser.GameObjects.Image; spike: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle; shards?: Phaser.GameObjects.Image }
+type IcicleEntry = {
+  def: IcicleDefinition
+  state: IcicleState
+  mount?: Phaser.GameObjects.Image
+  spike: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle
+  shards?: Phaser.GameObjects.Image
+  /** The floor shadow under it while it shakes and falls (12d telegraph). */
+  shadow: Phaser.GameObjects.Ellipse
+}
 
 const HAZARD_DEPTH = 3
 const RAIL_PLAIN_COLOR = { off: 0x5a6070, arming: 0xfff0a0, arcing: 0x9fe6ff } as const
 const ROCK_PLAIN_COLOR = 0x8a7a66
 const ICICLE_PLAIN_COLOR = 0xbfe8ff
 const SHADOW_ALPHA = 0.35
+/** The icicle's floor shadow at full size, px (twice the spike's 10px damage box), centred just under the floor line so it darkens the floor's bright top edge. */
+const ICICLE_SHADOW_WIDTH = 20
+const ICICLE_SHADOW_HEIGHT = 6
+const ICICLE_SHADOW_ALPHA = 0.5
 
 function staticBodyOf(object: Phaser.GameObjects.GameObject | undefined): Phaser.Physics.Arcade.StaticBody | undefined {
   const body = (object as Phaser.Types.Physics.Arcade.GameObjectWithBody | undefined)?.body
@@ -114,9 +127,13 @@ export class HazardMechanicsAdapter {
   private createIcicle(def: IcicleDefinition): IcicleEntry {
     const { scene } = this.deps
     const state = createIcicleState(def)
+    const shadow = scene.add
+      .ellipse(def.x, def.floorY + 2, ICICLE_SHADOW_WIDTH, ICICLE_SHADOW_HEIGHT, 0x000000, ICICLE_SHADOW_ALPHA)
+      .setDepth(HAZARD_DEPTH)
+      .setVisible(false)
     if (!this.art) {
       const spike = scene.add.rectangle(def.x, def.y, ICICLE_HALF_WIDTH * 2, ICICLE_LENGTH, ICICLE_PLAIN_COLOR, 1).setOrigin(0.5, 0).setDepth(HAZARD_DEPTH)
-      return { def, state, spike }
+      return { def, state, spike, shadow }
     }
     const size = MECHANICS_V2_FRAME_SIZE.icicle
     const frame = mechanicsV2Frame('icicle', 0)
@@ -131,7 +148,7 @@ export class HazardMechanicsAdapter {
       .setDepth(HAZARD_DEPTH)
       .setVisible(false)
     shards.setCrop(0, ICICLE_SPIKE_TOP_ROW - 1, size.width, size.height - ICICLE_SPIKE_TOP_ROW + 1)
-    return { def, state, mount, spike, shards }
+    return { def, state, mount, spike, shards, shadow }
   }
 
   /** Called from `addHazards`: each rail's arc box joins the stage hazard group (Game's overlap hurts), tagged like a vent. */
@@ -197,7 +214,7 @@ export class HazardMechanicsAdapter {
   }
 
   private stepIcicleEntry(icicle: IcicleEntry, frame: MechanicsFrame): void {
-    const result = stepIcicle(icicle.def, icicle.state, { hero: frame.hero, deltaMs: frame.stepMs })
+    const result = stepIcicle(icicle.def, icicle.state, { hero: frame.hero, deltaMs: frame.stepMs, clockMs: frame.clockMs })
     const shattered = icicle.state.phase === 'falling' && result.state.phase === 'shattered'
     icicle.state = result.state
     if (result.hit) {
@@ -234,6 +251,8 @@ export class HazardMechanicsAdapter {
 
   private drawIcicle(icicle: IcicleEntry): void {
     const { def, state, spike, shards } = icicle
+    const shadow = icicleShadow(def, state)
+    icicle.shadow.setVisible(shadow.visible).setScale(shadow.scale, 1)
     const falling = state.phase !== 'shattered'
     spike.setVisible(falling)
     const baseY = spike instanceof Phaser.GameObjects.Image ? def.y - ICICLE_SPIKE_TOP_ROW : def.y
@@ -291,6 +310,6 @@ export class HazardMechanicsAdapter {
   destroy(): void {
     this.railGroups.forEach((entry) => entry.rails.forEach((rail) => { rail.art?.destroy(); rail.plain?.destroy() }))
     this.rocks.forEach((rock) => { rock.art?.destroy(); rock.plain?.destroy(); rock.shadow.destroy() })
-    this.icicles.forEach((icicle) => { icicle.mount?.destroy(); icicle.spike.destroy(); icicle.shards?.destroy() })
+    this.icicles.forEach((icicle) => { icicle.mount?.destroy(); icicle.spike.destroy(); icicle.shards?.destroy(); icicle.shadow.destroy() })
   }
 }
