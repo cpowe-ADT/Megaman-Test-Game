@@ -75,6 +75,18 @@ test('12i READY: three blinks over 1.2 s after the card, then control; 600 ms on
   respawn.tick(RESPAWN_READY_MS)
   assert.equal(respawn.isActive(), false)
   assert.equal(respawn.remainingMs(), 0)
+
+  const afterFade = new ReadyBlink()
+  afterFade.start(RESPAWN_READY_MS, 200)
+  assert.equal(afterFade.lit(), false, 'dark while the respawn fades in')
+  assert.equal(afterFade.isActive(), true)
+  afterFade.tick(200)
+  assert.equal(afterFade.lit(), true, 'the first blink once the fade is done')
+  assert.equal(afterFade.remainingMs(), RESPAWN_READY_MS)
+  const lit: boolean[] = []
+  for (let ms = 0; ms < RESPAWN_READY_MS; ms += 1) { lit.push(afterFade.lit()); afterFade.tick(1) }
+  assert.equal(lit.filter((on, index) => on && !lit[index - 1]).length, 3, 'three blinks after the fade')
+  assert.equal(afterFade.isActive(), false)
 })
 
 test('12i results: time, secrets as the entry-to-clear delta of the stage tank checks, lives used, difficulty', () => {

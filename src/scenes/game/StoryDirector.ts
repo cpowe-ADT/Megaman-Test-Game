@@ -119,7 +119,7 @@ export class StoryDirector {
   advanceIntro(): void { this.intro.advance() }
   skipIntro(): void { this.intro.skip() }
   /** A checkpoint respawn's READY (part 12i): the intro presenter blinks it without the card or a control lock. */
-  playReady(durationMs: number): boolean { return this.intro.playReady(durationMs) }
+  playReady(durationMs: number, delayMs = 0): boolean { return this.intro.playReady(durationMs, delayMs) }
 
   /** Checkpoint reached: the toast always shows; the radio pair fires once at the mid checkpoint. */
   onCheckpoint(index: number, checkpoint: { id: string; radioSequenceId?: string }): void {

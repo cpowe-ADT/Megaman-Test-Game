@@ -95,9 +95,9 @@ export class StageIntroPresenter {
     if (this.sequence.skip()) this.applyPhase()
   }
 
-  /** A checkpoint respawn: READY blinks for `durationMs` over the playfield; control is not held. */
-  playReady(durationMs: number): boolean {
-    this.respawnReady.start(durationMs)
+  /** A checkpoint respawn: after `delayMs`, READY blinks for `durationMs` over the playfield; control is not held. */
+  playReady(durationMs: number, delayMs = 0): boolean {
+    this.respawnReady.start(durationMs, delayMs)
     if (!this.respawnTicking) {
       this.respawnTicking = true
       this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.tickRespawnReady, this)

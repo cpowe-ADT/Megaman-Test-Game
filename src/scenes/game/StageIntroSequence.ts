@@ -115,14 +115,17 @@ export class StageIntroSequence {
   }
 }
 
-/** A READY on its own (a checkpoint respawn): no phase and no control lock; the presenter ticks it. */
+/**
+ * A READY on its own (a checkpoint respawn): no phase and no control lock; the presenter ticks it. `delayMs` holds it
+ * dark first (the respawn's camera fade-in would hide the first blink).
+ */
 export class ReadyBlink {
   private durationMs = 0
   private elapsedMs = 0
 
-  start(durationMs: number): void {
+  start(durationMs: number, delayMs = 0): void {
     this.durationMs = Math.max(0, durationMs)
-    this.elapsedMs = 0
+    this.elapsedMs = -Math.max(0, delayMs)
   }
 
   tick(deltaMs: number): void {

@@ -316,8 +316,8 @@ export class DeathSequence {
     host.newPlayerRuntime?.resetForRespawn(1000)
     host.newPlayerRuntime?.playBeamIn()
     host.cameras?.main?.fadeIn(DEATH_TIMELINE.fadeInMs, 0, 0, 0)
-    // The blinking READY (part 12i); the toast stays the fallback for a host without the story director.
-    if (!host.storyDirector?.playReady?.(DEATH_TIMELINE.readyMs)) host.showStageToast('READY', DEATH_TIMELINE.readyMs)
+    // The blinking READY once the fade-in is done (part 12i); the toast stays the fallback without a story director.
+    if (!host.storyDirector?.playReady?.(DEATH_TIMELINE.readyMs, DEATH_TIMELINE.fadeInMs)) host.showStageToast('READY', DEATH_TIMELINE.readyMs)
     this.resumeRespawnCombatState()
     host.syncWeaponHud()
     host.fallingToDeath = false
