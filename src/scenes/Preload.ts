@@ -14,6 +14,9 @@ import { dialogueContentInstalled, installDialogueContent } from '../content/dia
 import enemyCatalogUrl from '../content/enemies/enemy_catalog.generated.json?url'
 import { enemyCatalogInstalled, installEnemyCatalog } from '../content/enemies/catalog'
 import { PIXEL_FONT_FAMILY } from '../ui/menu/menuTheme'
+import { LoadingScreen } from '../ui/loading/LoadingScreen'
+import { showsFirstVisitNote } from '../ui/loading/loadingScreenModel'
+import { Profiles } from '../systems/Save'
 
 const PLAYER_ATLAS_KEY = 'atlas_player_main'
 const PLAYER_SWORD_FX_ATLAS_KEY = 'atlas_player_sword_fx'
@@ -40,6 +43,17 @@ export class Preload extends Phaser.Scene {
   }
 
   preload(): void {
+    // Part 12i (EVAL-P8-003): the loading screen draws first. It queues the logo ahead of everything; the pixel font
+    // goes next so the first-visit controls note can appear while the atlases are still loading.
+    const screen = new LoadingScreen(this, showsFirstVisitNote(Profiles.active()))
+    if (pixelFontLoaded()) screen.fontReady()
+    else this.load.once(`filecomplete-font-${PIXEL_FONT_FAMILY}`, () => screen.fontReady())
+    // The bundled pixel font: Phaser's FontFile loads it through the FontFace API and the loader waits for it, so
+    // Title (the first scene with text) never measures a fallback. The BMFont is the key the HUD and room-lock labels
+    // already branch on. Both are a few KB and stay resident.
+    if (!pixelFontLoaded()) this.load.font(PIXEL_FONT_FAMILY, 'assets/fonts/omega-pixel.woff', 'woff')
+    if (!this.cache.bitmapFont.exists('font')) this.load.bitmapFont('font', 'assets/fonts/omega-pixel.png', 'assets/fonts/omega-pixel.xml')
+
     const manifestValidation = validateSpriteManifest(spriteManifestData as SpriteSheetManifestV1)
     if (!manifestValidation.valid) {
       throw new Error(`[sprites] Manifest invalid: ${manifestValidation.errors.join('; ')}`)
@@ -70,12 +84,6 @@ export class Preload extends Phaser.Scene {
         this.load.image(entry.key, entry.path)
       }
     })
-
-    // Part 12i (EVAL-P8-003): the bundled pixel font. Phaser's FontFile loads it through the FontFace API and the
-    // loader waits for it, so Title (the first scene with text) never measures a fallback. The BMFont is the key the
-    // HUD and room-lock labels already branch on. Both are a few KB and stay resident.
-    if (!pixelFontLoaded()) this.load.font(PIXEL_FONT_FAMILY, 'assets/fonts/omega-pixel.woff', 'woff')
-    if (!this.cache.bitmapFont.exists('font')) this.load.bitmapFont('font', 'assets/fonts/omega-pixel.png', 'assets/fonts/omega-pixel.xml')
 
     this.registry.set('sprite_manifest_summary', {
       valid: true,

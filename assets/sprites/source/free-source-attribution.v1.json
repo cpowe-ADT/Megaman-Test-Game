@@ -535,14 +535,33 @@
       "family": "ui",
       "sourceUrl": "generated",
       "license": "original-generated",
-      "attribution": "Original speaker portraits and title key art, generated with Higgsfield (gpt_image_2) for this project",
+      "attribution": "Original speaker portraits, generated with Higgsfield (gpt_image_2) for this project",
       "localSourcePath": "assets/ui/source/",
       "runtimeOutputs": [
         "assets/ui/portraits/portraits.png",
-        "assets/ui/portraits/portraits.atlas.json",
-        "assets/ui/title/title_keyart.png"
+        "assets/ui/portraits/portraits.atlas.json"
       ],
-      "notes": "assets/ui/source/ui_v1.prompts.md; scripts/sprites/cut_portraits.py"
+      "notes": "assets/ui/source/ui_v1.prompts.md; scripts/sprites/cut_portraits.py. The title key art (assets/ui/source/title_keyart_v1_a.png and _b.png) left the runtime in part 12i: the Title draws the logo over the relay district instead."
+    },
+    {
+      "id": "ui-keyart-hf-v1",
+      "family": "ui",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original OMEGA RELAY logo and story panels, generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/ui/source/",
+      "runtimeOutputs": [
+        "assets/ui/logo/omega_relay_logo.png",
+        "assets/ui/story/prologue_city.png",
+        "assets/ui/story/prologue_override.png",
+        "assets/ui/story/prologue_hangar.png",
+        "assets/ui/story/prologue_vale.png",
+        "assets/ui/story/epilogue_dawn.png",
+        "assets/ui/story/epilogue_streets.png",
+        "assets/ui/story/epilogue_archive.png",
+        "assets/ui/story/epilogue_choice.png"
+      ],
+      "notes": "assets/ui/source/keyart_v1.prompts.md; scripts/sprites/cut_keyart_v1.py; part 12i (EVAL-P8-003)"
     },
     {
       "id": "vfx-hero-combat-hf-v1",

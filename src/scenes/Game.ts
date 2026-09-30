@@ -19,6 +19,7 @@ import { installGameDebugHooks, uninstallGameDebugHooks } from './game/GameDebug
 import { RunState } from './game/RunState'
 import { StoryDirector, pendingMilestoneId } from './game/StoryDirector'
 import { ToastLane } from '../ui/ToastLane'
+import { styleExplosion } from '../ui/effects/flashSafety'
 import { fillSubTankFromPickup } from '../systems/subTanks'
 import type { PauseInventory } from './menu/systemMenuSelector'
 import { attachOmegaActs, resolveBossDefinition, resolveOmegaEntryRun } from './game/OmegaActs'
@@ -1493,11 +1494,9 @@ export class Game extends Phaser.Scene {
   }
 
   private handleEnemyDefeat(x: number, y: number, targetHeight: number): void {
-    const explosion = this.add.sprite(x, y - targetHeight / 2, EFFECTS_ATLAS_KEY, 'effects_core/core/000')
+    const explosion = styleExplosion(this.add.sprite(x, y - targetHeight / 2, EFFECTS_ATLAS_KEY, 'effects_core/core/000'))
     this.playAnimationSafe(explosion, 'dummy-explode')
-    explosion.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-      explosion.destroy()
-    })
+    explosion.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => explosion.destroy())
   }
 
   private spawnProjectileClashFx(x: number, y: number, strong: boolean): void {

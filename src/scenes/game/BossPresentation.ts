@@ -16,6 +16,8 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { GAMEPLAY_TEXTURE_KEYS } from '../../ui/gameplay/GameplayTextures'
 import type { HUD } from '../../ui/HUD'
 import { PIXEL_FONT } from '../../ui/menu/menuTheme'
+import { cameraFlashAlpha, deathBurstStyle } from '../../ui/effects/flashSafety'
+import { Settings } from '../../systems/Settings'
 import type { CameraDirector } from './CameraDirector'
 
 /** Over the HUD (1000), under the dialogue overlay. */
@@ -300,7 +302,8 @@ export class BossPresentation {
   private burst(origin: { x: number; y: number }, index: number): void {
     const host = this.host
     const offset = burstOffset(index)
-    const ring = host.add.circle(origin.x + offset.x, origin.y + offset.y, 5, index % 2 === 0 ? 0xffffff : 0xffd26a, 1)
+    const style = deathBurstStyle(Settings.get().reducedFlashing, index)
+    const ring = host.add.circle(origin.x + offset.x, origin.y + offset.y, 5, style.color, style.alpha)
     ring.setDepth(BURST_DEPTH).setScale(offset.scale)
     host.tweens.add({ targets: ring, scale: offset.scale * 3.2, alpha: 0, duration: 280, onComplete: () => ring.destroy() })
     AudioService.playSfx('enemy_hit')
@@ -308,7 +311,10 @@ export class BossPresentation {
   }
 
   private flash(): void {
-    this.host.cameras.main.flash(BOSS_DEATH_TIMING.flashMs, 255, 255, 255)
+    // Reduced Flashing (part 12i): a faint wash instead of a full white frame; still counted as the flash beat.
+    const camera = this.host.cameras.main
+    camera.flashEffect.alpha = cameraFlashAlpha(Settings.get().reducedFlashing)
+    camera.flash(BOSS_DEATH_TIMING.flashMs, 255, 255, 255)
     this.death.flashes += 1
   }
 

@@ -10,6 +10,9 @@ import { HUD_ICONS_ATLAS, weaponHudIconFrame } from '../projectiles/weaponArt'
 import AudioService from '../audio'
 import { Settings } from '../systems/Settings'
 import { isLowHp, LOW_HP_BEEP_SFX, LowHpPulse, type LowHpSnapshot } from './beats/lowHp'
+import { PORTRAIT_ATLAS_KEY } from './dialoguePortraits'
+import { ensurePortraitAtlas } from './portraitAtlasLoader'
+import { bossPortraitFrameForLabel, hudBossPortraitPlacement } from './hudBossPortrait'
 
 export class HUD {
   private scene: Phaser.Scene
@@ -41,6 +44,10 @@ export class HUD {
   private drawnBars = new WeakMap<BakedGraphics, string>()
   /** Low HP (part 12i): the health bar pulses and a soft beep plays every 1.5 s at or under 25%; off under Reduced Flashing. */
   private readonly lowHp = new LowHpPulse()
+  /** Part 12i (EVAL-P8-003): the boss's portrait beside the boss bar, shown and hidden with the boss panel. */
+  private bossPortrait?: Phaser.GameObjects.Image
+  private bossPortraitBack?: Phaser.GameObjects.Rectangle
+  private bossPortraitFrame: string | null = null
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene
@@ -145,6 +152,8 @@ export class HUD {
     this.bossName = this.bossLabelText()
     this.tPlayer.setText(this.playerName)
     this.tBoss.setText(this.bossName)
+    this.bossPortraitFrame = bossPortraitFrameForLabel(bossName)
+    this.refreshBossPortrait()
   }
 
   setWeaponName(weaponName: string): void {
@@ -283,6 +292,35 @@ export class HUD {
     this.bossName = this.bossLabelText()
     this.tBoss.setText(this.bossName)
     this.tBoss.setVisible(visible)
+    this.refreshBossPortrait()
+  }
+
+  /** The portrait atlas loads on first use (the boss intro's dialogue usually has it in already). */
+  private refreshBossPortrait(): void {
+    const frame = this.bossPortraitFrame
+    const show = this.bossBarVisible && frame !== null
+    if (!show) {
+      this.bossPortrait?.setVisible(false)
+      this.bossPortraitBack?.setVisible(false)
+      return
+    }
+    if (!this.scene.textures.exists(PORTRAIT_ATLAS_KEY)) {
+      ensurePortraitAtlas(this.scene, () => this.refreshBossPortrait())
+      return
+    }
+    if (!this.scene.textures.get(PORTRAIT_ATLAS_KEY).has(frame)) return
+    const badge = hudBossPortraitPlacement(getHudLayout(GAME_WIDTH))
+    if (!this.bossPortrait || !this.bossPortraitBack) {
+      this.bossPortraitBack = this.scene.add.rectangle(badge.x, badge.y, badge.size, badge.size, 0x050d18, 0.92).setOrigin(0, 0).setStrokeStyle(1, 0x2b5c88, 0.9)
+      this.bossPortrait = this.scene.add.image(badge.x, badge.y, PORTRAIT_ATLAS_KEY, frame).setOrigin(0, 0).setDisplaySize(badge.size, badge.size).setName('hud-boss-portrait')
+      this.root.add([this.bossPortraitBack, this.bossPortrait])
+    }
+    this.bossPortrait.setFrame(frame).setDisplaySize(badge.size, badge.size).setVisible(true)
+    this.bossPortraitBack.setVisible(true)
+  }
+
+  getBossPortraitDebug(): { visible: boolean; frame: string | null } {
+    return { visible: Boolean(this.bossPortrait?.visible), frame: this.bossPortrait?.visible ? this.bossPortraitFrame : null }
   }
 
   private bossLabelText(): string {
