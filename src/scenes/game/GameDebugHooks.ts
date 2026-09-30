@@ -3,6 +3,7 @@ import { AUTOMATION } from '../../config/automation'
 import { GAMEPLAY_ACTOR_CEILING, GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
 import type { StepGameFramesOptions } from '../../config/frameStepping'
 import { getCampaignStage } from '../../content/campaign'
+import { BOSS_ROOM_CHANNEL_MAX_DEPTH, BOSS_ROOM_FLOOR_Y } from '../../boss/bossRoomLayout'
 import { getWeaponConfig } from '../../content/weapons'
 import { INPUT_ACTIONS, padSampleFromNames, type InputAction } from '../../input/ActionState'
 import InputActions from '../../input/InputActions'
@@ -186,7 +187,12 @@ export function installGameDebugHooks(host: GameDebugHost, dump: () => unknown):
         if (!host.player) {
           return null
         }
-        host.player.setPosition(x, host.player.y)
+        // A hero standing in a boss room channel (12f wave 6) rises to the floor line first: warped sideways at
+        // the bed's height it would sit 12px inside the ground, which Arcade lets it fall through.
+        const body = host.player.body as Phaser.Physics.Arcade.Body | undefined
+        const room = host.activeBossRoom
+        const sunk = body?.blocked.down && room && host.player.x >= room.x ? body.bottom - BOSS_ROOM_FLOOR_Y : 0
+        host.player.setPosition(x, host.player.y - (sunk > 0 && sunk <= BOSS_ROOM_CHANNEL_MAX_DEPTH ? sunk : 0))
         return { x: host.player.x, y: host.player.y }
       },
       crossNextCheckpoint: () => {

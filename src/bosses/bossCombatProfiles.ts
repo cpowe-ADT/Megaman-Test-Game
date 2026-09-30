@@ -1,4 +1,5 @@
 import type { BossId } from './types'
+import type { BossRoomLayout } from '../boss/bossRoomLayout'
 
 export type BossMotionIntentKind =
   | 'hold'
@@ -54,6 +55,8 @@ export interface BossRoomDynamicsProfile {
   kind: 'flat' | 'lane_vents' | 'height_anchors' | 'mine_lanes' | 'pillar_lanes' | 'teleport_anchors'
   maxActiveHazards: number
   anchorFractions: number[]
+  /** The room the stage builds in its boss room span (12f wave 6; `src/boss/bossRoomLayout.ts`, the brief's "Boss room"). */
+  layout?: BossRoomLayout
 }
 
 export interface BossCombatProfile {
@@ -87,7 +90,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Grounded tutorial sentinel: read the hop, clear the landing, punish recovery.',
     locomotion: 'grounded',
     passiveMotion: 'walk_to',
-    room: { kind: 'flat', maxActiveHazards: 1, anchorFractions: [0.25, 0.5, 0.75] },
+    room: { kind: 'flat', maxActiveHazards: 1, anchorFractions: [0.25, 0.5, 0.75], layout: 'flat' },
     attacks: attackMap(
       attack('giga_hop', {
         facingPolicy: 'lock_at_windup',
@@ -126,7 +129,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Lane-control duelist: stream, lob, then dash through the opening.',
     locomotion: 'grounded',
     passiveMotion: 'walk_to',
-    room: { kind: 'lane_vents', maxActiveHazards: 4, anchorFractions: [0.18, 0.38, 0.62, 0.82] },
+    room: { kind: 'lane_vents', maxActiveHazards: 4, anchorFractions: [0.18, 0.38, 0.62, 0.82], layout: 'pillars' },
     attacks: attackMap(
       attack('serpent_stream', {
         facingPolicy: 'lock_at_windup',
@@ -163,7 +166,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Authored height-anchor hunter that must land between aerial patterns.',
     locomotion: 'hybrid',
     passiveMotion: 'walk_to',
-    room: { kind: 'height_anchors', maxActiveHazards: 3, anchorFractions: [0.22, 0.5, 0.78] },
+    room: { kind: 'height_anchors', maxActiveHazards: 3, anchorFractions: [0.22, 0.5, 0.78], layout: 'channels' },
     attacks: attackMap(
       attack('jet_levitate', {
         facingPolicy: 'movement_driven',
@@ -197,7 +200,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Fast chain hopper that places mines and punishes vertical alignment.',
     locomotion: 'grounded',
     passiveMotion: 'jump_to',
-    room: { kind: 'mine_lanes', maxActiveHazards: 3, anchorFractions: [0.22, 0.5, 0.78] },
+    room: { kind: 'mine_lanes', maxActiveHazards: 3, anchorFractions: [0.22, 0.5, 0.78], layout: 'rails' },
     attacks: attackMap(
       attack('capacitor_charge', {
         facingPolicy: 'lock_at_windup',
@@ -234,7 +237,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Slow, commitment-heavy bruiser with large punish windows.',
     locomotion: 'grounded',
     passiveMotion: 'walk_to',
-    room: { kind: 'pillar_lanes', maxActiveHazards: 3, anchorFractions: [0.25, 0.5, 0.75] },
+    room: { kind: 'pillar_lanes', maxActiveHazards: 3, anchorFractions: [0.25, 0.5, 0.75], layout: 'channels' },
     attacks: attackMap(
       attack('fault_punch', {
         facingPolicy: 'lock_at_windup',
@@ -273,7 +276,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Teleport-anchor duelist with a returning disc and bounded control zones.',
     locomotion: 'grounded',
     passiveMotion: 'walk_to',
-    room: { kind: 'teleport_anchors', maxActiveHazards: 2, anchorFractions: [0.16, 0.5, 0.84] },
+    room: { kind: 'teleport_anchors', maxActiveHazards: 2, anchorFractions: [0.16, 0.5, 0.84], layout: 'belts' },
     attacks: attackMap(
       attack('vector_slice', {
         facingPolicy: 'lock_at_windup',
@@ -309,7 +312,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Low phasing slide with short-lived, capped denial zones.',
     locomotion: 'hybrid',
     passiveMotion: 'walk_to',
-    room: { kind: 'flat', maxActiveHazards: 3, anchorFractions: [0.2, 0.5, 0.8] },
+    room: { kind: 'flat', maxActiveHazards: 3, anchorFractions: [0.2, 0.5, 0.8], layout: 'channels' },
     attacks: attackMap(
       attack('toxic_slide', {
         facingPolicy: 'lock_at_windup',
@@ -342,7 +345,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Deliberate aerial anchor movement with readable air dashes and landings.',
     locomotion: 'aerial',
     passiveMotion: 'hover_to',
-    room: { kind: 'height_anchors', maxActiveHazards: 2, anchorFractions: [0.18, 0.5, 0.82] },
+    room: { kind: 'height_anchors', maxActiveHazards: 2, anchorFractions: [0.18, 0.5, 0.82], layout: 'shaft' },
     attacks: attackMap(
       attack('turbine_slice', {
         facingPolicy: 'lock_at_windup',
@@ -375,7 +378,7 @@ export const BOSS_COMBAT_PROFILES: Record<BossId, BossCombatProfile> = {
     identity: 'Grounded spacing and counter duel with deliberate draw recovery.',
     locomotion: 'grounded',
     passiveMotion: 'walk_to',
-    room: { kind: 'flat', maxActiveHazards: 3, anchorFractions: [0.22, 0.5, 0.78] },
+    room: { kind: 'flat', maxActiveHazards: 3, anchorFractions: [0.22, 0.5, 0.78], layout: 'ice_floor' },
     attacks: attackMap(
       attack('glacier_slide', {
         facingPolicy: 'lock_at_windup',

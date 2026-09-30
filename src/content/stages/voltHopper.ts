@@ -7,6 +7,7 @@ import type { LaneSwapDefinition, LaneSwapTiming } from '../../mechanics/laneSwa
 import type { TimedRailDefinition, TimedRailGroupDefinition } from '../../mechanics/timedRailGroup'
 import type { FloorGap } from '../../stage/stageGeometry'
 import type { StagePlatformDefinition, LocationAnchors, StageExtensionPatch } from '../campaign'
+import type { BossRoomFeatures } from '../../boss/bossRoomLayout'
 
 /**
  * Power District (`volt_hopper`), rebuilt to the Heat Works standard (prompt 12 part 12d, EVAL-P6-010;
@@ -240,10 +241,33 @@ export const VOLT_HOPPER_ENEMIES: EnemyLevelMarker[] = [
   enemy('volt_pre_rocket', 'enemy_rocket_bot', 5540, standingOn(FLOOR))
 ]
 
+/**
+ * The boss room (12f wave 6, EVAL-P7-005; the brief's `rails`): two floor rails in one timed rail group either
+ * side of the middle mine lane, on a slower beat than the route's (1.2s arcing, 2.4s quiet) while the Hopper's
+ * static orbs fly; a jump clears an arc. The rails stand on the floor, so every mine lane stays solid.
+ */
+const VOLT_ROOM_X = VOLT_HOPPER_ROUTE_WIDTH
+export const VOLT_HOPPER_BOSS_ROOM: BossRoomFeatures = {
+  layout: 'rails',
+  mechanics: {
+    timedRailGroups: [
+      {
+        id: 'volt_boss_rails',
+        rails: [
+          { id: 'volt_boss_rail_1', x: VOLT_ROOM_X + 140, y: FLOOR },
+          { id: 'volt_boss_rail_2', x: VOLT_ROOM_X + 308, y: FLOOR }
+        ],
+        timing: { onMs: 1200, offMs: 2400, phaseMs: 0 }
+      }
+    ]
+  }
+}
+
 /** The whole Power District route as one patch, registered in `src/content/stages/index.ts`. */
 export const VOLT_HOPPER_PATCH: StageExtensionPatch = {
   width: VOLT_HOPPER_ROUTE_WIDTH,
   bossSpawnX: VOLT_HOPPER_ROUTE_WIDTH - 84,
+  bossRoom: VOLT_HOPPER_BOSS_ROOM,
   checkpoints: VOLT_HOPPER_CHECKPOINTS,
   hazards: VOLT_HOPPER_HAZARDS,
   midPlatforms: VOLT_HOPPER_PLATFORMS,
