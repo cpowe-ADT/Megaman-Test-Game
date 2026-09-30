@@ -126,6 +126,10 @@
     "boss_warning": { "file": "assets/audio/sfx/generated/boss_warning.ogg", "seed": 12304, "peakDb": -3, "voices": [
       { "wave": "square", "duty": 0.5, "freq": 440, "repeat": 0.24, "arp": [{ "at": 0.12, "ratio": 1.335 }], "attack": 0.01, "sustain": 0.8, "decay": 0.1, "curve": 1, "gain": 0.6 },
       { "wave": "square", "duty": 0.125, "freq": 880, "repeat": 0.24, "arp": [{ "at": 0.12, "ratio": 1.335 }], "attack": 0.01, "sustain": 0.8, "decay": 0.1, "curve": 1, "gain": 0.25 }
+    ] },
+    "weapon_get": { "file": "assets/audio/sfx/generated/weapon_get.ogg", "seed": 12305, "peakDb": -2, "voices": [
+      { "wave": "square", "duty": 0.5, "freq": 523, "arp": [{ "at": 0.09, "ratio": 1.335 }, { "at": 0.18, "ratio": 1.2 }], "attack": 0.004, "sustain": 0.26, "decay": 0.14, "curve": 1.1, "gain": 0.55 },
+      { "wave": "triangle", "freq": 1046, "arp": [{ "at": 0.09, "ratio": 1.335 }, { "at": 0.18, "ratio": 1.2 }], "attack": 0.004, "sustain": 0.26, "decay": 0.16, "gain": 0.22, "delay": 0.02 }
     ] }
   }
 }

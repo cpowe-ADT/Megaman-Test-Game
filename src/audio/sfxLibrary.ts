@@ -48,6 +48,7 @@ export type SfxAssetKey =
   | 'wind_gust'
   | 'miniboss_stomp'
   | 'miniboss_shockwave'
+  | 'weapon_get'
 
 export type SfxAssetDefinition = {
   key: SfxAssetKey
@@ -109,7 +110,9 @@ export const SFX_ASSETS: Record<SfxAssetKey, SfxAssetDefinition> = {
   icicle_shatter: { key: 'icicle_shatter', path: `${GENERATED}/icicle_shatter.ogg`, volume: 0.24 },
   wind_gust: { key: 'wind_gust', path: `${GENERATED}/wind_gust.ogg`, volume: 0.18 },
   miniboss_stomp: { key: 'miniboss_stomp', path: `${GENERATED}/miniboss_stomp.ogg`, volume: 0.28 },
-  miniboss_shockwave: { key: 'miniboss_shockwave', path: `${GENERATED}/miniboss_shockwave.ogg`, volume: 0.26 }
+  miniboss_shockwave: { key: 'miniboss_shockwave', path: `${GENERATED}/miniboss_shockwave.ogg`, volume: 0.26 },
+  // 13d (EVAL-P13-013): a real weapon_get sting, replacing the borrowed pickup_bonus.
+  weapon_get: { key: 'weapon_get', path: `${GENERATED}/weapon_get.ogg`, volume: 0.3 }
 }
 
 /**

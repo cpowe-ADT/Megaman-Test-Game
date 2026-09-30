@@ -8,8 +8,8 @@ import { upgradeEffectLabel } from '../../progression/upgrades'
 // only: the boss-clear claim already granted the item; this describes whatever the placement gave.
 
 export const WEAPON_SWITCH_HINT = 'Q / E TO SWITCH'
-/** No `weapon_get` sfx exists yet: the card plays this existing key (listed in TESTING.md). */
-export const WEAPON_GET_STING_SFX = 'pickup_bonus'
+/** A procedural sting (13d, `EVAL-P13-013`; seed 12305, `assets/audio/sfx/generated/sfx-params.json`), replacing the borrowed `pickup_bonus`. */
+export const WEAPON_GET_STING_SFX = 'weapon_get'
 
 export type WeaponGetView = {
   kind: 'weapon' | 'item'
