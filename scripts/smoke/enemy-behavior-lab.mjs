@@ -1,4 +1,4 @@
-// Smoke `61-enemy-behavior-lab` (12c, EVAL-P6-006): the mechanics lab (`mechanics_lab`, no enemy markers
+// Smoke `64-enemy-behavior-lab` (12c, EVAL-P6-006): the mechanics lab (`mechanics_lab`, no enemy markers
 // of its own, a continuous flat floor, `GAME_FLOOR_TOP`) debug-spawns one of each new behaviour through
 // `enemySpawner.spawn`/`applyDamageToSprite` and steps frames with the loop asleep, as `miniboss-custodian.mjs`
 // does. Three beats, each its own screen so the camera's `isOnscreen` attack gate sees the hero beside it:

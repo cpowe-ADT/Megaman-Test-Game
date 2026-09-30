@@ -3991,7 +3991,7 @@ async function main() {
     await executeSmokeScenario(summary, '36-ending-flow', () => runEndingFlowScenario('36-ending-flow', storyDeps))
     await executeSmokeScenario(summary, '42-mechanics-matrix', async () => (await import('./smoke/mechanics-matrix.mjs')).runMechanicsMatrixScenario('42-mechanics-matrix', { outputDir, url, readState, waitForState, advanceFrames, tapKey }))
     await executeSmokeScenario(summary, '43-miniboss-custodian', async () => (await import('./smoke/miniboss-custodian.mjs')).runMinibossCustodianScenario('43-miniboss-custodian', storyDeps))
-    await executeSmokeScenario(summary, '61-enemy-behavior-lab', async () => (await import('./smoke/enemy-behavior-lab.mjs')).runEnemyBehaviorLabScenario('61-enemy-behavior-lab', storyDeps))
+    await executeSmokeScenario(summary, '64-enemy-behavior-lab', async () => (await import('./smoke/enemy-behavior-lab.mjs')).runEnemyBehaviorLabScenario('64-enemy-behavior-lab', storyDeps))
     await executeSmokeScenario(summary, '49-tutorial-verbs', async () => (await import('./smoke/tutorial-verbs.mjs')).runTutorialVerbsScenario('49-tutorial-verbs', storyDeps))
     await executeSmokeScenario(summary, '50-pyro-route', async () => (await import('./smoke/pyro-route.mjs')).runPyroRouteScenario('50-pyro-route', storyDeps))
     await executeSmokeScenario(summary, '54-mire-route', async () => (await import('./smoke/mire-route.mjs')).runMireRouteScenario('54-mire-route', storyDeps))
