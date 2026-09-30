@@ -46,6 +46,8 @@ export class VfxSfxRouter {
   private baseScale?: { x: number; y: number }
   private chargeAura?: Phaser.GameObjects.Sprite
   private chargeAuraLevel: ChargeLevel = 0
+  /** The weapon colour the aura last drew with (13d); undefined is the Buster's own per-level escalation. */
+  private chargeAuraTint: number | undefined = undefined
 
   constructor(private readonly scene: Phaser.Scene, private readonly player: Phaser.GameObjects.Sprite) {}
 
@@ -93,15 +95,18 @@ export class VfxSfxRouter {
 
   /**
    * The visible charge tell: `charge_aura` on the hero, tinted and scaled by level (0 hides it). Called
-   * every frame by NewPlayerRuntime with the charge level while the button is held.
+   * every frame by NewPlayerRuntime with the charge level while the button is held. `weaponTint` (13d,
+   * `EVAL-P13-008`) is the equipped special's colour; while charging it, the aura holds that colour at
+   * every level instead of the Buster's own blue-to-pink escalation (undefined keeps that escalation).
    */
-  updateChargeAura(level: ChargeLevel): void {
+  updateChargeAura(level: ChargeLevel, weaponTint?: number): void {
     if (this.destroyed) {
       return
     }
     if (level === 0) {
       this.chargeAura?.setVisible(false)
       this.chargeAuraLevel = 0
+      this.chargeAuraTint = undefined
       return
     }
     if (!this.chargeAura) {
@@ -116,14 +121,15 @@ export class VfxSfxRouter {
     const aura = this.chargeAura
     // Behind the hero so the body stays readable inside the ring (at depth + 1 it washed the sprite out).
     aura.setPosition(this.player.x, this.player.y).setDepth(this.player.depth - 1).setVisible(true)
-    if (level !== this.chargeAuraLevel) {
+    if (level !== this.chargeAuraLevel || weaponTint !== this.chargeAuraTint) {
       const style = CHARGE_AURA_BY_LEVEL[level]
       // Reduced Flashing (part 12i): dimmer, and no additive glow.
       const flash = chargeRingStyle(Settings.get().reducedFlashing)
-      aura.setTint(style.tint).setScale(style.scale).setAlpha(flash.additive ? style.alpha : style.alpha * 0.6)
+      aura.setTint(weaponTint ?? style.tint).setScale(style.scale).setAlpha(flash.additive ? style.alpha : style.alpha * 0.6)
       aura.setBlendMode(flash.additive ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL)
       aura.anims.timeScale = style.frameRate / CHARGE_AURA.frameRate
       this.chargeAuraLevel = level
+      this.chargeAuraTint = weaponTint
     }
   }
 

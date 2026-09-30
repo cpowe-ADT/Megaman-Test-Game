@@ -264,7 +264,7 @@ export async function runBeatsFlowScenario(name, { outputDir, storyUrl, readStat
     const view = weaponGet.victory.weaponGet
     assert.equal(view.kind, 'weapon')
     assert.equal(view.name, 'FLAME SERPENT')
-    assert.equal(view.energy, 40)
+    assert.equal(view.energy, 28)
     assert.equal(view.switchHint, 'Q / E TO SWITCH')
     assert.match(view.tutorial ?? '', /flame/i, "the roster's tutorial line")
     assert.match(view.registry?.speakerName ?? '', /iona/i, "Iona's registry line")
@@ -274,11 +274,21 @@ export async function runBeatsFlowScenario(name, { outputDir, storyUrl, readStat
     assert.ok(weaponGet.save.storyFlags.includes('pyro_maw_weapon_get'))
     await capture('weapon-get', weaponGet)
 
-    // 7. Enter: the results (time, secrets, lives used, difficulty); their hold runs the victory return.
+    // 7. Enter: the weapon demo (13d, EVAL-P13-013) -- the hero fires Flame Serpent at a dummy, plain then
+    // charged (Inferno Coil), while the name and a one-line use type out.
+    await pressStepped('Enter')
+    const demo = await page.evaluate(() => window.__b45.state())
+    assert.equal(demo.victory.card, 'weapon_demo')
+    assert.equal(demo.victory.weaponDemo?.weaponId, 'FlameSerpent')
+    assert.equal(demo.victory.weaponDemo?.chargedMoveName, 'Inferno Coil')
+    assert.equal(demo.weaponDemo?.weaponId, 'FlameSerpent', 'also at the top level (render_game_to_text().weaponDemo)')
+    await capture('weapon-demo', demo)
+
+    // 8. Enter skips the demo, reaching the results (time, secrets, lives used, difficulty); their hold runs the victory return.
     await pressStepped('Enter')
     const results = await page.evaluate(() => window.__b45.state())
     assert.equal(results.victory.card, 'results')
-    assert.deepEqual(results.victory.cards, ['weapon_get', 'results'])
+    assert.deepEqual(results.victory.cards, ['weapon_get', 'weapon_demo', 'results'])
     const figures = results.victory.results
     assert.equal(figures.stageId, 'pyro_maw')
     assert.ok(figures.timeMs > 0 && /^\d\d:\d\d\.\d\d$/.test(figures.timeLabel), figures.timeLabel)
@@ -308,7 +318,7 @@ export async function runBeatsFlowScenario(name, { outputDir, storyUrl, readStat
     assert.equal(afterDebrief.dialogue?.sequenceId, 'robot_masters_cleared_8', 'the eighth-clear milestone follows the debrief, never before it')
     await capture('stage-select', afterDebrief)
 
-    // 8. The ending's CAMPAIGN RECORD card, the credits pace and the OMEGA RELAY title card.
+    // 9. The ending's CAMPAIGN RECORD card, the credits pace and the OMEGA RELAY title card.
     await page.evaluate(() => window.__b45.game.scene.getScenes(true)[0].scene.start('EndingScene'))
     await waitForState(page, (state) => state.scene === 'EndingScene', 10000, 'the ending')
     for (let attempt = 0; attempt < 20; attempt += 1) {

@@ -130,6 +130,10 @@
     "boss_intro_sting": { "file": "assets/audio/sfx/generated/boss_intro_sting.ogg", "seed": 13077, "peakDb": -3, "voices": [
       { "wave": "square", "duty": 0.5, "freq": 330, "arp": [{ "at": 0.06, "ratio": 1.5 }, { "at": 0.14, "ratio": 1.3333 }], "attack": 0.01, "sustain": 0.22, "decay": 0.16, "curve": 1.2, "gain": 0.55 },
       { "wave": "square", "duty": 0.25, "freq": 660, "arp": [{ "at": 0.06, "ratio": 1.5 }, { "at": 0.14, "ratio": 1.3333 }], "attack": 0.01, "sustain": 0.22, "decay": 0.16, "curve": 1.2, "gain": 0.28 }
+    ] },
+    "weapon_get": { "file": "assets/audio/sfx/generated/weapon_get.ogg", "seed": 12305, "peakDb": -2, "voices": [
+      { "wave": "square", "duty": 0.5, "freq": 523, "arp": [{ "at": 0.09, "ratio": 1.335 }, { "at": 0.18, "ratio": 1.2 }], "attack": 0.004, "sustain": 0.26, "decay": 0.14, "curve": 1.1, "gain": 0.55 },
+      { "wave": "triangle", "freq": 1046, "arp": [{ "at": 0.09, "ratio": 1.335 }, { "at": 0.18, "ratio": 1.2 }], "attack": 0.004, "sustain": 0.26, "decay": 0.16, "gain": 0.22, "delay": 0.02 }
     ] }
   }
 }

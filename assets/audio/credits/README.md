@@ -153,6 +153,7 @@ Originals, never shipped (the build skips `source` folders), kept so the masters
 | `assets/audio/sfx/generated/boss_hit_weak.ogg` | `boss_hit_weak` | 12303 |
 | `assets/audio/sfx/generated/boss_warning.ogg` | `boss_warning` | 12304 |
 | `assets/audio/sfx/generated/boss_intro_sting.ogg` | `boss_intro_sting` | 13077 |
+| `assets/audio/sfx/generated/weapon_get.ogg` | `weapon_get` | 12305 |
 
 The seven player `.wav` files (`jump` to `charge_loop`) keep their paths and format (22.05kHz 16-bit mono) but were re-rendered in 12h. The originals arrived in 34bde56 with no source, author or licence, and no generator survives; their pitch contours resemble the synthesized fallback tones in `src/audio/PlaceholderAudioService.ts` but do not match them. Because they could not be credited, the seeded renders replaced them.
 

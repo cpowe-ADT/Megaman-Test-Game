@@ -514,6 +514,8 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
       modalOpen: Boolean((scene as any).victoryModal?.isOpen?.()),
       ...((scene as any).victoryModal?.getDebugState?.() ?? {})
     }
+    // 13d (EVAL-P13-013): also at the top level, as the task names it (render_game_to_text().weaponDemo).
+    payload.weaponDemo = (payload.victory as { weaponDemo?: unknown }).weaponDemo ?? null
     payload.bossIntro = (scene as any).bossBeats?.presentation?.getDebugState?.() ?? null
     payload.dialogue = (scene as any).dialogueOverlay?.getDebugState?.() ?? {
       active: false,

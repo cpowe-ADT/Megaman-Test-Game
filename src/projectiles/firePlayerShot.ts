@@ -12,12 +12,20 @@ export function firePlayerShot<T>(options: {
   x: number; y: number; activeBusterCount: number; modifiers: UpgradeModifiers
   /** HydroLance aim (-1 up, 1 down) and FlameSerpent's held-stream flames. */
   aim?: -1 | 0 | 1; sustain?: boolean
+  /** Flame Serpent's charged release (13d): a stream held past the charge-ready threshold, then released. */
+  forceCharge?: boolean
   spawn: (request: ProjectileSpawnRequest) => T | null | undefined
 }): { projectile: T; projectiles: T[]; shot: ResolvedPlayerShot; remainingEnergy: number } | null {
   const weaponId = options.request.weaponId ?? options.equippedWeaponId
   if (weaponId === 'Buster' && options.activeBusterCount >= 3) return null
   if (weaponId === 'ArcSlash' && !options.modifiers.arcSlash) return null
-  const intent = { chargeLevel: options.request.chargeLevel, facing: options.request.facing, aim: options.aim, sustain: options.sustain }
+  const intent = {
+    chargeLevel: options.request.chargeLevel,
+    facing: options.request.facing,
+    aim: options.aim,
+    sustain: options.sustain,
+    forceCharge: options.forceCharge
+  }
   const shot = resolvePlayerShot({ weaponId, intent, x: options.x, y: options.y, modifiers: options.modifiers })
   // The tutorial ability is tied to saber release, with no cycling slot or energy bank.
   if (weaponId === 'ArcSlash') shot.energyCost = 0

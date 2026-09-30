@@ -10,6 +10,13 @@ export const WEAPONS_ATLAS = {
   data: 'assets/sprites/projectiles/weapons_v1/weapons_v1.atlas.json'
 } as const
 
+/** The nine charged-form groups (13d, `EVAL-P13-008`), cut to their own atlas so the plain `weapons_v1` art is untouched. */
+export const WEAPONS_CHARGED_ATLAS = {
+  key: 'atlas_weapons_charged_v1',
+  image: 'assets/sprites/projectiles/weapons_charged_v1/weapons_charged_v1.png',
+  data: 'assets/sprites/projectiles/weapons_charged_v1/weapons_charged_v1.atlas.json'
+} as const
+
 /** Weapon id (`src/projectiles/definitions/coreProjectiles.ts` PLAYER_WEAPON_FRAMES keys) to its art group. */
 export const WEAPON_ART_GROUPS = {
   ArcSlash: 'arc_slash',
@@ -36,7 +43,17 @@ export const WEAPON_ART_FRAME_SIZE: Record<string, { width: number; height: numb
   acid_glob: { width: 40, height: 30 },
   aero_darts: { width: 38, height: 36 },
   frost_shatter: { width: 40, height: 32 },
-  boss_orb: { width: 44, height: 30 }
+  boss_orb: { width: 44, height: 30 },
+  // Charged-effect sheets (13d, EVAL-P13-008): cut from assets/sprites/source/vfx/hf_v1/charged_a.png and
+  // charged_b.png (scripts/sprites/weapons_charged_v1.json); sizes as printed by cut_vfx_sheet.py.
+  flame_serpent_charged: { width: 58, height: 46 },
+  hydro_lance_charged: { width: 62, height: 54 },
+  thunder_spike_charged: { width: 62, height: 58 },
+  quake_knuckle_charged: { width: 62, height: 50 },
+  magcut_disc_charged: { width: 52, height: 52 },
+  acid_glob_charged: { width: 58, height: 50 },
+  aero_darts_charged: { width: 56, height: 52 },
+  frost_shatter_charged: { width: 60, height: 40 }
 }
 
 /**
@@ -54,6 +71,17 @@ export function weaponHudIconFrame(weaponId: string): string {
   return `hud_icons_v1/${group}/000`
 }
 
+/** The charged groups live in their own atlas (`WEAPONS_CHARGED_ATLAS`), named `<group>_charged`. */
+export function isChargedArtGroup(group: string): boolean {
+  return group.endsWith('_charged')
+}
+
 export function weaponArtFrame(group: string, index: number): string {
-  return `weapons_v1/${group}/${String(((Math.floor(index) % 4) + 4) % 4).padStart(3, '0')}`
+  const atlasKey = isChargedArtGroup(group) ? 'weapons_charged_v1' : 'weapons_v1'
+  return `${atlasKey}/${group}/${String(((Math.floor(index) % 4) + 4) % 4).padStart(3, '0')}`
+}
+
+/** The texture key a group's frames live in (`weaponArtVisual`): the charged atlas for a `_charged` group. */
+export function weaponArtTextureKey(group: string): string {
+  return isChargedArtGroup(group) ? WEAPONS_CHARGED_ATLAS.key : WEAPONS_ATLAS.key
 }

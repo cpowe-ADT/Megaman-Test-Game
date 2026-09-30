@@ -2,16 +2,19 @@ import Phaser from 'phaser'
 import AudioService from '../audio'
 import { GAME_SIZE } from '../config/renderPolicy'
 import { IDENTITY } from '../content/identity'
+import { getWeaponConfig } from '../content/weapons'
 import InputActions from '../input/InputActions'
 import bindMenuConfirmCancel from '../input/menuInputBinder'
-import { HUD_ICONS_ATLAS, weaponHudIconFrame } from '../projectiles/weaponArt'
+import { HUD_ICONS_ATLAS, weaponArtFrame, weaponArtTextureKey, weaponHudIconFrame } from '../projectiles/weaponArt'
+import { typewriterVisibleChars } from './dialogueTypewriter'
 import { PORTRAIT_ATLAS_KEY, portraitForSpeaker } from './dialoguePortraits'
 import { ensurePortraitAtlas } from './portraitAtlasLoader'
 import { MENU_COLORS, PIXEL_FONT, pixelFontSize, type PixelFontScale } from './menu/menuTheme'
 import { RESULTS_HOLD_MS, stageEntrySnapshot, type StageEntrySnapshot, type StageResults } from './beats/stageResults'
 import { WEAPON_GET_STING_SFX, type WeaponGetView } from './beats/weaponGet'
+import { buildWeaponDemoView, WEAPON_DEMO_BEAT_MS, WEAPON_DEMO_TOTAL_MS, weaponDemoPhaseAt, type WeaponDemoView } from './beats/weaponDemo'
 
-export type StageClearCard = 'weapon_get' | 'results'
+export type StageClearCard = 'weapon_get' | 'weapon_demo' | 'results'
 
 export type StageClearShowOptions = {
   stageTitle: string
@@ -29,6 +32,8 @@ export type StageClearDebugState = {
   holdRemainingMs: number | null
   portraitFrame: string | null
   iconFrame: string | null
+  /** 13d, EVAL-P13-013: `render_game_to_text().victory.weaponDemo` (and `.weaponDemo` at the top level, main.ts). */
+  weaponDemo: { weaponId: string; name: string; phase: string; elapsedMs: number; chargedMoveName: string | null } | null
 }
 
 const DEPTH = 18000
@@ -51,6 +56,13 @@ export class StageClearCards {
   private enteredAtMs = -1
   private portraitFrame: string | null = null
   private iconFrame: string | null = null
+  private demoView: WeaponDemoView | null = null
+  private demoElapsedMs = 0
+  private demoNameText?: Phaser.GameObjects.Text
+  private demoUseLineText?: Phaser.GameObjects.Text
+  private demoPlainShot?: Phaser.GameObjects.Sprite
+  private demoChargedShot?: Phaser.GameObjects.Sprite
+  private demoChargeAura?: Phaser.GameObjects.Rectangle
 
   constructor(private readonly scene: Phaser.Scene, entrySave: Parameters<typeof stageEntrySnapshot>[0]) {
     this.entry = stageEntrySnapshot(entrySave)
@@ -72,6 +84,11 @@ export class StageClearCards {
   confirm(): void {
     if (!this.card || this.scene.time.now === this.enteredAtMs) return
     if (this.card === 'weapon_get') {
+      // A weapon (not an item or upgrade) demos its new move before the results (13d, EVAL-P13-013).
+      this.enter(this.options?.reward?.kind === 'weapon' ? 'weapon_demo' : 'results')
+      return
+    }
+    if (this.card === 'weapon_demo') {
       this.enter('results')
       return
     }
@@ -81,13 +98,37 @@ export class StageClearCards {
     next?.()
   }
 
+  /** Per frame while the demo card is open (13d): the typewriter reveal and the scripted shots. A no-op otherwise. */
+  update(deltaMs: number): void {
+    if (this.card !== 'weapon_demo' || !this.demoView) return
+    this.demoElapsedMs += Math.max(0, deltaMs)
+    const phase = weaponDemoPhaseAt(this.demoElapsedMs)
+    if (this.demoNameText) {
+      const full = this.demoView.name
+      this.demoNameText.setText(full.slice(0, typewriterVisibleChars(full.length, this.demoElapsedMs - WEAPON_DEMO_BEAT_MS.name)))
+    }
+    if ((phase === 'plain' || phase === 'charge' || phase === 'charged' || phase === 'useLine' || phase === 'done') && this.demoPlainShot && !this.demoPlainShot.getData('fired')) {
+      this.demoPlainShot.setData('fired', true).setVisible(true)
+      this.scene.tweens.add({ targets: this.demoPlainShot, x: this.demoPlainShot.x + 288, duration: 480, ease: 'Linear' })
+    }
+    this.demoChargeAura?.setVisible(phase === 'charge')
+    if ((phase === 'charged' || phase === 'useLine' || phase === 'done') && this.demoChargedShot && !this.demoChargedShot.getData('fired')) {
+      this.demoChargedShot.setData('fired', true).setVisible(true)
+      this.scene.tweens.add({ targets: this.demoChargedShot, x: this.demoChargedShot.x + 288, duration: 480, ease: 'Linear' })
+    }
+    if (this.demoUseLineText && (phase === 'useLine' || phase === 'done')) {
+      const full = this.demoView.useLine
+      this.demoUseLineText.setText(full.slice(0, typewriterVisibleChars(full.length, this.demoElapsedMs - WEAPON_DEMO_BEAT_MS.useLine)))
+    }
+  }
+
   destroy(): void {
     this.close()
     this.options = undefined
   }
 
   getDebugState(): StageClearDebugState {
-    const hold = this.holdTimer && this.card === 'results' ? Math.max(0, Math.round(this.holdTimer.getRemaining())) : null
+    const hold = this.holdTimer && (this.card === 'results' || this.card === 'weapon_demo') ? Math.max(0, Math.round(this.holdTimer.getRemaining())) : null
     return {
       card: this.card,
       cards: [...this.shown],
@@ -95,7 +136,17 @@ export class StageClearCards {
       results: this.options?.results ?? null,
       holdRemainingMs: hold,
       portraitFrame: this.card === 'weapon_get' ? this.portraitFrame : null,
-      iconFrame: this.card === 'weapon_get' ? this.iconFrame : null
+      iconFrame: this.card === 'weapon_get' ? this.iconFrame : null,
+      weaponDemo:
+        this.card === 'weapon_demo' && this.demoView
+          ? {
+              weaponId: this.demoView.weaponId,
+              name: this.demoView.name,
+              phase: weaponDemoPhaseAt(this.demoElapsedMs),
+              elapsedMs: Math.round(this.demoElapsedMs),
+              chargedMoveName: this.demoView.charged?.moveName ?? null
+            }
+          : null
     }
   }
 
@@ -107,6 +158,13 @@ export class StageClearCards {
     this.container?.destroy(true)
     this.container = undefined
     this.card = null
+    this.demoView = null
+    this.demoElapsedMs = 0
+    this.demoNameText = undefined
+    this.demoUseLineText = undefined
+    this.demoPlainShot = undefined
+    this.demoChargedShot = undefined
+    this.demoChargeAura = undefined
   }
 
   private enter(card: StageClearCard): void {
@@ -124,6 +182,9 @@ export class StageClearCards {
     if (card === 'weapon_get' && options.reward) {
       this.drawWeaponGet(container, options.reward)
       AudioService.playSfx(WEAPON_GET_STING_SFX)
+    } else if (card === 'weapon_demo' && options.reward) {
+      this.drawWeaponDemo(container, options.reward)
+      this.holdTimer = this.scene.time.delayedCall(WEAPON_DEMO_TOTAL_MS, () => this.confirm())
     } else {
       this.drawResults(container, options.stageTitle, options.results)
       this.holdTimer = this.scene.time.delayedCall(RESULTS_HOLD_MS, () => this.confirm())
@@ -194,6 +255,52 @@ export class StageClearCards {
     }
     if (this.scene.textures.exists(PORTRAIT_ATLAS_KEY)) place()
     else ensurePortraitAtlas(this.scene, place)
+  }
+
+  /**
+   * A plain band (13d, EVAL-P13-013): the hero fires the weapon at a target dummy, then its charged form,
+   * while the name and a one-line use type out (`update`, driven by the real `resolvePlayerShot` script in
+   * `weaponDemo.ts`). Grants nothing (rule 8): these are decorative sprites in this card's own container,
+   * never the live ProjectileSystem or player energy.
+   */
+  private drawWeaponDemo(container: Phaser.GameObjects.Container, reward: WeaponGetView): void {
+    const { width, height } = GAME_SIZE
+    const demo = buildWeaponDemoView(reward.itemId)
+    this.demoView = demo
+    this.demoElapsedMs = 0
+    const title = this.text(width / 2, 22, 'WEAPON DEMO', 2, '#7de8ff').setOrigin(0.5)
+    const laneY = height / 2 + 6
+    const heroX = 72
+    const dummyX = width - 72
+    const band = this.scene.add.rectangle(width / 2, laneY, width - 32, 64, MENU_COLORS.panel, 1).setStrokeStyle(1, MENU_COLORS.cyan, 0.6)
+    const hero = this.scene.add.rectangle(heroX, laneY, 14, 28, 0xdbeafe, 1)
+    const dummy = this.scene.add.rectangle(dummyX, laneY, 18, 28, 0x3a4a68, 1).setStrokeStyle(1, 0xff6677, 0.9)
+    const dummyLabel = this.text(dummyX, laneY + 24, 'DUMMY', 1, '#ff98a0').setOrigin(0.5)
+    this.demoNameText = this.text(width / 2, 48, '', 2, '#f5f8ff').setOrigin(0.5)
+    this.demoUseLineText = this.text(width / 2, laneY + 46, '', 1, '#dbeafe', width - 64).setOrigin(0.5, 0)
+    container.add([title, band, hero, dummy, dummyLabel, this.demoNameText, this.demoUseLineText])
+
+    const tint = getWeaponConfig(demo.weaponId).tint
+    this.demoChargeAura = this.scene.add.rectangle(heroX, laneY, 30, 36, tint ?? 0x9fe8ff, 0.35).setVisible(false)
+    container.add(this.demoChargeAura)
+
+    const atlasHasFrame = (group: string) => {
+      const key = weaponArtTextureKey(group)
+      return this.scene.textures.exists(key) && this.scene.textures.get(key).has(weaponArtFrame(group, 0))
+    }
+    if (atlasHasFrame(demo.plain.artGroup)) {
+      this.demoPlainShot = this.scene.add
+        .sprite(heroX + 18, laneY, weaponArtTextureKey(demo.plain.artGroup), weaponArtFrame(demo.plain.artGroup, 0))
+        .setVisible(false)
+      container.add(this.demoPlainShot)
+    }
+    if (demo.charged && atlasHasFrame(demo.charged.artGroup)) {
+      this.demoChargedShot = this.scene.add
+        .sprite(heroX + 18, laneY, weaponArtTextureKey(demo.charged.artGroup), weaponArtFrame(demo.charged.artGroup, 0))
+        .setScale(1.15)
+        .setVisible(false)
+      container.add(this.demoChargedShot)
+    }
   }
 
   private drawResults(container: Phaser.GameObjects.Container, stageTitle: string, results: StageResults): void {
