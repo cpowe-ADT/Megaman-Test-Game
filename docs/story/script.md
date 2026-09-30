@@ -2,7 +2,7 @@
 
 Generated from `src/content/dialogue/dialogue.v2.json` by `npm run story:script`. Do not edit by hand; edit the JSON and regenerate. Tokens in braces are resolved at runtime: `{hero}` is the callsign from `src/content/identity.ts`, `{rewardLabel}` the reward the location placed, `{clearedCount}` and `{remainingCount}` the warden tally, `{districtName}` and `{wardenName}` the current stage.
 
-Line count: 197. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
+Line count: 213. Every line is at most 180 characters. Warden stages are order-independent: no warden line names another warden.
 
 ## Prologue
 
@@ -139,9 +139,11 @@ _Staging: Iona reads the district registry on the weapon-get card, keyed by the 
 
 ### District restored (Stage Select tile)
 
-_Staging: One line in the Stage Select preview panel after the clear._
+_Staging: The return debrief (part 13g): a skippable exchange on the way back to Stage Select, before any milestone line. Iona's first line alone is also the passive Stage Select preview text after the clear._
 
 - **Director Iona Vale:** {districtName}: the towers are cooling. The furnaces answer their district again.
+- **WREN:** The vent logs were edited nine minutes before the alarm. The order came first.
+- **Director Iona Vale:** Get that timestamp into the record before shift change.
 
 ## Water District (Tide Reaver)
 
@@ -185,7 +187,11 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### District restored (Stage Select tile)
 
+_Staging: The return debrief (part 13g)._
+
 - **Director Iona Vale:** {districtName}: the locks are open. The lower wards are draining.
+- **WREN:** Pressure held steady until the lock command. The command came before the flood.
+- **Director Iona Vale:** Then the flood was the plan, not the failure. Log it that way.
 
 ## Power District (Volt Hopper)
 
@@ -229,7 +235,11 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### District restored (Stage Select tile)
 
+_Staging: The return debrief (part 13g)._
+
 - **Director Iona Vale:** {districtName}: the substations are back on local control.
+- **WREN:** The blackout order predates the surge. Someone called the storm before it hit.
+- **Director Iona Vale:** Then the grid failed on a schedule, not an accident. File it.
 
 ## Structural Works (Basalt Titan)
 
@@ -273,7 +283,11 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### District restored (Stage Select tile)
 
+_Staging: The return debrief (part 13g)._
+
 - **Director Iona Vale:** {districtName}: the supports are shored and the crews are inside.
+- **WREN:** The load sensors were recalibrated a week before the towers moved.
+- **Director Iona Vale:** So the weight was wrong on purpose. Put that in the public file.
 
 ## Transit Security (Ferro Blade)
 
@@ -317,7 +331,11 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### District restored (Stage Select tile)
 
+_Staging: The return debrief (part 13g)._
+
 - **Director Iona Vale:** {districtName}: the sealed lines are moving food again.
+- **WREN:** Eight thousand intrusion records, one serial, filed in one second. That's not a count. That's a stamp.
+- **Director Iona Vale:** Then the count was never real. Cross it out of the district's name.
 
 ## Medicine District (Mire Wraith)
 
@@ -361,7 +379,11 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### District restored (Stage Select tile)
 
+_Staging: The return debrief (part 13g)._
+
 - **Director Iona Vale:** {districtName}: the clinics are dosing the clean formula.
+- **WREN:** The antidote was quarantined the day before the first case. The cure waited for a reason to exist.
+- **Director Iona Vale:** Get the batch numbers to the clinics before the story does.
 
 ## Weather District (Gale Vixen)
 
@@ -405,7 +427,11 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### District restored (Stage Select tile)
 
+_Staging: The return debrief (part 13g)._
+
 - **Director Iona Vale:** {districtName}: the corridor is steered out to sea.
+- **WREN:** The sky was clear when the alarm fired. The forecast was written, not measured.
+- **Director Iona Vale:** A written storm still grounded every flight in the district. Say that plainly.
 
 ## Public Archives (Glacier Ronin)
 
@@ -449,7 +475,11 @@ _Staging: One line in the Stage Select preview panel after the clear._
 
 ### District restored (Stage Select tile)
 
+_Staging: The return debrief (part 13g)._
+
 - **Director Iona Vale:** {districtName}: the record is replicating beyond the CORE.
+- **WREN:** The crisis summary was filed before the crisis. The record knew the ending first.
+- **Director Iona Vale:** Then the archive can hold the correction as carefully as it held the lie.
 
 ## Central Core (OMEGA CORE)
 

@@ -270,29 +270,45 @@
       { "speakerId": "hero", "text": "Stand down, OMEGA. The relays are listening, and they have heard enough." }
     ] },
 
-    { "id": "pyro_maw_restored", "trigger": "district_restored", "stageId": "pyro_maw", "staging": "One line in the Stage Select preview panel after the clear.", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the towers are cooling. The furnaces answer their district again." }
+    { "id": "pyro_maw_restored", "trigger": "district_restored", "stageId": "pyro_maw", "staging": "The return debrief (part 13g): a skippable exchange on the way back to Stage Select, before any milestone line. Iona's first line alone is also the passive Stage Select preview text after the clear.", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the towers are cooling. The furnaces answer their district again." },
+      { "speakerId": "hero", "text": "The vent logs were edited nine minutes before the alarm. The order came first." },
+      { "speakerId": "director_iona", "text": "Get that timestamp into the record before shift change." }
     ] },
-    { "id": "tide_reaver_restored", "trigger": "district_restored", "stageId": "tide_reaver", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the locks are open. The lower wards are draining." }
+    { "id": "tide_reaver_restored", "trigger": "district_restored", "stageId": "tide_reaver", "staging": "The return debrief (part 13g).", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the locks are open. The lower wards are draining." },
+      { "speakerId": "hero", "text": "Pressure held steady until the lock command. The command came before the flood." },
+      { "speakerId": "director_iona", "text": "Then the flood was the plan, not the failure. Log it that way." }
     ] },
-    { "id": "volt_hopper_restored", "trigger": "district_restored", "stageId": "volt_hopper", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the substations are back on local control." }
+    { "id": "volt_hopper_restored", "trigger": "district_restored", "stageId": "volt_hopper", "staging": "The return debrief (part 13g).", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the substations are back on local control." },
+      { "speakerId": "hero", "text": "The blackout order predates the surge. Someone called the storm before it hit." },
+      { "speakerId": "director_iona", "text": "Then the grid failed on a schedule, not an accident. File it." }
     ] },
-    { "id": "basalt_titan_restored", "trigger": "district_restored", "stageId": "basalt_titan", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the supports are shored and the crews are inside." }
+    { "id": "basalt_titan_restored", "trigger": "district_restored", "stageId": "basalt_titan", "staging": "The return debrief (part 13g).", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the supports are shored and the crews are inside." },
+      { "speakerId": "hero", "text": "The load sensors were recalibrated a week before the towers moved." },
+      { "speakerId": "director_iona", "text": "So the weight was wrong on purpose. Put that in the public file." }
     ] },
-    { "id": "ferro_blade_restored", "trigger": "district_restored", "stageId": "ferro_blade", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the sealed lines are moving food again." }
+    { "id": "ferro_blade_restored", "trigger": "district_restored", "stageId": "ferro_blade", "staging": "The return debrief (part 13g).", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the sealed lines are moving food again." },
+      { "speakerId": "hero", "text": "Eight thousand intrusion records, one serial, filed in one second. That's not a count. That's a stamp." },
+      { "speakerId": "director_iona", "text": "Then the count was never real. Cross it out of the district's name." }
     ] },
-    { "id": "mire_wraith_restored", "trigger": "district_restored", "stageId": "mire_wraith", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the clinics are dosing the clean formula." }
+    { "id": "mire_wraith_restored", "trigger": "district_restored", "stageId": "mire_wraith", "staging": "The return debrief (part 13g).", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the clinics are dosing the clean formula." },
+      { "speakerId": "hero", "text": "The antidote was quarantined the day before the first case. The cure waited for a reason to exist." },
+      { "speakerId": "director_iona", "text": "Get the batch numbers to the clinics before the story does." }
     ] },
-    { "id": "gale_vixen_restored", "trigger": "district_restored", "stageId": "gale_vixen", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the corridor is steered out to sea." }
+    { "id": "gale_vixen_restored", "trigger": "district_restored", "stageId": "gale_vixen", "staging": "The return debrief (part 13g).", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the corridor is steered out to sea." },
+      { "speakerId": "hero", "text": "The sky was clear when the alarm fired. The forecast was written, not measured." },
+      { "speakerId": "director_iona", "text": "A written storm still grounded every flight in the district. Say that plainly." }
     ] },
-    { "id": "glacier_ronin_restored", "trigger": "district_restored", "stageId": "glacier_ronin", "lines": [
-      { "speakerId": "director_iona", "text": "{districtName}: the record is replicating beyond the CORE." }
+    { "id": "glacier_ronin_restored", "trigger": "district_restored", "stageId": "glacier_ronin", "staging": "The return debrief (part 13g).", "lines": [
+      { "speakerId": "director_iona", "text": "{districtName}: the record is replicating beyond the CORE." },
+      { "speakerId": "hero", "text": "The crisis summary was filed before the crisis. The record knew the ending first." },
+      { "speakerId": "director_iona", "text": "Then the archive can hold the correction as carefully as it held the lie." }
     ] },
 
     { "id": "pyro_maw_capsule", "trigger": "capsule_pickup", "stageId": "pyro_maw", "staging": "The capsule card on the ticker: the stage warden's recorded cache log from before tonight, above the effect label. The pickup already granted the item.", "lines": [

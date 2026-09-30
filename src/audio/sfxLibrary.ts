@@ -26,6 +26,7 @@ export type SfxAssetKey =
   | 'boss_hit_weak'
   | 'boss_activate'
   | 'boss_warning'
+  | 'boss_intro_sting'
   | 'stage_clear'
   | 'game_over'
   | 'saber_combo_1'
@@ -88,6 +89,8 @@ export const SFX_ASSETS: Record<SfxAssetKey, SfxAssetDefinition> = {
   boss_hit_weak: { key: 'boss_hit_weak', path: `${GENERATED}/boss_hit_weak.ogg`, volume: 0.26 },
   boss_activate: { key: 'boss_activate', path: 'assets/audio/sfx/boss_activate.ogg', volume: 0.28 },
   boss_warning: { key: 'boss_warning', path: `${GENERATED}/boss_warning.ogg`, volume: 0.24 },
+  // Part 13g (EVAL-P13-012): the pre-stage boss card's sting, distinct from the in-stage door's boss_warning/boss_activate.
+  boss_intro_sting: { key: 'boss_intro_sting', path: `${GENERATED}/boss_intro_sting.ogg`, volume: 0.26 },
   stage_clear: { key: 'stage_clear', path: 'assets/audio/sfx/stage_clear.ogg', volume: 0.28 },
   game_over: { key: 'game_over', path: 'assets/audio/sfx/game_over.ogg', volume: 0.28 },
   saber_combo_1: { key: 'saber_combo_1', path: `${GENERATED}/saber_combo_1.ogg`, volume: 0.22 },

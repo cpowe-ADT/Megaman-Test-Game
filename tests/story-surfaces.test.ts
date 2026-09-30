@@ -27,6 +27,14 @@ test('automation config reads the story switch', () => {
   assert.equal(resolveAutomationConfig({}, '').storyIntro, true)
 })
 
+// Part 13g, EVAL-P13-012: unlike storyIntro, the boss card defaults off and a smoke opts in.
+test('automation config reads the boss-intro switch, defaulting off', () => {
+  assert.equal(resolveAutomationConfig({}, '').bossIntro, false)
+  assert.equal(resolveAutomationConfig({}, '?automation=1').bossIntro, false)
+  assert.equal(resolveAutomationConfig({}, '?automation=1&bossIntro=on').bossIntro, true)
+  assert.equal(resolveAutomationConfig({}, '?bossIntro=off').bossIntro, false)
+})
+
 test('stage intro sequence: card then briefing then done; skip and advance converge', () => {
   const full = new StageIntroSequence()
   assert.equal(full.start({ card: true, briefing: true }).phase, 'card')

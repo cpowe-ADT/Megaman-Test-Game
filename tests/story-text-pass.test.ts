@@ -138,3 +138,17 @@ test('Iona earns her turn, and the Core closes the hangar and consent holes', ()
     }
   }
 })
+
+// Part 13g, EVAL-P13-014: the return debrief, an extended district_restored exchange (Iona, WREN).
+test('every warden\'s district_restored is a 2 to 3 line exchange between Iona and WREN, order-independent', () => {
+  for (const stageId of ROBOT_MASTER_STAGE_IDS) {
+    const lines = sequence('district_restored', stageId).lines
+    assert.ok(lines.length >= 2 && lines.length <= 3, `${stageId}_restored has 2 to 3 lines`)
+    assert.equal(lines[0].speakerId, 'director_iona', `${stageId}_restored opens with Iona's status line`)
+    assert.ok(lines.some((line) => line.speakerId === 'hero'), `${stageId}_restored gives WREN a line`)
+    for (const line of lines) {
+      assert.ok(['director_iona', 'hero'].includes(line.speakerId ?? ''), `${stageId}_restored: only Iona and WREN speak`)
+      assert.doesNotMatch(line.text, /\{clearedCount\}|\{remainingCount\}/, `${stageId}_restored: no count token (order-independent)`)
+    }
+  }
+})

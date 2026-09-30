@@ -1,10 +1,12 @@
-// Smoke 45-beats-flow (part 12i, EVAL-P8-004; prompt 08 phase 8.3 with prompt 04 phase 4.2). Stepped frames: the loop
-// sleeps and window.stepFrames(1, { manageLoop: false }) drives every frame, keys included. One stage (Pyro Maw, story
-// on, briefing and boss intro seen) from the intro card (skipped with Enter) through READY (three blinks, 1.2 s, then
-// control), the low-HP pulse and its Reduced Flashing switch, a heart tank and a death with the 600 ms respawn READY,
-// the boss door and WARNING, the name card, the bar fill, the defeat, the weapon-get card, the stage results (their
-// hold runs the victory return) and Stage Select; then the ending's CAMPAIGN RECORD card, the credits pace and the
-// OMEGA RELAY title card. Each phase is asserted in render_game_to_text and captured (canvas at 2x, 896x504).
+// Smoke 45-beats-flow (part 12i, EVAL-P8-004, extended part 13g EVAL-P13-012/014; prompt 08 phase 8.3 with prompt 04
+// phase 4.2). Real time through Stage Select's own confirm and the pre-stage boss card (`?bossIntro=on`), mid-type
+// captured; then stepped frames: the loop sleeps and window.stepFrames(1, { manageLoop: false }) drives every frame,
+// keys included. One stage (Pyro Maw, story on, briefing and boss intro seen) from the intro card (skipped with
+// Enter) through READY (three blinks, 1.2 s, then control), the low-HP pulse and its Reduced Flashing switch, a
+// heart tank and a death with the 600 ms respawn READY, the boss door and WARNING, the name card, the bar fill, the
+// defeat, the weapon-get card, the stage results (their hold runs the victory return) and Stage Select, where the
+// return debrief plays once before the eighth-clear milestone; then the ending's CAMPAIGN RECORD card, the credits
+// pace and the OMEGA RELAY title card. Each phase is asserted in render_game_to_text and captured (canvas at 2x, 896x504).
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -62,10 +64,32 @@ export async function runBeatsFlowScenario(name, { outputDir, storyUrl, readStat
     if (!localStorage.getItem('settings.v1')) localStorage.setItem('settings.v1', JSON.stringify({ storyReplay: false, reducedFlashing: false }))
   }, SAVE)
   try {
-    await page.goto(`${storyUrl}&startScene=StageSelect`)
+    await page.goto(`${storyUrl}&bossIntro=on&startScene=StageSelect`)
     await waitForState(page, (state) => state.scene === 'StageSelect', 15000, 'Stage Select')
     await page.evaluate(installHelpers)
-    await page.evaluate(() => window.__b45.game.scene.getScenes(true)[0].scene.start('Game', { stageId: 'pyro_maw', bossId: 'pyro_maw', runtimeBossConfigId: 'pyro_maw' }))
+
+    // 0. Entering the stage for real, through Stage Select's own confirm, with the pre-stage boss card on
+    // (part 13g, EVAL-P13-012; `?bossIntro=on` is a smoke's explicit ask, since automation skips it by default).
+    await page.evaluate(() => {
+      const select = window.__b45.game.scene.getScenes(true)[0]
+      select.setSelection(select.stages.findIndex((entry) => entry.id === 'pyro_maw'))
+      select.confirmSelection()
+    })
+    const introStart = await waitForState(page, (state) => state.scene === 'BossIntro', 10000, 'the pre-stage boss card')
+    assert.equal(introStart.bossIntro?.phase, 'active')
+    assert.equal(introStart.bossIntro?.name, 'PYRO MAW')
+    assert.equal(introStart.bossIntro?.charactersTotal, 'PYRO MAW'.length)
+    let introMidType = null
+    for (let attempt = 0; attempt < 30 && !introMidType; attempt += 1) {
+      const snapshot = await page.evaluate(() => window.__b45.state())
+      const beat = snapshot.bossIntro
+      if (beat?.phase === 'active' && beat.visibleCharacters > 0 && beat.visibleCharacters < beat.charactersTotal) introMidType = snapshot
+      else await page.waitForTimeout(10)
+    }
+    assert.ok(introMidType, 'caught the boss card mid-type (some, not all, of the name shown)')
+    await capture('boss-intro-card', introMidType)
+    await page.keyboard.press('Enter')
+    await waitForState(page, (state) => state.scene === 'Game', 10000, 'the stage, after the card')
 
     // 1. The intro card, skipped by Enter long before its 900 ms are up.
     const card = await waitForState(page, (state) => state.scene === 'Game' && state.stageIntro?.phase === 'card', 20000, 'the stage card')
@@ -270,8 +294,19 @@ export async function runBeatsFlowScenario(name, { outputDir, storyUrl, readStat
     evidence.resultsHoldFrames = hold
     assert.ok(Math.abs(hold * FRAME_MS - 4000) <= 120, `the results hold about 4 s (${hold} frames)`)
     const select = await waitForState(page, (state) => state.scene === 'StageSelect', 15000, 'the Stage Select return')
-    await capture('stage-select', select)
     assert.ok(select.save.storyFlags.includes('pyro_maw_defeat'))
+
+    // 7b. The return debrief (part 13g, EVAL-P13-014): Iona and WREN, before the eighth-clear milestone; skippable,
+    // and played once (its own seen flag survives the capture below, so a second look would not repeat it).
+    assert.equal(select.dialogue?.active, true, 'the debrief opens on the return, before Stage Select is interactive')
+    assert.equal(select.dialogue?.sequenceId, 'pyro_maw_restored')
+    assert.equal(select.dialogue?.speakerId, 'director_iona', 'the debrief opens on Iona\'s existing status line')
+    assert.ok(select.save.storyFlags.includes('pyro_maw_restored'), 'the debrief is marked seen at once, so a replay clear would not repeat it')
+    await capture('district-debrief', select)
+    await page.keyboard.press('Escape')
+    const afterDebrief = await waitForState(page, (state) => state.dialogue?.sequenceId !== 'pyro_maw_restored', 5000, 'the debrief closing')
+    assert.equal(afterDebrief.dialogue?.sequenceId, 'robot_masters_cleared_8', 'the eighth-clear milestone follows the debrief, never before it')
+    await capture('stage-select', afterDebrief)
 
     // 8. The ending's CAMPAIGN RECORD card, the credits pace and the OMEGA RELAY title card.
     await page.evaluate(() => window.__b45.game.scene.getScenes(true)[0].scene.start('EndingScene'))
