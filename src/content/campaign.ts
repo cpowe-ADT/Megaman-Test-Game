@@ -500,22 +500,10 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
     arenaLabel: 'Cryo Keep',
     rewardWeaponId: 'FrostShatter',
     rewardEnabled: true,
-    enemyMarkers: [
-      marker('glacier_drone', 'enemy_drone', 152, 126, undefined, undefined, {
-        spawnTriggerX: 64,
-        retireTriggerX: 222
-      }),
-      marker('glacier_gunner', 'enemy_gunner_bot', 238, 185, 216, 282, {
-        spawnTriggerX: 112,
-        retireTriggerX: 304
-      }),
-      marker('glacier_turret', 'enemy_frost_turret', 322, 149, undefined, undefined, {
-        spawnTriggerX: 154,
-        retireTriggerX: 384
-      })
-    ],
+    // The whole route (enemies, hazards, platforms, mechanics) is in `src/content/stages/glacierRonin.ts` (12d).
+    enemyMarkers: [],
     arena: {
-      allowFallOff: false,
+      allowFallOff: true,
       leftWall: true,
       rightWall: true,
       backgroundColor: '#0c1420',
@@ -523,15 +511,9 @@ export const CAMPAIGN_STAGES: Record<CampaignStageId, CampaignStageDefinition> =
       spawn: { x: 44, y: 40 },
       bossSpawn: { x: 398, y: 184 },
       bossRoom: EMPTY_BOSS_ROOM,
-      checkpoints: [checkpoint('glacier_start', 44, 40, 0), checkpoint('glacier_mid', 150, 40, 184)],
-      hazards: [
-        { id: 'glacier_spike_1', x: 196, y: 230 },
-        { id: 'glacier_spike_2', x: 300, y: 230 }
-      ],
-      midPlatforms: [
-        { id: 'glacier_mid_1', x: 168, y: 174, width: 48, type: 'oneWay', color: 0x4e79a6 },
-        { id: 'glacier_mid_2', x: 246, y: 136, width: 52, type: 'oneWay', color: 0x4e79a6 }
-      ]
+      checkpoints: [checkpoint('glacier_start', 44, 40, 0)],
+      hazards: [],
+      midPlatforms: []
     }
   },
   omega_fortress: {
@@ -815,45 +797,6 @@ const INLINE_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>
       marker('gale_rocket_late', 'enemy_rocket_bot', 786, 166, undefined, undefined, {
         spawnTriggerX: 642,
         retireTriggerX: 868
-      })
-    ]
-  },
-  glacier_ronin: {
-    width: 928,
-    bossSpawnX: 844,
-    checkpoints: [
-      checkpoint('glacier_start', 44, 40, 0),
-      checkpoint('glacier_mid_a', 210, 40, 232),
-      checkpoint('glacier_mid_b', 454, 40, 500),
-      checkpoint('glacier_mid_c', 610, 40, 654),
-      checkpoint('glacier_boss_gate', 748, 40, 804)
-    ],
-    hazards: [
-      { id: 'glacier_spike_3', x: 508, y: 230 },
-      { id: 'glacier_spike_4', x: 752, y: 230 }
-    ],
-    midPlatforms: [
-      { id: 'glacier_mid_3', x: 430, y: 176, width: 50, type: 'oneWay', color: 0x4e79a6 },
-      { id: 'glacier_mid_4', x: 568, y: 144, width: 54, type: 'oneWay', color: 0x4e79a6, motion: { toX: 620, duration: 2575 } },
-      { id: 'glacier_mid_5', x: 704, y: 122, width: 56, type: 'oneWay', color: 0x4e79a6 },
-      { id: 'glacier_mid_6', x: 820, y: 150, width: 48, type: 'oneWay', color: 0x4e79a6 }
-    ],
-    enemyMarkers: [
-      marker('glacier_eye_late', 'enemy_laser_eye', 434, 144, undefined, undefined, {
-        spawnTriggerX: 258,
-        retireTriggerX: 520
-      }),
-      marker('glacier_drone_late', 'enemy_shield_drone', 596, 118, undefined, undefined, {
-        spawnTriggerX: 448,
-        retireTriggerX: 684
-      }),
-      marker('glacier_mine_late', 'enemy_mine_bot', 738, 185, undefined, undefined, {
-        spawnTriggerX: 576,
-        retireTriggerX: 824
-      }),
-      marker('glacier_bouncer_gate', 'enemy_bouncer', 826, 185, undefined, undefined, {
-        spawnTriggerX: 686,
-        retireTriggerX: 906
       })
     ]
   },
