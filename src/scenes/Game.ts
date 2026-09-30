@@ -1013,7 +1013,6 @@ export class Game extends Phaser.Scene {
         setAnimation: (key) => this.setPlayerAnimation(key),
         spawnProjectile: (request) => this.fireBulletFromRuntime(request),
         canChargeProjectile: () => this.getCurrentWeaponConfig().allowCharge,
-        // 13d (EVAL-P13-008): the charge aura takes the equipped special's colour; undefined (the Buster, no tint) keeps its own per-level colours.
         chargeAuraTint: () => this.getCurrentWeaponConfig().tint,
         applySwordHitbox: (hitbox, claim) => this.swordHitRouter?.apply(hitbox, claim),
         applyDamage: (damage) => this.commitPlayerDamage(damage)
@@ -1117,14 +1116,11 @@ export class Game extends Phaser.Scene {
     const now = this.time.now
 
     this.bossUiBinder?.update()
-
     this.devUx.updateOverlay()
 
     if (this.victoryModal?.isOpen()) {
-      // The weapon demo's typewriter and scripted shots (13d, EVAL-P13-013); a no-op on the other cards.
-      this.victoryModal.update(delta)
-      this.devUpdate()
-      return
+      this.victoryModal.update(delta) // the weapon demo (13d); a no-op on the other cards
+      return this.devUpdate()
     }
 
     if (this.dialogueOverlay?.isActive()) {
