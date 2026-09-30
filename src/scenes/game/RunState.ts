@@ -2,6 +2,7 @@ import type Phaser from 'phaser'
 import AudioService from '../../audio'
 import type { BossController } from '../../bosses/BossController'
 import { getCampaignStage } from '../../content/campaign'
+import { clampWeaponEnergySnapshot } from '../../content/weapons'
 import type { CampaignSessionStatistics } from '../../progression/statistics'
 import type { ProjectileSystem } from '../../projectiles'
 import { ActiveRunSaveData, Save } from '../../systems/Save'
@@ -207,10 +208,12 @@ export class RunState {
       weaponIndexFromId >= 0
         ? weaponIndexFromId
         : clampNumber(Math.round(run.currentWeaponIndex), 0, host.weapons.length - 1)
-    host.weaponEnergyById = {
+    // 13d (EVAL-P13-007): a run saved before the 28-unit rebalance can hold a larger old value
+    // (Flame Serpent's bar was 40); clamp it to today's max instead of loading over-full.
+    host.weaponEnergyById = clampWeaponEnergySnapshot({
       ...host.weaponEnergyById,
       ...(run.weaponEnergyById ?? {})
-    }
+    })
     const stage = getCampaignStage(host.activeStageId)
     const checkpointIndex =
       typeof run.checkpointId === 'string'

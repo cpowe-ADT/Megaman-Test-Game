@@ -36,6 +36,21 @@ Same frame and settings (4x4 cells on magenta, shots travel right). Cut with `sc
 
 URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260925_013341_<job>.png`.
 
+## Charged weapon effects (2026-09-30, prompt 13 part 13d, EVAL-P13-008; Craig: "you should also be able to charge the boss weapons you get and different animation comes out")
+
+Same frame and settings (4x4 cells on magenta, shots travel right, visibly bigger and more intense than the
+plain `weapons_v1` shot). Cut with `scripts/sprites/cut_vfx_sheet.py --spec scripts/sprites/weapons_charged_v1.json`
+into `assets/sprites/projectiles/weapons_charged_v1/` (four frames per group, its own atlas so the plain
+`weapons_v1` art is untouched).
+
+| File | Job | Rows |
+| --- | --- | --- |
+| charged_a.png | 1bbcdf76-b0f2-4195-bd1f-985f802605f4 | Inferno Coil (large coiling fireball), Tidal Surge (wide crescent water blade), Storm Burst (branched lightning bolt), Fault Line (cracked basalt fist) |
+| charged_b.png | 67e489be-0e60-44b5-a9be-96a8e9db1c3f | Twin Cutter (larger saw disc), Corrosive Burst (bigger toxic glob), Cyclone Volley (spiral wind darts), Glacial Ram (angular ice shard) |
+
+URLs `https://d8j0ntlcm91z4.cloudfront.net/user_3DdtwRjBCpZegkKGFJcMMF2wN8Z/hf_20260930_195652_1bbcdf76-b0f2-4195-bd1f-985f802605f4.png`
+and `..._195654_67e489be-0e60-44b5-a9be-96a8e9db1c3f.png`. Both picked first try.
+
 ## Boss arena hazards (2026-09-25, prompt 07 phase 7.1, EVAL-P7-001; twelve hazard ids resolved to one floor-spike spawner)
 
 Same frame and settings (4x4 cells on magenta, objects on a floor line near each cell's bottom; the prompts also asked for an empty magenta margin in every cell). Cut with `scripts/sprites/cut_vfx_sheet.py --spec scripts/sprites/hazards_v1.json` into `assets/sprites/effects/hazards_v1/` (four frames per group, bottom-aligned). Sheet b1 drew its geyser row about 75px below its cell line; the spec's `shiftY` moves those crop boxes.

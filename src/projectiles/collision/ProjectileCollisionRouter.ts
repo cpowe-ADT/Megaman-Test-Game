@@ -320,9 +320,11 @@ export class ProjectileCollisionRouter {
     }
 
     const tag = String(bullet.data.get('onHitTag') ?? 'none')
+    // Glacial Ram (Frost Shatter charged, 13d): a longer freeze than the plain shot's (metadata, falls back to the tuning default).
+    const freezeDurationMs = Number(bullet.data?.get?.('freezeDurationMs') ?? WEAPON_TUNING.freeze.durationMs)
     const result =
       tag === 'freeze'
-        ? this.options.damageEnemy(enemy, damage, { hitstunMs: WEAPON_TUNING.freeze.durationMs, knockback: undefined })
+        ? this.options.damageEnemy(enemy, damage, { hitstunMs: freezeDurationMs, knockback: undefined })
         : this.options.damageEnemy(enemy, damage)
     this.options.recordCombatHit(
       'player',
@@ -358,9 +360,11 @@ export class ProjectileCollisionRouter {
    */
   private applyEnemyOnHit(tag: string, bullet: Phaser.Physics.Arcade.Sprite, enemy: Phaser.Physics.Arcade.Sprite, damage: number, defeated: boolean): void {
     if (tag === 'chain') {
-      const jumps = Number(bullet.data?.get?.('chainJumps') ?? 0)
+      // Storm Burst (Thunder Spike charged, 13d): more jumps, farther, than the plain shot's one.
+      const jumps = Number(bullet.data?.get?.('chainJumps') ?? WEAPON_TUNING.chain.maxJumps)
+      const radius = Number(bullet.data?.get?.('chainRadius') ?? WEAPON_TUNING.chain.radiusPx)
       const candidates = (this.options.getEnemies?.() ?? []).filter((other) => other !== enemy && other.active && (other.body as Phaser.Physics.Arcade.Body | undefined)?.enable !== false)
-      const targets = jumps > 0 ? resolveChainTargets(enemy, candidates, jumps) : []
+      const targets = jumps > 0 ? resolveChainTargets(enemy, candidates, jumps, radius) : []
       let from: Phaser.Physics.Arcade.Sprite = enemy
       for (const next of targets) {
         const hit = this.options.damageEnemy(next, damage)
@@ -372,13 +376,17 @@ export class ProjectileCollisionRouter {
       return
     }
     if (tag === 'corrode' && !defeated) {
-      const delays = corrodeTickDelays()
+      // Corrosive Burst (Acid Glob charged, 13d): more ticks, each for more, than the plain glob's.
+      const ticks = Number(bullet.data?.get?.('corrodeTicks') ?? WEAPON_TUNING.corrode.ticks)
+      const intervalMs = Number(bullet.data?.get?.('corrodeIntervalMs') ?? WEAPON_TUNING.corrode.intervalMs)
+      const tickDamage = Number(bullet.data?.get?.('corrodeDamage') ?? WEAPON_TUNING.corrode.damage)
+      const delays = corrodeTickDelays(ticks, intervalMs)
       const schedule = this.options.schedule ?? ((delayMs: number, fn: () => void) => (enemy.scene as Phaser.Scene | undefined)?.time?.delayedCall(delayMs, fn))
       for (const delay of delays) {
         schedule(delay, () => {
           if (!enemy.active) return
-          const tick = this.options.damageEnemy(enemy, WEAPON_TUNING.corrode.damage)
-          this.options.recordCombatHit('player', 'enemy', WEAPON_TUNING.corrode.damage, 'corrode', tick.accepted, tick.defeated ? 'defeat' : 'corrode-tick')
+          const tick = this.options.damageEnemy(enemy, tickDamage)
+          this.options.recordCombatHit('player', 'enemy', tickDamage, 'corrode', tick.accepted, tick.defeated ? 'defeat' : 'corrode-tick')
         })
       }
       weaponOnHitEffects.stickGlob(enemy, delays[delays.length - 1] ?? 0)
@@ -386,8 +394,9 @@ export class ProjectileCollisionRouter {
       return
     }
     if (tag === 'freeze' && !defeated) {
-      weaponOnHitEffects.freeze(enemy, this.options.getPlayer(), WEAPON_TUNING.freeze.durationMs)
-      this.record(tag, 'enemy', bullet, `freeze:${WEAPON_TUNING.freeze.durationMs}`)
+      const freezeDurationMs = Number(bullet.data?.get?.('freezeDurationMs') ?? WEAPON_TUNING.freeze.durationMs)
+      weaponOnHitEffects.freeze(enemy, this.options.getPlayer(), freezeDurationMs)
+      this.record(tag, 'enemy', bullet, `freeze:${freezeDurationMs}`)
       return
     }
     this.record(tag, 'enemy', bullet, defeated && (tag === 'corrode' || tag === 'freeze') ? 'defeated' : tag)

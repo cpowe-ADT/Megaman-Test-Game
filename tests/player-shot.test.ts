@@ -31,9 +31,10 @@ test('resolvePlayerShot builds canonical Buster pellet and max-charge commands',
   assert.equal(charged.spawnRequest.metadata?.chargeLevel, 4)
 })
 
-test('every special weapon but a charge weapon (ThunderSpike, prompt 07 phase 7.3) resolves without charge and retains its configured energy cost', () => {
+test('every special weapon but FlameSerpent (13d, EVAL-P13-008) releases its charged form at chargeLevel 4, double the cost', () => {
   for (const weaponId of SPECIAL_WEAPON_ORDER) {
     const weapon = getWeaponConfig(weaponId)
+    const chargesGenerically = weaponId !== 'FlameSerpent'
     const shot = resolvePlayerShot({
       weaponId,
       intent: { chargeLevel: 4, facing: 1 },
@@ -41,10 +42,21 @@ test('every special weapon but a charge weapon (ThunderSpike, prompt 07 phase 7.
       y: 0
     })
 
-    assert.equal(shot.projectileId, `player_weapon_${weaponId}`)
-    assert.equal(shot.chargeLevel, weapon.allowCharge ? 4 : 0)
-    assert.equal(shot.energyCost, weapon.energyCost)
+    assert.equal(shot.projectileId, chargesGenerically ? `player_weapon_${weaponId}_charged` : `player_weapon_${weaponId}`)
+    assert.equal(shot.chargeLevel, chargesGenerically ? 4 : 0)
+    assert.equal(shot.energyCost, chargesGenerically ? weapon.energyCost * 2 : weapon.energyCost)
     assert.equal(shot.spawnRequest.metadata?.weaponElement, weapon.element)
+  }
+})
+
+test('a partial charge (levels 1 to 3) still fires the plain shot, for every special weapon', () => {
+  for (const weaponId of SPECIAL_WEAPON_ORDER) {
+    const weapon = getWeaponConfig(weaponId)
+    for (const chargeLevel of [1, 2, 3] as const) {
+      const shot = resolvePlayerShot({ weaponId, intent: { chargeLevel, facing: 1 }, x: 0, y: 0 })
+      assert.equal(shot.projectileId, `player_weapon_${weaponId}`, `${weaponId} at level ${chargeLevel}`)
+      assert.equal(shot.energyCost, weapon.energyCost)
+    }
   }
 })
 

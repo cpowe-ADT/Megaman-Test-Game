@@ -1,7 +1,7 @@
 import type Phaser from 'phaser'
 import AudioService from '../../audio'
 import { muzzleAnchor } from '../../combat/heroCombatVisuals'
-import { getWeaponConfig, getWeaponDisplayName } from '../../content/weapons'
+import { getWeaponConfig, getWeaponDisplayName, WEAPON_TUNING } from '../../content/weapons'
 import {
   getHolsteredWeaponRechargeTargets,
   PASSIVE_WEAPON_RECHARGE_AMOUNT,
@@ -71,15 +71,21 @@ export class WeaponRuntime {
 
   /**
    * FlameSerpent (`hold_stream`): the first flame is the player's own shot; while shoot stays held, more follow on
-   * the frame cadence in `WEAPON_TUNING.flameStream` at the sustain cost. Releasing, switching or running dry ends it.
+   * the frame cadence in `WEAPON_TUNING.flameStream` at the sustain cost. Releasing, switching or running dry ends
+   * it -- and releasing a stream held past `chargeReadyFrames` (13d, `EVAL-P13-008`) fires Inferno Coil, its
+   * charged form, instead of just stopping.
    */
   private updateStream(): void {
     const weapon = this.getCurrentWeaponConfig()
     const held = weapon.behavior === 'hold_stream' && Boolean(this.host.actions.snapshot().shoot?.held)
-    if (!held || !this.streamAnchored) {
-      if (!held) this.streamAnchored = false
+    if (!held) {
+      if (this.streamAnchored && this.streamHeldFrames >= WEAPON_TUNING.flameStream.chargeReadyFrames) {
+        this.fire({ type: 'charge', chargeLevel: 0, facing: this.host.facing ?? 1 }, { forceCharge: true })
+      }
+      this.streamAnchored = false
       return
     }
+    if (!this.streamAnchored) return
     this.streamHeldFrames += 1
     if (!streamShouldFire({ held, anchored: true, heldFrames: this.streamHeldFrames })) return
     const fired = this.fire({ type: 'pellet', chargeLevel: 0, facing: this.host.facing ?? 1 }, { sustain: true })
@@ -143,7 +149,7 @@ export class WeaponRuntime {
     }
   }
 
-  fire(config: PlayerShotRequest, options: { sustain?: boolean } = {}): Record<string, unknown> | false {
+  fire(config: PlayerShotRequest, options: { sustain?: boolean; forceCharge?: boolean } = {}): Record<string, unknown> | false {
     const host = this.host
     const player = host.player
     if (!player?.active) {
@@ -166,6 +172,7 @@ export class WeaponRuntime {
       modifiers: resolveUpgradeModifiers(host.progressionSave),
       aim,
       sustain: options.sustain,
+      forceCharge: options.forceCharge,
       spawn: (request) => host.projectileSystem?.spawn(request) ?? null
     })
     if (!fired) return false

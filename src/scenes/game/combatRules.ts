@@ -36,9 +36,13 @@ export function passiveRechargeTicks(accumulatorMs: number, intervalMs = PASSIVE
  * Boss HP runs about four times the classic 28 (prompt 07 phase 7.2 item 3), so special weapons and charged Buster
  * shots hit bosses twice as hard as they hit enemies (Craig, 2026-09-25: "special moves should hurt the boss more").
  * Buster pellets and the saber (which counts as the Buster) keep their damage, so a Buster-only fight keeps its length.
+ * 13d (`EVAL-P13-008`, Craig: "charge the boss weapons ... different animation comes out"): a special's own
+ * charged form (chargeLevel 4, the same top level the Buster's strongest shot needs) hits a boss three times as
+ * hard instead of two -- `resolvePlayerShot` only reaches chargeLevel 4 for a special when it actually fired its
+ * charged form, never as a partial, so this never fires for a plain tap.
  */
 export function bossDamageScale(weaponId: string, chargeLevel = 0): number {
-  if (weaponId !== 'Buster') return 2
+  if (weaponId !== 'Buster') return chargeLevel >= 4 ? 3 : 2
   return chargeLevel > 0 ? 2 : 1
 }
 

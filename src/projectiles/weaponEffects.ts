@@ -9,6 +9,8 @@ export type Vec = { x: number; y: number }
 
 /** Follow-up projectiles an impact leaves behind (registered in `definitions/coreProjectiles.ts`). */
 export const BURN_PUDDLE_PROJECTILE_ID = 'player_weapon_FlameSerpent_burn'
+/** Inferno Coil's puddle (13d, `EVAL-P13-008`): bigger, hits more, lasts longer. */
+export const BURN_PUDDLE_PROJECTILE_ID_CHARGED = 'player_weapon_FlameSerpent_burn_charged'
 export const QUAKE_WAVE_PROJECTILE_ID = 'player_weapon_QuakeKnuckle_quake'
 
 /** HydroLance: `aim` is -1 with up held, 1 with down held, 0 level. */
@@ -74,11 +76,14 @@ export function classifyImpact(hitTarget: unknown, contact: { up?: boolean; down
 export type ImpactFollowUp = { kind: 'burn_puddle'; projectileId: string } | { kind: 'quake'; projectileId: string } | { kind: 'bounce' } | null
 
 /**
- * What an impact leaves: a flame leaves a burn puddle where it hits an enemy or the floor; a knuckle that lands
- * quakes; a dart with a bounce left bounces off a floor, wall or ceiling. Everything else just ends.
+ * What an impact leaves: a flame leaves a burn puddle where it hits an enemy or the floor (Inferno Coil,
+ * the charged release, leaves the bigger one); a knuckle that lands quakes; a dart with a bounce left
+ * bounces off a floor, wall or ceiling. Everything else just ends.
  */
-export function resolveImpactFollowUp(tag: WeaponOnHitTag | string | undefined, impact: ProjectileImpact, bouncesLeft = 0): ImpactFollowUp {
-  if (tag === 'burn' && (impact === 'target' || impact === 'floor')) return { kind: 'burn_puddle', projectileId: BURN_PUDDLE_PROJECTILE_ID }
+export function resolveImpactFollowUp(tag: WeaponOnHitTag | string | undefined, impact: ProjectileImpact, bouncesLeft = 0, charged = false): ImpactFollowUp {
+  if (tag === 'burn' && (impact === 'target' || impact === 'floor')) {
+    return { kind: 'burn_puddle', projectileId: charged ? BURN_PUDDLE_PROJECTILE_ID_CHARGED : BURN_PUDDLE_PROJECTILE_ID }
+  }
   if (tag === 'quake' && impact === 'floor') return { kind: 'quake', projectileId: QUAKE_WAVE_PROJECTILE_ID }
   if (tag === 'bounce' && bouncesLeft > 0 && (impact === 'floor' || impact === 'wall' || impact === 'ceiling')) return { kind: 'bounce' }
   return null

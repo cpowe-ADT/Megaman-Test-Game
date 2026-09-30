@@ -30,9 +30,9 @@ function createReflectedShotDefinition(): ProjectileDefinition {
     hitPolicy: { hitsEnvironment: true, collidesWithWorldBounds: false, pierce: 0 }
   }
 }
-import { getWeaponConfig, WEAPON_TUNING, type WeaponRuntimeConfig } from '../../content/weapons'
-import { WEAPON_ART_FRAME_SIZE, WEAPONS_ATLAS, weaponArtFrame } from '../weaponArt'
-import { BURN_PUDDLE_PROJECTILE_ID, QUAKE_WAVE_PROJECTILE_ID } from '../weaponEffects'
+import { getChargedFormConfig, getWeaponConfig, WEAPON_TUNING, type WeaponRuntimeConfig } from '../../content/weapons'
+import { WEAPON_ART_FRAME_SIZE, weaponArtFrame, weaponArtTextureKey } from '../weaponArt'
+import { BURN_PUDDLE_PROJECTILE_ID, BURN_PUDDLE_PROJECTILE_ID_CHARGED, QUAKE_WAVE_PROJECTILE_ID } from '../weaponEffects'
 import { PLAYER_GAMEPLAY_CONFIG } from '../../player/config'
 import type { ProjectileDefinition } from '../types'
 
@@ -177,7 +177,7 @@ function busterHitbox(level: ChargeLevel, sensorHeightPx: number): { width: numb
 /** A warden weapon's `weapons_v1` group: four frames cycled in flight, flipped with facing (prompt 07 phase 7.3). */
 function weaponArtVisual(group: string, scale: number, depth: number, alpha?: number): ProjectileDefinition['visual'] {
   const frames = [0, 1, 2, 3].map((index) => weaponArtFrame(group, index))
-  return { textureKey: WEAPONS_ATLAS.key, frame: frames[0], animationFrames: frames, animationFrameMs: 70, depth, scale, flipXWithDirection: true, ...(alpha != null ? { alpha } : {}) }
+  return { textureKey: weaponArtTextureKey(group), frame: frames[0], animationFrames: frames, animationFrameMs: 70, depth, scale, flipXWithDirection: true, ...(alpha != null ? { alpha } : {}) }
 }
 
 /**
@@ -194,6 +194,7 @@ export function weaponArtHitbox(weapon: Pick<WeaponRuntimeConfig, 'artGroup' | '
 /** FlameSerpent's burn puddle and QuakeKnuckle's shockwave: stationary, short-lived, they hit what walks in. */
 function createFollowUpDefinitions(): ProjectileDefinition[] {
   const burn = WEAPON_TUNING.burnPuddle
+  const burnCharged = WEAPON_TUNING.burnPuddleCharged
   const quake = WEAPON_TUNING.quake
   const flame = WEAPON_ART_FRAME_SIZE.flame_serpent
   const still = { speed: 0, maxVelocityX: 0, maxVelocityY: 0, owner: 'player', pool: 'player', behavior: { kind: 'standard' } } as const
@@ -206,6 +207,16 @@ function createFollowUpDefinitions(): ProjectileDefinition[] {
       visual: { ...weaponArtVisual('flame_serpent', burn.scale, 2, 0.9), animationFrameMs: 90 },
       hitbox: { width: flame.width, height: flame.height },
       hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: burn.pierce }
+    },
+    {
+      ...still,
+      // Inferno Coil's puddle (13d, EVAL-P13-008): bigger, hits more, lasts longer than the plain one.
+      id: BURN_PUDDLE_PROJECTILE_ID_CHARGED,
+      damage: burnCharged.damage,
+      lifetimeMs: burnCharged.lifetimeMs,
+      visual: { ...weaponArtVisual('flame_serpent_charged', burnCharged.scale, 2, 0.9), animationFrameMs: 90 },
+      hitbox: { width: flame.width * 1.3, height: flame.height * 1.3 },
+      hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: burnCharged.pierce }
     },
     {
       ...still,
@@ -268,6 +279,49 @@ function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
   }
 }
 
+/**
+ * A special weapon's charged form (13d, `EVAL-P13-008`): its own definition, not the plain shot's with a
+ * bigger scale -- its own damage, speed, art group and motion (Quake Knuckle's charged lob still arcs;
+ * Flame Serpent's charged release is a `standard` fireball, not the plain `wave`).
+ */
+function createPlayerWeaponChargedDefinition(weaponId: string): ProjectileDefinition | null {
+  const weapon = getWeaponConfig(weaponId)
+  const charged = getChargedFormConfig(weaponId)
+  if (!charged) return null
+  const style = charged.projectile.style
+
+  return {
+    id: `player_weapon_${weaponId}_charged`,
+    owner: 'player',
+    pool: 'player',
+    speed: charged.speed,
+    damage: charged.damage,
+    lifetimeMs: charged.projectile.lifetimeMs,
+    maxVelocityX: 640,
+    maxVelocityY: 640,
+    visual: weaponArtVisual(charged.artGroup, charged.scale, 2),
+    hitbox: weaponArtHitbox({ artGroup: charged.artGroup, scale: charged.scale, behavior: weapon.behavior, projectile: charged.projectile }),
+    behavior:
+      style === 'wave'
+        ? { kind: 'wave', amplitude: charged.projectile.waveAmplitude ?? 0, periodMs: charged.projectile.wavePeriodMs ?? 160 }
+        : style === 'lob'
+          ? { kind: 'lob', gravityY: charged.projectile.gravityY ?? 0, initialVelocityY: -150 }
+          : style === 'boomerang'
+            ? {
+                kind: 'boomerang',
+                returnAfterMs: charged.projectile.returnAfterMs ?? 220,
+                returnSpeed: charged.projectile.returnSpeed ?? Math.abs(charged.speed),
+                homeOffsetY: -6
+              }
+            : { kind: 'standard' },
+    hitPolicy: {
+      hitsEnvironment: true,
+      collidesWithWorldBounds: style !== 'standard',
+      pierce: charged.projectile.pierce
+    }
+  }
+}
+
 function createChargeDefinition(level: 1 | 2 | 3 | 4): ProjectileDefinition {
   const charge = PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[level]
 
@@ -295,15 +349,23 @@ function createChargeDefinition(level: 1 | 2 | 3 | 4): ProjectileDefinition {
   }
 }
 
+/**
+ * `charged` (13d, `EVAL-P13-008`) is the special-weapon release at the top of the charge (or Flame
+ * Serpent's stream-held release); the Buster ignores it and keeps its own four-level id instead.
+ */
 export function resolvePlayerProjectileId(
   weaponId: string,
-  chargeLevel: 0 | 1 | 2 | 3 | 4
+  chargeLevel: 0 | 1 | 2 | 3 | 4,
+  charged = false
 ): string {
   if (weaponId === 'Buster' && chargeLevel > 0) {
     return `player_buster_charge_lv${chargeLevel}`
   }
   if (weaponId === 'Buster') {
     return 'player_weapon_Buster'
+  }
+  if (charged && getChargedFormConfig(weaponId)) {
+    return `player_weapon_${weaponId}_charged`
   }
   return `player_weapon_${weaponId}`
 }
@@ -320,6 +382,9 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
 
   return [
     ...weaponIds.map((weaponId) => createPlayerWeaponDefinition(weaponId)),
+    // 13d (EVAL-P13-008): a charged form per special that has one (ArcSlash and the Buster do not; the
+    // Buster's own four charge-level definitions are createChargeDefinition below).
+    ...weaponIds.map((weaponId) => createPlayerWeaponChargedDefinition(weaponId)).filter((definition): definition is ProjectileDefinition => definition !== null),
     createChargeDefinition(1),
     createChargeDefinition(2),
     createChargeDefinition(3),

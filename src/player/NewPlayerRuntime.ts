@@ -40,6 +40,8 @@ type RuntimeHooks = {
   setAnimation: (key: string) => void
   spawnProjectile: (request: SpawnProjectileRequest) => ProjectileSpawnReceipt | null
   canChargeProjectile: () => boolean
+  /** The equipped weapon's colour for the charge aura (13d, `EVAL-P13-008`); undefined keeps the aura's own per-level colours (the Buster). */
+  chargeAuraTint?: () => number | undefined
   /** Called on every active sword frame; `claim` is true the first time a target is claimed in this combo hit. */
   applySwordHitbox: (hitbox: ResolvedHitbox, claim: (target: unknown) => boolean) => void
   applyDamage: (damage: number) => void
@@ -188,7 +190,7 @@ export class NewPlayerRuntime {
       this.activeHitbox = swordHitbox
       this.hooks.applySwordHitbox(swordHitbox, this.claimSwordHit)
     }
-    this.vfxSfx.updateChargeAura(combatResult.snapshot.charging ? combatResult.snapshot.chargeLevel : 0)
+    this.vfxSfx.updateChargeAura(combatResult.snapshot.charging ? combatResult.snapshot.chargeLevel : 0, this.hooks.chargeAuraTint?.())
     this.updateIFrameBlink(deltaMs, combatResult.snapshot.iFramesRemainingMs)
     if (motorSnapshot.justJumped) {
       this.lastJumpSource = motorSnapshot.jumpSource

@@ -5,6 +5,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import assert from 'node:assert/strict'
 
+/** Each weapon's charged form (13d, EVAL-P13-008): its own art group, nine sheets cut to `weapons_charged_v1`. */
+const CHARGED_IDENTITIES = {
+  FlameSerpent: { group: 'flame_serpent_charged', onHitTag: 'burn' },
+  HydroLance: { group: 'hydro_lance_charged', onHitTag: 'pierce' },
+  ThunderSpike: { group: 'thunder_spike_charged', onHitTag: 'chain' },
+  QuakeKnuckle: { group: 'quake_knuckle_charged', onHitTag: 'quake' },
+  MagcutDisc: { group: 'magcut_disc_charged', onHitTag: 'magnet' },
+  AcidGlob: { group: 'acid_glob_charged', onHitTag: 'corrode' },
+  AeroDarts: { group: 'aero_darts_charged', onHitTag: 'bounce' },
+  FrostShatter: { group: 'frost_shatter_charged', onHitTag: 'freeze' }
+}
+
 const IDENTITIES = {
   FlameSerpent: { behavior: 'hold_stream', onHitTag: 'burn', group: 'flame_serpent' },
   HydroLance: { behavior: 'aim', onHitTag: 'pierce', group: 'hydro_lance' },
@@ -29,9 +41,9 @@ function installHelpers() {
       window.stageDebug.setWeaponEnergy(id, 999)
       return { weapon: s.weaponRuntime.getCurrentWeaponId(), icon: s.hud?.getWeaponIconState?.() ?? null }
     },
-    fire(chargeLevel = 0) {
+    fire(chargeLevel = 0, forceCharge = false) {
       const s = scene()
-      return s.weaponRuntime.fire({ type: chargeLevel ? 'charge' : 'pellet', chargeLevel, facing: s.facing ?? 1 })
+      return s.weaponRuntime.fire({ type: chargeLevel ? 'charge' : 'pellet', chargeLevel, facing: s.facing ?? 1 }, { forceCharge })
     },
     latest(projectileId) {
       const s = scene()
@@ -91,7 +103,9 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
       await advanceFrames(page, 20)
     }
     const magnetDrop = weaponId === 'MagcutDisc' ? await page.evaluate(() => window.stageDebug.spawnPickup('ammo', 56)) : null
-    const receipt = await page.evaluate((charge) => window.__w12.fire(charge), weaponId === 'ThunderSpike' ? 2 : 0)
+    // A plain tap (chargeLevel 0): every weapon's own identity, not its charged form (13d, EVAL-P13-008 -- a
+    // release below chargeLevel 4 is a plain shot; the charged sweep below fires each weapon's charged form).
+    const receipt = await page.evaluate(() => window.__w12.fire(0))
     assert.equal(receipt?.weaponId, weaponId)
     assert.equal(receipt.behavior, identity.behavior)
     assert.equal(receipt.onHitTag, identity.onHitTag)
@@ -99,7 +113,7 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
     assert.ok(String(receipt.frame).startsWith(`weapons_v1/${identity.group}/`), `${weaponId} frame ${receipt.frame}`)
     assert.ok(receipt.bodyWidth > 0 && receipt.displayWidth > 0)
     if (weaponId === 'AeroDarts') assert.equal(receipt.projectileCount, 3, 'AeroDarts fans three darts')
-    if (weaponId === 'ThunderSpike') assert.equal(receipt.chainJumps, 2, 'a level-2 charge chains twice')
+    if (weaponId === 'ThunderSpike') assert.equal(receipt.chainJumps, 1, 'a plain hit chains once (Storm Burst, the charged release, chains up to five)')
     // Targets in the shot's path (the chain's next links sit above it, out of the spike's flight).
     await page.evaluate(({ weaponId, projectileId }) => {
       const w = window.__w12
@@ -135,7 +149,7 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
         const puddle = await until(page, advanceFrames, () => (window.__w12.counts().impact.burn_puddle ?? 0) > 0, null, 10)
         assert.ok(puddle, 'FlameSerpent leaves a burn puddle')
       }
-      if (tag === 'chain') assert.equal(applied.lastOnHit.applied, 'chain:2')
+      if (tag === 'chain') assert.equal(applied.lastOnHit.applied, 'chain:1')
       if (tag === 'freeze') {
         const frozen = await page.evaluate(() => {
           const s = window.__w12.scene()
@@ -160,7 +174,31 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
     await advanceFrames(page, 30)
   }
 
-  // FlameSerpent held: the first flame at the authored cost, then a sustain-cost flame per interval.
+  // Charged sweep (13d, EVAL-P13-008, Craig: "different animation comes out"): each weapon's charged form
+  // (not Flame Serpent, whose charge is the held-stream release tested below) is its own move and art,
+  // captured mid-flight. `window.__w12.fire(4)` releases at chargeLevel 4, the Buster's own top level.
+  const chargedEvidence = {}
+  for (const [weaponId, identity] of Object.entries(CHARGED_IDENTITIES)) {
+    if (weaponId === 'FlameSerpent') continue
+    await page.evaluate((id) => window.__w12.equip(id), weaponId)
+    await advanceFrames(page, 2)
+    const receipt = await page.evaluate(() => window.__w12.fire(4))
+    assert.equal(receipt?.weaponId, weaponId)
+    assert.equal(receipt.chargeLevel, 4, `${weaponId} charged release reports chargeLevel 4`)
+    assert.equal(receipt.onHitTag, identity.onHitTag, `${weaponId} charged on-hit tag`)
+    assert.equal(receipt.textureKey, 'atlas_weapons_charged_v1', `${weaponId} charged draws weapons_charged_v1`)
+    assert.ok(String(receipt.frame).startsWith(`weapons_charged_v1/${identity.group}/`), `${weaponId} charged frame ${receipt.frame}`)
+    assert.ok(receipt.energyCost > 0, `${weaponId} charged costs energy`)
+    if (weaponId === 'ThunderSpike') assert.equal(receipt.chainJumps, 5, 'Storm Burst chains up to five')
+    if (weaponId === 'QuakeKnuckle') assert.equal(receipt.projectileCount, 2, 'Fault Line lands both ways')
+    if (weaponId === 'AeroDarts') assert.equal(receipt.projectileCount, 5, 'Cyclone Volley fans five darts')
+    await advanceFrames(page, 4)
+    await page.screenshot({ path: path.join(scenarioDir, `weapon-charged-${weaponId}.png`) })
+    chargedEvidence[weaponId] = receipt
+    await advanceFrames(page, 20)
+  }
+
+  // FlameSerpent held: the first flame at the authored (13d) cost of 2, then a sustain-cost flame per interval.
   await page.evaluate(() => window.__w12.equip('FlameSerpent'))
   const before = await page.evaluate(() => window.__w12.scene().weaponEnergyById.FlameSerpent)
   await page.keyboard.down('x')
@@ -168,8 +206,27 @@ export async function runWeaponIdentityMatrix(page, scenarioDir, { advanceFrames
   await page.keyboard.up('x')
   const after = await page.evaluate(() => window.__w12.scene().weaponEnergyById.FlameSerpent)
   const spent = before - after
-  evidence.flameStream = { before, after, spent, flames: spent > 0 ? spent - 4 : 0 }
-  assert.ok(spent >= 5 + 2 && spent < 15, `a held FlameSerpent streams at the sustain cost (${JSON.stringify(evidence.flameStream)})`)
-  fs.writeFileSync(path.join(scenarioDir, 'weapons-evidence.json'), JSON.stringify(evidence, null, 2))
+  evidence.flameStream = { before, after, spent, flames: spent > 0 ? spent - 2 : 0 }
+  assert.ok(spent >= 2 + 2 && spent < 15, `a held FlameSerpent streams at the sustain cost (${JSON.stringify(evidence.flameStream)})`)
+  await advanceFrames(page, 20)
+
+  // Inferno Coil (13d, EVAL-P13-008): a stream held past chargeReadyFrames (60), then released, fires the
+  // charged form instead of just stopping -- WeaponRuntime.updateStream, not the generic charge timer
+  // (Flame Serpent keeps allowCharge false so the two never race for the same release).
+  const beforeCharged = await page.evaluate(() => window.__w12.scene().weaponEnergyById.FlameSerpent)
+  await page.keyboard.down('x')
+  await advanceFrames(page, 70)
+  await page.keyboard.up('x')
+  await advanceFrames(page, 2)
+  const chargedState = await page.evaluate(() => JSON.parse(window.render_game_to_text()))
+  const chargedShot = chargedState.combatDebug?.player?.lastProjectile
+  const afterCharged = await page.evaluate(() => window.__w12.scene().weaponEnergyById.FlameSerpent)
+  evidence.flameChargedRelease = { weaponId: chargedShot?.weaponId, chargeLevel: chargedShot?.chargeLevel, onHitTag: chargedShot?.onHitTag, textureKey: chargedShot?.textureKey, frame: chargedShot?.frame, spent: beforeCharged - afterCharged }
+  assert.equal(chargedShot?.weaponId, 'FlameSerpent', 'Inferno Coil keeps the FlameSerpent identity')
+  assert.equal(chargedShot?.textureKey, 'atlas_weapons_charged_v1', 'Inferno Coil draws weapons_charged_v1')
+  assert.ok(String(chargedShot?.frame ?? '').startsWith('weapons_charged_v1/flame_serpent_charged/'), `Inferno Coil frame ${chargedShot?.frame}`)
+  await page.screenshot({ path: path.join(scenarioDir, 'weapon-charged-FlameSerpent.png') })
+
+  fs.writeFileSync(path.join(scenarioDir, 'weapons-evidence.json'), JSON.stringify({ ...evidence, chargedEvidence }, null, 2))
   return evidence
 }

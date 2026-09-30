@@ -3,12 +3,21 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { BOSS_ROSTER } from '../src/bosses/roster'
 import { bossPhaseIndex, damageMultiplier, resolveBossElementHit, WeaknessTable, type BossId, type Element } from '../src/bosses/types'
-import { getWeaponConfig, SPECIAL_WEAPON_ORDER, WEAPON_TUNING } from '../src/content/weapons'
+import { clampWeaponEnergy, clampWeaponEnergySnapshot, getChargedFormConfig, getWeaponConfig, SPECIAL_WEAPON_ORDER, WEAPON_TUNING } from '../src/content/weapons'
 import { createCoreProjectileDefinitions } from '../src/projectiles/definitions/coreProjectiles'
 import { ProjectileCollisionRouter } from '../src/projectiles/collision/ProjectileCollisionRouter'
 import { resolvePlayerShot } from '../src/projectiles/playerShot'
 import { firePlayerShot } from '../src/projectiles/firePlayerShot'
-import { HUD_ICONS_ATLAS, WEAPON_ART_FRAME_SIZE, WEAPON_ART_GROUPS, WEAPONS_ATLAS, weaponArtFrame, weaponHudIconFrame } from '../src/projectiles/weaponArt'
+import { bossDamageScale } from '../src/scenes/game/combatRules'
+import {
+  HUD_ICONS_ATLAS,
+  WEAPON_ART_FRAME_SIZE,
+  WEAPON_ART_GROUPS,
+  WEAPONS_ATLAS,
+  WEAPONS_CHARGED_ATLAS,
+  weaponArtFrame,
+  weaponHudIconFrame
+} from '../src/projectiles/weaponArt'
 import {
   bounceVelocity,
   BURN_PUDDLE_PROJECTILE_ID,
@@ -24,39 +33,61 @@ import {
 import { GAME_SCENE_ATLASES } from '../src/scenes/game/stageBackgroundLoading'
 import { generateClassicWorld } from '../src/progression/seed'
 
-/** Prompt 07 phase 7.3: one hold or charge behaviour and one on-hit tag per warden weapon. */
+/**
+ * One hold or charge behaviour and one on-hit tag per warden weapon (prompt 07 phase 7.3), and its energy
+ * tier and range (13d, EVAL-P13-007, docs/design/weapons.md): light 1, medium 2 or heavy 4 of a 28-unit
+ * bar; `lifetimeMs` is the generous view-edge backstop for a straight shot (`standard`) or its own motion's
+ * timer for a lob, boomerang or stream.
+ */
 const IDENTITIES = {
-  FlameSerpent: { behavior: 'hold_stream', onHitTag: 'burn', group: 'flame_serpent' },
-  HydroLance: { behavior: 'aim', onHitTag: 'pierce', group: 'hydro_lance' },
-  ThunderSpike: { behavior: 'charge', onHitTag: 'chain', group: 'thunder_spike' },
-  QuakeKnuckle: { behavior: 'lob', onHitTag: 'quake', group: 'quake_knuckle' },
-  MagcutDisc: { behavior: 'boomerang', onHitTag: 'magnet', group: 'magcut_disc' },
-  AcidGlob: { behavior: 'lob', onHitTag: 'corrode', group: 'acid_glob' },
-  AeroDarts: { behavior: 'fan', onHitTag: 'bounce', group: 'aero_darts' },
-  FrostShatter: { behavior: 'straight', onHitTag: 'freeze', group: 'frost_shatter' }
+  FlameSerpent: { behavior: 'hold_stream', onHitTag: 'burn', group: 'flame_serpent', energyCost: 2, lifetimeMs: 520 },
+  HydroLance: { behavior: 'aim', onHitTag: 'pierce', group: 'hydro_lance', energyCost: 2, lifetimeMs: 2000 },
+  ThunderSpike: { behavior: 'charge', onHitTag: 'chain', group: 'thunder_spike', energyCost: 4, lifetimeMs: 2000 },
+  QuakeKnuckle: { behavior: 'lob', onHitTag: 'quake', group: 'quake_knuckle', energyCost: 4, lifetimeMs: 1400 },
+  MagcutDisc: { behavior: 'boomerang', onHitTag: 'magnet', group: 'magcut_disc', energyCost: 1, lifetimeMs: 1400 },
+  AcidGlob: { behavior: 'lob', onHitTag: 'corrode', group: 'acid_glob', energyCost: 2, lifetimeMs: 1200 },
+  AeroDarts: { behavior: 'fan', onHitTag: 'bounce', group: 'aero_darts', energyCost: 1, lifetimeMs: 2000 },
+  FrostShatter: { behavior: 'straight', onHitTag: 'freeze', group: 'frost_shatter', energyCost: 4, lifetimeMs: 2000 }
+} as const
+
+/** Each weapon's charged form (13d, EVAL-P13-008): its own move, costing twice and dealing triple on a boss. */
+const CHARGED_IDENTITIES = {
+  FlameSerpent: { group: 'flame_serpent_charged', onHitTag: 'burn', damage: 6, forceCharge: true },
+  HydroLance: { group: 'hydro_lance_charged', onHitTag: 'pierce', damage: 5 },
+  ThunderSpike: { group: 'thunder_spike_charged', onHitTag: 'chain', damage: 6 },
+  QuakeKnuckle: { group: 'quake_knuckle_charged', onHitTag: 'quake', damage: 6 },
+  MagcutDisc: { group: 'magcut_disc_charged', onHitTag: 'magnet', damage: 5 },
+  AcidGlob: { group: 'acid_glob_charged', onHitTag: 'corrode', damage: 5 },
+  AeroDarts: { group: 'aero_darts_charged', onHitTag: 'bounce', damage: 3 },
+  FrostShatter: { group: 'frost_shatter_charged', onHitTag: 'freeze', damage: 6 }
 } as const
 
 const atlas = JSON.parse(fs.readFileSync(WEAPONS_ATLAS.data, 'utf8')) as { frames: Record<string, { frame: { w: number; h: number } }> }
+const chargedAtlas = JSON.parse(fs.readFileSync(WEAPONS_CHARGED_ATLAS.data, 'utf8')) as { frames: Record<string, { frame: { w: number; h: number } }> }
 const iconAtlas = JSON.parse(fs.readFileSync(HUD_ICONS_ATLAS.data, 'utf8')) as { frames: Record<string, unknown> }
 const definitions = new Map(createCoreProjectileDefinitions().map((definition) => [definition.id, definition]))
 const shoot = (weaponId: string, intent: Partial<Parameters<typeof resolvePlayerShot>[0]['intent']> = {}) =>
   resolvePlayerShot({ weaponId, intent: { chargeLevel: 0, facing: 1, ...intent }, x: 100, y: 80 })
 
 for (const [weaponId, identity] of Object.entries(IDENTITIES)) {
-  test(`${weaponId}: identity, authored cost, art and resolvePlayerShot metadata`, () => {
+  test(`${weaponId}: identity, energy tier, range and resolvePlayerShot metadata`, () => {
     const weapon = getWeaponConfig(weaponId)
-    const reward = Object.values(BOSS_ROSTER).find((boss) => boss.weaponReward?.id === weaponId)!.weaponReward!
     assert.equal(weapon.behavior, identity.behavior)
     assert.equal(weapon.onHitTag, identity.onHitTag)
     assert.equal(weapon.artGroup, identity.group)
     assert.equal((WEAPON_ART_GROUPS as Record<string, string>)[weaponId], identity.group)
-    assert.equal(weapon.energyCost, reward.energyCost, 'authored energy cost is no longer squashed')
+    // 13d (EVAL-P13-007): every special's bar is 28, at 1 (light), 2 (medium) or 4 (heavy) a shot.
+    assert.equal(weapon.maxEnergy, 28)
+    assert.equal(weapon.energyCost, identity.energyCost)
+    assert.ok([1, 2, 4].includes(identity.energyCost), `${weaponId} cost is a light/medium/heavy tier`)
+    assert.equal(Math.floor(weapon.maxEnergy / identity.energyCost), 28 / identity.energyCost, `${weaponId} shots per bar`)
+    assert.equal(weapon.projectile.lifetimeMs, identity.lifetimeMs)
     const shot = shoot(weaponId)
     assert.equal(shot.projectileId, `player_weapon_${weaponId}`)
     assert.equal(shot.onHitTag, identity.onHitTag)
     assert.equal(shot.spawnRequest.metadata?.onHitTag, identity.onHitTag)
     assert.equal(shot.spawnRequest.metadata?.behavior, identity.behavior)
-    assert.equal(shot.energyCost, reward.energyCost)
+    assert.equal(shot.energyCost, identity.energyCost)
     const definition = definitions.get(shot.projectileId)!
     assert.equal(definition.visual.textureKey, WEAPONS_ATLAS.key, 'draws weapons_v1, not the tinted core pellet')
     assert.equal(definition.visual.tint, undefined)
@@ -67,8 +98,57 @@ for (const [weaponId, identity] of Object.entries(IDENTITIES)) {
     assert.equal(definition.hitbox?.width, art.w, 'body as wide as the art')
     assert.ok((definition.hitbox?.height ?? 0) >= art.h)
     assert.ok(iconAtlas.frames[weaponHudIconFrame(weaponId)], `${weaponId} has a HUD icon`)
+    // A standard shot leaves on camera exit (ProjectileSystem), so collidesWithWorldBounds stays false for
+    // it too; a lob, wave or boomerang keeps colliding with the world as it always has.
+    assert.equal(definition.hitPolicy.collidesWithWorldBounds, weapon.projectile.style !== 'standard')
+  })
+
+  test(`${weaponId}: charged form is its own move -- double cost, triple boss damage, its own art`, () => {
+    const weapon = getWeaponConfig(weaponId)
+    const charged = CHARGED_IDENTITIES[weaponId as keyof typeof CHARGED_IDENTITIES]
+    const chargedForm = getChargedFormConfig(weaponId)!
+    assert.ok(chargedForm, `${weaponId} has a charged form`)
+    assert.equal(chargedForm.onHitTag, charged.onHitTag)
+    assert.equal(chargedForm.artGroup, charged.group)
+    assert.equal(chargedForm.damage, charged.damage)
+    assert.notEqual(chargedForm.artGroup, weapon.artGroup, 'its own art, not the plain shot rescaled')
+    // Craig, 2026-09-30: "charge the boss weapons ... different animation comes out": the charged
+    // projectile id, art and (for most) behaviour all differ from the plain shot's.
+    const plain = shoot(weaponId)
+    const chargedShot = shoot(weaponId, { chargeLevel: 4, forceCharge: charged.forceCharge })
+    assert.notEqual(chargedShot.projectileId, plain.projectileId)
+    assert.equal(chargedShot.projectileId, `player_weapon_${weaponId}_charged`)
+    assert.equal(chargedShot.onHitTag, charged.onHitTag)
+    assert.equal(chargedShot.energyCost, identity.energyCost * 2, 'costs twice a plain shot')
+    assert.equal(bossDamageScale(weaponId, chargedShot.chargeLevel), 3, 'triple on a boss (a plain special is double)')
+    assert.equal(bossDamageScale(weaponId, plain.chargeLevel), 2, 'a plain special stays double')
+    const definition = definitions.get(chargedShot.projectileId)!
+    assert.equal(definition.damage, charged.damage)
+    assert.equal(definition.visual.textureKey, WEAPONS_CHARGED_ATLAS.key, 'draws its own charged atlas')
+    assert.deepEqual(definition.visual.animationFrames, [0, 1, 2, 3].map((index) => weaponArtFrame(charged.group, index)))
+    const art = chargedAtlas.frames[weaponArtFrame(charged.group, 0)].frame
+    assert.deepEqual(WEAPON_ART_FRAME_SIZE[charged.group], { width: art.w, height: art.h })
   })
 }
+
+test('a save holding old (pre-28) energy loads clamped to the new max; an unknown id passes through', () => {
+  assert.equal(clampWeaponEnergy('FlameSerpent', 38), 28, 'old FlameSerpent max was 40; clamps to 28')
+  assert.equal(clampWeaponEnergy('AeroDarts', 12), 12, 'already inside the new max is untouched')
+  assert.equal(clampWeaponEnergy('Buster', 999), 28)
+  assert.equal(clampWeaponEnergy('Buster', Number.NaN), 28, 'a non-finite value loads full')
+  assert.equal(clampWeaponEnergy('not_a_real_weapon', 999), 999, 'an id outside the roster passes through')
+  assert.deepEqual(clampWeaponEnergySnapshot({ FlameSerpent: 38, AeroDarts: 12, ThunderSpike: -5 }), { FlameSerpent: 28, AeroDarts: 12, ThunderSpike: 0 })
+})
+
+test('charged release needs the top charge level; levels 1 to 3 still fire the plain shot (aura shows, no payoff yet)', () => {
+  for (const level of [0, 1, 2, 3] as const) {
+    const shot = shoot('FrostShatter', { chargeLevel: level })
+    assert.equal(shot.projectileId, 'player_weapon_FrostShatter', `level ${level} is still the plain shot`)
+    assert.equal(shot.energyCost, getWeaponConfig('FrostShatter').energyCost)
+  }
+  assert.equal(shoot('FrostShatter', { chargeLevel: 4 }).projectileId, 'player_weapon_FrostShatter_charged')
+  assert.equal(shoot('Buster', { chargeLevel: 2 }).projectileId, 'player_buster_charge_lv2', "the Buster's own four levels are unaffected")
+})
 
 test('SPECIAL_WEAPON_ORDER covers the eight identities; the Buster and ArcSlash keep theirs', () => {
   assert.deepEqual([...SPECIAL_WEAPON_ORDER].sort(), Object.keys(IDENTITIES).sort())
@@ -104,12 +184,25 @@ test('AeroDarts fires a three-dart fan for one energy cost, centre dart first', 
   assert.equal(fired?.remainingEnergy, 10 - getWeaponConfig('AeroDarts').energyCost)
 })
 
-test('ThunderSpike charges: a tap does not chain, each charge level adds a jump up to three', () => {
+test('ThunderSpike: a plain hit chains once; Storm Burst (the charged release) chains up to five, farther', () => {
   assert.equal(getWeaponConfig('ThunderSpike').allowCharge, true)
-  assert.equal(shoot('ThunderSpike').spawnRequest.metadata?.chainJumps, 0)
-  assert.equal(shoot('ThunderSpike', { chargeLevel: 2 }).spawnRequest.metadata?.chainJumps, 2)
-  assert.equal(shoot('ThunderSpike', { chargeLevel: 4 }).spawnRequest.metadata?.chainJumps, 3)
-  assert.ok((shoot('ThunderSpike', { chargeLevel: 2 }).spawnRequest.scale ?? 0) > getWeaponConfig('ThunderSpike').scale)
+  assert.equal(shoot('ThunderSpike').spawnRequest.metadata?.chainJumps, WEAPON_TUNING.chain.maxJumps)
+  assert.equal(WEAPON_TUNING.chain.maxJumps, 1)
+  const charged = shoot('ThunderSpike', { chargeLevel: 4 })
+  assert.equal(charged.spawnRequest.metadata?.chainJumps, 5)
+  assert.ok((charged.spawnRequest.metadata?.chainRadius as number) > WEAPON_TUNING.chain.radiusPx)
+})
+
+test("Quake Knuckle's charged Fault Line lands both ways; Aero Darts' charged Cyclone Volley fans five darts", () => {
+  const fault = shoot('QuakeKnuckle', { chargeLevel: 4 })
+  assert.equal(fault.spawnRequests.length, 2, 'forward and back')
+  assert.equal(fault.spawnRequests[0].direction, 1)
+  assert.equal(fault.spawnRequests[1].direction, -1)
+  assert.equal(Math.sign(fault.spawnRequests[0].velocity!.x), 1)
+  assert.equal(Math.sign(fault.spawnRequests[1].velocity!.x), -1)
+  const cyclone = shoot('AeroDarts', { chargeLevel: 4 })
+  assert.equal(cyclone.spawnRequests.length, 5)
+  assert.equal(cyclone.spawnRequests.every((request) => request.metadata?.bouncesLeft === 2), true, 'two bounces, one more than the plain fan')
 })
 
 test('FlameSerpent streams while held: sustain flames cost the sustain cost, on the interval', () => {

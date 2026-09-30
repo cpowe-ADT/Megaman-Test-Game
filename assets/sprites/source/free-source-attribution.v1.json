@@ -682,6 +682,19 @@
       "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with weapons_v1.json; wired by prompt 12 part 12f"
     },
     {
+      "id": "weapons-charged-v1-hf",
+      "family": "projectiles",
+      "sourceUrl": "generated",
+      "license": "original-generated",
+      "attribution": "Original charged-weapon-effect art (Inferno Coil, Tidal Surge, Storm Burst, Fault Line, Twin Cutter, Corrosive Burst, Cyclone Volley, Glacial Ram), generated with Higgsfield (gpt_image_2) for this project",
+      "localSourcePath": "assets/sprites/source/vfx/hf_v1/",
+      "runtimeOutputs": [
+        "assets/sprites/projectiles/weapons_charged_v1/weapons_charged_v1.png",
+        "assets/sprites/projectiles/weapons_charged_v1/weapons_charged_v1.atlas.json"
+      ],
+      "notes": "assets/sprites/source/vfx/hf_v1/vfx_hf_v1.prompts.md; cut_vfx_sheet.py with weapons_charged_v1.json; wired by prompt 13 part 13d, EVAL-P13-008"
+    },
+    {
       "id": "pickups-v1-hf",
       "family": "ui",
       "sourceUrl": "generated",

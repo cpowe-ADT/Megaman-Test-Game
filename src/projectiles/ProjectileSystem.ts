@@ -376,7 +376,8 @@ export class ProjectileSystem {
     const contact = body ? { up: body.touching.up || body.blocked.up, down: body.touching.down || body.blocked.down, left: body.touching.left || body.blocked.left, right: body.touching.right || body.blocked.right } : undefined
     const impact = classifyImpact(bullet.data?.get?.('hitTarget'), contact)
     const bouncesLeft = Number(bullet.data?.get?.('bouncesLeft') ?? 0)
-    const followUp = resolveImpactFollowUp(tag, impact, bouncesLeft)
+    const charged = Boolean(bullet.data?.get?.('charged'))
+    const followUp = resolveImpactFollowUp(tag, impact, bouncesLeft, charged)
     if (!followUp) return false
     this.impactCounts[followUp.kind] = (this.impactCounts[followUp.kind] ?? 0) + 1
     this.lastImpact = { projectileId: String(bullet.data?.get?.('projectileId') ?? ''), tag, impact, followUp: followUp.kind, atMs: this.scene.time?.now ?? 0 }

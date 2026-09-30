@@ -128,7 +128,8 @@ test('12i weapon-get: the boss-clear placement on a first clear only; the card n
   assert.equal(weapon.kind, 'weapon')
   assert.equal(weapon.title, 'WEAPON GET')
   assert.equal(weapon.name, 'FLAME SERPENT')
-  assert.equal(weapon.energy, BOSS_ROSTER.pyro_maw.weaponReward?.maxEnergy)
+  // 13d (EVAL-P13-007): every special's bar is 28 now, not the roster's authored max (Flame Serpent was 40).
+  assert.equal(weapon.energy, 28)
   assert.equal(weapon.switchHint, WEAPON_SWITCH_HINT)
   assert.equal(WEAPON_SWITCH_HINT, 'Q / E TO SWITCH')
   assert.equal(weapon.tutorial, BOSS_ROSTER.pyro_maw.weaponReward?.tutorial)
