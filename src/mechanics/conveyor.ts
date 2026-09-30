@@ -2,7 +2,9 @@
  * `conveyor` (prompt 12 part 12b; 02 §2.2): a belt platform whose surface carries whatever stands on it
  * at `speed` px/s. The hero gets it as a carry velocity through the motor environment (a dash-jump off
  * the belt keeps it, `src/player/environment.ts`); enemies and other grounded bodies are moved by
- * `conveyorCarryDeltaX`. Pure; the Phaser edge is `adapters/MotionMechanicsAdapter.ts`.
+ * `conveyorCarryDeltaX`. Shots ride belts too (12d, Transit Security): a projectile skimming a belt
+ * (`conveyorShotCarryAt`) moves with it on top of its own velocity. Pure; the Phaser edge is
+ * `adapters/MotionMechanicsAdapter.ts`.
  */
 import { isStandingOn, type Box } from './crumbleGroup'
 
@@ -54,4 +56,24 @@ export function conveyorCarryAt(
 /** How far a grounded body on the belt moves this frame, px (the adapter moves enemies and loose bodies by it). */
 export function conveyorCarryDeltaX(speed: number, deltaMs: number): number {
   return (speed * Math.max(0, deltaMs)) / 1000
+}
+
+/**
+ * How far over a belt's surface a shot still rides it, px: a standing hero's body (22px) and its buster,
+ * or a walker's low shot, with a margin. A shot higher than this flies over the belt untouched.
+ */
+export const CONVEYOR_SHOT_BAND_PX = 32
+
+/**
+ * The belt a shot skims (the first one listed) and its speed: the centre of the shot's box is over the belt
+ * and at most `CONVEYOR_SHOT_BAND_PX` above its surface. None gives `{ id: null, speed: 0 }`.
+ */
+export function conveyorShotCarryAt(definitions: readonly ConveyorDefinition[], shot: Box): { id: string | null; speed: number } {
+  const centreX = (shot.left + shot.right) / 2
+  const centreY = (shot.top + shot.bottom) / 2
+  const belt = definitions.find((definition) => {
+    const box = conveyorBox(definition)
+    return centreX >= box.left && centreX <= box.right && centreY <= box.top && centreY >= box.top - CONVEYOR_SHOT_BAND_PX
+  })
+  return belt ? { id: belt.id, speed: conveyorSpeed(belt) } : { id: null, speed: 0 }
 }
