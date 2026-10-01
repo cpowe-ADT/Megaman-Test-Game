@@ -21,7 +21,7 @@ import {
   type SystemMenuSource
 } from './menu/systemMenuSelector'
 import { GAME_SIZE } from '../config/renderPolicy'
-import { menuRowAt, menuTapIntent } from '../ui/menu/menuTap'
+import { menuTapIntent, routeListTap } from '../ui/menu/menuTap'
 
 type SystemMenuData = {
   sourceScene: SystemMenuSource
@@ -167,15 +167,23 @@ export class SystemMenu extends Phaser.Scene {
       onCancel: () => this.closeWithAction(this.sourceSceneKey === 'Game' ? 'resume' : 'back')
     })
 
-    // Part 12i: the whole plate is the tap target; a cycle row (weapon, sub tank) steps with its outer thirds.
+    // v2 (Craig's playtest note, `routeListTap`): the first tap selects a row; a tap on the row already
+    // selected confirms it (a cycle row still reads its outer thirds on that confirming tap).
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      const hitIndex = menuRowAt(this.rowBackplates.map((plate) => plate.getBounds()), pointer.worldX, pointer.worldY)
-      const plate = this.rowBackplates[hitIndex]
-      const option = this.options[hitIndex]
+      const items = this.rowBackplates.map((plate, index) => {
+        const bounds = plate.getBounds()
+        return { id: String(index), x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
+      })
+      const result = routeListTap(items, { x: pointer.worldX, y: pointer.worldY }, String(this.index))
+      const plate = this.rowBackplates[result.index]
+      const option = this.options[result.index]
       if (!plate || !option) return
       AudioService.unlock()
-      this.index = hitIndex
-      this.updateCursor()
+      if (!result.confirmed) {
+        this.index = result.index
+        this.updateCursor()
+        return
+      }
       const intent = menuTapIntent(pointer.worldX - plate.getBounds().x, plate.width, option.kind === 'cycle' ? 'cycle' : 'action')
       if (intent === 'activate') this.activateSelection()
       else this.cycleSelection(intent === 'previous' ? -1 : 1)

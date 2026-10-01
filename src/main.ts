@@ -28,6 +28,7 @@ import { getStageContentRetentionReport } from './content/campaign'
 import { ROOM_LOCK_DATA_KEY } from './mechanics/adapters/RoomLockAdapter'
 import { STAGE_MECHANICS_DATA_KEY } from './mechanics/adapters/StageMechanicsAdapter'
 import { stepGameFrames, type StepGameFramesOptions } from './config/frameStepping'
+import { installTouchOverlay, TouchOverlay } from './input/touch/TouchOverlay'
 import { computeFrameTimeStats, type FrameTimeStats } from './perf/frameStats'
 import { createRuntimeLeakCounters } from './perf/runtimeLeakTracker'
 
@@ -397,6 +398,7 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
     payload.progressionSummary = progressionSummaryScene.debugSummary ?? null
   }
   payload.settings = Settings.get()
+  payload.touch = TouchOverlay.describe()
   const saveState = Save.load()
   payload.save = {
     exists: Save.exists(),
@@ -464,7 +466,7 @@ function createStatePayload(targetGame: Phaser.Game): Record<string, unknown> {
       paused: Boolean(scene.paused),
       weapon: scene.weapons?.[scene.currentWeaponIndex ?? 0] ?? null,
       lives: scene.playerLives ?? null,
-      virtualControlsVisible: Boolean((scene as any).touchControls?.isVisible?.())
+      virtualControlsVisible: TouchOverlay.isShown()
     }
     payload.playerVisual = {
       animationKey: scene.player?.anims?.currentAnim?.key ?? null,
@@ -621,3 +623,4 @@ installPerfFrameSampling(game)
 installPerfPreloadTiming(game)
 installPerfRuntimeLeakTracking()
 installDevCrashOverlay(false)
+installTouchOverlay(game)

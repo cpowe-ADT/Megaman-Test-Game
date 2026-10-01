@@ -25,7 +25,6 @@ const port = Number(process.env.SMOKE_PORT ?? 4173)
 const smokeServerMode = String(process.env.SMOKE_SERVER ?? 'dev').trim()
 const serverUrl = `http://${host}:${port}/`
 const url = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off&startScene=StageSelect`
-const touchUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off&startScene=StageSelect&touchControls=1`
 const titleUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off`
 /** Story surfaces on: for the narrative scenarios only. */
 const storyUrl = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=on`
@@ -3519,254 +3518,6 @@ async function runPelletHitsShortEnemyScenario(name) {
   }
 }
 
-async function runTouchControlsScenario(name) {
-  const { browser, page, scenarioDir, errors } = await openGameplayPage(name, touchUrl)
-
-  try {
-    const initialState = await waitForState(
-      page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.playerState?.virtualControlsVisible === true &&
-        state.newPlayer?.locomotion?.grounded === true,
-      8000
-    )
-
-    await waitForPageCheck(
-      page,
-      () => Boolean(window.__phaserGame?.scene?.getScenes(true)?.[0]?.newPlayerRuntime?.resetForRespawn),
-      8000,
-      'new player runtime to expose resetForRespawn for touch scenario stabilization'
-    )
-    await page.evaluate(() => {
-      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
-      scene?.newPlayerRuntime?.resetForRespawn?.(30000)
-    })
-    await advanceFrames(page, 2)
-
-    await waitForPageCheck(
-      page,
-      () => {
-        const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
-        return Boolean(scene?.touchControls?.setButtonHeld) && Boolean(scene?.touchControls?.triggerPause)
-      },
-      8000,
-      'touch controls to expose button and pause handlers'
-    )
-
-    const setTouchButton = async (name, held) => {
-      await page.evaluate(
-        ({ name, held }) => {
-          const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
-          scene?.touchControls?.setButtonHeld?.(name, held)
-        },
-        { name, held }
-      )
-    }
-
-    await setTouchButton('right', true)
-    await advanceFrames(page, 24)
-    const movedRightState = await waitForState(
-      page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.playerState?.virtualControlsVisible === true &&
-        state.newPlayer?.locomotion?.grounded === true &&
-        Number(state.player?.vx ?? 0) >= 30,
-      4000
-    )
-
-    await setTouchButton('right', false)
-    await setTouchButton('left', true)
-    await advanceFrames(page, 24)
-    const movedLeftState = await waitForState(
-      page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.playerState?.virtualControlsVisible === true &&
-        state.newPlayer?.locomotion?.grounded === true &&
-        Number(state.player?.vx ?? 0) <= -30,
-      4000
-    )
-
-    await setTouchButton('left', false)
-    await advanceFrames(page, 10)
-
-    const groundedY = Number(movedLeftState.player?.y ?? 0)
-    await setTouchButton('jump', true)
-    await advanceFrames(page, 3)
-    await setTouchButton('jump', false)
-    const jumpState = await waitForState(
-      page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.playerState?.virtualControlsVisible === true &&
-        state.newPlayer?.locomotion?.grounded === false &&
-        Number(state.player?.y ?? groundedY) < groundedY,
-      4000
-    )
-
-    await waitForState(page, (state) => state.scene === 'Game' && state.newPlayer?.locomotion?.grounded === true, 6000)
-    await setTouchButton('dash', true)
-    await advanceFrames(page, 3)
-    const isDashState = (state) =>
-      state?.scene === 'Game' &&
-      state.playerState?.virtualControlsVisible === true &&
-      (
-        state.newPlayer?.locomotion?.dashing === true ||
-        Number(state.newPlayer?.locomotion?.dashMs ?? 0) > 0 ||
-        Number(state.newPlayer?.locomotion?.dashCooldownMs ?? 0) > 0 ||
-        Number(state.combatDebug?.player?.dashCooldownMs ?? 0) > 0
-      )
-    const immediateDashState = await readState(page)
-    const dashState = isDashState(immediateDashState)
-      ? immediateDashState
-      : await waitForState(page, isDashState, 3000, 'touch dash to engage')
-    await setTouchButton('dash', false)
-    await advanceFrames(page, 12)
-
-    const shotBaselineState = await readState(page)
-    const baselinePlayerProjectiles = Number(shotBaselineState?.projectiles?.playerActive ?? 0)
-    const baselineShotsFiredTotal = Number(shotBaselineState?.newPlayer?.combat?.shotsFiredTotal ?? 0)
-    await setTouchButton('shoot', true)
-    await advanceFrames(page, 3)
-    const shootHoldState = await waitForState(
-      page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.playerState?.virtualControlsVisible === true &&
-        (
-          state.newPlayer?.combat?.charging === true ||
-          Number(state.newPlayer?.combat?.chargeElapsedMs ?? 0) > 0 ||
-          Number(state.combatDebug?.player?.chargeMs ?? 0) > 0
-        ),
-      3000,
-      'touch shoot hold to enter charge state'
-    )
-    await setTouchButton('shoot', false)
-    const shotState = await waitForState(
-      page,
-      (state) =>
-        state.scene === 'Game' &&
-        state.playerState?.virtualControlsVisible === true &&
-        (
-          Number(state.projectiles?.playerActive ?? 0) > baselinePlayerProjectiles ||
-          Number(state.newPlayer?.combat?.shotsFiredTotal ?? 0) > baselineShotsFiredTotal ||
-          Number(state.combatDebug?.player?.shotsFiredTotal ?? 0) > baselineShotsFiredTotal
-        ),
-      4000,
-      'touch shoot release to spawn a projectile'
-    )
-
-    await setTouchButton('saber', true)
-    await advanceFrames(page, 2)
-    const isSaberSlashState = (state) =>
-      state?.scene === 'Game' &&
-      (
-        typeof state.newPlayer?.combat?.slashPhase === 'string' ||
-        (typeof state.newPlayer?.visuals?.animationKey === 'string' &&
-          state.newPlayer.visuals.animationKey.startsWith('player_slash_')) ||
-        Boolean(state.newPlayer?.visuals?.activeHitbox)
-      )
-    const immediateSaberState = await readState(page)
-    const saberSlashState = isSaberSlashState(immediateSaberState)
-      ? immediateSaberState
-      : await waitForState(page, isSaberSlashState, 2500, 'touch saber to enter slash state')
-    await setTouchButton('saber', false)
-    const saberState = saberSlashState
-
-    await captureScenarioState(page, scenarioDir, 0, {
-      initialState,
-      movedRightState,
-      movedLeftState,
-      jumpState,
-      dashState,
-      shotBaselineState,
-      shootHoldState,
-      shotState,
-      saberSlashState,
-      saberState
-    })
-
-    await page.evaluate(() => {
-      const scene = window.__phaserGame?.scene?.getScenes(true)?.[0]
-      scene?.touchControls?.triggerPause?.()
-    })
-    const pausedState = await waitForState(
-      page,
-      (state) =>
-        Array.isArray(state.activeScenes) &&
-        state.activeScenes.includes('Game') &&
-        state.activeScenes.includes('SystemMenu'),
-      3000
-    )
-    await captureScenarioState(page, scenarioDir, 1, pausedState)
-
-    // Part 12i (EVAL-P8-005): real taps through Phaser input, in game pixels mapped onto the canvas.
-    const toPage = (gx, gy) => page.evaluate(({ gx, gy }) => {
-      const rect = window.__phaserGame.canvas.getBoundingClientRect()
-      return { x: rect.left + (gx * rect.width) / 448, y: rect.top + (gy * rect.height) / 252 }
-    }, { gx, gy })
-    const tapAt = async (gx, gy) => { const at = await toPage(gx, gy); await page.mouse.click(at.x, at.y) }
-    const touchButton = (id) => page.evaluate((id) => window.__phaserGame.scene.getScene('Game').touchControls.layoutSnapshot().find((b) => b.id === id), id)
-    const tapButton = async (id) => { const b = await touchButton(id); await tapAt(b.x, b.y) }
-    const tapRow = async (sceneKey, id, where = 'middle') => {
-      const plate = await page.evaluate(({ sceneKey, id }) => {
-        const scene = window.__phaserGame.scene.getScene(sceneKey)
-        const state = scene.getDebugState()
-        const index = (state.options ?? state.rows).findIndex((row) => row.id === id)
-        const rect = (scene.rowBackplates ?? scene.backplates)[index]
-        return rect ? { x: rect.x, y: rect.y, width: rect.width } : null
-      }, { sceneKey, id })
-      if (!plate) throw new Error(`No ${id} row plate in ${sceneKey}`)
-      await tapAt(where === 'right' ? plate.x + plate.width / 2 - 12 : plate.x, plate.y)
-    }
-    const running = (state) => state.scene === 'Game' && !state.activeScenes?.includes('SystemMenu') && !state.activeScenes?.includes('Options')
-
-    await tapRow('SystemMenu', 'resume')
-    await waitForState(page, running, 3000, 'tapping RESUME to close the pause menu')
-    await page.evaluate(() => { window.stageDebug?.grantWeapon?.('FlameSerpent'); window.stageDebug?.grantWeapon?.('HydroLance') })
-    await advanceFrames(page, 2)
-    const weaponBefore = (await readState(page)).playerState?.weapon
-    await tapButton('weaponNext')
-    const weaponNextState = await waitForState(page, (state) => running(state) && state.playerState?.weapon && state.playerState.weapon !== weaponBefore, 3000, 'the WPN > button to cycle the weapon')
-    await tapButton('weaponPrev')
-    const weaponPrevState = await waitForState(page, (state) => running(state) && state.playerState?.weapon === weaponBefore, 3000, 'the < WPN button to cycle back')
-
-    const right = await touchButton('right')
-    const rightAt = await toPage(right.x + right.width / 2 - 6, right.y)
-    await page.mouse.move(rightAt.x, rightAt.y)
-    await page.mouse.down()
-    await advanceFrames(page, 20)
-    const tappedRightState = await waitForState(page, (state) => running(state) && Number(state.player?.vx ?? 0) >= 30, 3000, 'a real press near the right edge of RIGHT to move right')
-    await page.mouse.up()
-    await advanceFrames(page, 6)
-
-    await tapButton('pause')
-    await waitForState(page, (state) => state.activeScenes?.includes('SystemMenu'), 3000, 'the pause button to open the pause menu')
-    await tapRow('SystemMenu', 'options')
-    await waitForState(page, (state) => state.activeScenes?.includes('Options'), 3000, 'tapping OPTIONS in the pause menu')
-    await tapRow('Options', 'touchControls', 'right')
-    await tapRow('Options', 'touchControls', 'right')
-    const toggled = await page.evaluate(() => ({
-      value: window.__phaserGame.scene.getScene('Options').getDebugState().rows.find((row) => row.id === 'touchControls')?.value,
-      stored: JSON.parse(window.localStorage.getItem('settings.v1') ?? '{}').touchControls,
-      layerVisible: window.__phaserGame.scene.getScene('Game').touchControls?.isVisible?.()
-    }))
-    if (toggled.value !== 'OFF' || toggled.stored !== 'off' || toggled.layerVisible !== false) {
-      throw new Error(`Expected two taps on TOUCH CONTROLS to reach OFF and hide the layer at once; saw ${JSON.stringify(toggled)}`)
-    }
-    await tapRow('Options', 'back')
-    await waitForState(page, (state) => !state.activeScenes?.includes('Options') && state.activeScenes?.includes('SystemMenu'), 3000, 'tapping BACK in Options')
-    await tapRow('SystemMenu', 'resume')
-    const hiddenState = await waitForState(page, (state) => running(state) && state.playerState?.virtualControlsVisible === false, 3000, 'the layer to stay hidden after resuming with TOUCH CONTROLS OFF')
-    await captureScenarioState(page, scenarioDir, 2, { weaponBefore, weaponNextState, weaponPrevState, tappedRightState, toggled, hiddenState })
-  } finally {
-    await page.mouse.up().catch(() => {})
-    await closeGameplayPage(browser, scenarioDir, errors)
-  }
-}
-
 async function runAirSwordDirectionScenario(name, direction) {
   const { browser, page, scenarioDir, errors } = await openGameplayPage(name)
 
@@ -4001,7 +3752,6 @@ async function main() {
     await executeSmokeScenario(summary, '4b-stage-select-progression', () =>
       runStageSelectProgressionSummaryScenario('4b-stage-select-progression')
     )
-    await executeSmokeScenario(summary, '4c-touch-controls', () => runTouchControlsScenario('4c-touch-controls'))
     await executeSmokeScenario(summary, '4d-progression-import-truth', () =>
       runProgressionImportTruthScenario('4d-progression-import-truth')
     )
@@ -4080,6 +3830,7 @@ async function main() {
     // and always against its own `vite preview` of the real production build, never the ambient
     // SMOKE_SERVER for the rest of this run.
     await executeSmokeScenario(summary, '66-production-music', () => runProductionMusicScenario('66-production-music', { outputDir }))
+    await executeSmokeScenario(summary, '67-touch-mode', async () => (await import('./smoke/touch-mode.mjs')).runTouchModeScenario('67-touch-mode', { outputDir, host, port, readState, waitForState, advanceFrames }))
     await executeSmokeScenario(summary, '37-story-replay-skip', () => runStoryReplaySkipScenario('37-story-replay-skip', storyDeps))
     await executeSmokeScenario(summary, '37b-story-triggers', async () => (await import('./smoke/story-surfaces.mjs')).runStoryTriggersScenario('37b-story-triggers', storyDeps))
     const pauseDeps = { outputDir, titleUrl, readState, waitForState, waitForPageCheck, advanceFrames, tapKey }
