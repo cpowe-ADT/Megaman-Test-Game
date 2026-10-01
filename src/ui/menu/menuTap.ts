@@ -14,3 +14,17 @@ export function menuTapIntent(offsetX: number, plateWidth: number, kind: 'cycle'
 export function menuRowAt(plates: readonly MenuPlateBounds[], x: number, y: number): number {
   return plates.findIndex((plate) => x >= plate.x && x <= plate.x + plate.width && y >= plate.y && y <= plate.y + plate.height)
 }
+
+/** v2 (Craig's playtest note): the shared tap rule for every menu list (Title, Profiles, NewCampaign,
+ * StageSelect tiles, Options, Controls, SystemMenu, GameOver, the dialogue box). Pure; a scene passes
+ * its own items' hit rectangles (top-left bounds, game pixels) and the currently selected id. */
+export type TapListItem = Readonly<{ id: string; x: number; y: number; width: number; height: number }>
+export type TapListResult = Readonly<{ index: number; confirmed: boolean }>
+
+/** The first tap on an item selects it (`confirmed: false`); a tap on the item already selected
+ * confirms it (`confirmed: true`). A tap outside every item hits nothing (`index: -1`). */
+export function routeListTap(items: readonly TapListItem[], point: Readonly<{ x: number; y: number }>, selectedId: string | null): TapListResult {
+  const index = menuRowAt(items, point.x, point.y)
+  if (index === -1) return { index: -1, confirmed: false }
+  return { index, confirmed: items[index]!.id === selectedId }
+}

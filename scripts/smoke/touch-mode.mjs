@@ -39,6 +39,19 @@ async function tap(page, action) {
   await page.touchscreen.tap(at.x, at.y)
 }
 
+/** Taps a game object directly, in game pixels (448x252) mapped onto the canvas's CSS rect: "tap menu
+ * items directly" (v2), not just the overlay's own buttons -- e.g. Title's own PRESS START button. */
+async function tapCanvas(page, gx, gy) {
+  const at = await page.evaluate(
+    ({ gx, gy }) => {
+      const rect = window.__phaserGame.canvas.getBoundingClientRect()
+      return { x: rect.left + (gx * rect.width) / 448, y: rect.top + (gy * rect.height) / 252 }
+    },
+    { gx, gy }
+  )
+  await page.touchscreen.tap(at.x, at.y)
+}
+
 /** A hold across frames: Playwright's `touchscreen.tap` has no duration, so this dispatches the same
  * pointer events the overlay's own buttons listen for, directly on the element a real finger would hit. */
 async function holdSet(page, action, down) {
@@ -74,10 +87,26 @@ export async function runTouchModeScenario(name, deps) {
     await page.evaluate(() => window.dispatchEvent(new Event('resize')))
     await waitForState(page, (state) => state.scene === 'Title', 15000)
 
-    // 1. Title's own menu set: d-pad, OK, BACK. No keyboard is used anywhere below.
+    // v2: the first screen on a touch device shows a full-screen "TAP TO START" card; one tap sets
+    // touchControls to ON, unlocks audio, and continues. It must not show again this device/mode.
+    await page.waitForFunction(() => document.querySelector('.touch-start-card')?.style.display !== 'none', null, { timeout: 8000 })
+    await page.touchscreen.tap(422, 195)
+    await page.waitForFunction(() => document.querySelector('.touch-start-card')?.style.display === 'none', null, { timeout: 4000 })
+    await advanceFrames(page, 2)
+    assert.equal((await readState(page)).settings?.touchControls, 'on', 'tapping the start card sets touchControls to ON')
+
+    // 1. Title's own menu set: the cross, A (OK) and B (BACK), SELECT and START. No keyboard anywhere below.
     const titleMenuState = await capture('0-title-menu-set')
     assert.equal(titleMenuState.touch?.set, 'menu', 'Title shows the menu set')
-    assert.deepEqual([...titleMenuState.touch.buttons].sort(), ['aimDown', 'aimUp', 'cancel', 'confirm', 'moveLeft', 'moveRight'], 'the menu set is just the d-pad, OK and BACK')
+    assert.deepEqual([...titleMenuState.touch.buttons].sort(), ['aimDown', 'aimUp', 'cancel', 'confirm', 'moveLeft', 'moveRight'], 'the menu set is the cross plus A/B (confirm/cancel also drive SELECT/START)')
+
+    // v2: the Title row "TOUCH CONTROLS: ON/OFF", tapped directly on the canvas (not the overlay),
+    // toggles the same setting off, then back on.
+    await tapCanvas(page, 319, 194)
+    await waitForState(page, (state) => state.settings?.touchControls === 'off', 4000, 'tapping the Title row to turn touch controls off')
+    assert.equal((await readState(page)).touch?.shown, false, 'the overlay hides once touch controls are off')
+    await tapCanvas(page, 319, 194)
+    await waitForState(page, (state) => state.settings?.touchControls === 'on', 4000, 'tapping the Title row again to turn touch controls back on')
 
     // 4. A return to the title through the menu: NEW GAME opens the slot picker; BACK returns to Title
     // before any campaign exists, proving Title is reachable and leavable with the menu set alone.
@@ -86,9 +115,10 @@ export async function runTouchModeScenario(name, deps) {
     await tap(page, 'cancel')
     await waitForState(page, (state) => state.scene === 'Title', 8000, 'BACK on the slot picker to return to Title')
 
-    // 1 (continued). The real run: NEW GAME, the save slot's default name, NEW CAMPAIGN, the first-run
-    // controls page and the prologue, each closed with OK alone.
-    await tap(page, 'confirm')
+    // 1 (continued), tapping the menu item directly (Title's own PRESS START button, not the overlay):
+    // NEW GAME, the save slot's default name, NEW CAMPAIGN, the first-run controls page and the
+    // prologue, each closed with OK alone.
+    await tapCanvas(page, 224, 151)
     await waitForState(page, (state) => state.scene === 'Profiles', 8000)
     await tap(page, 'confirm') // empty slot -> name entry
     await waitForState(page, (state) => state.profiles?.screen?.mode === 'name', 8000, 'OK on an empty slot to open name entry')

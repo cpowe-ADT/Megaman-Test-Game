@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { SettingsStore, validateSettings } from '../src/systems/Settings'
 import { touchControlsVisible } from '../src/input/touch/touchButtonSets'
 import { cycleTouchControls, touchOptionsRow, withTouchRow } from '../src/ui/menu/touchOptions'
-import { menuRowAt, menuTapIntent } from '../src/ui/menu/menuTap'
+import { menuRowAt, menuTapIntent, routeListTap } from '../src/ui/menu/menuTap'
 
 test('12i touch setting migration: a pre-12i settings.v1 reads AUTO, a bad value falls back, a choice survives a reload', () => {
   const old = { musicVolume: 3, sfxVolume: 7, screenShake: false, pixelScaling: 'integer', futureKey: 'kept' }
@@ -41,6 +41,15 @@ test('12i Options row: TOUCH CONTROLS cycles AUTO, ON, OFF both ways and sits ju
   assert.equal(cycleTouchControls('auto', -1), 'off')
   const rows = withTouchRow([{ id: 'difficulty' }, { id: 'reducedFlashing' }, { id: 'controls' }, { id: 'delete' }, { id: 'back' }], touchOptionsRow('on'))
   assert.deepEqual(rows.map((row) => row.id), ['difficulty', 'reducedFlashing', 'touchControls', 'controls', 'delete', 'back'])
+})
+
+test('v2 menu tap rule (routeListTap): the first tap selects, a tap on the item already selected confirms, a tap outside hits nothing', () => {
+  const items = [{ id: 'a', x: 0, y: 0, width: 10, height: 10 }, { id: 'b', x: 20, y: 0, width: 10, height: 10 }]
+  assert.deepEqual(routeListTap(items, { x: 5, y: 5 }, null), { index: 0, confirmed: false })
+  assert.deepEqual(routeListTap(items, { x: 5, y: 5 }, 'a'), { index: 0, confirmed: true })
+  assert.deepEqual(routeListTap(items, { x: 25, y: 5 }, 'a'), { index: 1, confirmed: false })
+  assert.deepEqual(routeListTap(items, { x: 25, y: 5 }, 'b'), { index: 1, confirmed: true })
+  assert.deepEqual(routeListTap(items, { x: 100, y: 100 }, 'a'), { index: -1, confirmed: false })
 })
 
 test('12i menu taps: the plate is the target; cycle rows step with their outer thirds', () => {

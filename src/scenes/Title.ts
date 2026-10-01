@@ -109,11 +109,25 @@ export class Title extends Phaser.Scene {
       fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#5de1ff', letterSpacing: 1
     }).setOrigin(0.5)
 
-    const controlsButton = this.add.text(width / 2, 194, 'VIEW CONTROL MAP', {
+    const controlsButton = this.add.text(width / 2 - 75, 194, 'VIEW CONTROL MAP', {
       fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#f5f8ff', backgroundColor: '#164b7c', padding: { x: 12, y: 4 }
     }).setOrigin(0.5)
     controlsButton.setInteractive({ useHandCursor: true })
     controlsButton.on('pointerdown', () => this.openControls())
+
+    // v2 (Craig's playtest note): a Title row that toggles touch controls on/off, beside the corner toggle.
+    const touchRowLabel = () => `TOUCH CONTROLS: ${Settings.get().touchControls === 'off' ? 'OFF' : 'ON'}`
+    const touchRowButton = this.add.text(width / 2 + 95, 194, touchRowLabel(), {
+      fontFamily: PIXEL_FONT, fontSize: pixelFontSize(1), color: '#f5f8ff', backgroundColor: '#164b7c', padding: { x: 12, y: 4 }
+    }).setOrigin(0.5).setName('title-touch-row')
+    touchRowButton.setInteractive({ useHandCursor: true })
+    touchRowButton.on('pointerdown', () => {
+      AudioService.unlock()
+      AudioService.playSfx('ui_confirm')
+      Settings.update({ touchControls: Settings.get().touchControls === 'off' ? 'on' : 'off' })
+    })
+    const offTouchRowSync = Settings.onChange(() => touchRowButton.setText(touchRowLabel()))
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, offTouchRowSync)
 
     this.add.rectangle(width / 2, 233, width, 38, MENU_COLORS.ink, 0.8)
     this.add.text(width / 2, 225, 'ENTER  DEPLOY     C  CONTROLS     O  OPTIONS     N  NEW CAMPAIGN     ESC  CLEAR RUN', {

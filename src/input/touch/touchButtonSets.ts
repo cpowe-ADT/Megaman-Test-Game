@@ -1,7 +1,9 @@
 /**
- * The two touch button sets and which one shows (post-v1.0 touch mode task card, replacing part
- * 12i's `src/ui/touchControlsModel.ts`). Pure: `TouchOverlay` draws these specs over the canvas as
- * DOM buttons, and `tests/touch-overlay.test.ts` checks them without a scene or a DOM.
+ * The two touch button sets and which one shows (v2, Craig's playtest note). An emulator-style pad:
+ * a d-pad cross (arrow glyphs) at the left, a diamond of round face buttons at the right (bottom is
+ * the largest, the "A" position), shoulder pills (L/R) under the HUD band, and SELECT/START pills at
+ * bottom-centre. Pure: `TouchOverlay` draws these specs over the canvas as DOM buttons, and
+ * `tests/touch-overlay.test.ts` checks them (no overlaps, minimum sizes) at three phone viewports.
  */
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import type { ActionName } from '../ActionState'
@@ -9,6 +11,8 @@ import type { TouchControlsMode } from '../../systems/Settings'
 
 export type TouchSet = 'play' | 'menu'
 export type TouchButtonSpec = Readonly<{
+  /** Unique within a set even when two buttons dispatch the same action (SELECT and BACK both cancel). */
+  id: string
   action: ActionName
   label: string
   /** Centre, in game pixels. */
@@ -22,59 +26,87 @@ export type TouchButtonSpec = Readonly<{
   fontScale: 1 | 2
 }>
 
-/** The HUD band (`getHudLayout(...).height`) ends at y 58; the toggle and the system row sit under it. */
-export const TOUCH_SYSTEM_ROW_Y = 74
 /** Scenes with no input of their own (loading screens); the overlay hides outright. */
 const SCENES_WITHOUT_INPUT = new Set(['Boot', 'Preload'])
 
-function dpad(action: ActionName, pad: { x: number; y: number }, dx: number, dy: number, w: number, h: number, label: string, alpha = 0.18): TouchButtonSpec {
-  return { action, label, x: pad.x + dx, y: pad.y + dy, width: w, height: h, round: false, alpha, fontScale: 2 }
-}
-function round(action: ActionName, face: { x: number; y: number }, dx: number, dy: number, size: number, label: string, alpha = 0.18): TouchButtonSpec {
-  return { action, label, x: face.x + dx, y: face.y + dy, width: size, height: size, round: true, alpha, fontScale: 2 }
-}
-function system(action: ActionName, x: number, w: number, label: string, fontScale: 1 | 2, alpha = 0.34): TouchButtonSpec {
-  return { action, label, x, y: TOUCH_SYSTEM_ROW_Y, width: w, height: 24, round: false, alpha, fontScale }
+function btn(id: string, action: ActionName, label: string, x: number, y: number, width: number, height: number, round: boolean, alpha: number, fontScale: 1 | 2 = 2): TouchButtonSpec {
+  return { id, action, label, x, y, width, height, round, alpha, fontScale }
 }
 
-/** The shared d-pad: movement in `Game`, menu navigation everywhere else (both read `moveLeft` etc). */
-function dpadButtons(width: number, height: number): TouchButtonSpec[] {
-  const pad = { x: 24, y: height - 66 }
+/** The cross: arrow glyphs, not letters (Craig's v2 note). Shared by both sets (menu navigation and
+ * movement/aim read the same `moveLeft` etc). Arms sit 44 game px from centre so the diagonal gap
+ * between adjacent arms clears 8 CSS px even at the smallest of the three reference phone viewports. */
+function dpadButtons(height: number): TouchButtonSpec[] {
+  const cx = 80
+  const cy = height - 74
+  const arm = 34
+  const offset = 44
   return [
-    dpad('moveLeft', pad, 26, -4, 56, 44, 'L'),
-    dpad('moveRight', pad, 94, -4, 56, 44, 'R'),
-    dpad('aimUp', pad, 60, -46, 52, 40, 'U', 0.24),
-    dpad('aimDown', pad, 60, 38, 52, 40, 'D', 0.24)
+    btn('aimUp', 'aimUp', '▲', cx, cy - offset, arm, arm, false, 0.2),
+    btn('aimDown', 'aimDown', '▼', cx, cy + offset, arm, arm, false, 0.2),
+    btn('moveLeft', 'moveLeft', '◀', cx - offset, cy, arm, arm, false, 0.2),
+    btn('moveRight', 'moveRight', '▶', cx + offset, cy, arm, arm, false, 0.2)
   ]
 }
 
-/** `Game` in direct control: d-pad, jump, shoot (hold to charge), dash, saber, weapon previous/next, pause. */
-function playButtons(width: number, height: number): TouchButtonSpec[] {
-  const face = { x: width - 92, y: height - 70 }
+/** The diamond's four slots, sized/positioned once; `play` fills all four, `menu` only bottom and
+ * right (the "A"/"B" positions Craig named: bottom is OK in menu, JUMP -- the largest -- in play). */
+function diamond(height: number) {
+  const cx = GAME_WIDTH - 80
+  const cy = height - 82
+  const radius = 54
+  return {
+    top: { x: cx, y: cy - radius, size: 36 },
+    bottom: { x: cx, y: cy + radius, size: 46 },
+    left: { x: cx - radius, y: cy, size: 38 },
+    right: { x: cx + radius, y: cy, size: 38 }
+  }
+}
+
+function shoulderButtons(): TouchButtonSpec[] {
   return [
-    ...dpadButtons(width, height),
-    round('jump', face, -168, -18, 64, 'JUMP'),
-    round('dash', face, -102, 22, 60, 'DASH'),
-    round('shoot', face, -34, -18, 70, 'SHOT'),
-    round('saber', face, 42, 22, 62, 'SABER'),
-    system('weaponPrev', width - 115, 42, '< WPN', 1),
-    system('weaponNext', width - 69, 42, 'WPN >', 1),
-    system('pause', width - 26, 36, '||', 2)
+    btn('shoulderL', 'weaponPrev', 'L', 50, 84, 56, 34, false, 0.3, 1),
+    btn('shoulderR', 'weaponNext', 'R', 420, 84, 48, 34, false, 0.3, 1)
   ]
 }
 
-/** Every other scene, and `Game` while a dialogue, the pause menu, a card or results is open: d-pad, OK, BACK. */
-function menuButtons(width: number, height: number): TouchButtonSpec[] {
-  const face = { x: width - 92, y: height - 70 }
+/** START = pause in play, confirm in menu; SELECT = cancel (back) in both (Craig's v2 note). */
+function systemPills(startAction: ActionName): TouchButtonSpec[] {
   return [
-    ...dpadButtons(width, height),
-    round('confirm', face, -34, -18, 70, 'OK', 0.26),
-    round('cancel', face, -168, -18, 64, 'BACK', 0.26)
+    btn('select', 'cancel', 'SELECT', 175, 226, 70, 34, false, 0.3, 1),
+    btn('start', startAction, 'START', 273, 226, 70, 34, false, 0.3, 1)
+  ]
+}
+
+/** `Game` in direct control: cross, JUMP/SHOT/DASH/SABER, L/R weapon cycle, SELECT (back) and START (pause). */
+function playButtons(height: number): TouchButtonSpec[] {
+  const d = diamond(height)
+  return [
+    ...dpadButtons(height),
+    btn('faceBottom', 'jump', 'JUMP', d.bottom.x, d.bottom.y, d.bottom.size, d.bottom.size, true, 0.2),
+    btn('faceRight', 'shoot', 'SHOT', d.right.x, d.right.y, d.right.size, d.right.size, true, 0.2),
+    btn('faceLeft', 'dash', 'DASH', d.left.x, d.left.y, d.left.size, d.left.size, true, 0.2),
+    btn('faceTop', 'saber', 'SABER', d.top.x, d.top.y, d.top.size, d.top.size, true, 0.2),
+    ...shoulderButtons(),
+    ...systemPills('pause')
+  ]
+}
+
+/** Every other scene, and `Game` while a dialogue, the pause menu, a card or results is open: cross,
+ * A (OK, bottom/largest slot), B (BACK, right slot), SELECT (back) and START (confirm). */
+function menuButtons(height: number): TouchButtonSpec[] {
+  const d = diamond(height)
+  return [
+    ...dpadButtons(height),
+    btn('faceBottom', 'confirm', 'OK', d.bottom.x, d.bottom.y, d.bottom.size, d.bottom.size, true, 0.26),
+    btn('faceRight', 'cancel', 'BACK', d.right.x, d.right.y, d.right.size, d.right.size, true, 0.26),
+    ...systemPills('confirm')
   ]
 }
 
 export function touchButtonsFor(set: TouchSet, width = GAME_WIDTH, height = GAME_HEIGHT): TouchButtonSpec[] {
-  return set === 'play' ? playButtons(width, height) : menuButtons(width, height)
+  void width
+  return set === 'play' ? playButtons(height) : menuButtons(height)
 }
 
 /** Which set shows, from the topmost active scene and (for `Game`) whether play is in direct control

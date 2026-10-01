@@ -85,7 +85,15 @@ failure; record the remote run URL after pushing, without treating local results
     a jump, a held-then-released shot; PAUSE opening the pause menu (the overlay switches back to the menu
     set) and BACK resuming at once. `render_game_to_text().touch` (`{ shown, set, buttons, toggleMode }`)
     is asserted at each beat; `state-0-title-menu-set.json`/`shot-0-title-menu-set.png` and
-    `state-1-game-play-set.json`/`shot-1-game-play-set.png` capture the two button sets
+    `state-1-game-play-set.json`/`shot-1-game-play-set.png` capture the two button sets. v2 (Craig's
+    playtest note) adds: the full-screen "TAP TO START" card (one tap sets touch on, unlocks audio and
+    continues; while it is up `game.input.enabled` is `false`, since Phaser hit-tests the canvas's own
+    rect directly and ignores DOM stacking, so the card would otherwise leak taps through to the scene
+    underneath); a direct canvas tap (not the overlay) on Title's own "TOUCH CONTROLS: ON/OFF" row and
+    on its PRESS START button (`tapCanvas`, game pixels mapped onto the canvas rect); and the emulator
+    layout (a d-pad cross with arrow glyphs, a face diamond with JUMP/OK the largest at the bottom, L/R
+    shoulders, SELECT/START pills), checked for overlaps and a 48 CSS px / 8 CSS px gap minimum at
+    844x390, 932x430 and 667x375 in `tests/touch-overlay.test.ts`
   - Includes player sword coverage for grounded slash, air slash, boss slash, moving-slash alignment, and west-facing pose/hitbox alignment after locomotion reverses
   - Includes an uncharged Buster regression against the shortest ground enemy so pellet-height hit detection cannot silently regress
   - Scenario `29-pellet-hits-short-enemy` requires the same live mine bot at exactly 5→4 HP, one uncharged Buster shot, and an accepted one-damage player bullet hit; its `pellet-evidence.json` retains identity, damage, and body geometry so despawns cannot masquerade as hits

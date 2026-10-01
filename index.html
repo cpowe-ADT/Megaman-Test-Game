@@ -81,6 +81,29 @@
         font-size: 16px;
         text-align: center;
       }
+      /* The tap-to-start card (v2): full-screen, blocks the canvas until tapped. */
+      .touch-start-card {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        touch-action: none;
+        pointer-events: auto;
+        background: rgba(3, 7, 17, 0.9);
+        color: #ecf7ff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .touch-start-card-inner {
+        padding: 18px 28px;
+        border: 2px solid rgba(204, 236, 255, 0.6);
+        border-radius: 10px;
+        font-size: 20px;
+        line-height: 1.6;
+        text-align: center;
+        background: rgba(8, 23, 42, 0.7);
+      }
     </style>
   </head>
   <body>

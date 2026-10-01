@@ -61,14 +61,21 @@ You can also open the in-game `Controls` screen from the title menu and the syst
 
 ### Gamepad and touch
 - A connected gamepad works at Title and in-game with the standard mapping (A jump, X shoot, B back, Start pause, left stick or D-pad to move/aim); remap it on the `Controls` screen the same way as the keyboard.
-- On a touch device a single on-screen overlay covers the whole game, not just a stage: a d-pad plus
-  JUMP, SHOT (hold to charge), DASH, SABER, weapon previous/next and PAUSE while you're in direct
-  control, and a d-pad plus OK and BACK on every other screen (menus, the save slots, a dialogue, the
-  pause menu, a card or results) — enough to start a campaign, name a pilot, and get back out, all by
-  touch. Each button presses the key your own bindings already use (remap it on `Controls`, as above),
-  so it works anywhere that key does. A `TOUCH: AUTO/ON/OFF` button sits in a corner on any touch
-  screen and flips the same setting as `Options > Touch Controls`, so it can turn itself back on even
-  if you had switched it off. In portrait it asks you to turn the phone sideways.
+- On a touch device a single on-screen overlay covers the whole game, not just a stage, laid out like
+  a handheld emulator: a d-pad cross (arrow glyphs) at the left; at the right a diamond of round
+  buttons — JUMP at the bottom (the largest), SHOT (hold to charge) on the right, DASH on the left,
+  SABER on top, while you're in direct control, or just OK (bottom) and BACK (right) on every other
+  screen (menus, the save slots, a dialogue, the pause menu, a card or results); L/R shoulder pills
+  cycle weapons; SELECT and START pills sit bottom-centre (START pauses or confirms, SELECT backs
+  out). The first time on a touch device, a "TAP TO START — TOUCH CONTROLS ON" card asks for one tap
+  (a keyboard or pad press dismisses it without changing anything); a `TOUCH CONTROLS: ON/OFF` row on
+  the Title screen and a small `TOUCH: AUTO/ON/OFF` corner button both flip the same setting as
+  `Options > Touch Controls`, and if it's off, tapping anywhere shows a "tap to turn it back on" chip,
+  so a phone player is never locked out. Every menu list (Title, the save slots, New Campaign, Warden
+  Select, Options, Controls, the pause menu, Game Over, a dialogue line) takes a direct tap: the first
+  tap on an item selects it, a tap on the item already selected confirms it. Each button presses the
+  key your own bindings already use (remap it on `Controls`, as above), so it works anywhere that key
+  does. In portrait it asks you to turn the phone sideways.
 
 ### Difficulty
 New Campaign offers Assist, Normal and Veteran. Each sets its own boss HP and damage, enemy damage, and extra-life drop rate; Normal is the tuned default and Assist is the easiest. The choice is saved per profile and shown on the pause menu's route console.
