@@ -6,11 +6,13 @@ import type { EnemySpawner } from '../../enemy'
 import type { NewPlayerRuntime } from '../../player/NewPlayerRuntime'
 import type { PlayerDamageRequest, PlayerDamageResult } from '../../player/types'
 import type { ProjectileCollisionRouter, ProjectileSystem } from '../../projectiles'
+import { Save } from '../../systems/Save'
+import { SegmentTelemetry, segmentIdFor } from '../../telemetry/segmentTelemetry'
 import type { CombatDebugBus } from '../../tools/debug/CombatDebugBus'
 import type { HUD } from '../../ui/HUD'
 import type { BossBodies } from './BossBodies'
 import type { BossHazards } from './BossHazards'
-import { combatSourceForDamage, type CombatHitSource, type CombatHitTarget } from './combatRules'
+import { combatSourceForDamage, resolvePlayerDamageAmount, type CombatHitSource, type CombatHitTarget } from './combatRules'
 
 export type { CombatHitSource, CombatHitTarget } from './combatRules'
 
@@ -47,6 +49,12 @@ export interface HitWiresHost {
   projectileClashWire?: Phaser.Physics.Arcade.Collider
   /** The boss's hurtbox and contact hitbox, and the hazard bodies (prompt 07 phases 7.0 and 7.1). */
   bossBeats?: { bodies: Pick<BossBodies, 'ensure' | 'boxes'>; hazards: Pick<BossHazards, 'group' | 'solids'> }
+  /** Part 13c (EVAL-P6-012): the segment a death or a damage tick is credited to, and the accumulator itself. */
+  activeStageId: string
+  currentCheckpointIndex: number
+  segmentTelemetry?: SegmentTelemetry
+  /** The last accepted hit's `sourceId` (13h.3a, `EVAL-P6-012`): `DeathSequence.killPlayer` reads it once for `killedBy`. */
+  lastDamageSourceId?: string | null
   killPlayer(reason: 'pit' | 'debug' | 'damage'): void
 }
 
@@ -247,17 +255,24 @@ export class HitWires {
     })
   }
 
-  requestPlayerDamage(request: PlayerDamageRequest): PlayerDamageResult {
+  requestPlayerDamage(rawRequest: PlayerDamageRequest): PlayerDamageResult {
     const host = this.host
-    const debugSource = combatSourceForDamage(request.sourceType)
+    const debugSource = combatSourceForDamage(rawRequest.sourceType)
+    // Part 13h.3a (EVAL-P6-012): a boss's contact or attack damage scales with the difficulty table too,
+    // the way a regular enemy's already does at spawn (`EnemySpawner.applyDifficultyToDefinition`).
+    const scaledAmount = resolvePlayerDamageAmount(rawRequest.sourceType, rawRequest.amount, Save.load().difficulty)
+    const request = scaledAmount === rawRequest.amount ? rawRequest : { ...rawRequest, amount: scaledAmount }
     const player = host.player
     if (!player || !player.active || host.playerLives < 0 || !host.newPlayerRuntime) {
       this.recordCombatHit(debugSource, 'player', request.amount, request.sourceType, false, `${request.sourceId}:inactive`)
       return { accepted: false, reason: 'inactive', amount: 0, request }
     }
+    host.lastDamageSourceId = request.sourceId
     const result = host.newPlayerRuntime.receiveDamage(request)
     this.recordCombatHit(debugSource, 'player', result.amount, request.sourceType, result.accepted, `${request.sourceId}:${result.reason}`)
     if (result.accepted) {
+      host.segmentTelemetry = host.segmentTelemetry ?? new SegmentTelemetry()
+      host.segmentTelemetry.recordDamage(segmentIdFor(host.activeStageId, host.currentCheckpointIndex), result.amount)
       AudioService.playSfx('player_hit')
       if (player.active) {
         player.setTint(0xff6b6b)

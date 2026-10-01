@@ -7,14 +7,18 @@ import { HEAT_WORKS_PATCH } from './heatWorks'
 import { MIRE_WRAITH_PATCH } from './mireWraith'
 import { OMEGA_FORTRESS_PATCH } from './omegaFortress'
 import { TIDE_REAVER_PATCH } from './tideReaver'
+import { TUTORIAL_SENTINEL_PATCH } from './tutorialSentinel'
 import { VOLT_HOPPER_PATCH } from './voltHopper'
 
 /**
  * Stages rebuilt to the Heat Works standard (prompt 12 part 12d, `docs/prompts/12-finish-the-game.md`): each stage's
  * route is one file in this folder exporting its `StageExtensionPatch`, and one line here. A stage listed here
  * replaces its inline patch in `src/content/campaign.ts`; its lane deletes that inline block.
+ *
+ * `tutorial_sentinel` (13h.3a, `EVAL-P6-019`) was the last stage still inline; every stage now lives here.
  */
 export const REBUILT_STAGE_PATCHES: Partial<Record<CampaignStageId, StageExtensionPatch>> = {
+  tutorial_sentinel: TUTORIAL_SENTINEL_PATCH,
   pyro_maw: HEAT_WORKS_PATCH,
   tide_reaver: TIDE_REAVER_PATCH,
   mire_wraith: MIRE_WRAITH_PATCH,
