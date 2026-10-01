@@ -18,6 +18,18 @@ The repo is mid-transition from a scene-owned prototype into a more modular runt
 - `src/ui/menu/menuTheme.ts` owns shared title/controls/system-menu fonts, colors, backdrops, and panel chrome so scene menus retain one presentation language.
 - `src/combat/`, `src/physics/`, `src/content/`, and `src/assets/` hold shared logic, registries, and data contracts.
 
+## Modules the finish batch added (prompts 12 and 13)
+- `src/scenes/game/StageBuilder.ts` builds a stage's platforms, hazards, pickups and triggers from its campaign data; `Game.ts` calls it once per stage load.
+- `src/scenes/game/EnemyRuntime.ts` owns enemy spawn, respawn and per-frame AI stepping, camera-relative so an off-screen enemy resets.
+- `src/scenes/game/PickupSystem.ts` places, grounds or floats, and resolves every health/weapon/bonus/tank pickup and extra life.
+- `src/scenes/game/OmegaActs.ts` runs the Central Core's three acts: the rematch hub's eight doors, checkpoints and the finale gate.
+- `src/scenes/bossIntro/BossIntroLogic.ts` is the pure timing/gating for the pre-stage boss-intro card; `src/scenes/BossIntroScene.ts` is its Phaser adapter between Stage Select and the stage.
+- `src/ui/beats/weaponDemo.ts` scripts the post-WEAPON-GET demo: the hero fires the new weapon plain, then charged, from real projectile code, granting nothing.
+- `src/progression/difficulty.ts` holds the Assist/Normal/Veteran tables for boss HP/damage and enemy damage, read at boss and enemy spawn.
+- `src/telemetry/segmentTelemetry.ts` records deaths per stage segment; `scripts/content/heatmap.mjs` paints them as a heatmap for balance passes.
+- `src/stage/stageGeometry.ts`'s `backdropLayerSpans` covers every vertical segment's parallax and sky so no gap shows at the top of a tall room.
+- `src/combat/Hitbox.ts`'s `resolveHurtbox` is the one hit test shared by the sword, player shots and an enemy's melee hitbox (the hit contract).
+
 ## Architectural Boundaries
 - Phaser bootstrapping and scene orchestration live in `src/main.ts` and `src/scenes/`.
 - Pure or mostly pure gameplay logic should live outside scenes where practical.
