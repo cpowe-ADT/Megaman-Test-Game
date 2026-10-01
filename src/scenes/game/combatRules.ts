@@ -1,6 +1,8 @@
 import { BOSS_BREAK } from '../../boss/bossBreak'
 import { bossHudLabel, type BossBlueprint } from '../../bosses/types'
 import { PASSIVE_WEAPON_RECHARGE_INTERVAL_MS } from '../../content/weaponEnergyEconomy'
+import { scaleBossDamage } from '../../progression/difficulty'
+import type { Difficulty } from '../../progression/types'
 
 /**
  * The pure rules behind the modules moved out of `Game` in prompt 07 phase 7.0 (EVAL-P7-008): no Phaser,
@@ -15,6 +17,16 @@ export function combatSourceForDamage(sourceType: string): CombatHitSource {
   if (sourceType.startsWith('boss_')) return 'boss'
   if (sourceType.startsWith('enemy_')) return 'enemy'
   return sourceType === 'hazard' ? 'hazard' : 'system'
+}
+
+/**
+ * The amount `HitWires.requestPlayerDamage` actually applies (13h.3a, `EVAL-P6-012`): a boss-sourced
+ * request (`boss_contact`, `boss_projectile`) scales by the difficulty's boss-damage factor; a regular
+ * enemy's own damage stat is already scaled at spawn (`EnemySpawner.applyDifficultyToDefinition`), so
+ * every other source passes through unchanged.
+ */
+export function resolvePlayerDamageAmount(sourceType: string, amount: number, difficulty: Difficulty): number {
+  return combatSourceForDamage(sourceType) === 'boss' ? scaleBossDamage(amount, difficulty) : amount
 }
 
 /** Weapon slot after cycling `delta` steps through `total` weapons (wraps both ways). */

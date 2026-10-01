@@ -3,7 +3,9 @@
 // room (a wrong verb first, then the right one, replayed from scripts/smoke/inputs/tutorial-*.json),
 // the lane must show every key hint and every Rook line, and walking into a closed gate must not pass
 // it, and the dash gap (06.P) must drop a plain jump safely on the bay floor and carry a dash jump to
-// ledge B. The debug warps (setPlayerX, crossBossGate) stay automation tools: smoke 5 and the sweep use them.
+// ledge B. 13h.3a (EVAL-P6-019) adds the secret: a charged shot breaks the wall on the one-way shelf in
+// the saber room, and walking in collects the capsule now resting behind it.
+// The debug warps (setPlayerX, crossBossGate) stay automation tools: smoke 5 and the sweep use them.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -42,6 +44,8 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     return state
   }
   const locksOf = (state) => state.mechanics?.roomLocks ?? []
+  const mechOf = (state) => state.mechanics ?? {}
+  const byId = (list, id) => (list ?? []).find((entry) => entry.id === id)
   const replay = (file) => page.evaluate((rows) => window.stageDebug.replayInputs(rows), readRows(file))
   const warp = async (x) => { await page.evaluate((value) => window.stageDebug.setPlayerX(value), x); await advanceFrames(page, 3) }
   // Test-side placement above a raised deck (setPlayerX keeps the hero's y, which would bury it in the deck).
@@ -204,6 +208,38 @@ export async function runTutorialVerbsScenario(name, { outputDir, storyUrl, read
     await waitForState(page, (state) => state.ticker?.kind === 'radio' && /iona/i.test(state.ticker.speaker ?? ''), 20000)
     const radioFirst = await capture('radio-first')
     fs.writeFileSync(path.join(dir, 'radio-first.json'), JSON.stringify({ heroX: radioFirst.player.x, heroY: radioFirst.player.y, checkpointIndex: radioFirst.stageRuntime?.checkpointIndex, locks: locksOf(radioFirst).map((entry) => entry.phase) }, null, 2))
+
+    // 4b the secret (13h.3a, EVAL-P6-019, the brief's "1 (capsule, saber wall)"): a one-way shelf above
+    // open floor (no pit under it, the tutorial has none), a breakable wall on top of it the just-taught
+    // charge verb breaks outright (a saber would too), and the capsule resting behind it (moved off its
+    // default spot, part 13e). Fall onto the shelf rather than jumping up to it, so this does not depend
+    // on a precisely timed jump.
+    await place(1870, 160)
+    await advanceFrames(page, 20)
+    const onShelf = await readState(page)
+    assert.ok(onShelf.newPlayer?.locomotion?.grounded, `the shelf is a real stand (${JSON.stringify(onShelf.player)})`)
+    assert.equal(byId(mechOf(onShelf).breakableWalls, 'tutorial_secret_wall')?.phase, 'intact', 'the secret wall starts intact')
+    await capture('secret-wall')
+    // A brief right tap first (ambient facing is otherwise whatever the wall-kick climb left it as),
+    // then the same hold-and-release charge as `tutorial-charge.json`, aimed at the wall 30px away.
+    await page.evaluate((rows) => window.stageDebug.replayInputs(rows), [
+      { frame: 0, held: ['moveRight'] },
+      { frame: 3, held: [] },
+      { frame: 7, held: ['shoot'] },
+      { frame: 67, held: [] },
+      { frame: 90, held: [] }
+    ])
+    const broken = await waitForState(page, (next) => byId(mechOf(next).breakableWalls, 'tutorial_secret_wall')?.phase === 'broken', 4000, 'a charged shot breaks the secret wall')
+    await capture('secret-broken')
+    await page.evaluate((rows) => window.stageDebug.replayInputs(rows), [
+      { frame: 0, held: ['moveRight'] },
+      { frame: 20, held: [] }
+    ])
+    await advanceFrames(page, 5)
+    const secretRoom = await capture('secret-collected')
+    const collectedChecks = await page.evaluate(() => window.__phaserGame.scene.getScene('Game').progressionSave?.collectedChecks ?? [])
+    assert.ok(collectedChecks.includes('tutorial_sentinel:capsule'), `the secret's capsule is collected (${collectedChecks})`)
+    fs.writeFileSync(path.join(dir, 'secret.json'), JSON.stringify({ onShelfY: onShelf.player.y, wallBroken: byId(mechOf(broken).breakableWalls, 'tutorial_secret_wall'), heroAfter: secretRoom.player, collectedChecks }, null, 2))
 
     // 5 saber: the scrap gate blocks, a pellet does nothing, three cuts bring it down.
     await warp(2180)

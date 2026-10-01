@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import { GAME_HEIGHT } from '../config/renderPolicy'
+import { GAME_HEIGHT, GAME_WIDTH } from '../config/renderPolicy'
+import { getCampaignStage } from '../content/campaign'
 import { EnemyEntity } from './EnemyEntity'
 import { EnemyCatalog } from './EnemyCatalog'
 import { EnemyDebugOverlay } from './EnemyDebugOverlay'
@@ -7,6 +8,7 @@ import { DamageEvent, EnemyDefinition, EnemyLevelMarker, EnemyRuntimeContext, En
 import { getGeneratedEnemyDefinition, getPilotEnemyConfigById } from '../content/enemies'
 import { applyPilotEnemyOverride } from './EnemyDefinitionAdapters'
 import { minibossDefeatDrop } from './minibossCatalog'
+import { cameraEdgeDistance, createMarkerStreamState, nextMarkerStreamState, type MarkerStreamState } from './markerStreaming'
 import { scaleEnemyDamage } from '../progression/difficulty'
 import { Save } from '../systems/Save'
 
@@ -25,6 +27,10 @@ export class EnemySpawner {
   private readonly levelMarkers = new Map<string, EnemyLevelMarker>()
   private readonly activeMarkerIds = new Set<string>()
   private readonly retiredMarkerIds = new Set<string>()
+  /** Camera-relative spawn/respawn phase per level marker (13h.3a, `EVAL-P6-006`); pure decisions in `markerStreaming.ts`. */
+  private readonly streamStates = new Map<string, MarkerStreamState>()
+  /** Mini-boss and `room_lock` wave marker ids (this stage's `roomLocks`): cleared for good, never respawn. */
+  private readonly noRespawnMarkerIds: Set<string>
   private readonly debugOverlay?: EnemyDebugOverlay
   private readonly startedAt: number
   private idSeed = 1
@@ -33,10 +39,28 @@ export class EnemySpawner {
     this.context = context
     this.options = options
     this.startedAt = context.scene.time.now
+    this.noRespawnMarkerIds = EnemySpawner.collectNoRespawnMarkerIds(context.stageId)
 
     if (options.enableDebug) {
       this.debugOverlay = new EnemyDebugOverlay(context.scene)
     }
+  }
+
+  /** Every marker id named by this stage's `roomLocks`: a defeat lock's markers, or any of its later waves. */
+  private static collectNoRespawnMarkerIds(stageId: string): Set<string> {
+    const roomLocks = getCampaignStage(stageId).arena.roomLocks ?? []
+    const ids = new Set<string>()
+    roomLocks.forEach((lock) => {
+      for (const id of lock.defeatMarkers ?? []) {
+        ids.add(id)
+      }
+      for (const wave of lock.waves ?? []) {
+        for (const marker of wave) {
+          ids.add(marker.id)
+        }
+      }
+    })
+    return ids
   }
 
   spawn(
@@ -88,6 +112,28 @@ export class EnemySpawner {
     })
   }
 
+  /**
+   * A checkpoint death (13h.3a, `EVAL-P6-006`): every marker rearms for an immediate respawn once the
+   * camera reaches it again, except one cleared for good (a mini-boss or `room_lock` wave). An entity
+   * still alive and on screen is cleared too, so a death always gives a clean room back.
+   */
+  resetForRespawn(): void {
+    this.streamStates.forEach((state, id) => {
+      if (state.phase === 'cleared') {
+        return
+      }
+      const entity = this.enemies.get(id)
+      if (entity) {
+        this.enemies.delete(id)
+        this.onEntityRemoved(id)
+        entity.destroy()
+      }
+      this.activeMarkerIds.delete(id)
+      this.retiredMarkerIds.delete(id)
+      this.streamStates.set(id, createMarkerStreamState())
+    })
+  }
+
   registerWave(wave: EnemySpawnWave): void {
     this.waves.push({ ...wave })
   }
@@ -98,10 +144,6 @@ export class EnemySpawner {
 
     this.enemies.forEach((entity, id) => {
       entity.update(now, deltaMs)
-      if (this.shouldRetireLevelEnemy(id, entity)) {
-        this.retireLevelEnemy(id, entity)
-        return
-      }
       if (!entity.sprite.active) {
         // Defeated: nothing reads the sprite after the kill, so free it instead of leaving it hidden in the group.
         this.enemies.delete(id)
@@ -215,61 +257,58 @@ export class EnemySpawner {
     })
   }
 
+  /**
+   * Camera-relative spawn and respawn (13h.3a, `EVAL-P6-006`): the pure phase machine lives in
+   * `markerStreaming.ts`; this is its only adapter edge (the camera read, the live entity, the spawn
+   * call, and the exemptions a `persistent: false` marker or a `room_lock`/mini-boss wave gets).
+   */
   private updateLevelMarkers(): void {
     if (!this.levelMarkers.size) {
       return
     }
 
-    const playerX = this.context.player.x
+    const camera = this.context.scene.cameras.main.worldView
 
     this.levelMarkers.forEach((marker, markerId) => {
-      if (this.activeMarkerIds.has(markerId) || this.retiredMarkerIds.has(markerId)) {
+      const state = this.streamStates.get(markerId) ?? createMarkerStreamState()
+      const distance = cameraEdgeDistance(camera.x, camera.right, marker.x)
+      const entity = this.enemies.get(markerId)
+      const fellOutOfStage = Boolean(entity && entity.sprite.y >= GAME_HEIGHT + 96)
+      const stillInPlay = Boolean(entity?.sprite.active) && !fellOutOfStage
+      const canRespawn = marker.persistent !== false && !this.noRespawnMarkerIds.has(markerId)
+      const next = nextMarkerStreamState(state, distance, stillInPlay, canRespawn, GAME_WIDTH)
+
+      if (next.phase === state.phase) {
+        this.streamStates.set(markerId, next)
         return
       }
 
-      const retireTriggerX = marker.retireTriggerX ?? marker.x + 128
-      if (playerX >= retireTriggerX) {
-        this.retiredMarkerIds.add(markerId)
+      if (next.phase === 'active') {
+        const spawned = this.spawn(marker.typeKey, marker.x, marker.y, {
+          explicitId: markerId,
+          patrolMinX: marker.patrolMinX,
+          patrolMaxX: marker.patrolMaxX,
+          variant: marker.variant
+        })
+        if (!spawned) {
+          // Stays pending and ready: tries again next tick (the global enemy cap is momentarily full).
+          return
+        }
+        this.activeMarkerIds.add(markerId)
+        this.retiredMarkerIds.delete(markerId)
+        this.streamStates.set(markerId, next)
         return
       }
 
-      const spawnTriggerX = marker.spawnTriggerX ?? Math.max(0, marker.x - (marker.spawnLeadX ?? 96))
-      if (playerX < spawnTriggerX) {
-        return
+      // Left `active`: cleared for good, or resting for a respawn. A live sprite that did not die on its
+      // own (the defeat loop below only catches `!sprite.active`) is retired quietly right here.
+      if (entity?.sprite.active) {
+        this.enemies.delete(markerId)
+        this.onEntityRemoved(markerId)
+        entity.destroy()
       }
-
-      const spawned = this.spawn(marker.typeKey, marker.x, marker.y, {
-        explicitId: marker.id,
-        patrolMinX: marker.patrolMinX,
-        patrolMaxX: marker.patrolMaxX,
-        variant: marker.variant
-      })
-      if (!spawned) {
-        return
-      }
-
-      this.activeMarkerIds.add(markerId)
+      this.streamStates.set(markerId, next)
     })
-  }
-
-  private shouldRetireLevelEnemy(id: string, entity: EnemyEntity): boolean {
-    const marker = this.levelMarkers.get(id)
-    if (!marker || marker.persistent) {
-      return false
-    }
-
-    const playerX = this.context.player.x
-    const retireTriggerX = marker.retireTriggerX ?? marker.x + 128
-    const lagBehindPx = playerX - entity.sprite.x
-    const fellOutOfStage = entity.sprite.y >= GAME_HEIGHT + 96
-
-    return fellOutOfStage || (playerX >= retireTriggerX && lagBehindPx >= 72)
-  }
-
-  private retireLevelEnemy(id: string, entity: EnemyEntity): void {
-    this.enemies.delete(id)
-    this.onEntityRemoved(id)
-    entity.destroy()
   }
 
   private onEntityRemoved(id: string): void {

@@ -3,6 +3,7 @@ import AudioService from '../../audio'
 import type { BossProjectileController } from '../../boss/framework/BossProjectileController'
 import { getCampaignStage } from '../../content/campaign'
 import { GAME_HEIGHT } from '../../config/renderPolicy'
+import type { EnemySpawner } from '../../enemy'
 import { FEEL_FRAME_MS } from '../../player/config'
 import type { NewPlayerRuntime } from '../../player/NewPlayerRuntime'
 import type { PlayerDamageRequest, PlayerDamageResult } from '../../player/types'
@@ -85,6 +86,10 @@ export interface DeathSequenceHost {
   sessionStats: Pick<CampaignSessionStatistics, 'defeat' | 'respawn'>
   /** Part 13c (EVAL-P6-012): lazily created by the first death or read this scene sees (`GameDebugHooks.ts` reads it too). */
   segmentTelemetry?: SegmentTelemetry
+  /** Part 13h.3a (EVAL-P6-012): the last accepted hit's source id (`HitWires.requestPlayerDamage`), read once for `killedBy`. */
+  lastDamageSourceId?: string | null
+  /** Part 13h.3a (EVAL-P6-006): a death rearms every respawnable level marker (`EnemySpawner.resetForRespawn`). */
+  enemySpawner?: Pick<EnemySpawner, 'resetForRespawn'>
   hud?: Pick<HUD, 'updatePlayerHp' | 'setLives'>
   newPlayerRuntime?: Pick<NewPlayerRuntime, 'resetForRespawn' | 'playDeath' | 'playDeathBurst' | 'playBeamIn'>
   bossProjectileController?: Pick<BossProjectileController, 'onPauseChanged' | 'stop'>
@@ -192,8 +197,10 @@ export class DeathSequence {
       segmentIdFor(host.activeStageId, host.currentCheckpointIndex),
       reason,
       host.time?.now ?? 0,
-      { x: host.player.x, y: host.player.y }
+      { x: host.player.x, y: host.player.y },
+      host.lastDamageSourceId ?? null
     )
+    host.lastDamageSourceId = null
     host.flushStatistics()
     host.playerHp = 0
     host.player.data?.set?.('hp', host.playerHp)
@@ -326,6 +333,7 @@ export class DeathSequence {
     host.player.clearTint()
     host.player.setActive(true).setVisible(true)
     host.sessionStats.respawn()
+    host.enemySpawner?.resetForRespawn()
     host.newPlayerRuntime?.resetForRespawn(1000)
     host.newPlayerRuntime?.playBeamIn()
     host.cameras?.main?.fadeIn(DEATH_TIMELINE.fadeInMs, 0, 0, 0)

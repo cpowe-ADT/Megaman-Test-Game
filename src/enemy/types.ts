@@ -167,9 +167,14 @@ export interface EnemyLevelMarker {
   y: number
   patrolMinX?: number
   patrolMaxX?: number
+  /** Unread since 13h.3a (`EVAL-P6-006`): `EnemySpawner` now spawns camera-relatively (`markerStreaming.ts`),
+   * one screen ahead of the camera's edge, regardless of these three. Kept on the type for stage data that
+   * still sets them; a later lane can drop them stage file by stage file. */
   spawnTriggerX?: number
   spawnLeadX?: number
   retireTriggerX?: number
+  /** `false` opts this marker out of the camera-relative respawn (13h.3a): once retired it stays gone, the
+   * way a mini-boss or `room_lock` wave marker always does. Unset (the default) respawns. */
   persistent?: boolean
   /** The stage brief's named behaviour for this placement (12c), e.g. a mini-boss skin's `shieldArc`
    * gap-rotation ('tide_shield') or its extra ice momentum ('glacier_slide'); a brain reads `entity.variant`. */
