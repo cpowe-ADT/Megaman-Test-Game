@@ -53,8 +53,14 @@ let smokeFromMatched = smokeFromScenario == null
 const smokeFailFast = String(process.env.SMOKE_FAIL_FAST ?? '') === '1'
 const smokeScenarioTimeoutMs = Number(process.env.SMOKE_SCENARIO_TIMEOUT_MS ?? 120000) || 120000
 // Route walks that cross a whole stage get more room (50-pyro-route: six steps, about 100s on a quiet machine).
-const SMOKE_LONG_SCENARIO_TIMEOUT_MS = { '50-pyro-route': 300000, '54-mire-route': 300000, '55-tide-route': 480000, '56-volt-route': 480000, '57-basalt-route': 480000, '58-glacier-route': 300000, '59-ferro-route': 480000, '60-gale-route': 480000, '61-omega-three-acts': 600000 }
+const SMOKE_LONG_SCENARIO_TIMEOUT_MS = { '50-pyro-route': 300000, '54-mire-route': 300000, '55-tide-route': 480000, '56-volt-route': 480000, '57-basalt-route': 480000, '58-glacier-route': 300000, '59-ferro-route': 480000, '60-gale-route': 480000, '61-omega-three-acts': 600000, '47-full-campaign': 2400000 }
 const smokeForceFailScenario = String(process.env.SMOKE_FORCE_FAIL ?? '').trim() || null
+// 13h.2 (EVAL-P8-008): SMOKE_LONG=1 opts in to scenarios that play the whole campaign end to end (twice, for
+// 47-full-campaign). These stay out of an ordinary SMOKE_TIER=full run (npm run verify, nightly CI) even though
+// they are registered scenarios, so adding one never silently multiplies the full suite's run time; SMOKE_ONLY
+// naming a long scenario is not enough by itself, so a stray SMOKE_ONLY=47-full-campaign run still no-ops without it.
+const smokeLong = String(process.env.SMOKE_LONG ?? '') === '1'
+const smokeLongOnlyScenarios = new Set(smokeTiers.long ?? [])
 
 // scripts/smoke/*.mjs import the same 'playwright' module instance, so patching chromium.launch here
 // also tracks the browsers they open. A scenario timeout force-closes whatever it opened.
@@ -421,6 +427,18 @@ async function executeSmokeScenario(summary, name, runScenario) {
       writeSmokeSummary(summary)
       return null
     }
+  }
+
+  // SMOKE_LONG=1 opt-in: scripts/smoke/tiers.json's `long` list stays skipped even at SMOKE_TIER=full.
+  if (smokeLongOnlyScenarios.has(name) && !smokeLong) {
+    summary.scenarios.push({
+      name,
+      status: 'skipped',
+      artifactDir: path.join(outputDir, name),
+      reason: 'Skipped: needs SMOKE_LONG=1'
+    })
+    writeSmokeSummary(summary)
+    return null
   }
 
   // SMOKE_TIER=fast keeps only scripts/smoke/tiers.json's `fast` list (full names or numeric prefix,
@@ -4042,6 +4060,7 @@ async function main() {
     await executeSmokeScenario(summary, '59-ferro-route', async () => (await import('./smoke/ferro-route.mjs')).runFerroRouteScenario('59-ferro-route', storyDeps))
     await executeSmokeScenario(summary, '60-gale-route', async () => (await import('./smoke/gale-route.mjs')).runGaleRouteScenario('60-gale-route', storyDeps))
     await executeSmokeScenario(summary, '61-omega-three-acts', async () => (await import('./smoke/omega-acts.mjs')).runOmegaActsScenario('61-omega-three-acts', storyDeps))
+    await executeSmokeScenario(summary, '47-full-campaign', async () => (await import('./smoke/full-campaign.mjs')).runFullCampaignScenario('47-full-campaign', storyDeps))
     await executeSmokeScenario(summary, '51-saber-combo', async () => (await import('./smoke/saber-combo.mjs')).runSaberComboScenario('51-saber-combo', { outputDir, url, readState, waitForState, advanceFrames }))
     await executeSmokeScenario(summary, '52-boss-telegraphs', async () => (await import('./smoke/boss-telegraphs.mjs')).runBossTelegraphsScenario('52-boss-telegraphs', { outputDir, url, readState, waitForState }))
     await executeSmokeScenario(summary, '53-boss-hazards', async () => (await import('./smoke/boss-hazards.mjs')).runBossHazardsScenario('53-boss-hazards', { outputDir, url, readState, waitForState }))
