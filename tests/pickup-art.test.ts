@@ -4,15 +4,22 @@ import fs from 'node:fs'
 import {
   DROP_ART,
   ENEMY_DROP_TYPES,
+  GROUND_PICKUP_MIN_WIDTH,
   LOCATION_ART,
   PICKUPS_ATLAS,
   PICKUP_ART_GROUPS,
+  groundPickupBodyWidth,
   pickupFrame,
-  rollEnemyDrop
+  rollEnemyDrop,
+  type PickupArtGroup
 } from '../src/ui/pickups/pickupArt'
 import { DROP_HEAL, applyDropReward, type DropRewardEffects } from '../src/ui/pickups/dropRewards'
 import { applyExtraLifePickup } from '../src/ui/pickups/extraLife'
 import { GAME_SCENE_ATLASES } from '../src/scenes/game/stageBackgroundLoading'
+import { CAMPAIGN_STAGES } from '../src/content/campaign'
+import { getStageLocationDefinitions } from '../src/progression/catalog'
+import type { LocationCheckCategory } from '../src/progression/types'
+import { PLAYER_BODY_PROFILES } from '../src/player/PlayerBodyProfiles'
 
 // Part 12h (EVAL-P8-001): pickups drawn from pickups_v1, and the large health drop every mini-boss leaves.
 // Part 13e (EVAL-P13-009/010): pickups_v2 art, the bonus/life drop types, and the extra-life cap helper.
@@ -129,4 +136,41 @@ test('collecting an extra life adds one, capped at the existing maximum if there
   // The clamp itself still works, so a future cap is honoured the moment one is passed in.
   assert.equal(applyExtraLifePickup(8, 9), 9)
   assert.equal(applyExtraLifePickup(9, 9), 9)
+})
+
+// EVAL-P13-010: smoke 54-mire-route and 58-glacier-route found the capsule (8px wide, the narrowest frame)
+// grounded flush on the floor but just outside a standing hero's reach once momentum settled it a few
+// pixels past the anchor. groundPickupBodyWidth widens a ground pickup's body (never the art) to fix it.
+
+test('groundPickupBodyWidth floors every frame to the minimum but never narrows a wider one', () => {
+  assert.equal(groundPickupBodyWidth(8), GROUND_PICKUP_MIN_WIDTH)
+  assert.equal(groundPickupBodyWidth(GROUND_PICKUP_MIN_WIDTH), GROUND_PICKUP_MIN_WIDTH)
+  assert.equal(groundPickupBodyWidth(GROUND_PICKUP_MIN_WIDTH + 10), GROUND_PICKUP_MIN_WIDTH + 10)
+})
+
+test('a standing hero can collect every grounded campaign pickup, even settled a body-width past the anchor', () => {
+  const atlas = JSON.parse(fs.readFileSync(PICKUPS_ATLAS.data, 'utf8')) as {
+    frames: Record<string, { frame: { w: number } }>
+  }
+  const atlasKey = PICKUPS_ATLAS.key.replace('atlas_', '')
+  const frameWidth = (group: PickupArtGroup) => atlas.frames[`${atlasKey}/${group}/000`].frame.w
+  const playerHalfWidth = PLAYER_BODY_PROFILES.stand.width / 2
+  // The drift smoke 54/58 measured between a settled stop and the capsule's anchor (EVAL-P13-010).
+  const observedSettleDriftPx = 16
+  let groundChecks = 0
+  for (const stageId of Object.keys(CAMPAIGN_STAGES)) {
+    for (const location of getStageLocationDefinitions(stageId)) {
+      if (location.category === 'boss_clear' || location.rest !== 'ground') {
+        continue
+      }
+      groundChecks += 1
+      const category = location.category as Exclude<LocationCheckCategory, 'boss_clear'>
+      const halfWidth = groundPickupBodyWidth(frameWidth(LOCATION_ART[category])) / 2
+      assert.ok(
+        halfWidth + playerHalfWidth > observedSettleDriftPx,
+        `${stageId}:${location.id} reach ${halfWidth + playerHalfWidth} <= drift ${observedSettleDriftPx}`
+      )
+    }
+  }
+  assert.ok(groundChecks > 0, 'the campaign has at least one ground pickup to check')
 })

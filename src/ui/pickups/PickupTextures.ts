@@ -1,5 +1,15 @@
 import Phaser from 'phaser'
-import { PICKUPS_ATLAS, PICKUP_ART_SCALE, PICKUP_BOB_MS, PICKUP_BOB_PX, PICKUP_FRAME_RATE, pickupAnimationKey, pickupFrame, type PickupArtGroup } from './pickupArt'
+import {
+  PICKUPS_ATLAS,
+  PICKUP_ART_SCALE,
+  PICKUP_BOB_MS,
+  PICKUP_BOB_PX,
+  PICKUP_FRAME_RATE,
+  groundPickupBodyWidth,
+  pickupAnimationKey,
+  pickupFrame,
+  type PickupArtGroup
+} from './pickupArt'
 
 export const PICKUP_TEXTURE_KEYS = {
   health: 'pickup_capsule_health',
@@ -83,9 +93,16 @@ const FALLBACK_ART: Record<PickupArtGroup, { key: string; scale: number }> = {
 /**
  * Draws a pickup as its pickups_v2 group with the two frames looping, or as the code-drawn capsule when the
  * atlas is missing, and fits its body to the art. `bob` floats a pickup without gravity (a stage's placed
- * items); an enemy drop is a physics body that falls and rests, so it only animates.
+ * items); an enemy drop is a physics body that falls and rests, so it only animates. `ground` widens the
+ * body to `groundPickupBodyWidth` (EVAL-P13-010): a stage's placed, `rest: 'ground'` pickups sit flush on
+ * the floor and some art frames (the capsule, 8px) are narrower than a standing hero's reach, so they only
+ * apply here, not to enemy drops (which keep their frame-exact body while falling and bouncing).
  */
-export function applyPickupArt(sprite: Phaser.Physics.Arcade.Sprite, group: PickupArtGroup, options: { bob?: boolean } = {}): void {
+export function applyPickupArt(
+  sprite: Phaser.Physics.Arcade.Sprite,
+  group: PickupArtGroup,
+  options: { bob?: boolean; ground?: boolean } = {}
+): void {
   const scene = sprite.scene
   if (scene.textures.exists(PICKUPS_ATLAS.key)) {
     const key = pickupAnimationKey(group)
@@ -100,7 +117,14 @@ export function applyPickupArt(sprite: Phaser.Physics.Arcade.Sprite, group: Pick
     sprite.anims?.stop()
     sprite.setTexture(FALLBACK_ART[group].key).setScale(FALLBACK_ART[group].scale)
   }
-  ;(sprite.body as Phaser.Physics.Arcade.Body | undefined)?.setSize()
+  const body = sprite.body as Phaser.Physics.Arcade.Body | undefined
+  body?.setSize()
+  if (options.ground && body) {
+    const width = groundPickupBodyWidth(body.width)
+    if (width !== body.width) {
+      body.setSize(width, body.height)
+    }
+  }
   if (options.bob) {
     scene.tweens.killTweensOf(sprite)
     scene.tweens.add({ targets: sprite, y: sprite.y - PICKUP_BOB_PX, duration: PICKUP_BOB_MS, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 })
