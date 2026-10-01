@@ -42,14 +42,27 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 11px;
         font-weight: 600;
+        /* DASH JUMP wraps onto two lines inside its round button. */
+        text-align: center;
+        line-height: 1.1;
+        padding: 0;
       }
       .touch-btn.round { border-radius: 50%; }
       .touch-btn.pressed { background: rgba(27, 136, 255, 0.45); }
-      .touch-toggle {
+      /* The bottom-left corner: FULLSCREEN stacked above TOUCH (side by side the pair ran under the d-pad's
+         down arm at 667x375). The container ignores taps; each button takes its own. */
+      .touch-corner {
         position: fixed;
         left: 8px;
         bottom: 8px;
         z-index: 2001;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        pointer-events: none;
+      }
+      .touch-toggle, .touch-fullscreen {
         display: none;
         align-items: center;
         justify-content: center;
@@ -60,6 +73,7 @@
         touch-action: none;
         user-select: none;
         -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
         background: rgba(8, 23, 42, 0.6);
         border: 1px solid rgba(204, 236, 255, 0.4);
         border-radius: 6px;

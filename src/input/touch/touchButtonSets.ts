@@ -24,6 +24,9 @@ export type TouchButtonSpec = Readonly<{
   alpha: number
   /** Pixel-font scale: 1 is 8px, 2 is 16px. */
   fontScale: 1 | 2
+  /** Further actions pressed and released together with `action` (DASH JUMP is dash plus jump: the motor
+   * starts a dash-jump when both land on one frame, so a dash-jump is one thumb). */
+  alsoPress?: readonly ActionName[]
 }>
 
 /** Scenes with no input of their own (loading screens); the overlay hides outright. */
@@ -31,6 +34,11 @@ const SCENES_WITHOUT_INPUT = new Set(['Boot', 'Preload'])
 
 function btn(id: string, action: ActionName, label: string, x: number, y: number, width: number, height: number, round: boolean, alpha: number, fontScale: 1 | 2 = 2): TouchButtonSpec {
   return { id, action, label, x, y, width, height, round, alpha, fontScale }
+}
+
+/** Every action a button presses: its own, then any chorded with it. */
+export function touchActionsOf(spec: Pick<TouchButtonSpec, 'action' | 'alsoPress'>): ActionName[] {
+  return [spec.action, ...(spec.alsoPress ?? [])]
 }
 
 /** The cross: arrow glyphs, not letters (Craig's v2 note). Shared by both sets (menu navigation and
@@ -78,7 +86,15 @@ function systemPills(startAction: ActionName): TouchButtonSpec[] {
   ]
 }
 
-/** `Game` in direct control: cross, JUMP/SHOT/DASH/SABER, L/R weapon cycle, SELECT (back) and START (pause). */
+/** DASH JUMP, beside the diamond (below SHOT, right of JUMP): dash and jump on one press, one thumb.
+ * 42 px keeps the 48 CSS px minimum at the smallest phone viewport and 8 CSS px clear of JUMP and SHOT. */
+function dashJumpButton(height: number): TouchButtonSpec {
+  const d = diamond(height)
+  const size = 42
+  return { ...btn('dashJump', 'dash', 'DASH JUMP', d.right.x + 2, d.bottom.y, size, size, true, 0.2, 1), alsoPress: ['jump'] }
+}
+
+/** `Game` in direct control: cross, JUMP/SHOT/DASH/SABER/DASH JUMP, L/R weapon cycle, SELECT (back) and START (pause). */
 function playButtons(height: number): TouchButtonSpec[] {
   const d = diamond(height)
   return [
@@ -87,6 +103,7 @@ function playButtons(height: number): TouchButtonSpec[] {
     btn('faceRight', 'shoot', 'SHOT', d.right.x, d.right.y, d.right.size, d.right.size, true, 0.2),
     btn('faceLeft', 'dash', 'DASH', d.left.x, d.left.y, d.left.size, d.left.size, true, 0.2),
     btn('faceTop', 'saber', 'SABER', d.top.x, d.top.y, d.top.size, d.top.size, true, 0.2),
+    dashJumpButton(height),
     ...shoulderButtons(),
     ...systemPills('pause')
   ]
