@@ -1,0 +1,14 @@
+# Merged review: 2026-09-23-5.1-motor
+
+Seats: game-director (FIX, mean 4.0), qa-eval (FIX, mean 4.3)
+
+| Severity | Seat | Finding | Evidence | Fix | Agreed |
+| --- | --- | --- | --- | --- | --- |
+| MAJOR | game-director | Hop height is nonlinear in the first 80ms of a hold: a tap gives about 17px, an 80ms hold about 43px, 140ms 66px, full hold 147px. One frame of release timing near takeoff can more than double clearance, exactly the precision window the spike-floor corridors need. | `output/notes/05a-5.1-constants.md:14-15` | Floor the early cut: ignore release for the first 2 to 3 physics frames, or use a softer cut velocity than -140 near takeoff, so short-hop height scales predictably with hold time. |  |
+| MAJOR | qa-eval | `isSolid` (the ledge and dash-headroom probe) has no guard for a paused physics world or a disabled player body; it only checks that `overlapRect` exists and the rect is not degenerate. `motor.update` runs unconditionally each scene update while Game.ts toggles `body.enable = false` in death, respawn and cutscene freezes that are not gated by `hitstopRemainingFrames`, so the probe can read against a frozen or self-disabled body on the frame play resumes. | `src/player/NewPlayerRuntime.ts:41-46`, `src/scenes/Game.ts:1899,2318` | Gate `motor.update` (or the probe calls) on `body.enable` and `!physics.world.isPaused`; add a smoke frame that lands mid-hitstop or respawn near a ledge. |  |
+| MINOR | game-director | The simulated arc overshoots the spec by 10 to 13% (full hold 147px vs about 130; 140ms 66px vs about 60); the note flags the explicit-Euler sim as a few px high; not yet confirmed in Arcade. | `output/notes/05a-5.1-constants.md:12-13` | Run the release-timing sweep against the live scene through 13d and record the in-engine numbers beside the simulated ones. |  |
+| MINOR | game-director | Dash cooldown 60ms from the dash end gives a 340ms cycle, near-continuous dashing; not checked against warden-room hazard timing in this pass. | `output/notes/05a-5.1-constants.md:16-17` | A hazard-timing trace in a warden room before calling it final (prompt 06 retunes hazards anyway). |  |
+| MINOR | qa-eval | `EnemyMotor.setGravityY` hardcodes `800 * gravityScale` while the player now derives its +250 from `movement.gravity - worldGravityY`; the two sources drift silently if world gravity is tuned. | `src/enemy/EnemyMotor.ts:28` vs `src/player/config.ts` (`gravity: 1050`) | Pull both from one named world-gravity constant. |  |
+| MINOR | qa-eval | The stale-floor-flag fix (`launchPending` clears when not grounded or vy is at or above 0) is bounded by the jump's vy sign, so it cannot wedge grounded false forever, but only the 13d trace shows it; no unit test covers a genuine landing after a short hop at 144fps sub-steps. | `src/player/PlayerMotor.ts:71` (launchPending; also lines 173, 190 and 350) | Add a 144fps motor test that a real landing is not swallowed. |  |
+
+All reviews valid.

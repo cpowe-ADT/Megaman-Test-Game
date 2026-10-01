@@ -1,5 +1,8 @@
 import Phaser from 'phaser'
 import { GAME_WIDTH } from '../config/renderPolicy'
+import { WORLD_GRAVITY_Y } from '../player/config'
+import { isWalkBlocked, type SolidRect } from './floorProbe'
+import { readSolidRects } from './minibossAdapter'
 import { EnemyDefinition, EnemyRuntimeContext } from './types'
 
 export class EnemyMotor {
@@ -10,6 +13,7 @@ export class EnemyMotor {
   private knockback = new Phaser.Math.Vector2(0, 0)
   private currentIntentX = 0
   private currentIntentY = 0
+  private solids: SolidRect[] | null = null
 
   constructor(sprite: Phaser.Physics.Arcade.Sprite, definition: EnemyDefinition, context: EnemyRuntimeContext) {
     this.sprite = sprite
@@ -25,7 +29,7 @@ export class EnemyMotor {
 
     const usesGravity = definition.movementType !== 'flyer' && definition.movementType !== 'drone' && definition.movementType !== 'turret'
     body.allowGravity = usesGravity
-    body.setGravityY(usesGravity ? 800 * definition.stats.gravityScale : 0)
+    body.setGravityY(usesGravity ? WORLD_GRAVITY_Y * definition.stats.gravityScale : 0)
     body.setCollideWorldBounds(true)
   }
 
@@ -105,9 +109,34 @@ export class EnemyMotor {
     return Boolean(body?.blocked.left || body?.blocked.right)
   }
 
+  /** One more step in `facing` would leave the floor or meet a wall (`floorProbe.isWalkBlocked`), so
+   * walkers live on platforms and beside pits instead of only turning at the world's edge. A scene with
+   * no `worldPlatforms` wired (a unit test, a bare lab) falls back to the world edge. */
   atLedge(facing: 1 | -1): boolean {
-    const worldWidth = GAME_WIDTH
-    return facing > 0 ? this.sprite.x >= worldWidth - 10 : this.sprite.x <= 10
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body | undefined
+    const solids = this.readSolids()
+    if (!body || solids.length === 0) {
+      const worldWidth = GAME_WIDTH
+      return facing > 0 ? this.sprite.x >= worldWidth - 10 : this.sprite.x <= 10
+    }
+    return isWalkBlocked(solids, {
+      x: body.center.x,
+      halfWidth: body.halfWidth,
+      floorTop: body.bottom,
+      bodyHeight: body.height,
+      facing
+    })
+  }
+
+  private readSolids(): SolidRect[] {
+    if (!this.solids) {
+      const rects = readSolidRects(this.context.worldPlatforms)
+      if (rects.length === 0) {
+        return rects
+      }
+      this.solids = rects
+    }
+    return this.solids
   }
 
   distanceToPlayer(): number {

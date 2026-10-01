@@ -1,0 +1,1 @@
+{ "meta": { "stage": "tutorial_sentinel", "purpose": "49-tutorial-verbs: a fresh dash edge to the right for 12 frames (the dash lock verb)." }, "rows": [ { "frame": 0, "held": [] }, { "frame": 4, "held": ["moveRight", "dash"] }, { "frame": 16, "held": [] }, { "frame": 30, "held": [] } ] }

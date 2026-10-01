@@ -1,0 +1,118 @@
+{
+  "_note": "Warden weapon and boss shot art v1 (2026-09-25, prompt 07 phase 7.3, EVAL-P7-004): Higgsfield gpt_image_2 sheets weapons_a/b/c.png in assets/sprites/source/vfx/hf_v1/ (vfx_hf_v1.prompts.md). Shots travel right; the runtime flips them. Four frames each. boss_bullet dropped (its violet keyed away against magenta; boss shots reuse projectiles_hero enemy_orb). ground_wave dropped (the model drew each wave across its cell border; no inset separates them).",
+  "key": "weapons_v1",
+  "outDir": "assets/sprites/projectiles/weapons_v1",
+  "atlasWidth": 256,
+  "groups": [
+    {
+      "name": "arc_slash",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_a.png",
+      "cells": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "scale": 0.22
+    },
+    {
+      "name": "flame_serpent",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_a.png",
+      "cells": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "scale": 0.2
+    },
+    {
+      "name": "hydro_lance",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_a.png",
+      "cells": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "scale": 0.2
+    },
+    {
+      "name": "thunder_spike",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_a.png",
+      "cells": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "scale": 0.18
+    },
+    {
+      "name": "quake_knuckle",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_b.png",
+      "cells": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "scale": 0.2
+    },
+    {
+      "name": "magcut_disc",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_b.png",
+      "cells": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "scale": 0.2
+    },
+    {
+      "name": "acid_glob",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_b.png",
+      "cells": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "scale": 0.2
+    },
+    {
+      "name": "aero_darts",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_b.png",
+      "cells": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "scale": 0.2
+    },
+    {
+      "name": "frost_shatter",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_c.png",
+      "cells": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "scale": 0.2
+    },
+    {
+      "name": "boss_orb",
+      "sheet": "assets/sprites/source/vfx/hf_v1/weapons_c.png",
+      "cells": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "scale": 0.18
+    }
+  ]
+}

@@ -1,5 +1,38 @@
 import { BOSS_ROSTER } from '../../bosses/roster'
-import { getWeaponConfig } from '../../content/weapons'
+import { BUSTER_SHOT_VISUALS, HERO_PROJECTILES_ATLAS, REFLECTED_SHOT_VISUAL, type ChargeLevel } from '../../combat/heroCombatVisuals'
+
+/** An enemy shot the saber sent back (src/combat/SwordHitRouter.ts): a player shot drawn as `reflected`. */
+export const PLAYER_REFLECTED_SHOT_ID = 'player_reflected_shot'
+
+function createReflectedShotDefinition(): ProjectileDefinition {
+  return {
+    id: PLAYER_REFLECTED_SHOT_ID,
+    owner: 'player',
+    pool: 'player',
+    speed: 260,
+    damage: 2,
+    lifetimeMs: 1600,
+    maxVelocityX: 640,
+    maxVelocityY: 640,
+    visual: {
+      textureKey: HERO_PROJECTILES_ATLAS.key,
+      frame: REFLECTED_SHOT_VISUAL.frames[0],
+      animationFrames: REFLECTED_SHOT_VISUAL.frames,
+      animationFrameMs: Math.round(1000 / REFLECTED_SHOT_VISUAL.frameRate),
+      depth: 2,
+      scale: REFLECTED_SHOT_VISUAL.scale,
+      flipXWithDirection: true
+    },
+    hitbox: { width: REFLECTED_SHOT_VISUAL.width, height: REFLECTED_SHOT_VISUAL.height },
+    behavior: { kind: 'standard' },
+    // 13b.3 (EVAL-P13-004): a standard shot leaves on camera exit (ProjectileSystem.ts), not on
+    // touching the world's top or bottom edge -- a tall charged body no longer dies at the hero's hand.
+    hitPolicy: { hitsEnvironment: true, collidesWithWorldBounds: false, pierce: 0 }
+  }
+}
+import { getChargedFormConfig, getWeaponConfig, WEAPON_TUNING, type WeaponRuntimeConfig } from '../../content/weapons'
+import { WEAPON_ART_FRAME_SIZE, weaponArtFrame, weaponArtTextureKey } from '../weaponArt'
+import { BURN_PUDDLE_PROJECTILE_ID, BURN_PUDDLE_PROJECTILE_ID_CHARGED, QUAKE_WAVE_PROJECTILE_ID } from '../weaponEffects'
 import { PLAYER_GAMEPLAY_CONFIG } from '../../player/config'
 import type { ProjectileDefinition } from '../types'
 
@@ -44,12 +77,15 @@ function createEnemyDefinition(config: {
   gravityY?: number
   scale?: number
   tint?: number
+  /** The saber can send it back: orbs, pellets and missiles yes; beams, lasers and flames no. */
+  reflectable: boolean
 }): ProjectileDefinition {
   const isLob = (config.gravityY ?? 0) > 0
   return {
     id: config.id,
     owner: 'enemy',
     pool: 'enemy',
+    reflectable: config.reflectable,
     speed: config.speed,
     damage: config.damage,
     lifetimeMs: config.lifetimeMs,
@@ -85,6 +121,8 @@ function createEnemyBoomerangDefinition(): ProjectileDefinition {
     id: 'boss_mag_disc',
     owner: 'enemy',
     pool: 'enemy',
+    // A boomerang steers itself home; a reflect would fight its behaviour.
+    reflectable: false,
     speed: 250,
     damage: 2,
     lifetimeMs: 3200,
@@ -104,6 +142,95 @@ function createEnemyBoomerangDefinition(): ProjectileDefinition {
   }
 }
 
+/**
+ * Buster art from projectiles_hero (pellet lv0, mid lv1-2, full lv3-4; heroCombatVisuals.ts). The body
+ * is as wide as the drawing (frame width x scale); its height stays the tall combat sensor, in game px,
+ * that the old 20x20 circles had (so short ground enemies are still met at muzzle height).
+ */
+const BUSTER_SENSOR_HEIGHT: Record<ChargeLevel, number> = {
+  0: 54,
+  1: (54 + 2) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[1].size,
+  2: (54 + 4) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[2].size,
+  3: (54 + 6) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[3].size,
+  4: (54 + 8) * PLAYER_GAMEPLAY_CONFIG.blaster.perLevelProjectile[4].size
+}
+
+function busterVisual(level: ChargeLevel, depth: number): ProjectileDefinition['visual'] {
+  const art = BUSTER_SHOT_VISUALS[level]
+  return {
+    textureKey: HERO_PROJECTILES_ATLAS.key,
+    frame: art.frames[0],
+    animationFrames: art.frames,
+    animationFrameMs: Math.round(1000 / art.frameRate),
+    depth,
+    scale: art.scale,
+    flipXWithDirection: true
+  }
+}
+
+/** Body in source px (Arcade scales it by the sprite scale): drawn width, and the sensor height in game px. */
+function busterHitbox(level: ChargeLevel, sensorHeightPx: number): { width: number; height: number } {
+  const art = BUSTER_SHOT_VISUALS[level]
+  return { width: art.width, height: Math.ceil(sensorHeightPx / art.scale) }
+}
+
+/** A warden weapon's `weapons_v1` group: four frames cycled in flight, flipped with facing (prompt 07 phase 7.3). */
+function weaponArtVisual(group: string, scale: number, depth: number, alpha?: number): ProjectileDefinition['visual'] {
+  const frames = [0, 1, 2, 3].map((index) => weaponArtFrame(group, index))
+  return { textureKey: weaponArtTextureKey(group), frame: frames[0], animationFrames: frames, animationFrameMs: 70, depth, scale, flipXWithDirection: true, ...(alpha != null ? { alpha } : {}) }
+}
+
+/**
+ * Bodies sized to the art (source px; Arcade scales them with the sprite). Level shots keep the Buster's tall
+ * combat sensor (46 game px) so a muzzle-height shot still meets short ground enemies; lobs, the disc and the
+ * bouncing darts are exactly the drawing, so they land and bounce where they are drawn.
+ */
+export function weaponArtHitbox(weapon: Pick<WeaponRuntimeConfig, 'artGroup' | 'scale' | 'behavior' | 'projectile'>): { width: number; height: number } {
+  const art = WEAPON_ART_FRAME_SIZE[weapon.artGroup ?? ''] ?? { width: 16, height: 16 }
+  const levelShot = (weapon.projectile.style === 'standard' || weapon.projectile.style === 'wave') && weapon.behavior !== 'fan'
+  return { width: art.width, height: levelShot ? Math.max(art.height, Math.ceil(46 / weapon.scale)) : art.height }
+}
+
+/** FlameSerpent's burn puddle and QuakeKnuckle's shockwave: stationary, short-lived, they hit what walks in. */
+function createFollowUpDefinitions(): ProjectileDefinition[] {
+  const burn = WEAPON_TUNING.burnPuddle
+  const burnCharged = WEAPON_TUNING.burnPuddleCharged
+  const quake = WEAPON_TUNING.quake
+  const flame = WEAPON_ART_FRAME_SIZE.flame_serpent
+  const still = { speed: 0, maxVelocityX: 0, maxVelocityY: 0, owner: 'player', pool: 'player', behavior: { kind: 'standard' } } as const
+  return [
+    {
+      ...still,
+      id: BURN_PUDDLE_PROJECTILE_ID,
+      damage: burn.damage,
+      lifetimeMs: burn.lifetimeMs,
+      visual: { ...weaponArtVisual('flame_serpent', burn.scale, 2, 0.9), animationFrameMs: 90 },
+      hitbox: { width: flame.width, height: flame.height },
+      hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: burn.pierce }
+    },
+    {
+      ...still,
+      // Inferno Coil's puddle (13d, EVAL-P13-008): bigger, hits more, lasts longer than the plain one.
+      id: BURN_PUDDLE_PROJECTILE_ID_CHARGED,
+      damage: burnCharged.damage,
+      lifetimeMs: burnCharged.lifetimeMs,
+      visual: { ...weaponArtVisual('flame_serpent_charged', burnCharged.scale, 2, 0.9), animationFrameMs: 90 },
+      hitbox: { width: flame.width * 1.3, height: flame.height * 1.3 },
+      hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: burnCharged.pierce }
+    },
+    {
+      ...still,
+      id: QUAKE_WAVE_PROJECTILE_ID,
+      damage: quake.damage,
+      lifetimeMs: quake.lifetimeMs,
+      // Drawn by ProjectileSystem as a dust ring and a camera shake; the body is the floor strip it hits.
+      visual: { ...weaponArtVisual('quake_knuckle', 1, 2, 0), animationFrames: undefined, flipXWithDirection: false },
+      hitbox: { width: quake.widthPx, height: quake.heightPx },
+      hitPolicy: { hitsEnvironment: false, collidesWithWorldBounds: false, pierce: quake.pierce }
+    }
+  ]
+}
+
 function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
   const weapon = getWeaponConfig(weaponId)
   const style = weapon.projectile.style
@@ -117,17 +244,10 @@ function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
     lifetimeMs: weapon.projectile.lifetimeMs,
     maxVelocityX: 640,
     maxVelocityY: 640,
-    visual: {
-      textureKey: PROJECTILES_ATLAS_KEY,
-      frame: resolvePlayerWeaponFrame(weapon.id),
-      depth: 2,
-      scale: weapon.scale,
-      tint: weapon.tint,
-      flipXWithDirection: true
+    visual: weapon.id === 'Buster' ? busterVisual(0, 2) : weapon.artGroup ? weaponArtVisual(weapon.artGroup, weapon.scale, 2) : {
+      textureKey: PROJECTILES_ATLAS_KEY, frame: resolvePlayerWeaponFrame(weapon.id), depth: 2, scale: weapon.scale, tint: weapon.tint, flipXWithDirection: true
     },
-    // Enemy movement colliders hug their feet. Keep a generous, centered combat
-    // sensor so a muzzle-height pellet cannot pass over short ground enemies.
-    hitbox: weapon.id === 'Buster' ? { width: 14, height: 54 } : { width: 16, height: 46 },
+    hitbox: weapon.id === 'Buster' ? busterHitbox(0, BUSTER_SENSOR_HEIGHT[0]) : weaponArtHitbox(weapon),
     behavior:
       style === 'wave'
         ? {
@@ -151,8 +271,53 @@ function createPlayerWeaponDefinition(weaponId: string): ProjectileDefinition {
             : { kind: 'standard' },
     hitPolicy: {
       hitsEnvironment: true,
-      collidesWithWorldBounds: true,
+      // 13b.3 (EVAL-P13-004): a standard shot leaves on camera exit (ProjectileSystem.ts), not on
+      // touching a world edge; a lob, wave or boomerang still collides with the world as before.
+      collidesWithWorldBounds: style !== 'standard',
       pierce: weapon.projectile.pierce
+    }
+  }
+}
+
+/**
+ * A special weapon's charged form (13d, `EVAL-P13-008`): its own definition, not the plain shot's with a
+ * bigger scale -- its own damage, speed, art group and motion (Quake Knuckle's charged lob still arcs;
+ * Flame Serpent's charged release is a `standard` fireball, not the plain `wave`).
+ */
+function createPlayerWeaponChargedDefinition(weaponId: string): ProjectileDefinition | null {
+  const weapon = getWeaponConfig(weaponId)
+  const charged = getChargedFormConfig(weaponId)
+  if (!charged) return null
+  const style = charged.projectile.style
+
+  return {
+    id: `player_weapon_${weaponId}_charged`,
+    owner: 'player',
+    pool: 'player',
+    speed: charged.speed,
+    damage: charged.damage,
+    lifetimeMs: charged.projectile.lifetimeMs,
+    maxVelocityX: 640,
+    maxVelocityY: 640,
+    visual: weaponArtVisual(charged.artGroup, charged.scale, 2),
+    hitbox: weaponArtHitbox({ artGroup: charged.artGroup, scale: charged.scale, behavior: weapon.behavior, projectile: charged.projectile }),
+    behavior:
+      style === 'wave'
+        ? { kind: 'wave', amplitude: charged.projectile.waveAmplitude ?? 0, periodMs: charged.projectile.wavePeriodMs ?? 160 }
+        : style === 'lob'
+          ? { kind: 'lob', gravityY: charged.projectile.gravityY ?? 0, initialVelocityY: -150 }
+          : style === 'boomerang'
+            ? {
+                kind: 'boomerang',
+                returnAfterMs: charged.projectile.returnAfterMs ?? 220,
+                returnSpeed: charged.projectile.returnSpeed ?? Math.abs(charged.speed),
+                homeOffsetY: -6
+              }
+            : { kind: 'standard' },
+    hitPolicy: {
+      hitsEnvironment: true,
+      collidesWithWorldBounds: style !== 'standard',
+      pierce: charged.projectile.pierce
     }
   }
 }
@@ -166,38 +331,41 @@ function createChargeDefinition(level: 1 | 2 | 3 | 4): ProjectileDefinition {
     pool: 'player',
     speed: charge.speed,
     damage: charge.damage,
-    lifetimeMs: 840,
+    // 13b.3 (EVAL-P13-004): a generous backstop now that leaving the camera view is what actually
+    // removes a standard shot; the old 840ms could still end a slow charge level mid-screen.
+    lifetimeMs: 2000,
     maxVelocityX: 640,
     maxVelocityY: 640,
-    visual: {
-      textureKey: PROJECTILES_ATLAS_KEY,
-      frame: resolvePlayerChargeFrame(level),
-      depth: 2,
-      scale: charge.size,
-      flipXWithDirection: true
-    },
-    hitbox: {
-      width: 14 + level * 4,
-      height: 54 + level * 2
-    },
+    visual: busterVisual(level, 2),
+    hitbox: busterHitbox(level, BUSTER_SENSOR_HEIGHT[level]),
     behavior: { kind: 'standard' },
     hitPolicy: {
       hitsEnvironment: true,
-      collidesWithWorldBounds: true,
+      // No top/bottom world-edge kill (13a-combat.md #3): lv3/lv4's tall sensor body used to touch the
+      // floor/ceiling of a one-screen room and vanish at the hero's hand.
+      collidesWithWorldBounds: false,
       pierce: charge.pierce
     }
   }
 }
 
+/**
+ * `charged` (13d, `EVAL-P13-008`) is the special-weapon release at the top of the charge (or Flame
+ * Serpent's stream-held release); the Buster ignores it and keeps its own four-level id instead.
+ */
 export function resolvePlayerProjectileId(
   weaponId: string,
-  chargeLevel: 0 | 1 | 2 | 3 | 4
+  chargeLevel: 0 | 1 | 2 | 3 | 4,
+  charged = false
 ): string {
   if (weaponId === 'Buster' && chargeLevel > 0) {
     return `player_buster_charge_lv${chargeLevel}`
   }
   if (weaponId === 'Buster') {
     return 'player_weapon_Buster'
+  }
+  if (charged && getChargedFormConfig(weaponId)) {
+    return `player_weapon_${weaponId}_charged`
   }
   return `player_weapon_${weaponId}`
 }
@@ -214,12 +382,18 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
 
   return [
     ...weaponIds.map((weaponId) => createPlayerWeaponDefinition(weaponId)),
+    // 13d (EVAL-P13-008): a charged form per special that has one (ArcSlash and the Buster do not; the
+    // Buster's own four charge-level definitions are createChargeDefinition below).
+    ...weaponIds.map((weaponId) => createPlayerWeaponChargedDefinition(weaponId)).filter((definition): definition is ProjectileDefinition => definition !== null),
     createChargeDefinition(1),
     createChargeDefinition(2),
     createChargeDefinition(3),
     createChargeDefinition(4),
+    createReflectedShotDefinition(),
+    ...createFollowUpDefinitions(),
     createEnemyDefinition({
       id: 'enemy_basic_shot',
+      reflectable: true,
       frame: ENEMY_BULLET_FRAME,
       speed: 220,
       damage: 1,
@@ -228,6 +402,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_fire_orb',
+      reflectable: true,
       frame: 'projectiles_core/core/003',
       speed: 170,
       damage: 2,
@@ -238,6 +413,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_water_lance',
+      reflectable: false,
       frame: 'projectiles_core/core/001',
       speed: 285,
       damage: 1,
@@ -247,6 +423,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_arc_shard',
+      reflectable: true,
       frame: 'projectiles_core/core/004',
       speed: 245,
       damage: 1,
@@ -256,6 +433,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_acid_glob',
+      reflectable: true,
       frame: 'projectiles_core/core/012',
       speed: 165,
       damage: 2,
@@ -266,6 +444,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'boss_static_orb',
+      reflectable: true,
       frame: 'projectiles_core/core/015',
       speed: 205,
       damage: 1,
@@ -276,6 +455,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     createEnemyBoomerangDefinition(),
     createEnemyDefinition({
       id: 'enemy_shot_basic',
+      reflectable: true,
       frame: 'projectiles_core/core/009',
       speed: 200,
       damage: 1,
@@ -283,6 +463,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_shot_frost',
+      reflectable: true,
       frame: 'projectiles_core/core/014',
       speed: 180,
       damage: 1,
@@ -291,6 +472,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_shot_shield',
+      reflectable: true,
       frame: 'projectiles_core/core/015',
       speed: 220,
       damage: 1,
@@ -299,6 +481,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_rocket_lob',
+      reflectable: true,
       frame: 'projectiles_core/core/003',
       speed: 160,
       damage: 2,
@@ -309,6 +492,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_mine_drop',
+      reflectable: true,
       frame: 'projectiles_core/core/019',
       speed: 90,
       damage: 2,
@@ -319,6 +503,7 @@ export function createCoreProjectileDefinitions(): ProjectileDefinition[] {
     }),
     createEnemyDefinition({
       id: 'enemy_beam_pulse',
+      reflectable: false,
       frame: 'projectiles_core/core/021',
       speed: 280,
       damage: 2,

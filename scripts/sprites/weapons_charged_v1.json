@@ -1,0 +1,56 @@
+{
+  "_note": "Charged-weapon-effect art v1 (2026-09-30, prompt 13 part 13d, EVAL-P13-008): Higgsfield gpt_image_2 sheets charged_a/b.png in assets/sprites/source/vfx/hf_v1/ (vfx_hf_v1.prompts.md). Bigger, more intense than the plain weapons_v1 groups; travel right, four frames each.",
+  "key": "weapons_charged_v1",
+  "outDir": "assets/sprites/projectiles/weapons_charged_v1",
+  "atlasWidth": 256,
+  "groups": [
+    {
+      "name": "flame_serpent_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_a.png",
+      "cells": [0, 1, 2, 3],
+      "scale": 0.24
+    },
+    {
+      "name": "hydro_lance_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_a.png",
+      "cells": [4, 5, 6, 7],
+      "scale": 0.24
+    },
+    {
+      "name": "thunder_spike_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_a.png",
+      "cells": [8, 9, 10, 11],
+      "scale": 0.24
+    },
+    {
+      "name": "quake_knuckle_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_a.png",
+      "cells": [12, 13, 14, 15],
+      "scale": 0.24
+    },
+    {
+      "name": "magcut_disc_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_b.png",
+      "cells": [0, 1, 2, 3],
+      "scale": 0.24
+    },
+    {
+      "name": "acid_glob_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_b.png",
+      "cells": [4, 5, 6, 7],
+      "scale": 0.24
+    },
+    {
+      "name": "aero_darts_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_b.png",
+      "cells": [8, 9, 10, 11],
+      "scale": 0.24
+    },
+    {
+      "name": "frost_shatter_charged",
+      "sheet": "assets/sprites/source/vfx/hf_v1/charged_b.png",
+      "cells": [12, 13, 14, 15],
+      "scale": 0.24
+    }
+  ]
+}

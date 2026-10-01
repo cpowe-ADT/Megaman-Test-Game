@@ -28,9 +28,11 @@ test('Classic uses one authored world with nine accessible starts and the entire
     assert.equal(world.placements[`${id}:sub_tank`], i % 2 ? 'sub_tank' : 'hp_refill_large')
     assert.equal(world.placements[`${id}:heart_tank`], 'heart_tank')
     assert.equal(world.placements[`${id}:pickup_bonus`], 'hp_refill_large')
+    // Part 13e (EVAL-P13-010), the Decision: one extra life per warden stage.
+    assert.equal(world.placements[`${id}:extra_life`], 'extra_life')
     assert.equal(getWeaponConfig(world.weaknessProfiles[CAMPAIGN_STAGES[id].bossId].weaknessWeaponIds[0]).element, WeaknessTable[BOSS_ROSTER[CAMPAIGN_STAGES[id].bossId].element])
   })
-  assert.equal(Object.keys(world.placements).length, 43)
+  assert.equal(Object.keys(world.placements).length, 51)
 })
 
 test('Classic claims tutorial arc as upgrade, deduplicates tanks and opens gate only at eight medals', () => {
@@ -43,6 +45,15 @@ test('Classic claims tutorial arc as upgrade, deduplicates tanks and opens gate 
     save = claimLocationCheck(save, `${id}:sub_tank`).nextSave
   }
   assert.equal(save.heartTanks, 8); assert.equal(save.subTanks, 4)
+  // Part 13e (EVAL-P13-010): an extra life claim leaves the save otherwise untouched (Game.ts grants the life
+  // immediately, not through progression state) and, critically, is not swallowed by the weaponsUnlocked
+  // fallthrough that every unrecognized itemId used to hit.
+  const beforeExtraLife = save
+  const extraLifeClaim = claimLocationCheck(save, `${ROBOT_MASTER_STAGE_IDS[0]}:extra_life`)
+  assert.equal(extraLifeClaim.itemId, 'extra_life')
+  assert.ok(!extraLifeClaim.nextSave.weaponsUnlocked.includes('extra_life'))
+  assert.deepEqual(extraLifeClaim.nextSave.weaponsUnlocked, beforeExtraLife.weaponsUnlocked)
+  save = extraLifeClaim.nextSave
   for (const id of ROBOT_MASTER_STAGE_IDS.slice(0,7)) save = claimLocationCheck(save, `${id}:boss_clear`).nextSave
   assert.equal(evaluateFinalGate(save).unlocked, false)
   save = claimLocationCheck(save, `${ROBOT_MASTER_STAGE_IDS[7]}:boss_clear`).nextSave

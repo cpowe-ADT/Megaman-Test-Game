@@ -1,0 +1,17 @@
+{
+  "_note": "Hero combat VFX v1 (2026-09-24): Higgsfield gpt_image_2 sheets in assets/sprites/source/vfx/hf_v1/ (provenance in vfx_hf_v1.prompts.md). Cells are 4x4, row-major from 0. Scales keep the drawn proportions within a sheet.",
+  "atlases": "run once per spec object below with --spec pointing at a file holding one object; this file holds the projectiles spec",
+  "key": "projectiles_hero",
+  "outDir": "assets/sprites/projectiles/projectiles_hero",
+  "atlasWidth": 128,
+  "groups": [
+    { "name": "buster_pellet", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [0, 1], "scale": 0.13 },
+    { "name": "buster_mid", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [2, 3], "scale": 0.13 },
+    { "name": "buster_full", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [4, 5], "scale": 0.13 },
+    { "name": "reflected", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [6, 7], "scale": 0.13 },
+    { "name": "enemy_orb", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [8, 9], "scale": 0.13 },
+    { "name": "enemy_missile", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [10, 11], "scale": 0.13 },
+    { "name": "muzzle", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [12, 13, 14], "scale": 0.13 },
+    { "name": "impact", "sheet": "assets/sprites/source/vfx/hf_v1/projectiles_a.png", "cells": [15], "scale": 0.13 }
+  ]
+}

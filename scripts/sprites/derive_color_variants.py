@@ -69,6 +69,15 @@ def write_manifest(out_path: Path, entries: List[dict]) -> None:
     out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def rel(path: Path) -> str:
+    """Repo-relative when inside the repo (05c: absolute paths carried the machine folder name)."""
+    root = Path(__file__).resolve().parents[2]
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Derive recolored sprite source sheets from a base PNG.")
     parser.add_argument("--base", required=True, help="Base PNG path.")
@@ -126,8 +135,8 @@ def main() -> None:
 
         derived_entries.append(
             {
-                "base": str(base_path),
-                "output": str(out_path),
+                "base": rel(base_path),
+                "output": rel(out_path),
                 "hue_degrees": hue_degrees,
                 "sat_mask_threshold": sat_mask_threshold,
                 "sat_multiplier": sat_multiplier,

@@ -2,8 +2,11 @@ import Phaser from 'phaser'
 import { EnemyAttackConfig, EnemyDefinition, EnemyRuntimeContext, DamageEvent } from './types'
 import { EnemyProjectileCatalog, spawnEnemyProjectile } from './EnemyProjectiles'
 import { EnemyMotor } from './EnemyMotor'
+import { resolveHeavyPush } from './enemyDamage'
+import { computeHitboxRect, resolveAttackPhase, resolveHitboxKey, type EnemyAttackPhase } from './attackHitbox'
+import { rectHurtboxOverlap } from '../combat/Hitbox'
 
-export type EnemyAttackPhase = 'none' | 'windup' | 'active' | 'recover'
+export type { EnemyAttackPhase }
 
 export class EnemyCombat {
   private readonly sprite: Phaser.Physics.Arcade.Sprite
@@ -20,6 +23,7 @@ export class EnemyCombat {
   private projectileBurstsFired = 0
   private readonly touchedPlayers = new Set<string>()
   private readonly enableProjectiles: boolean
+  private defeatFinished = false
 
   constructor(
     sprite: Phaser.Physics.Arcade.Sprite,
@@ -70,18 +74,7 @@ export class EnemyCombat {
     if (this.attackStartedAt < 0) {
       return 'none'
     }
-    const cfg = this.definition.attack
-    const elapsed = now - this.attackStartedAt
-    if (elapsed < cfg.windupMs) {
-      return 'windup'
-    }
-    if (elapsed < cfg.windupMs + cfg.activeMs) {
-      return 'active'
-    }
-    if (elapsed < cfg.windupMs + cfg.activeMs + cfg.recoveryMs) {
-      return 'recover'
-    }
-    return 'none'
+    return resolveAttackPhase(this.definition.attack, now - this.attackStartedAt)
   }
 
   update(now: number, facing: 1 | -1): void {
@@ -117,9 +110,17 @@ export class EnemyCombat {
     const nextHp = Math.max(0, this.hp - Math.max(0, event.amount))
     const didHeavy = event.amount >= 2
     const hitstun = event.hitstunMs ?? (didHeavy ? this.definition.stats.hitstunHeavyMs : this.definition.stats.hitstunLightMs)
-    this.stunnedUntil = Math.max(this.stunnedUntil, now + hitstun)
+    const heavy = this.definition.stats.heavy
+    if (!heavy) {
+      this.stunnedUntil = Math.max(this.stunnedUntil, now + hitstun)
+    }
 
-    if (event.knockback) {
+    if (event.knockback && heavy) {
+      const push = resolveHeavyPush(event.amount, event.knockback.x, heavy)
+      if (push) {
+        this.motor.applyKnockback(new Phaser.Math.Vector2(push.vx, 0), push.ms, now)
+      }
+    } else if (event.knockback) {
       const scale = 1 - Phaser.Math.Clamp(this.definition.stats.knockbackResist, 0, 1)
       this.motor.applyKnockback(event.knockback.clone().scale(scale), hitstun, now)
     }
@@ -131,16 +132,34 @@ export class EnemyCombat {
     }
 
     if (this.hp <= 0) {
-      const anySprite = this.sprite as any
-      if (typeof anySprite.disableBody === 'function') {
-        anySprite.disableBody(true, true)
+      if ((this.definition.deathSequenceMs ?? 0) > 0) {
+        // The death frames play first (the entity's brain calls finishDefeat); nothing can touch it meanwhile.
+        const body = this.sprite.body as Phaser.Physics.Arcade.Body | undefined
+        if (body) {
+          body.stop()
+          body.enable = false
+        }
       } else {
-        this.sprite.setActive(false).setVisible(false)
+        this.finishDefeat()
       }
-      this.context.onEnemyDefeated(this.sprite)
     }
 
     return this.hp
+  }
+
+  /** Hides the sprite and hands it to the scene's defeat (explosion, drop); runs once. */
+  finishDefeat(): void {
+    if (this.defeatFinished) {
+      return
+    }
+    this.defeatFinished = true
+    const anySprite = this.sprite as any
+    if (typeof anySprite.disableBody === 'function') {
+      anySprite.disableBody(true, true)
+    } else {
+      this.sprite.setActive(false).setVisible(false)
+    }
+    this.context.onEnemyDefeated(this.sprite)
   }
 
   getActiveHitboxRect(facing: 1 | -1): Phaser.Geom.Rectangle | null {
@@ -148,10 +167,10 @@ export class EnemyCombat {
     if (phase !== 'active') {
       return null
     }
-    const hitbox = this.definition.hitboxes.melee
-    const originX = this.sprite.x + (facing < 0 ? -hitbox.offsetX - hitbox.width : hitbox.offsetX)
-    const originY = this.sprite.y + hitbox.offsetY - hitbox.height * 0.5
-    return new Phaser.Geom.Rectangle(originX, originY, hitbox.width, hitbox.height)
+    const key = resolveHitboxKey(this.definition.attack.type, this.definition.hitboxes)
+    const hitbox = this.definition.hitboxes[key] ?? this.definition.hitboxes.melee
+    const rect = computeHitboxRect(this.sprite.x, this.sprite.y, facing, hitbox)
+    return new Phaser.Geom.Rectangle(rect.x, rect.y, rect.width, rect.height)
   }
 
   private applyMeleeHitIfNeeded(_attack: EnemyAttackConfig, facing: 1 | -1): void {
@@ -160,8 +179,10 @@ export class EnemyCombat {
       return
     }
 
+    // The hit contract (prompt 06 phase 6.0, `EVAL-P6-015`): the exact box `EnemyDebugOverlay` draws in
+    // red is the box that decides the hit, through the same `resolveHurtbox` the sword and player shots use.
     const playerBounds = this.context.player.getBounds()
-    if (!Phaser.Geom.Rectangle.Overlaps(hitRect, playerBounds)) {
+    if (!rectHurtboxOverlap(hitRect, playerBounds)) {
       return
     }
 

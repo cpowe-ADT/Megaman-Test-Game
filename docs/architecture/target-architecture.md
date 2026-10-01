@@ -17,7 +17,7 @@ main.ts
       -> bosses/roster
   -> Game (god scene)
       -> input/InputActions
-      -> ui/HUD + ui/DebugOverlay + ui/VictoryModal
+      -> ui/HUD + ui/DebugOverlay + ui/StageClearCards
       -> player/NewPlayerRuntime (optional via feature flag)
       -> enemy/EnemySpawner (optional via feature flag)
           -> EnemyEntity -> EnemyAI + EnemyMotor + EnemyCombat + EnemyAnimator

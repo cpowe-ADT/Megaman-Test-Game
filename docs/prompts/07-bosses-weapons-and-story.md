@@ -23,6 +23,10 @@ Four sessions: `07a` (7.0, 7.1 and 7.2), `07b` (7.3 and 7.4), `07c` (7.5), `07d`
 
 Ten fights that each teach a pattern, escalate at phase two with a changed kit, and end with a death worth watching. Eight weapons a player chooses between for a reason. Every authored story beat plays. Speakers have faces.
 
+## Additions from the 2026-09-24 overhaul audit
+
+From the code-review seat (`docs/prompts/reviews/2026-09-24-overhaul-audit/`): the boss uses one body for three jobs (`BossController.ts:163`: it stands on the floor, takes the sword and deals a flat 2 on contact, `Game.ts:1010`), and attacks have no hitbox shape (`AttackModules.ts:48`). **7.0 splits every boss into a floor body, a hurtbox and a hitbox per attack phase, defined in `src/bosses/roster.ts` and routed by `BossDamageRouter` (EVAL-P7-010)**; 7.1's projectiles hit platforms by their physics body, not their drawn bounds (`Game.ts:917`). The warden base sheets are regenerated in 6.4 (EVAL-P6-016), so 7.2's intro, phase and death poses use the new art as their reference.
+
 ## Phase 7.0: Extract before building (added on final review)
 
 Half a session. Move the boss hitbox, hazard and projectile-controller block, the boss art placeholder, `applyDamageToBoss` with its hit feedback, `bossUpdate`, and the boss-defeated and victory flow into `src/scenes/game/BossBeats.ts` and `BossDamageRouter.ts`; weapon cycling, energy recharge, fire and labels into `src/scenes/game/WeaponRuntime.ts`; hit wires, contact handlers and bullet recycling into `src/scenes/game/HitWires.ts`. Ledger: `EVAL-P7-008` (`Game.ts` at or below 2,600 after this phase; full smoke green).

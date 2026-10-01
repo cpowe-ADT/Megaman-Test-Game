@@ -8,6 +8,8 @@ export type MovementTuningConfig = {
   gravity: number
   terminalVelocity: number
   jumpVelocity: number
+  /** Releasing jump while rising faster than this (negative, px/s) sets vy to it. */
+  jumpCutVelocity: number
   jumpHoldGravityScale: number
   coyoteTimeMs: number
   jumpBufferMs: number
@@ -16,6 +18,14 @@ export type MovementTuningConfig = {
   wallJumpVelocityY: number
   wallJumpBoostMultiplier: number
   wallJumpLockMs: number
+  /** A wall kick stays available this long after wall contact is lost. */
+  wallKickGraceMs: number
+  /** Pressing away from a wall holds the hero on it this long before letting go. */
+  wallStickMs: number
+  /** A ceiling edge overlapping the head by up to this many px nudges the hero aside. */
+  cornerNudgePx: number
+  /** Grounded runs step up lips of up to this many px. */
+  stepUpPx: number
 }
 
 export type DashConfig = {
@@ -71,9 +81,36 @@ export type SwordWindowConfig = {
   hitstopFrames: number
 }
 
+/**
+ * One hit of the ground combo (or the air spin). Frames are 60Hz; `hitbox` is authored facing east and
+ * mirrored for west. Aimed swings (n, ne, se, s and their mirrors) keep their directional `windows` hitbox
+ * but take the hit's timing, damage, knockback and hit-stop.
+ */
+export type SwordHitConfig = {
+  startupFrames: number
+  activeFrames: number
+  recoveryFrames: number
+  damage: number
+  /** Hit-stop (60Hz frames) the sword-hit path applies when this hit connects. */
+  hitstopFrames: number
+  /** Knockback given to the target, x signed by the swing's facing. */
+  knockback: Vec2
+  hitbox: HitboxShape
+}
+
+export type SwordComboConfig = {
+  /** Ground chain, hit 1 to hit 3. */
+  ground: [SwordHitConfig, SwordHitConfig, SwordHitConfig]
+  /** The one air slash per airborne phase (the spin slash). */
+  air: SwordHitConfig
+  /** A press from the start of active until this many frames after recovery ends advances the chain. */
+  linkFrames: number
+}
+
 export type SwordConfig = {
   comboEnabled: boolean
   aimDeadzone: number
+  combo: SwordComboConfig
   windows: {
     ground: Record<Direction8, SwordWindowConfig>
     air: Record<Direction8, SwordWindowConfig>
@@ -107,6 +144,38 @@ export type PlayerPhysicsLimits = {
   maxVelocityY: number
 }
 
+/** Feel constants authored per 60Hz frame (hit-stop frames, follow lerp) are converted by real time. */
+export const FEEL_FRAME_MS = 1000 / 60
+
+/**
+ * Arcade world gravity (px/s^2) set in `src/main.ts`. The hero's body gravity is `movement.gravity`
+ * minus this; enemies read it too (`src/enemy/EnemyMotor.ts`), so there is one number to change.
+ */
+export const WORLD_GRAVITY_Y = 800
+
+/** Release is ignored for the first 3 physics frames of a jump, so a tap and a 50ms hold give the same minimum hop. */
+export const JUMP_MIN_HOLD_MS = 3 * FEEL_FRAME_MS
+
+/** A landing faster than this (px/s) is hard: squash, dust and a short control lag. */
+export const HARD_LANDING_SPEED = 400
+export const HARD_LANDING_LAG_MS = 80
+export const LANDING_SQUASH_FRAMES = 6
+
+/** Counts a hit-stop authored in 60Hz frames down by elapsed time; returns 0 once spent. */
+export function tickHitstopFrames(remainingFrames: number, deltaMs: number): number {
+  const next = remainingFrames - Math.max(0, deltaMs) / FEEL_FRAME_MS
+  return next <= 0.1 ? 0 : next
+}
+
+/** The lerp factor for a frame of `deltaMs` that converges like `lerpPerFrame` does at 60Hz. */
+export function timeScaledLerp(lerpPerFrame: number, deltaMs: number): number {
+  const factor = Math.min(1, Math.max(0, lerpPerFrame))
+  if (factor >= 1) {
+    return 1
+  }
+  return 1 - Math.pow(1 - factor, Math.max(0, deltaMs) / FEEL_FRAME_MS)
+}
+
 export function normalizeMovementSpeedMultiplier(value: number): number {
   return Number.isFinite(value) && value > 0 ? value : 1
 }
@@ -133,7 +202,7 @@ export function resolvePlayerPhysicsLimits(
   }
 }
 
-// The imported developer override sheets are authored facing left by default.
+// WREN's sheets (5.5, design C2) are authored facing left, as the C2 side view is: flip when facing right.
 export function shouldFlipPlayerSpriteForFacing(facing: 1 | -1): boolean {
   return facing === 1
 }
@@ -175,9 +244,10 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     accel: 1700,
     decel: 2100,
     airAccel: 1050,
-    gravity: 800,
+    gravity: 1050,
     terminalVelocity: 550,
-    jumpVelocity: -420,
+    jumpVelocity: -400,
+    jumpCutVelocity: -140,
     jumpHoldGravityScale: 0.55,
     coyoteTimeMs: 100,
     jumpBufferMs: 100,
@@ -185,12 +255,16 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     wallJumpVelocityX: 240,
     wallJumpVelocityY: -355,
     wallJumpBoostMultiplier: 1.28,
-    wallJumpLockMs: 140
+    wallJumpLockMs: 140,
+    wallKickGraceMs: 80,
+    wallStickMs: 60,
+    cornerNudgePx: 3,
+    stepUpPx: 3
   },
   dash: {
     dashSpeed: 320,
-    dashDurationMs: 140,
-    dashCooldownMs: 420,
+    dashDurationMs: 280,
+    dashCooldownMs: 60,
     dashCancelRules: {
       canShootDuringDash: true,
       canSlashDuringDash: false
@@ -211,8 +285,35 @@ export const PLAYER_GAMEPLAY_CONFIG: PlayerGameplayConfig = {
     chargeCancelOnSlash: true
   },
   sword: {
-    comboEnabled: false,
+    comboEnabled: true,
     aimDeadzone: 0.2,
+    // Horizontal boxes cover the drawn arcs (effects_hero slash_1 44x26, slash_2 44x50, slash_3 38x42,
+    // slash_air 44x40) whose centres sit on the box centre: see SLASH_ARC_OVERLAYS in src/combat/heroCombatVisuals.ts.
+    combo: {
+      ground: [
+        {
+          startupFrames: 5, activeFrames: 4, recoveryFrames: 6, damage: 2, hitstopFrames: 4,
+          knockback: { x: 100, y: -60 },
+          hitbox: { kind: 'rect', offsetX: 22, offsetY: -6, width: 42, height: 24 }
+        },
+        {
+          startupFrames: 4, activeFrames: 4, recoveryFrames: 7, damage: 2, hitstopFrames: 5,
+          knockback: { x: 120, y: -80 },
+          hitbox: { kind: 'rect', offsetX: 20, offsetY: -8, width: 42, height: 46 }
+        },
+        {
+          startupFrames: 6, activeFrames: 5, recoveryFrames: 12, damage: 4, hitstopFrames: 8,
+          knockback: { x: 240, y: -150 },
+          hitbox: { kind: 'rect', offsetX: 22, offsetY: -8, width: 38, height: 40 }
+        }
+      ],
+      air: {
+        startupFrames: 5, activeFrames: 4, recoveryFrames: 4, damage: 2, hitstopFrames: 4,
+        knockback: { x: 110, y: -70 },
+        hitbox: { kind: 'rect', offsetX: 18, offsetY: -4, width: 42, height: 38 }
+      },
+      linkFrames: 10
+    },
     windows: {
       ground: {
         n: baseSwordWindow({ kind: 'rect', offsetX: 0, offsetY: -26, width: 18, height: 22 }),

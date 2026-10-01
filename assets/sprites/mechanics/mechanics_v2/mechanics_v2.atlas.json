@@ -1,0 +1,661 @@
+{
+  "frames": {
+    "mechanics_v2/conveyor/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 18
+      }
+    },
+    "mechanics_v2/conveyor/001": {
+      "frame": {
+        "x": 56,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 18
+      }
+    },
+    "mechanics_v2/conveyor/002": {
+      "frame": {
+        "x": 112,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 18
+      }
+    },
+    "mechanics_v2/conveyor/003": {
+      "frame": {
+        "x": 168,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 18
+      }
+    },
+    "mechanics_v2/ice_tile/000": {
+      "frame": {
+        "x": 224,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "mechanics_v2/ice_tile/001": {
+      "frame": {
+        "x": 240,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    "mechanics_v2/icicle/000": {
+      "frame": {
+        "x": 0,
+        "y": 18,
+        "w": 28,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 36
+      }
+    },
+    "mechanics_v2/icicle/001": {
+      "frame": {
+        "x": 28,
+        "y": 18,
+        "w": 28,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 36
+      }
+    },
+    "mechanics_v2/rockfall/000": {
+      "frame": {
+        "x": 56,
+        "y": 18,
+        "w": 38,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 26
+      }
+    },
+    "mechanics_v2/rockfall/001": {
+      "frame": {
+        "x": 94,
+        "y": 18,
+        "w": 38,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 26
+      }
+    },
+    "mechanics_v2/rockfall/002": {
+      "frame": {
+        "x": 132,
+        "y": 18,
+        "w": 38,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 26
+      }
+    },
+    "mechanics_v2/rockfall/003": {
+      "frame": {
+        "x": 170,
+        "y": 18,
+        "w": 38,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 26
+      }
+    },
+    "mechanics_v2/power_rail/000": {
+      "frame": {
+        "x": 0,
+        "y": 54,
+        "w": 56,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 28
+      }
+    },
+    "mechanics_v2/power_rail/001": {
+      "frame": {
+        "x": 56,
+        "y": 54,
+        "w": 56,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 28
+      }
+    },
+    "mechanics_v2/power_rail/002": {
+      "frame": {
+        "x": 112,
+        "y": 54,
+        "w": 56,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 28
+      }
+    },
+    "mechanics_v2/power_rail/003": {
+      "frame": {
+        "x": 168,
+        "y": 54,
+        "w": 56,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 56,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 56,
+        "h": 28
+      }
+    },
+    "mechanics_v2/wind_gust/000": {
+      "frame": {
+        "x": 0,
+        "y": 82,
+        "w": 50,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 30
+      }
+    },
+    "mechanics_v2/wind_gust/001": {
+      "frame": {
+        "x": 50,
+        "y": 82,
+        "w": 50,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 30
+      }
+    },
+    "mechanics_v2/wind_gust/002": {
+      "frame": {
+        "x": 100,
+        "y": 82,
+        "w": 50,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 30
+      }
+    },
+    "mechanics_v2/wind_gust/003": {
+      "frame": {
+        "x": 150,
+        "y": 82,
+        "w": 50,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 50,
+        "h": 30
+      }
+    },
+    "mechanics_v2/wind_lift/000": {
+      "frame": {
+        "x": 200,
+        "y": 82,
+        "w": 34,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 46
+      }
+    },
+    "mechanics_v2/wind_lift/001": {
+      "frame": {
+        "x": 0,
+        "y": 128,
+        "w": 34,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 46
+      }
+    },
+    "mechanics_v2/wind_lift/002": {
+      "frame": {
+        "x": 34,
+        "y": 128,
+        "w": 34,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 46
+      }
+    },
+    "mechanics_v2/wind_lift/003": {
+      "frame": {
+        "x": 68,
+        "y": 128,
+        "w": 34,
+        "h": 46
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 46
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 46
+      }
+    },
+    "mechanics_v2/current/000": {
+      "frame": {
+        "x": 102,
+        "y": 128,
+        "w": 48,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 26
+      }
+    },
+    "mechanics_v2/current/001": {
+      "frame": {
+        "x": 150,
+        "y": 128,
+        "w": 48,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 26
+      }
+    },
+    "mechanics_v2/current/002": {
+      "frame": {
+        "x": 198,
+        "y": 128,
+        "w": 48,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 26
+      }
+    },
+    "mechanics_v2/current/003": {
+      "frame": {
+        "x": 0,
+        "y": 174,
+        "w": 48,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 26
+      }
+    },
+    "mechanics_v2/magnet_lift/000": {
+      "frame": {
+        "x": 48,
+        "y": 174,
+        "w": 36,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 38
+      }
+    },
+    "mechanics_v2/magnet_lift/001": {
+      "frame": {
+        "x": 84,
+        "y": 174,
+        "w": 36,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 38
+      }
+    },
+    "mechanics_v2/magnet_lift/002": {
+      "frame": {
+        "x": 120,
+        "y": 174,
+        "w": 36,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 38
+      }
+    },
+    "mechanics_v2/magnet_lift/003": {
+      "frame": {
+        "x": 156,
+        "y": 174,
+        "w": 36,
+        "h": 38
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 36,
+        "h": 38
+      },
+      "sourceSize": {
+        "w": 36,
+        "h": 38
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "mechanics_v2.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 256,
+      "h": 212
+    },
+    "scale": "1",
+    "source": [
+      "assets/sprites/source/mechanics/hf_v1/mechanics_v2_forces_a.png",
+      "assets/sprites/source/mechanics/hf_v1/mechanics_v2_objects_a.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "mechanics_v2.json"
+  }
+}

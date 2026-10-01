@@ -31,9 +31,10 @@ test('resolvePlayerShot builds canonical Buster pellet and max-charge commands',
   assert.equal(charged.spawnRequest.metadata?.chargeLevel, 4)
 })
 
-test('every special weapon resolves without charge and retains its configured energy cost', () => {
+test('every special weapon but FlameSerpent (13d, EVAL-P13-008) releases its charged form at chargeLevel 4, double the cost', () => {
   for (const weaponId of SPECIAL_WEAPON_ORDER) {
     const weapon = getWeaponConfig(weaponId)
+    const chargesGenerically = weaponId !== 'FlameSerpent'
     const shot = resolvePlayerShot({
       weaponId,
       intent: { chargeLevel: 4, facing: 1 },
@@ -41,10 +42,21 @@ test('every special weapon resolves without charge and retains its configured en
       y: 0
     })
 
-    assert.equal(shot.projectileId, `player_weapon_${weaponId}`)
-    assert.equal(shot.chargeLevel, 0)
-    assert.equal(shot.energyCost, weapon.energyCost)
+    assert.equal(shot.projectileId, chargesGenerically ? `player_weapon_${weaponId}_charged` : `player_weapon_${weaponId}`)
+    assert.equal(shot.chargeLevel, chargesGenerically ? 4 : 0)
+    assert.equal(shot.energyCost, chargesGenerically ? weapon.energyCost * 2 : weapon.energyCost)
     assert.equal(shot.spawnRequest.metadata?.weaponElement, weapon.element)
+  }
+})
+
+test('a partial charge (levels 1 to 3) still fires the plain shot, for every special weapon', () => {
+  for (const weaponId of SPECIAL_WEAPON_ORDER) {
+    const weapon = getWeaponConfig(weaponId)
+    for (const chargeLevel of [1, 2, 3] as const) {
+      const shot = resolvePlayerShot({ weaponId, intent: { chargeLevel, facing: 1 }, x: 0, y: 0 })
+      assert.equal(shot.projectileId, `player_weapon_${weaponId}`, `${weaponId} at level ${chargeLevel}`)
+      assert.equal(shot.energyCost, weapon.energyCost)
+    }
   }
 })
 
@@ -67,8 +79,10 @@ test('every Buster charge tier has a muzzle-height combat sensor', () => {
   ]
 
   for (const id of ids) {
-    const hitbox = registry.get(id)?.hitbox
+    const definition = registry.get(id)
+    const hitbox = definition?.hitbox
     assert.ok(hitbox, `${id} should define a combat hitbox`)
-    assert.ok(hitbox.height >= 54, `${id} should reach short ground-enemy hurtboxes`)
+    // Arcade scales the body by the sprite scale, so the reach is source height x visual scale.
+    assert.ok(hitbox.height * definition!.visual.scale >= 54, `${id} should reach short ground-enemy hurtboxes`)
   }
 })

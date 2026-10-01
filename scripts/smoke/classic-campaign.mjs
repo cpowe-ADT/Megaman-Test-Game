@@ -3,6 +3,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { chromium } from 'playwright'
 
+// The debug hooks install asynchronously after Game.create() (DevUx loads them on demand), so wait for them
+// before the first direct call instead of assuming they exist the frame the scene state says 'Game'.
+async function waitForDebugHooks(page) {
+  await page.waitForFunction(() => Boolean(window.stageDebug?.crossBossGate && window.bossDebug?.unlockIntro), null, { timeout: 8000 })
+}
+
 export async function runClassicCampaignScenario(name, { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }) {
   const dir=path.join(outputDir,name);fs.rmSync(dir,{recursive:true,force:true});fs.mkdirSync(dir,{recursive:true})
   const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader']})
@@ -55,6 +61,7 @@ export async function runClassicCampaignScenario(name, { outputDir, titleUrl, re
     await tapKey(page,'Enter');await waitForState(page,s=>s.scene==='NewCampaign')
     await advanceFrames(page,3);await tapKey(page,'Enter')
     await waitForState(page,s=>s.scene==='Game'&&s.stageRuntime?.stageId==='tutorial_sentinel')
+    await waitForDebugHooks(page)
     await page.evaluate(()=>{window.stageDebug.crossBossGate();window.bossDebug.unlockIntro()})
     await advanceFrames(page,12)
     await page.evaluate(()=>{window.bossDebug.damage(999);window.stageDebug.skipDialogue()})
@@ -73,7 +80,7 @@ export async function runClassicCampaignScenario(name, { outputDir, titleUrl, re
     }
     const panel=state.stageSelect.panels
     assert.ok(pyro.nameBounds.y>=panel.selectionOutline.y+1,'selection outline crosses title')
-    assert.ok(pyro.weaknessBounds.y+pyro.weaknessBounds.height<=panel.selectionOutline.y+panel.selectionOutline.height-1,'selection outline crosses weakness')
+    assert.ok(pyro.weaknessBounds.y+pyro.weaknessBounds.height<=panel.selectionOutline.y+panel.selectionOutline.height-1,`selection outline crosses weakness (weakness bottom ${pyro.weaknessBounds.y+pyro.weaknessBounds.height}, outline inner bottom ${panel.selectionOutline.y+panel.selectionOutline.height-1}; font metrics differ by OS)`)
     assert.ok(panel.description.y+panel.description.height<=panel.details.y)
     assert.ok(panel.details.y+panel.details.height<=panel.preview.y+panel.preview.height)
     assert.ok(panel.footerStatus.y>=panel.footerControls.y+panel.footerControls.height)
@@ -122,6 +129,7 @@ export async function runClassicUpgradeScenario(name, { outputDir, titleUrl, rea
   try {
     await page.goto(`${titleUrl}&startScene=StageSelect`);await waitForState(page,s=>s.scene==='StageSelect');await tapKey(page,'Enter')
     await waitForState(page,s=>s.scene==='Game'&&s.newPlayer?.locomotion?.grounded)
+    await waitForDebugHooks(page)
     evidence.armor=await page.evaluate(()=>{
       const scene=window.__phaserGame.scene.getScene('Game')
       window.stageDebug.grantUpgrade('armor_body');window.stageDebug.grantUpgrade('armor_helmet')
@@ -170,12 +178,25 @@ export async function runClassicUpgradeScenario(name, { outputDir, titleUrl, rea
     assert.equal(evidence.pellet.hp,3);assert.equal(evidence.pellet.active,true)
     assert.equal((await readState(page)).combatDebug.player.lastProjectile.damage,2)
     await capture('buster-enemy')
-    await page.evaluate(()=>{window.stageDebug.grantWeapon('HydroLance');window.stageDebug.grantUpgrade('chip_weapon_plus')})
+    await page.evaluate(()=>window.stageDebug.grantWeapon('HydroLance'))
     await tapKey(page,'e');await waitForState(page,s=>s.playerState?.weapon==='HydroLance')
-    await page.evaluate(()=>window.stageDebug.setWeaponEnergy('HydroLance',1))
+    // Read HydroLance's authored cost from the game itself (13d changed it; docs/design/weapons.md is not loaded here):
+    // fire one plain shot at a full bar before the chip exists, then compare against a shot after it.
+    await page.evaluate(()=>window.stageDebug.setWeaponEnergy('HydroLance',999))
     await tapKey(page,'x',2)
-    const shot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance')
-    assert.equal(shot.combatDebug.player.lastProjectile.energyCost,1);assert.equal(shot.combatDebug.player.lastProjectile.energyRemaining,0)
+    const baseShot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance')
+    const baseCost=baseShot.combatDebug.player.lastProjectile.energyCost
+    await page.evaluate(()=>window.stageDebug.grantUpgrade('chip_weapon_plus'))
+    await page.evaluate((cost)=>window.stageDebug.setWeaponEnergy('HydroLance',cost),baseCost-1)
+    // The blaster's shared semi-auto cooldown (PLAYER_GAMEPLAY_CONFIG.blaster.fireRateMs, 120ms / ~8 frames
+    // at 60fps) still gates the base shot above: without this wait the second tap arrives too soon, the
+    // motor drops it silently (no projectile event, so WeaponRuntime.fire never runs) and the discounted
+    // shot's energyRemaining never reaches 0, hanging the next waitForState.
+    await advanceFrames(page,10)
+    await tapKey(page,'x',2)
+    const shot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance'&&s.combatDebug?.player?.lastProjectile?.energyRemaining===0)
+    assert.equal(shot.combatDebug.player.lastProjectile.energyCost,baseCost-1,'the Weapon Plus chip must take exactly 1 off the authored cost')
+    assert.equal(shot.combatDebug.player.lastProjectile.energyRemaining,0,'the discounted shot must empty a bar set to exactly its cost')
     evidence.discount=shot.combatDebug.player.lastProjectile
     // The boss adapter receives the same resolved pellet damage: neutral Buster is exactly two, once.
     await page.evaluate(()=>{window.stageDebug.crossBossGate();window.bossDebug.unlockIntro()});await advanceFrames(page,15)

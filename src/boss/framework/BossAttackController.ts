@@ -1,5 +1,5 @@
 import { TimedAttackModule } from './AttackModules'
-import { AttackContext, BossAttackDefinition } from './types'
+import { AttackContext, AttackTimingOverride, BossAttackDefinition } from './types'
 
 function pickWeighted<T>(items: T[], getWeight: (value: T) => number, rng: () => number): T | undefined {
   const total = items.reduce((sum, item) => sum + Math.max(0, getWeight(item)), 0)
@@ -30,6 +30,8 @@ export class BossAttackController {
   private readonly unlockedAttacks = new Set<string>()
   private readonly baseWeights = new Map<string, number>()
   private readonly weightOverrides = new Map<string, number>()
+  /** The phase kit's `enabled` flip: an id mapped to false never starts. */
+  private readonly enabledOverrides = new Map<string, boolean>()
 
   private activeModule?: TimedAttackModule
   private lastAttackId?: string
@@ -150,6 +152,38 @@ export class BossAttackController {
     Object.entries(overrides).forEach(([id, weight]) => this.weightOverrides.set(id, weight))
   }
 
+  /** Apply a phase kit (prompt 07 phase 7.2): the enabled flips and retimes replace the previous phase's. */
+  setPhaseKit(kit: { enabled?: Record<string, boolean>; timing?: Record<string, AttackTimingOverride> }): void {
+    this.enabledOverrides.clear()
+    Object.entries(kit.enabled ?? {}).forEach(([id, enabled]) => this.enabledOverrides.set(id, enabled))
+    this.modules.forEach((module, id) => module.setTiming(kit.timing?.[id]))
+  }
+
+  isEnabled(id: string): boolean {
+    return this.enabledOverrides.get(id) !== false
+  }
+
+  get activeLifecycle(): string | undefined {
+    return this.activeModule?.lifecycle
+  }
+
+  /**
+   * A break (a weakness hit) cancels the running attack whatever its lifecycle: wind-up, active or recovery. It cools
+   * down as if it had played, so the boss does not restart it the moment the stun ends.
+   */
+  interruptActive(ctx: AttackContext): BossAttackDefinition | undefined {
+    const active = this.activeModule
+    if (!active) {
+      return undefined
+    }
+    const interrupted = active.definition
+    active.Exit(ctx)
+    this.cooldownsMs.set(active.id, active.Cooldown)
+    this.lastAttackId = active.id
+    this.activeModule = undefined
+    return interrupted
+  }
+
   setSelectionDeck(ids: string[]): void {
     this.selectionDeck = [...ids]
     this.deckIndex = 0
@@ -173,7 +207,7 @@ export class BossAttackController {
   private getAvailableAttacks(ctx: AttackContext): TimedAttackModule[] {
     const list: TimedAttackModule[] = []
     this.modules.forEach((module, id) => {
-      if (!this.unlockedAttacks.has(id)) {
+      if (!this.unlockedAttacks.has(id) || !this.isEnabled(id)) {
         return
       }
       if ((this.cooldownsMs.get(id) ?? 0) > 0) {

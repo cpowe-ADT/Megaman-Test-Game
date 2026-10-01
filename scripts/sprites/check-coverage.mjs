@@ -7,13 +7,15 @@ import {
   REQUIRED_ENEMY_TYPE_KEYS,
   REQUIRED_MANIFEST_ENTRY_IDS,
   REQUIRED_MANIFEST_PREFIX_GROUPS,
-  buildSpriteCoverageReport
+  buildSpriteCoverageReport,
+  getRequiredPlayerGroups
 } from '../../src/assets/coverageRequirements.ts'
 
 function parseArgs(argv) {
   const args = {
     manifest: 'assets/sprites/manifest.v1.json',
     sourceRoot: 'assets/sprites/source',
+    playerAtlas: 'assets/sprites/player/main/player_main.atlas.json',
     json: false
   }
 
@@ -30,12 +32,30 @@ function parseArgs(argv) {
       i += 1
       continue
     }
+    if (arg === '--player-atlas' && next) {
+      args.playerAtlas = next
+      i += 1
+      continue
+    }
     if (arg === '--json') {
       args.json = true
     }
   }
 
   return args
+}
+
+function readPlayerAtlasFrameNames(playerAtlasPath) {
+  if (!fs.existsSync(playerAtlasPath)) {
+    return []
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(playerAtlasPath, 'utf8'))
+    return Object.keys(data.frames ?? {})
+  } catch (error) {
+    console.error(`[sprites] Coverage check failed: invalid player atlas JSON at ${playerAtlasPath} (${String(error)})`)
+    process.exit(1)
+  }
 }
 
 function readDirFiles(dirPath) {
@@ -74,7 +94,9 @@ function main() {
 
   const enemySourceFiles = readDirFiles(enemySourceDir)
   const bossSourceFiles = readDirFiles(bossSourceDir)
-  const report = buildSpriteCoverageReport(manifestValidation.manifest, enemySourceFiles, bossSourceFiles)
+  const playerAtlasPath = path.resolve(process.cwd(), args.playerAtlas)
+  const playerAtlasFrameNames = readPlayerAtlasFrameNames(playerAtlasPath)
+  const report = buildSpriteCoverageReport(manifestValidation.manifest, enemySourceFiles, bossSourceFiles, playerAtlasFrameNames)
 
   if (args.json) {
     console.log(
@@ -85,7 +107,8 @@ function main() {
             manifestEntryCount: REQUIRED_MANIFEST_ENTRY_IDS.length,
             enemySourceCount: REQUIRED_ENEMY_TYPE_KEYS.length,
             bossSourceCount: REQUIRED_BOSS_IDS.length,
-            prefixGroups: REQUIRED_MANIFEST_PREFIX_GROUPS
+            prefixGroups: REQUIRED_MANIFEST_PREFIX_GROUPS,
+            playerGroupCount: getRequiredPlayerGroups().length
           },
           report
         },
@@ -96,7 +119,8 @@ function main() {
   } else if (report.valid) {
     console.log(
       `[sprites] Coverage valid (${REQUIRED_MANIFEST_ENTRY_IDS.length} required manifest entries, ` +
-        `${REQUIRED_ENEMY_TYPE_KEYS.length} enemy source sheets, ${REQUIRED_BOSS_IDS.length} boss source sheets)`
+        `${REQUIRED_ENEMY_TYPE_KEYS.length} enemy source sheets, ${REQUIRED_BOSS_IDS.length} boss source sheets, ` +
+        `${getRequiredPlayerGroups().length} hero groups in ${path.relative(process.cwd(), playerAtlasPath)})`
     )
   } else {
     console.error('[sprites] Coverage check failed:')
@@ -117,6 +141,9 @@ function main() {
     }
     if (report.missingBossSourceSheets.length > 0) {
       console.error(`  - Missing boss source sheets: ${report.missingBossSourceSheets.join(', ')}`)
+    }
+    if (report.missingPlayerGroups.length > 0) {
+      console.error(`  - Missing or short hero groups in ${path.relative(process.cwd(), playerAtlasPath)}: ${report.missingPlayerGroups.join(', ')}`)
     }
     process.exit(1)
   }

@@ -36,7 +36,7 @@ Conventions:
 - Boss atlases: 4x3 grid, 64px cells, rows `idle`, `move`, `shoot` (four frames each). The roster's `spritePlan.frame` still sets the physics body; the visual cell can be larger.
 - Baseline 60 puts feet or jets 4px above the cell bottom; the roster origin (about 0.86) lands the contact point on the floor.
 - Regenerate a whole sheet rather than patching frames, so style stays consistent.
-- Generated art is original IP. The ripped Mega Man X boss skins are retired (`retired` block in `scripts/sprites/private_megaman_override_spec.json`); only the dev-only hero skin remains in the private pack. Its builder keys the sheet background and the flat green highlight boxes, renders poses at native scale (42/43) into 48px cells, and mirrors the dash rows (`flipX`) because the ripped sheet stores them facing left.
+- Generated art is original IP. Every ripped skin is retired (bosses 2026-09-10, the hero in 05c on 2026-09-24); the hero cut is `--category player` with `--body-height`, `--flash-cells`, `--body-only-cells` and `--append` (`docs/art/hero-sheets.md`, `scripts/sprites/cut_hero_v1.sh` for the exact commands).
 
 ## 2b) Generate Images with the imagegen skill (legacy)
 This uses the existing imagegen skill CLI:

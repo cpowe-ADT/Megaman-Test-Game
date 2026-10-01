@@ -113,3 +113,19 @@ test('PlayerAnimator holds a transient shoot pose long enough to render cleanly'
   assert.equal(heldKey, 'player_shoot_stand_fwd')
   assert.deepEqual(played, ['player_shoot_stand_fwd'])
 })
+
+test('horizontal combo hits 2 and 3 and the air spin play their own bodies; aimed swings keep directional frames', () => {
+  const cases = [
+    { combat: { slashGrounded: true, slashDirection: 'e', slashMove: 'combo2' }, key: 'player_slash_combo2' },
+    { combat: { slashGrounded: true, slashDirection: 'w', slashMove: 'combo3' }, key: 'player_slash_combo3' },
+    { combat: { slashGrounded: false, slashDirection: 'e', slashMove: 'air_spin' }, key: 'player_slash_air_spin' },
+    { combat: { slashGrounded: true, slashDirection: 'e', slashMove: 'combo1' }, key: 'player_slash_ground_e' },
+    { combat: { slashGrounded: true, slashDirection: 'n', slashMove: 'combo3' }, key: 'player_slash_ground_n' }
+  ] as const
+  for (const { combat, key } of cases) {
+    const animator = new PlayerAnimator(AnimationManifest, { play: () => {}, onAnimationEvent: () => {} })
+    const state = { ...createState(), slashDirection: combat.slashDirection }
+    assert.equal(animator.update(state, createMotor(), createCombat({ ...combat })), key)
+    assert.ok(AnimationManifest.animations[key], `${key} is in the manifest`)
+  }
+})

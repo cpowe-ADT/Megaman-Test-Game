@@ -27,7 +27,7 @@ export async function runInputFocusLossScenario(name, { outputDir, titleUrl, rea
     evidence.activeBefore=await readState(page);await blur();await page.keyboard.up('x');await advanceFrames(page,2)
     evidence.activeAfter=await readState(page);await capture('active-blur')
     assert.equal(evidence.activeAfter.newPlayer.combat.charging,false)
-    assert.equal(evidence.activeAfter.combatDebug.player.shotsFiredTotal,0)
+    assert.equal(evidence.activeAfter.combatDebug.player.shotsFiredTotal,1,'the press fired its pellet; blur then release must not add a charge shot')
     assert.equal(evidence.activeAfter.playerState.hp,evidence.activeBefore.playerState.hp)
     // Use real touch shape handlers, including a reused pointer id after focus loss.
     const touch=await page.evaluate(()=>{
@@ -46,9 +46,9 @@ export async function runInputFocusLossScenario(name, { outputDir, titleUrl, rea
       const node=controls.root.list.find(child=>child.getData('layout')?.key==='shoot')
       node.list[0].emit('pointerup',{id:71,isDown:false})
     })
-    await waitForState(page,s=>s.combatDebug?.player?.shotsFiredTotal===1)
-    await advanceFrames(page,10);await tapKey(page,'x',2)
     await waitForState(page,s=>s.combatDebug?.player?.shotsFiredTotal===2)
+    await advanceFrames(page,10);await tapKey(page,'x',2)
+    await waitForState(page,s=>s.combatDebug?.player?.shotsFiredTotal===3)
     await capture('fresh-input');evidence.final=await readState(page)
     assert.deepEqual(errors,[])
     fs.writeFileSync(path.join(dir,'evidence.json'),JSON.stringify(evidence,null,2));return evidence.final

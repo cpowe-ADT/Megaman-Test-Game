@@ -242,7 +242,7 @@
     }
   },
   "meta": {
-    "app": "megaman-placeholder-generator",
+    "app": "omega-relay-placeholder-generator",
     "version": "1.0.0",
     "image": "sentinel_rook.png",
     "format": "RGBA8888",

@@ -403,6 +403,14 @@ export function applyProgressionItem<T extends ProgressionSaveLike>(
     } as T
   }
 
+  // Part 13e (EVAL-P13-010): an extra life is a per-run counter (Game.playerLives, resets on continue), not
+  // permanent progression like heart_tank/sub_tank, so claiming one leaves the save otherwise unchanged; the
+  // scene grants it immediately (Game.applyProgressionStateToRuntime -> grantExtraLife) the moment it sees
+  // this itemId, same turn as the claim.
+  if (itemId === 'extra_life') {
+    return next as T
+  }
+
   if (itemId === 'arc_slash' || itemId.startsWith('armor_') || itemId.startsWith('chip_')) {
     return {
       ...next,
@@ -607,21 +615,21 @@ export function resolveBossDamageMultiplier(options: {
   const upgradedBusterUsable = isBuster && chargeLevel > 0 && hasArmsUpgrade
 
   if (strictness === 'permissive') {
-    return weaknessMatch ? 1.75 : 1
+    return weaknessMatch ? 2.5 : 1
   }
   if (strictness === 'weakness_and_buster') {
     if (weaknessMatch) {
-      return 1.75
+      return 2.5
     }
     return isBuster ? 1 : 0
   }
   if (strictness === 'upgraded_buster_only') {
     if (weaknessMatch) {
-      return 1.75
+      return 2.5
     }
     return upgradedBusterUsable ? 1 : 0
   }
-  return weaknessMatch ? 1.75 : 0
+  return weaknessMatch ? 2.5 : 0
 }
 
 export function getBossWeaknessProfile(save: ProgressionSaveLike, bossId: string): BossWeaknessProfile | null {

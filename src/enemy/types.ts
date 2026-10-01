@@ -44,6 +44,14 @@ export interface EnemyStatsConfig {
   hitstunLightMs: number
   hitstunHeavyMs: number
   invulnerabilityMs?: number
+  /** Super armour (mini-bosses): no hitstun, and only hits of `pushMinDamage` or more push it. */
+  heavy?: EnemyHeavyConfig
+}
+
+export interface EnemyHeavyConfig {
+  pushMinDamage: number
+  pushSpeed: number
+  pushMs: number
 }
 
 export interface EnemyAIConfig {
@@ -80,6 +88,8 @@ export interface EnemyAnimationKeys {
   attackActive: string
   hurt: string
   death: string
+  /** Shown during `attack_recover`; the attack's active pose when absent. */
+  attackRecover?: string
   spawn?: string
   turn?: string
   stunned?: string
@@ -98,6 +108,31 @@ export interface EnemyDefinition {
   drops?: EnemyDropTable
   deathBehavior: EnemyDeathBehavior
   animations: EnemyAnimationKeys
+  /** When set, a kill plays the death frames for this long before the defeat (explosion, drop) lands. */
+  deathSequenceMs?: number
+  /** A dedicated behaviour in place of the generic `EnemyAI` (see `enemyBrains.ts`). */
+  brain?: EnemyBrainKey
+  /** A mini-boss (12c): its defeat forces a health drop (`minibossCatalog.ts`). */
+  role?: 'miniboss'
+  /** A static front-facing shield arc (12c, `shieldArc.ts`): blocks a shot from the side it faces unless
+   * the shot is charged (damage 2 or more, the buster clash rule's threshold) or arrives from behind. */
+  shieldArc?: boolean
+}
+
+export type EnemyBrainKey = 'custodian_walker' | 'relay_turret_nest' | 'sentry_twins' | 'drill_serpent'
+
+/** A per-family behaviour the entity runs instead of `EnemyAI`; it owns the entity's state and facing. */
+export interface EnemyBrain {
+  update(now: number, deltaMs: number): void
+  onHurt(now: number): void
+  onDefeated(now: number): void
+  destroy(): void
+  /** True while nothing can hurt it (the drill serpent under the floor); the entity asks before any damage. */
+  isInvulnerable?(): boolean
+  /** An animation key that replaces the one its state maps to (frames the family's set does not name). */
+  animationKey?(): string | undefined
+  /** A rotating shield's open side right now (12c, the Tide nest variant), or `null` while it carries none. */
+  shieldGapSide?(): 1 | -1 | null
 }
 
 export interface DamageEvent {
@@ -132,10 +167,18 @@ export interface EnemyLevelMarker {
   y: number
   patrolMinX?: number
   patrolMaxX?: number
+  /** Unread since 13h.3a (`EVAL-P6-006`): `EnemySpawner` now spawns camera-relatively (`markerStreaming.ts`),
+   * one screen ahead of the camera's edge, regardless of these three. Kept on the type for stage data that
+   * still sets them; a later lane can drop them stage file by stage file. */
   spawnTriggerX?: number
   spawnLeadX?: number
   retireTriggerX?: number
+  /** `false` opts this marker out of the camera-relative respawn (13h.3a): once retired it stays gone, the
+   * way a mini-boss or `room_lock` wave marker always does. Unset (the default) respawns. */
   persistent?: boolean
+  /** The stage brief's named behaviour for this placement (12c), e.g. a mini-boss skin's `shieldArc`
+   * gap-rotation ('tide_shield') or its extra ice momentum ('glacier_slide'); a brain reads `entity.variant`. */
+  variant?: string
 }
 
 export interface EnemyPatrolBounds {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1",
-  "generatedAt": "2026-02-13T01:07:05.124Z",
+  "generatedAt": "2026-09-30T16:51:08.281Z",
   "entries": {
     "enemy_gunner_bot": {
       "typeKey": "enemy_gunner_bot",
@@ -463,7 +463,7 @@
         "recoveryMs": 240,
         "range": 220,
         "projectileKey": "enemy_shot_frost",
-        "burstCount": 3,
+        "burstCount": 2,
         "burstSpacingMs": 100
       },
       "deathBehavior": "explode",
@@ -497,6 +497,12 @@
           "height": 6,
           "offsetX": 10,
           "offsetY": 6
+        },
+        "beam": {
+          "width": 48,
+          "height": 6,
+          "offsetX": 10,
+          "offsetY": 6
         }
       },
       "stats": {
@@ -518,7 +524,7 @@
       "attack": {
         "type": "beam",
         "cooldownMs": 1800,
-        "windupMs": 320,
+        "windupMs": 400,
         "activeMs": 280,
         "recoveryMs": 300,
         "range": 250,
@@ -643,6 +649,7 @@
         "projectileKey": "enemy_shot_shield"
       },
       "deathBehavior": "explode",
+      "shieldArc": true,
       "animations": {
         "idle": "enemy_shield_drone_idle",
         "move": "enemy_shield_drone_hover",
@@ -709,6 +716,599 @@
         "attackActive": "enemy_fly_trap_attack_active",
         "hurt": "enemy_fly_trap_hurt",
         "death": "enemy_fly_trap_death"
+      }
+    },
+    "custodian_walker": {
+      "typeKey": "custodian_walker",
+      "movementType": "walker",
+      "collider": {
+        "width": 44,
+        "height": 50,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hurtbox": {
+        "width": 44,
+        "height": 50,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 20,
+        "damage": 3,
+        "speed": 36,
+        "gravityScale": 1,
+        "knockbackResist": 1,
+        "contactDamage": 3,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 4,
+          "pushSpeed": 60,
+          "pushMs": 120
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "melee",
+        "cooldownMs": 800,
+        "windupMs": 500,
+        "activeMs": 250,
+        "recoveryMs": 700,
+        "range": 96
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "custodian_walker",
+      "role": "miniboss",
+      "animations": {
+        "idle": "custodian_walker_idle",
+        "move": "custodian_walker_move",
+        "attackWindup": "custodian_walker_attack_windup",
+        "attackActive": "custodian_walker_attack_active",
+        "attackRecover": "custodian_walker_idle",
+        "hurt": "custodian_walker_hurt",
+        "death": "custodian_walker_death"
+      }
+    },
+    "custodian_walker_basalt": {
+      "typeKey": "custodian_walker_basalt",
+      "movementType": "walker",
+      "collider": {
+        "width": 44,
+        "height": 50,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hurtbox": {
+        "width": 44,
+        "height": 50,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 20,
+        "damage": 3,
+        "speed": 36,
+        "gravityScale": 1,
+        "knockbackResist": 1,
+        "contactDamage": 3,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 4,
+          "pushSpeed": 60,
+          "pushMs": 120
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "melee",
+        "cooldownMs": 800,
+        "windupMs": 500,
+        "activeMs": 250,
+        "recoveryMs": 700,
+        "range": 96
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "custodian_walker",
+      "role": "miniboss",
+      "animations": {
+        "idle": "custodian_walker_basalt_idle",
+        "move": "custodian_walker_basalt_move",
+        "attackWindup": "custodian_walker_basalt_attack_windup",
+        "attackActive": "custodian_walker_basalt_attack_active",
+        "attackRecover": "custodian_walker_basalt_idle",
+        "hurt": "custodian_walker_basalt_hurt",
+        "death": "custodian_walker_basalt_death"
+      }
+    },
+    "custodian_walker_glacier": {
+      "typeKey": "custodian_walker_glacier",
+      "movementType": "walker",
+      "collider": {
+        "width": 44,
+        "height": 50,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hurtbox": {
+        "width": 44,
+        "height": 50,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 20,
+        "damage": 3,
+        "speed": 36,
+        "gravityScale": 1,
+        "knockbackResist": 1,
+        "contactDamage": 3,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 4,
+          "pushSpeed": 60,
+          "pushMs": 120
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "melee",
+        "cooldownMs": 800,
+        "windupMs": 500,
+        "activeMs": 250,
+        "recoveryMs": 700,
+        "range": 96
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "custodian_walker",
+      "role": "miniboss",
+      "animations": {
+        "idle": "custodian_walker_glacier_idle",
+        "move": "custodian_walker_glacier_move",
+        "attackWindup": "custodian_walker_glacier_attack_windup",
+        "attackActive": "custodian_walker_glacier_attack_active",
+        "attackRecover": "custodian_walker_glacier_idle",
+        "hurt": "custodian_walker_glacier_hurt",
+        "death": "custodian_walker_glacier_death"
+      }
+    },
+    "relay_turret_nest": {
+      "typeKey": "relay_turret_nest",
+      "movementType": "walker",
+      "collider": {
+        "width": 44,
+        "height": 40,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hurtbox": {
+        "width": 44,
+        "height": 40,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 16,
+        "damage": 2,
+        "speed": 16,
+        "gravityScale": 1,
+        "knockbackResist": 1,
+        "contactDamage": 2,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 99,
+          "pushSpeed": 0,
+          "pushMs": 0
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "burst",
+        "cooldownMs": 900,
+        "windupMs": 600,
+        "activeMs": 450,
+        "recoveryMs": 700,
+        "range": 360,
+        "projectileKey": "enemy_shot_basic",
+        "burstCount": 3,
+        "burstSpacingMs": 150
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "relay_turret_nest",
+      "role": "miniboss",
+      "animations": {
+        "idle": "relay_turret_nest_idle",
+        "move": "relay_turret_nest_move",
+        "attackWindup": "relay_turret_nest_attack_windup",
+        "attackActive": "relay_turret_nest_attack_active",
+        "attackRecover": "relay_turret_nest_idle",
+        "hurt": "relay_turret_nest_hurt",
+        "death": "relay_turret_nest_death"
+      }
+    },
+    "relay_turret_nest_ferro": {
+      "typeKey": "relay_turret_nest_ferro",
+      "movementType": "walker",
+      "collider": {
+        "width": 44,
+        "height": 40,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hurtbox": {
+        "width": 44,
+        "height": 40,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 16,
+        "damage": 2,
+        "speed": 16,
+        "gravityScale": 1,
+        "knockbackResist": 1,
+        "contactDamage": 2,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 99,
+          "pushSpeed": 0,
+          "pushMs": 0
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "burst",
+        "cooldownMs": 900,
+        "windupMs": 600,
+        "activeMs": 450,
+        "recoveryMs": 700,
+        "range": 360,
+        "projectileKey": "enemy_shot_basic",
+        "burstCount": 3,
+        "burstSpacingMs": 150
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "relay_turret_nest",
+      "role": "miniboss",
+      "animations": {
+        "idle": "relay_turret_nest_ferro_idle",
+        "move": "relay_turret_nest_ferro_move",
+        "attackWindup": "relay_turret_nest_ferro_attack_windup",
+        "attackActive": "relay_turret_nest_ferro_attack_active",
+        "attackRecover": "relay_turret_nest_ferro_idle",
+        "hurt": "relay_turret_nest_ferro_hurt",
+        "death": "relay_turret_nest_ferro_death"
+      }
+    },
+    "sentry_twin": {
+      "typeKey": "sentry_twin",
+      "movementType": "flyer",
+      "collider": {
+        "width": 26,
+        "height": 26,
+        "offsetX": 0,
+        "offsetY": -6
+      },
+      "hurtbox": {
+        "width": 26,
+        "height": 26,
+        "offsetX": 0,
+        "offsetY": -6
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 18,
+        "damage": 2,
+        "speed": 320,
+        "gravityScale": 0,
+        "knockbackResist": 1,
+        "contactDamage": 2,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 99,
+          "pushSpeed": 0,
+          "pushMs": 0
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "projectile",
+        "cooldownMs": 500,
+        "windupMs": 600,
+        "activeMs": 300,
+        "recoveryMs": 0,
+        "range": 448,
+        "projectileKey": "enemy_beam_pulse"
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "sentry_twins",
+      "role": "miniboss",
+      "animations": {
+        "idle": "sentry_twin_idle",
+        "move": "sentry_twin_move",
+        "attackWindup": "sentry_twin_attack_windup",
+        "attackActive": "sentry_twin_attack_active",
+        "attackRecover": "sentry_twin_idle",
+        "hurt": "sentry_twin_hurt",
+        "death": "sentry_twin_death"
+      }
+    },
+    "sentry_twin_gale": {
+      "typeKey": "sentry_twin_gale",
+      "movementType": "flyer",
+      "collider": {
+        "width": 26,
+        "height": 26,
+        "offsetX": 0,
+        "offsetY": -6
+      },
+      "hurtbox": {
+        "width": 26,
+        "height": 26,
+        "offsetX": 0,
+        "offsetY": -6
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 18,
+        "damage": 2,
+        "speed": 320,
+        "gravityScale": 0,
+        "knockbackResist": 1,
+        "contactDamage": 2,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 99,
+          "pushSpeed": 0,
+          "pushMs": 0
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "projectile",
+        "cooldownMs": 500,
+        "windupMs": 600,
+        "activeMs": 300,
+        "recoveryMs": 0,
+        "range": 448,
+        "projectileKey": "enemy_beam_pulse"
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "sentry_twins",
+      "role": "miniboss",
+      "animations": {
+        "idle": "sentry_twin_gale_idle",
+        "move": "sentry_twin_gale_move",
+        "attackWindup": "sentry_twin_gale_attack_windup",
+        "attackActive": "sentry_twin_gale_attack_active",
+        "attackRecover": "sentry_twin_gale_idle",
+        "hurt": "sentry_twin_gale_hurt",
+        "death": "sentry_twin_gale_death"
+      }
+    },
+    "drill_serpent": {
+      "typeKey": "drill_serpent",
+      "movementType": "walker",
+      "collider": {
+        "width": 36,
+        "height": 44,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hurtbox": {
+        "width": 36,
+        "height": 44,
+        "offsetX": 0,
+        "offsetY": -2
+      },
+      "hitboxes": {
+        "melee": {
+          "width": 1,
+          "height": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "stats": {
+        "hp": 16,
+        "damage": 3,
+        "speed": 260,
+        "gravityScale": 1,
+        "knockbackResist": 1,
+        "contactDamage": 3,
+        "hitstunLightMs": 0,
+        "hitstunHeavyMs": 0,
+        "invulnerabilityMs": 40,
+        "heavy": {
+          "pushMinDamage": 4,
+          "pushSpeed": 60,
+          "pushMs": 120
+        }
+      },
+      "ai": {
+        "sightRange": 360,
+        "aggroRange": 360,
+        "leashRange": 448,
+        "reactionTime": 0
+      },
+      "attack": {
+        "type": "charge",
+        "cooldownMs": 700,
+        "windupMs": 500,
+        "activeMs": 450,
+        "recoveryMs": 700,
+        "range": 360,
+        "chargeSpeed": 260
+      },
+      "drops": {
+        "healthChance": 1,
+        "ammoChance": 0,
+        "scoreChance": 1,
+        "scoreValue": 1000
+      },
+      "deathBehavior": "explode",
+      "deathSequenceMs": 500,
+      "brain": "drill_serpent",
+      "role": "miniboss",
+      "animations": {
+        "idle": "drill_serpent_idle",
+        "move": "drill_serpent_move",
+        "attackWindup": "drill_serpent_attack_windup",
+        "attackActive": "drill_serpent_attack_active",
+        "attackRecover": "drill_serpent_idle",
+        "hurt": "drill_serpent_hurt",
+        "death": "drill_serpent_death"
       }
     }
   }

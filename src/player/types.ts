@@ -57,6 +57,7 @@ export type MotorSnapshot = {
   wallJumping: boolean
   facing: 1 | -1
   turnRequested: boolean
+  /** The hero's own horizontal speed, px/s: the body's vx less the environment's drift (belt carry, push); equal to vx on plain ground. */
   velocityX: number
   velocityY: number
   coyoteRemainingMs: number
@@ -64,6 +65,10 @@ export type MotorSnapshot = {
   dashRemainingMs: number
   dashCooldownRemainingMs: number
   isGravityInverted: boolean
+  /** Fall speed (px/s) of the landing reported by `justLanded`. */
+  landingSpeed?: number
+  /** `justLanded` above `HARD_LANDING_SPEED`: squash, dust and a short control lag follow. */
+  hardLanding?: boolean
 }
 
 export type CombatSnapshot = {
@@ -77,6 +82,10 @@ export type CombatSnapshot = {
   slashGrounded?: boolean
   slashDirection?: Direction8
   slashPhase?: 'startup' | 'active' | 'recovery'
+  /** Which swing is playing: ground combo hit 1-3, or the air spin. */
+  slashMove?: SlashMove
+  /** Present on every active frame (not only the first): the sword-hit path tests it each frame. */
+  swordHitbox?: ResolvedHitbox
   hitstunRemainingMs: number
   iFramesRemainingMs: number
   hitstopRemainingFrames: number
@@ -97,6 +106,9 @@ export type SpawnProjectileRequest = {
   weaponId?: 'ArcSlash'
   chargeLevel: 0 | 1 | 2 | 3 | 4
   facing: 1 | -1
+  /** The pose the muzzle flash fired from (13b.3, `EVAL-P13-004`): the shot spawns at the same anchor,
+   * so it starts at the cannon tip instead of a pose-blind fixed offset. Defaults to 'stand'. */
+  pose?: 'stand' | 'run' | 'air' | 'dash'
 }
 
 export type ProjectileSpawnReceipt = {
@@ -114,10 +126,20 @@ export type ProjectileSpawnReceipt = {
   energyRemaining: number
 }
 
+export type SlashMove = 'combo1' | 'combo2' | 'combo3' | 'air_spin'
+
 export type ResolvedHitbox = {
   shape: HitboxShape
   direction: Direction8
   grounded: boolean
+  /** Hit-stop (60Hz frames) the sword-hit path emits when this hitbox touches a target; 0 when disabled. */
+  hitstopFrames?: number
+  /** Swing that owns the box; a new id starts each combo hit, and each target is hit once per id. */
+  swingId?: number
+  move?: SlashMove
+  damage?: number
+  /** Knockback for the target, x already signed by the swing's facing. */
+  knockback?: { x: number; y: number }
 }
 
 export type PlayerRuntimeEvent =

@@ -95,22 +95,10 @@ Required keys:
 
 - Runtime sprite manifest: `assets/sprites/manifest.v1.json`
 - Source intake log: `assets/sprites/source/source-images.manifest.json`
-- Optional local override manifest: `assets/private/runtime/private-sprite-overrides.manifest.json`
 
-## Private Local Override Pack
+## Retired: the private override pack
 
-- Local-only copyrighted sheets belong under `assets/private/source/` and generated override atlases belong under `assets/private/runtime/`.
-- The game now resolves `assets/sprites/manifest.v1.json` first, then merges `assets/private/runtime/private-sprite-overrides.manifest.json` if it exists at dev/build start.
-- Override entries must keep the stable runtime atlas keys used by gameplay:
-  - `atlas_player_main`
-  - `atlas_<bossId>`
-- Build the local Mega Man override pack with:
-
-```bash
-.venv/bin/python scripts/sprites/build_private_megaman_override_pack.py
-```
-
-- This private workflow is intentionally gitignored. The repo-safe defaults remain the canonical shared asset path.
+The developer-only hero skin and its override manifest were retired in 05c (5.5, 2026-09-24): the hero is WREN, generated through Higgsfield (`docs/art/hero-sheets.md`), cut into `atlas_player_main` by `scripts/sprites/hf_sheet_to_atlas.py --category player`. Nothing is merged at build time; `assets/private/` stays gitignored and is never copied into `dist/`.
 
 ## Player Combat Atlas
 

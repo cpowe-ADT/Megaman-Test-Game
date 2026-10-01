@@ -136,7 +136,7 @@ export async function runPauseWeaponSelectScenario(name, { outputDir, titleUrl, 
   } finally { await browser.close() }
 }
 
-export async function runTitleContinueScenario(name, { outputDir, titleUrl, readState, waitForState, tapKey }) {
+export async function runTitleContinueScenario(name, { outputDir, titleUrl, readState, waitForState, advanceFrames, tapKey }) {
   const dir = scenarioDir(outputDir, name)
   const browser = await chromium.launch({ headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader'] })
   const { page, errors, capture } = await open(browser, readState, dir)
@@ -161,6 +161,32 @@ export async function runTitleContinueScenario(name, { outputDir, titleUrl, read
     assert.equal(resumed.stageIntro.phase, 'idle', 'a resumed run shows no card or briefing')
     await capture('resumed')
     assert.deepEqual(errors, [])
+    // 5.6: new-versus-continue reads the profile's campaignStarted, so an Options visit (which writes the
+    // save key) no longer skips the difficulty pick and the prologue on the next Enter.
+    const fresh = await open(browser, readState, dir)
+    await fresh.page.goto(titleUrl.replace('storyIntro=off', 'storyIntro=on'))
+    await waitForState(fresh.page, (state) => state.scene === 'Title')
+    await tapKey(fresh.page, 'o')
+    const options = await waitForState(fresh.page, (state) => Array.isArray(state.options?.rows))
+    const difficultyRow = options.options.rows.findIndex((row) => row.id === 'difficulty')
+    assert.ok(difficultyRow >= 0, 'Options lists difficulty')
+    for (let step = 0; step < difficultyRow; step += 1) await tapKey(fresh.page, 'ArrowDown')
+    await tapKey(fresh.page, 'ArrowRight')
+    await waitForState(fresh.page, (state) => state.save?.exists === true && state.save?.difficulty !== 'normal')
+    await tapKey(fresh.page, 'Escape')
+    const afterOptions = await waitForState(fresh.page, (state) => state.scene === 'Title' && !state.options)
+    assert.equal(afterOptions.save.exists, true, 'the Options visit wrote the save key')
+    const primary = await fresh.page.evaluate(() => window.__phaserGame.scene.getScene('Title').children.getByName('title-primary')?.text ?? null)
+    assert.equal(primary, 'BEGIN A NEW CAMPAIGN', 'an Options visit is not a campaign')
+    await fresh.capture('options-visit-title')
+    await tapKey(fresh.page, 'Enter')
+    await waitForState(fresh.page, (state) => state.scene === 'NewCampaign')
+    await advanceFrames(fresh.page, 3)
+    await tapKey(fresh.page, 'Enter')
+    const prologue = await waitForState(fresh.page, (state) => state.scene === 'Prologue' && state.prologue?.pageCount > 0)
+    assert.equal(prologue.prologue.pageIndex, 0, 'the prologue plays after an Options visit')
+    await fresh.capture('options-visit-prologue')
+    assert.deepEqual(fresh.errors, [])
     return resumed.playerState
   } finally { await browser.close() }
 }

@@ -5,6 +5,7 @@ import {
   resolveHorizontalBandIntent,
   shouldEnemyAttackNow
 } from './EnemyBehaviorProfiles'
+import { resolveChargeVelocityX } from './chargeAttack'
 import { EnemyCombat } from './EnemyCombat'
 import { EnemyMotor } from './EnemyMotor'
 import { EnemyDefinition, EnemyState } from './types'
@@ -59,7 +60,13 @@ export class EnemyAI {
     const deltaY = player.y - sprite.y
     const seesPlayer = this.canSeePlayer(distance, deltaX, deltaY, now)
 
-    this.updateFacing()
+    // A charge commits to its facing at the windup: the hero ducking past mid-charge must not turn it
+    // around under itself.
+    const chargingNow =
+      this.definition.attack.type === 'charge' && (state === 'attack_windup' || state === 'attack_active')
+    if (!chargingNow) {
+      this.updateFacing()
+    }
 
     switch (state) {
       case 'idle':
@@ -115,6 +122,12 @@ export class EnemyAI {
 
   private syncAttackPhase(now: number): void {
     const phase = this.combat.getAttackPhase(now)
+    if (this.definition.attack.type === 'charge') {
+      const chargeVelocityX = resolveChargeVelocityX(this.definition.attack, phase, this.entity.facing)
+      if (chargeVelocityX !== null) {
+        this.motor.setIntent(chargeVelocityX, 0)
+      }
+    }
     if (phase === 'windup') {
       this.transition('attack_windup', now)
       return

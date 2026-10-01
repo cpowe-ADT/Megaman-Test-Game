@@ -1,0 +1,340 @@
+{
+  "frames": {
+    "telegraphs_v1/reticle/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "telegraphs_v1/reticle/001": {
+      "frame": {
+        "x": 28,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "telegraphs_v1/reticle/002": {
+      "frame": {
+        "x": 56,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "telegraphs_v1/reticle/003": {
+      "frame": {
+        "x": 84,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "telegraphs_v1/floor_marker/000": {
+      "frame": {
+        "x": 112,
+        "y": 0,
+        "w": 54,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 54,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 54,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/floor_marker/001": {
+      "frame": {
+        "x": 166,
+        "y": 0,
+        "w": 54,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 54,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 54,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/floor_marker/002": {
+      "frame": {
+        "x": 0,
+        "y": 40,
+        "w": 54,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 54,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 54,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/floor_marker/003": {
+      "frame": {
+        "x": 54,
+        "y": 40,
+        "w": 54,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 54,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 54,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/warning_flash/000": {
+      "frame": {
+        "x": 108,
+        "y": 40,
+        "w": 34,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/warning_flash/001": {
+      "frame": {
+        "x": 142,
+        "y": 40,
+        "w": 34,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/warning_flash/002": {
+      "frame": {
+        "x": 176,
+        "y": 40,
+        "w": 34,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/warning_flash/003": {
+      "frame": {
+        "x": 210,
+        "y": 40,
+        "w": 34,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 40
+      }
+    },
+    "telegraphs_v1/charge_glow/000": {
+      "frame": {
+        "x": 0,
+        "y": 80,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "telegraphs_v1/charge_glow/001": {
+      "frame": {
+        "x": 32,
+        "y": 80,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "telegraphs_v1/charge_glow/002": {
+      "frame": {
+        "x": 64,
+        "y": 80,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    },
+    "telegraphs_v1/charge_glow/003": {
+      "frame": {
+        "x": 96,
+        "y": 80,
+        "w": 32,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 32
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "telegraphs_v1.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 256,
+      "h": 112
+    },
+    "scale": "1",
+    "source": [
+      "assets/sprites/source/vfx/hf_v1/telegraphs_a.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "telegraphs_v1.json"
+  }
+}

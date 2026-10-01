@@ -1,9 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_SIZE } from '../../config/renderPolicy'
 
-export const MENU_FONT_DISPLAY = '"Arial Black", "Trebuchet MS", Arial, sans-serif'
-export const MENU_FONT_BODY = '"Trebuchet MS", Arial, sans-serif'
-export const MENU_FONT_CODE = '"Arial Narrow", "Trebuchet MS", Arial, sans-serif'
+export { PIXEL_FONT, PIXEL_FONT_FAMILY, PIXEL_FONT_PX, pixelFont, pixelFontSize, pixelScaleFor, type PixelFontScale } from '../pixelFont'
 
 export const MENU_COLORS = {
   ink: 0x030711,
@@ -58,5 +56,6 @@ export function addMenuPanel(
 }
 
 export function styleMenuHeading(text: Phaser.GameObjects.Text): Phaser.GameObjects.Text {
-  return text.setShadow(0, 2, '#000814', 3, true, true)
+  // Unblurred, so the shadow is pixels too.
+  return text.setShadow(0, 2, '#000814', 0, true, true)
 }

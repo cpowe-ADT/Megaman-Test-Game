@@ -12,7 +12,7 @@ import type {
 import type { CampaignStageId } from '../campaign'
 import { validateDialogueContent } from './validateDialogueContent'
 
-type GlobalSequenceTrigger = 'prologue' | 'epilogue' | 'credits'
+type GlobalSequenceTrigger = 'prologue' | 'epilogue' | 'credits' | 'game_over' | 'epilogue_secret'
 
 export class DialogueContentRegistry {
   private readonly speakers = new Map<DialogueSpeakerId, DialogueSpeakerDefinition>()

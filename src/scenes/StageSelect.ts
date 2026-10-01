@@ -1,4 +1,5 @@
 import { IDENTITY } from '../content/identity'
+import { pixelFont } from '../ui/menu/menuTheme'
 import { openNewCampaign } from './NewCampaignScene'
 import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
 import { countClearedRobotMasters } from '../content/campaign'
@@ -10,15 +11,19 @@ import {
   getCampaignStage,
   getSelectableBossStages,
   isCampaignStageCleared,
+  ROBOT_MASTER_STAGE_IDS,
   TUTORIAL_STAGE_ID
 } from '../content/campaign'
 import { DEBUG_UI } from '../config/debug'
 import { showToast } from '../core/navigation'
 import InputActions from '../input/InputActions'
-import { Save, SaveData } from '../systems/Save'
+import { Profiles, Save, SaveData } from '../systems/Save'
+import { formatBestTime } from '../progression/profiles'
 import { DIALOGUE_REGISTRY, resolveDialogueText } from '../content/dialogue/index'
 import { shouldPlayStory } from '../narrative/storyFlags'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
+import { PORTRAIT_ATLAS_KEY, portraitForSpeaker } from '../ui/dialoguePortraits'
+import { queuePortraitAtlas } from '../ui/portraitAtlasLoader'
 import { currentStoryPolicy, resolvePlaybackLines } from './game/StoryDirector'
 import { DebugOverlay } from '../ui/DebugOverlay'
 import {
@@ -37,6 +42,10 @@ import {
 import type { SystemMenuAction } from './menu/systemMenuSelector'
 import { StageSelectLogic } from './stage-select/StageSelectLogic'
 import { resolveSlotClick, truncateLabel } from './stage-select/selectionContract'
+import { resolveDistrictDebriefStageId } from './stage-select/districtDebrief'
+import { AUTOMATION } from '../config/automation'
+import { shouldPlayBossIntro } from './bossIntro/BossIntroLogic'
+import { DistrictBackdrop, playRestoredFlip, revealPortraits, SelectCursor } from '../ui/stageSelect/StageSelectDressing'
 import { GAME_SIZE } from '../config/renderPolicy'
 
 type SlotEntry = {
@@ -66,14 +75,14 @@ const ROWS = 3
 const PAGE_SIZE = COLUMNS * ROWS
 
 const FONT = {
-  title: '13px monospace',
-  subtitle: '8px monospace',
-  slotTitle: '8px monospace',
-  slotMeta: '7px monospace',
-  panelTitle: '9px monospace',
-  panelName: '13px monospace',
-  panelBody: '8px monospace',
-  footer: '7px monospace'
+  title: pixelFont(2),
+  subtitle: pixelFont(1),
+  slotTitle: pixelFont(1),
+  slotMeta: pixelFont(1),
+  panelTitle: pixelFont(1),
+  panelName: pixelFont(2),
+  panelBody: pixelFont(1),
+  footer: pixelFont(1)
 }
 
 const COLOR = {
@@ -129,6 +138,9 @@ export class StageSelect extends Phaser.Scene {
   private footerControls?: Phaser.GameObjects.Text
   private footerStatus?: Phaser.GameObjects.Text
   private toastHandle?: Phaser.GameObjects.Container
+  /** Part 12i (EVAL-P8-003): the selected warden's district behind the grid, and the cursor that glides between tiles. */
+  private district?: DistrictBackdrop
+  private cursor?: SelectCursor
 
   private requestedTransition: { scene: string; data: Record<string, unknown> } | null = null
   private transitionRequestedAt = 0
@@ -141,6 +153,10 @@ export class StageSelect extends Phaser.Scene {
 
   constructor() {
     super('StageSelect')
+  }
+
+  preload(): void {
+    queuePortraitAtlas(this)
   }
 
   create(): void {
@@ -158,14 +174,17 @@ export class StageSelect extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050d1a')
 
     this.layout = this.computeLayout(width, height)
+    this.district = new DistrictBackdrop(this)
     this.createBackdrop(width, height)
     this.createHeader()
     this.createGrid()
+    this.cursor = new SelectCursor(this, this.layout.slotWidth, this.layout.slotHeight)
     this.createPreviewPanel()
     this.createFooter()
 
     this.refreshPage()
     this.setSelection(this.index)
+    revealPortraits(this, this.slotEntries.map((slot) => slot.portraitSprite))
     this.applyPostReturnState()
     this.events.on(Phaser.Scenes.Events.RESUME, this.refreshFromSave, this)
 
@@ -218,10 +237,11 @@ export class StageSelect extends Phaser.Scene {
   }
 
   private createBackdrop(width: number, height: number): void {
-    const top = this.add.rectangle(width / 2, height / 2, width, height, COLOR.bgTop, 1)
+    // A veil, not a wall: the selected district (DistrictBackdrop, depth -40) shows through it.
+    const top = this.add.rectangle(width / 2, height / 2, width, height, COLOR.bgTop, 0.22)
     top.setDepth(-30)
 
-    const stripe = this.add.rectangle(width / 2, height * 0.82, width, height * 0.45, COLOR.bgBottom, 0.9)
+    const stripe = this.add.rectangle(width / 2, height * 0.82, width, height * 0.45, COLOR.bgBottom, 0.2)
     stripe.setDepth(-29)
 
     const scan = this.add.graphics()
@@ -243,7 +263,9 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.headerRect.x + 8, layout.headerRect.y + 1, `${IDENTITY.WARDEN_TERM} SELECT`, {
         font: FONT.title,
         color: COLOR.text,
-        letterSpacing: 1
+        letterSpacing: 1,
+        // The 16px pixel-font em, so the box never depends on how an OS rasterises the metrics string.
+        fixedHeight: 16
       })
       .setOrigin(0, 0).setName('identity-stage-title')
 
@@ -252,10 +274,11 @@ export class StageSelect extends Phaser.Scene {
       { font: FONT.subtitle, color: COLOR.textMuted }).setOrigin(1, 0).setName('identity-stage-caption')
 
     this.headerProgress = this.add
-      .text(layout.headerRect.centerX, layout.headerRect.bottom - 3, '', {
+      .text(layout.headerRect.centerX, layout.headerRect.bottom - 1, '', {
         font: FONT.subtitle,
         color: COLOR.textMuted,
-        align: 'center'
+        align: 'center',
+        fixedHeight: 8
       })
       .setOrigin(0.5, 1)
   }
@@ -264,7 +287,7 @@ export class StageSelect extends Phaser.Scene {
     const layout = this.layout!
 
     this.add
-      .rectangle(layout.gridRect.centerX, layout.gridRect.centerY, layout.gridRect.width, layout.gridRect.height, COLOR.panelInner, 0.7)
+      .rectangle(layout.gridRect.centerX, layout.gridRect.centerY, layout.gridRect.width, layout.gridRect.height, COLOR.panelInner, 0.12)
       .setStrokeStyle(1, COLOR.borderMuted, 0.7)
 
     this.slots = []
@@ -315,7 +338,8 @@ export class StageSelect extends Phaser.Scene {
 
         const portrait = this.add.rectangle(x - layout.slotWidth / 2 + 20, y - layout.slotHeight / 2 + 20, 32, 32).setStrokeStyle(1, COLOR.borderMuted).setFillStyle(0x07142a, .5)
         const portraitSprite = this.add.image(portrait.x, portrait.y, 'px').setVisible(false)
-        const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted })
+        // A fixed 8px box: Linux's monospace fallback measures 9px and crossed the selection outline (CI run 36099719476).
+        const weakness = this.add.text(x - layout.slotWidth / 2 + 4, y - layout.slotHeight / 2 + 37, '', { font: FONT.slotMeta, color: COLOR.textMuted, fixedHeight: 8 })
         this.slots.push(new Phaser.Math.Vector2(x, y))
         this.slotEntries.push({ rect, name, meta, badge, portrait, portraitSprite, weakness, stageIndex: null })
       }
@@ -326,7 +350,8 @@ export class StageSelect extends Phaser.Scene {
     const r = this.layout!.previewRect
     this.add.rectangle(r.centerX, r.centerY, r.width, r.height, COLOR.panel, .9).setStrokeStyle(1, COLOR.border)
     this.infoText = this.add.text(r.x + 5, r.y + 3, '', { font: FONT.panelBody, color: COLOR.text, wordWrap: { width: r.width - 10 }, lineSpacing: 0 })
-    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: '7px monospace', color: COLOR.textMuted })
+    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: pixelFont(1), color: COLOR.textMuted, wordWrap: { width: r.width - 10 } })
+      .setFixedSize(r.width - 10, Math.max(8, r.height - 24)) // inside the panel on every OS (Linux font metrics wrapped past it)
   }
 
   private createFooter(): void {
@@ -340,7 +365,9 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.footerRect.centerX, layout.footerRect.y + 1, 'ARROWS MOVE · L/R CHECKPOINT · ENTER DEPLOY · ESC MENU', {
         font: FONT.footer,
         color: COLOR.textMuted,
-        align: 'center'
+        align: 'center',
+        // A fixed box: Linux's monospace fallback measures taller and crossed the footer (CI run 36103408364).
+        fixedHeight: 8
       })
       .setOrigin(0.5, 0)
 
@@ -348,20 +375,21 @@ export class StageSelect extends Phaser.Scene {
       .text(layout.footerRect.centerX, layout.footerRect.y + 10, '', {
         font: FONT.footer,
         color: COLOR.textAccent,
-        align: 'center'
+        align: 'center',
+        // A fixed box: Linux's monospace fallback measures taller and crossed the footer (CI run 36103408364).
+        fixedHeight: 8
       })
       .setOrigin(0.5, 0)
   }
 
-  /** The 32x32 slot shows the boss atlas idle frame until prompt 03 supplies portraits; locked stages show a silhouette. */
+  /** The 32x32 slot shows the boss's 48x48 dialogue portrait, scaled down; locked stages tint it to a silhouette. */
   private bindPortrait(sprite: Phaser.GameObjects.Image, bossId: string, accessible: boolean, cleared: boolean): void {
-    const atlasKey = `atlas_${bossId}`
-    const frame = `${bossId}/idle/000`
-    if (!this.textures.exists(atlasKey) || !this.textures.get(atlasKey).has(frame)) {
+    const frame = portraitForSpeaker(bossId)
+    if (!frame || !this.textures.exists(PORTRAIT_ATLAS_KEY) || !this.textures.get(PORTRAIT_ATLAS_KEY).has(frame)) {
       sprite.setVisible(false)
       return
     }
-    sprite.setTexture(atlasKey, frame)
+    sprite.setTexture(PORTRAIT_ATLAS_KEY, frame)
     const fit = 30 / Math.max(sprite.width, sprite.height, 1)
     sprite.setScale(Math.min(1, fit)).setVisible(true)
     if (!accessible) sprite.setTint(0x1a2a4a)
@@ -399,7 +427,7 @@ export class StageSelect extends Phaser.Scene {
       const checkProgress = this.getStageCheckProgress(stage.id)
       slot.name.setText(stage.selectLabel)
       slot.name.setColor(cleared ? COLOR.textCleared : COLOR.text)
-      slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
+      slot.meta.setText(`${'●'.repeat(stage.difficultyRating)}${'○'.repeat(3-stage.difficultyRating)} ${cleared ? formatBestTime(Profiles.active()?.stageBests[stageId]) ?? 'DONE' : accessible ? 'OPEN' : 'LOCKED'}`)
       slot.weakness.setText(stage.id === FINAL_STAGE_ID ? `${IDENTITY.WARDEN_TERM_PLURAL} ${countClearedRobotMasters(this.saveData)}/8` : `WEAK: ${getBossWeaknessLabel(this.saveData, stage.bossId)}`)
       slot.meta.setColor(cleared ? '#8793ad' : '#9ec2ff')
       slot.badge.setVisible(false)
@@ -583,15 +611,17 @@ export class StageSelect extends Phaser.Scene {
         )
         .setFillStyle(
           isSelected ? (isCleared ? 0x3b465f : 0x2a57a6) : isCleared ? COLOR.clearedFill : 0x0d2247,
-          isSelected ? 0.6 : isCleared ? 0.65 : 0.5
+          // Idle tiles let the selected warden's district read through (part 12i).
+          isSelected ? 0.6 : isCleared ? 0.58 : 0.36
         )
+      if (isSelected) this.cursor?.moveTo(slot.rect.x, slot.rect.y)
     })
-
   }
 
   private updatePreview(): void {
     const stage = this.stages[this.index]
     if (!stage || !this.infoText || !this.detailsText) return
+    this.district?.show(stage.id)
     const cleared = isCampaignStageCleared(this.saveData, stage.id)
     const checks = this.getStageCheckProgress(stage.id)
     const checkpoint = formatCheckpointLabel(this.getSelectedCheckpointForStage(stage.id))
@@ -607,7 +637,7 @@ export class StageSelect extends Phaser.Scene {
   }
 
   getPanelEvidence() {
-    return { selectionOutline: this.slotEntries.find(slot => slot.stageIndex === this.index)?.rect.getBounds(), preview: this.layout?.previewRect, footer: this.layout?.footerRect, description: this.infoText?.getBounds(), details: this.detailsText?.getBounds(), footerControls: this.footerControls?.getBounds(), footerStatus: this.footerStatus?.getBounds() }
+    return { selectionOutline: this.slotEntries.find(slot => slot.stageIndex === this.index)?.rect.getBounds(), preview: this.layout?.previewRect, footer: this.layout?.footerRect, description: this.infoText?.getBounds(), details: this.detailsText?.getBounds(), footerControls: this.footerControls?.getBounds(), footerStatus: this.footerStatus?.getBounds(), district: this.district?.getDebugState() ?? null, cursor: this.cursor?.position ?? null }
   }
 
   getLayoutEvidence() {
@@ -640,6 +670,7 @@ export class StageSelect extends Phaser.Scene {
       if (focusIndex >= 0) {
         const next = this.findNextUnclearedIndex(focusIndex)
         this.setSelection(next ?? focusIndex)
+        if (returnReason === 'victory') this.flipRestoredTile(focusIndex)
       }
     }
 
@@ -654,7 +685,39 @@ export class StageSelect extends Phaser.Scene {
     this.registry.remove('ui.stageSelect.requireConfirmRelease')
     const milestoneCount = this.registry.get('ui.stageSelect.milestoneCount') as number | null | undefined
     this.registry.remove('ui.stageSelect.milestoneCount')
-    this.playMilestone(milestoneCount ?? null)
+    const debriefStageId = resolveDistrictDebriefStageId({ returnReason, focusStageId: focusBossId, wardenStageIds: ROBOT_MASTER_STAGE_IDS })
+    this.playDebrief(debriefStageId, () => this.playMilestone(milestoneCount ?? null))
+  }
+
+  /**
+   * The return debrief (part 13g, EVAL-P13-014): the just-cleared warden's extended `district_restored`
+   * exchange (Iona, WREN), skippable, blocking, before any milestone line. Plays once (the sequence's own
+   * seen flag), so a replay clear never repeats it; `after` always runs, whether or not it played.
+   */
+  private playDebrief(stageId: string | null, after: () => void): void {
+    const sequence = stageId ? DIALOGUE_REGISTRY.getStageSequence(stageId as any, 'district_restored') : undefined
+    if (!sequence || !shouldPlayStory(this.saveData.storyFlags, sequence.id, currentStoryPolicy())) {
+      after()
+      return
+    }
+    Save.markStorySeen(sequence.id)
+    this.saveData = Save.load()
+    const stage = getCampaignStage(stageId as string)
+    const lines = resolvePlaybackLines(sequence.id, sequence.lines, {
+      hero: IDENTITY.HERO_CALLSIGN,
+      districtName: stage.district
+    })
+    this.dialogueOverlay = new DialogueOverlayController(this, 'bottom')
+    this.dialogueOverlay.play(lines, after)
+  }
+
+  /** Part 12i: the district-restored tile flip and its sting, once, on the return from the clear that restored it. */
+  private flipRestoredTile(stageIndex: number): void {
+    const stage = this.stages[stageIndex]
+    const slot = this.slotEntries.find((entry) => entry.stageIndex === stageIndex)
+    if (!stage || !slot || !isCampaignStageCleared(this.saveData, stage.id)) return
+    const primary = ORDERED_BOSSES.find((boss) => boss.id === stage.bossId)?.blueprint.theme.primary ?? COLOR.clearedStroke
+    playRestoredFlip(this, slot.rect, 0x0d2247, primary)
   }
 
   private findNextUnclearedIndex(fromIndex: number): number | null {
@@ -702,7 +765,7 @@ export class StageSelect extends Phaser.Scene {
       clearedCount,
       remainingCount: Math.max(0, 8 - clearedCount)
     })
-    this.dialogueOverlay = new DialogueOverlayController(this)
+    this.dialogueOverlay = new DialogueOverlayController(this, 'bottom')
     this.dialogueOverlay.play(lines, () => {})
   }
 
@@ -757,7 +820,28 @@ export class StageSelect extends Phaser.Scene {
   private startSceneTransition(scene: string, data: Record<string, unknown>): void {
     this.requestedTransition = { scene, data }
     this.transitionRequestedAt = performance.now()
+    if (scene === 'Game') this.district?.keep(typeof data.stageId === 'string' ? data.stageId : null)
+    if (scene === 'Game' && this.shouldShowBossIntro(data)) {
+      this.scene.start('BossIntro', data)
+      return
+    }
     this.scene.start(scene, data)
+  }
+
+  /**
+   * The pre-stage boss card (part 13g, EVAL-P13-012): a warden entry, story on, and (under automation) a smoke
+   * that asked for it. `BossIntroScene` starts `Game` itself with this same `data` when it ends or is skipped.
+   */
+  private shouldShowBossIntro(data: Record<string, unknown>): boolean {
+    return shouldPlayBossIntro({
+      stageId: typeof data.stageId === 'string' ? data.stageId : null,
+      bossId: typeof data.bossId === 'string' ? data.bossId : null,
+      tutorialStageId: TUTORIAL_STAGE_ID,
+      loadFromSave: Boolean(data.loadFromSave),
+      storyIntroEnabled: currentStoryPolicy().enabled,
+      automationEnabled: AUTOMATION.enabled,
+      automationBossIntro: AUTOMATION.bossIntro
+    })
   }
 
   private getAccessibleCheckpointIdsForStage(stageId: string): string[] {

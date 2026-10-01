@@ -1,0 +1,661 @@
+{
+  "frames": {
+    "effects_hero/slash_1/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 26
+      }
+    },
+    "effects_hero/slash_1/001": {
+      "frame": {
+        "x": 44,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 26
+      }
+    },
+    "effects_hero/slash_1/002": {
+      "frame": {
+        "x": 88,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 26
+      }
+    },
+    "effects_hero/slash_1/003": {
+      "frame": {
+        "x": 132,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 26
+      }
+    },
+    "effects_hero/slash_2/000": {
+      "frame": {
+        "x": 176,
+        "y": 0,
+        "w": 44,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 50
+      }
+    },
+    "effects_hero/slash_2/001": {
+      "frame": {
+        "x": 0,
+        "y": 50,
+        "w": 44,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 50
+      }
+    },
+    "effects_hero/slash_2/002": {
+      "frame": {
+        "x": 44,
+        "y": 50,
+        "w": 44,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 50
+      }
+    },
+    "effects_hero/slash_2/003": {
+      "frame": {
+        "x": 88,
+        "y": 50,
+        "w": 44,
+        "h": 50
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 50
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 50
+      }
+    },
+    "effects_hero/slash_3/000": {
+      "frame": {
+        "x": 132,
+        "y": 50,
+        "w": 38,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 42
+      }
+    },
+    "effects_hero/slash_3/001": {
+      "frame": {
+        "x": 170,
+        "y": 50,
+        "w": 38,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 42
+      }
+    },
+    "effects_hero/slash_3/002": {
+      "frame": {
+        "x": 208,
+        "y": 50,
+        "w": 38,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 42
+      }
+    },
+    "effects_hero/slash_3/003": {
+      "frame": {
+        "x": 0,
+        "y": 100,
+        "w": 38,
+        "h": 42
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 42
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 42
+      }
+    },
+    "effects_hero/slash_air/000": {
+      "frame": {
+        "x": 38,
+        "y": 100,
+        "w": 44,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 40
+      }
+    },
+    "effects_hero/slash_air/001": {
+      "frame": {
+        "x": 82,
+        "y": 100,
+        "w": 44,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 40
+      }
+    },
+    "effects_hero/slash_air/002": {
+      "frame": {
+        "x": 126,
+        "y": 100,
+        "w": 44,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 40
+      }
+    },
+    "effects_hero/slash_air/003": {
+      "frame": {
+        "x": 170,
+        "y": 100,
+        "w": 44,
+        "h": 40
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 40
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 40
+      }
+    },
+    "effects_hero/hit_spark/000": {
+      "frame": {
+        "x": 214,
+        "y": 100,
+        "w": 22,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 22
+      }
+    },
+    "effects_hero/hit_spark/001": {
+      "frame": {
+        "x": 0,
+        "y": 142,
+        "w": 22,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 22
+      }
+    },
+    "effects_hero/hit_spark/002": {
+      "frame": {
+        "x": 22,
+        "y": 142,
+        "w": 22,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 22
+      }
+    },
+    "effects_hero/hit_spark/003": {
+      "frame": {
+        "x": 44,
+        "y": 142,
+        "w": 22,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 22,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 22,
+        "h": 22
+      }
+    },
+    "effects_hero/deflect/000": {
+      "frame": {
+        "x": 66,
+        "y": 142,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "effects_hero/deflect/001": {
+      "frame": {
+        "x": 94,
+        "y": 142,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "effects_hero/deflect/002": {
+      "frame": {
+        "x": 122,
+        "y": 142,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "effects_hero/deflect/003": {
+      "frame": {
+        "x": 150,
+        "y": 142,
+        "w": 28,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 28
+      }
+    },
+    "effects_hero/charge_aura/000": {
+      "frame": {
+        "x": 178,
+        "y": 142,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "effects_hero/charge_aura/001": {
+      "frame": {
+        "x": 0,
+        "y": 190,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "effects_hero/charge_aura/002": {
+      "frame": {
+        "x": 48,
+        "y": 190,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "effects_hero/charge_aura/003": {
+      "frame": {
+        "x": 96,
+        "y": 190,
+        "w": 48,
+        "h": 48
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 48,
+        "h": 48
+      },
+      "sourceSize": {
+        "w": 48,
+        "h": 48
+      }
+    },
+    "effects_hero/explode/000": {
+      "frame": {
+        "x": 144,
+        "y": 190,
+        "w": 30,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 28
+      }
+    },
+    "effects_hero/explode/001": {
+      "frame": {
+        "x": 174,
+        "y": 190,
+        "w": 30,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 28
+      }
+    },
+    "effects_hero/explode/002": {
+      "frame": {
+        "x": 204,
+        "y": 190,
+        "w": 30,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 28
+      }
+    },
+    "effects_hero/explode/003": {
+      "frame": {
+        "x": 0,
+        "y": 238,
+        "w": 30,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 30,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 30,
+        "h": 28
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "effects_hero.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 256,
+      "h": 266
+    },
+    "scale": "1",
+    "source": [
+      "assets/sprites/source/vfx/hf_v1/hits_a.png",
+      "assets/sprites/source/vfx/hf_v1/slashes_a.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "vfx_hero_effects_v1.json"
+  }
+}

@@ -75,6 +75,7 @@ export async function runInputLifecycleScenario(name, { openGameplayPage, closeG
     await tapKey(page, '`')
     assert.equal(await page.evaluate(() => window.__phaserGame.scene.getScene('Game')._dev.on), !debugBefore)
     await tapKey(page, '`')
+    await waitForPageCheck(page, () => Boolean(window.stageDebug?.crossBossGate && window.bossDebug?.unlockIntro))
     await page.evaluate(() => {
       window.stageDebug.crossBossGate(); window.bossDebug.unlockIntro(); window.bossDebug.damage(999); window.stageDebug.skipDialogue()
     })

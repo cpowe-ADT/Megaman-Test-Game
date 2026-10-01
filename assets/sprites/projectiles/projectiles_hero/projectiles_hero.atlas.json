@@ -1,0 +1,340 @@
+{
+  "frames": {
+    "projectiles_hero/buster_pellet/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 8
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 8
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 8
+      }
+    },
+    "projectiles_hero/buster_pellet/001": {
+      "frame": {
+        "x": 10,
+        "y": 0,
+        "w": 10,
+        "h": 8
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 8
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 8
+      }
+    },
+    "projectiles_hero/buster_mid/000": {
+      "frame": {
+        "x": 20,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 12
+      }
+    },
+    "projectiles_hero/buster_mid/001": {
+      "frame": {
+        "x": 46,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 12
+      }
+    },
+    "projectiles_hero/buster_full/000": {
+      "frame": {
+        "x": 72,
+        "y": 0,
+        "w": 32,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 20
+      }
+    },
+    "projectiles_hero/buster_full/001": {
+      "frame": {
+        "x": 0,
+        "y": 20,
+        "w": 32,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 20
+      }
+    },
+    "projectiles_hero/reflected/000": {
+      "frame": {
+        "x": 32,
+        "y": 20,
+        "w": 28,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 20
+      }
+    },
+    "projectiles_hero/reflected/001": {
+      "frame": {
+        "x": 60,
+        "y": 20,
+        "w": 28,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 28,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 28,
+        "h": 20
+      }
+    },
+    "projectiles_hero/enemy_orb/000": {
+      "frame": {
+        "x": 88,
+        "y": 20,
+        "w": 10,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 12
+      }
+    },
+    "projectiles_hero/enemy_orb/001": {
+      "frame": {
+        "x": 98,
+        "y": 20,
+        "w": 10,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 12
+      },
+      "sourceSize": {
+        "w": 10,
+        "h": 12
+      }
+    },
+    "projectiles_hero/enemy_missile/000": {
+      "frame": {
+        "x": 0,
+        "y": 40,
+        "w": 26,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 28
+      }
+    },
+    "projectiles_hero/enemy_missile/001": {
+      "frame": {
+        "x": 26,
+        "y": 40,
+        "w": 26,
+        "h": 28
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 26,
+        "h": 28
+      },
+      "sourceSize": {
+        "w": 26,
+        "h": 28
+      }
+    },
+    "projectiles_hero/muzzle/000": {
+      "frame": {
+        "x": 52,
+        "y": 40,
+        "w": 32,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 24
+      }
+    },
+    "projectiles_hero/muzzle/001": {
+      "frame": {
+        "x": 84,
+        "y": 40,
+        "w": 32,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 24
+      }
+    },
+    "projectiles_hero/muzzle/002": {
+      "frame": {
+        "x": 0,
+        "y": 68,
+        "w": 32,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 32,
+        "h": 24
+      }
+    },
+    "projectiles_hero/impact/000": {
+      "frame": {
+        "x": 32,
+        "y": 68,
+        "w": 18,
+        "h": 18
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 18,
+        "h": 18
+      },
+      "sourceSize": {
+        "w": 18,
+        "h": 18
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "projectiles_hero.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 128,
+      "h": 92
+    },
+    "scale": "1",
+    "source": [
+      "assets/sprites/source/vfx/hf_v1/projectiles_a.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "vfx_hero_v1.json"
+  }
+}

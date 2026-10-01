@@ -1,0 +1,1 @@
+{ "meta": { "stage": "tutorial_sentinel", "purpose": "49-tutorial-verbs: hold shoot for 60 frames (past the 190ms tier-1 threshold) and release a charged shot (the charge lock verb)." }, "rows": [ { "frame": 0, "held": [] }, { "frame": 4, "held": ["shoot"] }, { "frame": 64, "held": [] }, { "frame": 90, "held": [] } ] }

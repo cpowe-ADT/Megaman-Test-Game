@@ -1,25 +1,48 @@
 import { IDENTITY } from '../identity'
-import dialogueContentJson from './dialogue.v2.json' with { type: 'json' }
-import { createDialogueRegistry } from './DialogueRegistry'
+import bundledDialogueJson from './dialogue.v2.json' with { type: 'json' }
+import { createDialogueRegistry, type DialogueContentRegistry } from './DialogueRegistry'
 import { validateDialogueContent } from './validateDialogueContent'
-
-const loadedContent = validateDialogueContent(dialogueContentJson)
-if (!loadedContent.valid) {
-  throw new Error(`Invalid bundled dialogue content:\n- ${loadedContent.errors.join('\n- ')}`)
-}
 
 const speakerNames: Record<string, string> = {
   ...IDENTITY.WARDEN_NAMES,
   director_iona: IDENTITY.OPERATOR_NAME,
   omega_core: IDENTITY.ANTAGONIST_NAME
 }
-export const DIALOGUE_CONTENT = {
-  ...loadedContent.data,
-  speakers: loadedContent.data.speakers.map(speaker => ({
-    ...speaker, displayName: speakerNames[speaker.id] ?? speaker.displayName
-  }))
+
+function loadDialogueContent(json: unknown) {
+  const loadedContent = validateDialogueContent(json)
+  if (!loadedContent.valid) {
+    throw new Error(`Invalid dialogue content:\n- ${loadedContent.errors.join('\n- ')}`)
+  }
+  return {
+    ...loadedContent.data,
+    speakers: loadedContent.data.speakers.map(speaker => ({
+      ...speaker, displayName: speakerNames[speaker.id] ?? speaker.displayName
+    }))
+  }
 }
-export const DIALOGUE_REGISTRY = createDialogueRegistry(DIALOGUE_CONTENT)
+
+/**
+ * A production build leaves the lines out of the JavaScript (prompt 09 `jsGzipKB`): `vite build` defines
+ * `__FETCH_CONTENT__`, `Preload` fetches `dialogue.v2.json` and calls `installDialogueContent`, and Rollup drops the
+ * bundled import below. Development, smoke and unit tests read the bundled file here (no `import.meta`, so
+ * `tests/identity-strings.test.ts` can run this module as CommonJS). Every reader runs after `Preload`; these are
+ * live bindings.
+ */
+const fetchDialogue = typeof __FETCH_CONTENT__ !== 'undefined' && __FETCH_CONTENT__
+const bundledContent = fetchDialogue ? null : loadDialogueContent(bundledDialogueJson)
+export let DIALOGUE_CONTENT = bundledContent as ReturnType<typeof loadDialogueContent>
+export let DIALOGUE_REGISTRY = (bundledContent ? createDialogueRegistry(bundledContent) : null) as DialogueContentRegistry
+
+export function dialogueContentInstalled(): boolean {
+  return DIALOGUE_REGISTRY != null
+}
+
+/** Validates fetched dialogue (the production path from `Preload`) and makes it the content every reader sees. */
+export function installDialogueContent(json: unknown): void {
+  DIALOGUE_CONTENT = loadDialogueContent(json)
+  DIALOGUE_REGISTRY = createDialogueRegistry(DIALOGUE_CONTENT)
+}
 
 export * from './types'
 export * from './validateDialogueContent'

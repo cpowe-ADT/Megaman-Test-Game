@@ -69,7 +69,7 @@ test('buildBossSpreadAngles returns a centered spread', () => {
   assert.deepEqual(buildBossSpreadAngles(1, 0.3), [0])
 })
 
-test('BossProjectileController fires watchdog fallback when an attack fails to spawn a projectile', () => {
+test('BossProjectileController has no watchdog: an attack that spawns nothing forces no bullet (prompt 07 7.1)', () => {
   const harness = createControllerHarness({
     isControllerDriven: true,
     spawnSequence: [null, {}]
@@ -87,13 +87,16 @@ test('BossProjectileController fires watchdog fallback when an attack fails to s
     },
     { hit: { damageAmount: 1 } }
   )
+  assert.equal(harness.controller.getPendingTelegraphs().length, 1, 'the attack is in its wind-up')
+  assert.equal(harness.controller.getPendingTelegraphs()[0].executeAt - harness.controller.getPendingTelegraphs()[0].startedAt, 200)
 
+  harness.setNow(200)
+  harness.controller.update(200, 16)
+  assert.equal(harness.controller.getPendingTelegraphs().length, 0, 'the wind-up ends when the attack executes')
   harness.setNow(1700)
   harness.controller.update(1700, 16)
 
-  assert.equal(harness.requests.length, 2)
-  assert.equal(harness.requests[1].direction, -1)
-  assert.equal(harness.requests[1].speed, 220)
+  assert.equal(harness.requests.length, 1, 'only the attack itself tried to spawn')
 })
 
 test('BossProjectileController timer loop does not fire while paused and resumes on unpause', () => {

@@ -1,0 +1,822 @@
+{
+  "frames": {
+    "weapons_v1/arc_slash/000": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 34
+      }
+    },
+    "weapons_v1/arc_slash/001": {
+      "frame": {
+        "x": 38,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 34
+      }
+    },
+    "weapons_v1/arc_slash/002": {
+      "frame": {
+        "x": 76,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 34
+      }
+    },
+    "weapons_v1/arc_slash/003": {
+      "frame": {
+        "x": 114,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 34
+      }
+    },
+    "weapons_v1/flame_serpent/000": {
+      "frame": {
+        "x": 152,
+        "y": 0,
+        "w": 44,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 22
+      }
+    },
+    "weapons_v1/flame_serpent/001": {
+      "frame": {
+        "x": 196,
+        "y": 0,
+        "w": 44,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 22
+      }
+    },
+    "weapons_v1/flame_serpent/002": {
+      "frame": {
+        "x": 0,
+        "y": 34,
+        "w": 44,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 22
+      }
+    },
+    "weapons_v1/flame_serpent/003": {
+      "frame": {
+        "x": 44,
+        "y": 34,
+        "w": 44,
+        "h": 22
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 22
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 22
+      }
+    },
+    "weapons_v1/hydro_lance/000": {
+      "frame": {
+        "x": 88,
+        "y": 34,
+        "w": 46,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 26
+      }
+    },
+    "weapons_v1/hydro_lance/001": {
+      "frame": {
+        "x": 134,
+        "y": 34,
+        "w": 46,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 26
+      }
+    },
+    "weapons_v1/hydro_lance/002": {
+      "frame": {
+        "x": 180,
+        "y": 34,
+        "w": 46,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 26
+      }
+    },
+    "weapons_v1/hydro_lance/003": {
+      "frame": {
+        "x": 0,
+        "y": 60,
+        "w": 46,
+        "h": 26
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 26
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 26
+      }
+    },
+    "weapons_v1/thunder_spike/000": {
+      "frame": {
+        "x": 46,
+        "y": 60,
+        "w": 42,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 24
+      }
+    },
+    "weapons_v1/thunder_spike/001": {
+      "frame": {
+        "x": 88,
+        "y": 60,
+        "w": 42,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 24
+      }
+    },
+    "weapons_v1/thunder_spike/002": {
+      "frame": {
+        "x": 130,
+        "y": 60,
+        "w": 42,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 24
+      }
+    },
+    "weapons_v1/thunder_spike/003": {
+      "frame": {
+        "x": 172,
+        "y": 60,
+        "w": 42,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 42,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 42,
+        "h": 24
+      }
+    },
+    "weapons_v1/quake_knuckle/000": {
+      "frame": {
+        "x": 0,
+        "y": 86,
+        "w": 46,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 24
+      }
+    },
+    "weapons_v1/quake_knuckle/001": {
+      "frame": {
+        "x": 46,
+        "y": 86,
+        "w": 46,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 24
+      }
+    },
+    "weapons_v1/quake_knuckle/002": {
+      "frame": {
+        "x": 92,
+        "y": 86,
+        "w": 46,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 24
+      }
+    },
+    "weapons_v1/quake_knuckle/003": {
+      "frame": {
+        "x": 138,
+        "y": 86,
+        "w": 46,
+        "h": 24
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 46,
+        "h": 24
+      },
+      "sourceSize": {
+        "w": 46,
+        "h": 24
+      }
+    },
+    "weapons_v1/magcut_disc/000": {
+      "frame": {
+        "x": 184,
+        "y": 86,
+        "w": 34,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 34
+      }
+    },
+    "weapons_v1/magcut_disc/001": {
+      "frame": {
+        "x": 218,
+        "y": 86,
+        "w": 34,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 34
+      }
+    },
+    "weapons_v1/magcut_disc/002": {
+      "frame": {
+        "x": 0,
+        "y": 120,
+        "w": 34,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 34
+      }
+    },
+    "weapons_v1/magcut_disc/003": {
+      "frame": {
+        "x": 34,
+        "y": 120,
+        "w": 34,
+        "h": 34
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 34,
+        "h": 34
+      },
+      "sourceSize": {
+        "w": 34,
+        "h": 34
+      }
+    },
+    "weapons_v1/acid_glob/000": {
+      "frame": {
+        "x": 68,
+        "y": 120,
+        "w": 40,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 30
+      }
+    },
+    "weapons_v1/acid_glob/001": {
+      "frame": {
+        "x": 108,
+        "y": 120,
+        "w": 40,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 30
+      }
+    },
+    "weapons_v1/acid_glob/002": {
+      "frame": {
+        "x": 148,
+        "y": 120,
+        "w": 40,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 30
+      }
+    },
+    "weapons_v1/acid_glob/003": {
+      "frame": {
+        "x": 188,
+        "y": 120,
+        "w": 40,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 30
+      }
+    },
+    "weapons_v1/aero_darts/000": {
+      "frame": {
+        "x": 0,
+        "y": 154,
+        "w": 38,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 36
+      }
+    },
+    "weapons_v1/aero_darts/001": {
+      "frame": {
+        "x": 38,
+        "y": 154,
+        "w": 38,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 36
+      }
+    },
+    "weapons_v1/aero_darts/002": {
+      "frame": {
+        "x": 76,
+        "y": 154,
+        "w": 38,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 36
+      }
+    },
+    "weapons_v1/aero_darts/003": {
+      "frame": {
+        "x": 114,
+        "y": 154,
+        "w": 38,
+        "h": 36
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 38,
+        "h": 36
+      },
+      "sourceSize": {
+        "w": 38,
+        "h": 36
+      }
+    },
+    "weapons_v1/frost_shatter/000": {
+      "frame": {
+        "x": 152,
+        "y": 154,
+        "w": 40,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 32
+      }
+    },
+    "weapons_v1/frost_shatter/001": {
+      "frame": {
+        "x": 192,
+        "y": 154,
+        "w": 40,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 32
+      }
+    },
+    "weapons_v1/frost_shatter/002": {
+      "frame": {
+        "x": 0,
+        "y": 190,
+        "w": 40,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 32
+      }
+    },
+    "weapons_v1/frost_shatter/003": {
+      "frame": {
+        "x": 40,
+        "y": 190,
+        "w": 40,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 40,
+        "h": 32
+      },
+      "sourceSize": {
+        "w": 40,
+        "h": 32
+      }
+    },
+    "weapons_v1/boss_orb/000": {
+      "frame": {
+        "x": 80,
+        "y": 190,
+        "w": 44,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 30
+      }
+    },
+    "weapons_v1/boss_orb/001": {
+      "frame": {
+        "x": 124,
+        "y": 190,
+        "w": 44,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 30
+      }
+    },
+    "weapons_v1/boss_orb/002": {
+      "frame": {
+        "x": 168,
+        "y": 190,
+        "w": 44,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 30
+      }
+    },
+    "weapons_v1/boss_orb/003": {
+      "frame": {
+        "x": 212,
+        "y": 190,
+        "w": 44,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 30
+      },
+      "sourceSize": {
+        "w": 44,
+        "h": 30
+      }
+    }
+  },
+  "meta": {
+    "app": "scripts/sprites/cut_vfx_sheet.py",
+    "version": "1.0",
+    "image": "weapons_v1.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 256,
+      "h": 222
+    },
+    "scale": "1",
+    "source": [
+      "assets/sprites/source/vfx/hf_v1/weapons_a.png",
+      "assets/sprites/source/vfx/hf_v1/weapons_b.png",
+      "assets/sprites/source/vfx/hf_v1/weapons_c.png"
+    ],
+    "generator": "Higgsfield gpt_image_2",
+    "spec": "weapons_v1.json"
+  }
+}

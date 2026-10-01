@@ -7,8 +7,13 @@ import { provenance } from './lib/provenance.mjs'
 const host = '127.0.0.1'
 const port = Number(process.env.SWEEP_PORT ?? 4173)
 const url = `http://${host}:${port}?renderer=canvas&automation=1&storyIntro=off&startScene=StageSelect`
-const outputRoot = path.resolve('output/mission-visual-sweep')
+const sweepStableDir = path.resolve('output/mission-visual-sweep')
+const outputRoot = process.env.SWEEP_OUTPUT_DIR
+  ? path.resolve(process.env.SWEEP_OUTPUT_DIR)
+  : path.resolve('output/sweep-runs', new Date().toISOString().replace(/[:.]/g, '-'))
 const visualSweepSummaryPath = path.join(outputRoot, 'summary.json')
+// SWEEP_FAIL_FAST=1 restores stop-at-first-mission-failure; default continues and exits 1 if any failed.
+const sweepFailFast = String(process.env.SWEEP_FAIL_FAST ?? '') === '1'
 const STAGE_SELECT_STATE_TIMEOUT_MS = 10_000
 const GAME_TRANSITION_TIMEOUT_MS = 10_000
 // CI runners can take longer than 5s to close Chromium after every artifact is written (2026-09-23).
@@ -30,6 +35,22 @@ const robotMasterSlots = missionSlots.filter((slot) => !slot.direct)
 const unlockedStageIds = missionSlots.map((slot) => slot.stageId)
 
 const indexByBossId = new Map(robotMasterSlots.map((slot, index) => [slot.bossId, index]))
+
+function linkStableRunDir(target, linkPath) {
+  try {
+    const stat = fs.lstatSync(linkPath)
+    if (stat.isDirectory() && !stat.isSymbolicLink()) {
+      fs.rmSync(linkPath, { recursive: true, force: true })
+    } else {
+      fs.rmSync(linkPath, { force: true })
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error
+    }
+  }
+  fs.symlinkSync(target, linkPath, 'dir')
+}
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -75,6 +96,16 @@ async function advanceFrames(page, frames = 1) {
       }
     })
   }
+}
+
+// Part 12i (prompt 08 8.5): a `window.perfDebug()` snapshot at each of this function's three existing
+// checkpoints (mid, pre-boss, boss room), so texture memory is measured with every biome loaded, not
+// only Pyro Maw (smoke `62-perf-budget`'s single stage). Recorded per mission, not gated: the sweep's
+// other assertions already cover correctness, and this machine runs other lanes at the same time.
+async function capturePerfSnapshot(page, dir, label) {
+  const perf = await page.evaluate(() => window.perfDebug?.() ?? null)
+  fs.writeFileSync(path.join(dir, `perf-${label}.json`), JSON.stringify(perf, null, 2))
+  return perf
 }
 
 async function readState(page) {
@@ -142,6 +173,7 @@ function createVisualSweepSummary() {
     startedAt: new Date().toISOString(),
     ...provenance(),
     outputDir: outputRoot,
+    runDir: outputRoot,
     missions: []
   }
 }
@@ -171,6 +203,17 @@ async function runWithTimeout(task, label, timeoutMs = CLEANUP_TIMEOUT_MS, class
   })
 }
 
+// `npm run dev` starts Vite as a grandchild; on Linux, signalling npm alone leaves Vite holding the pipes, so
+// the dev server runs in its own process group and the whole group is signalled (2026-09-23 CI browser-gates).
+function signalChildGroup(child, signal) {
+  try {
+    if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal)
+    else child.kill(signal)
+  } catch {
+    child.kill(signal)
+  }
+}
+
 async function stopChildProcess(child, label, timeoutMs = CLEANUP_TIMEOUT_MS) {
   if (!child || child.killed || child.exitCode !== null) {
     return
@@ -178,7 +221,7 @@ async function stopChildProcess(child, label, timeoutMs = CLEANUP_TIMEOUT_MS) {
 
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      child.kill('SIGKILL')
+      signalChildGroup(child, 'SIGKILL')
       const error = new Error(`${label} did not exit within ${timeoutMs}ms`)
       error.name = 'CleanupTimeoutError'
       error.classification = 'hung_after_artifacts'
@@ -191,7 +234,7 @@ async function stopChildProcess(child, label, timeoutMs = CLEANUP_TIMEOUT_MS) {
       resolve()
     })
 
-    child.kill('SIGTERM')
+    signalChildGroup(child, 'SIGTERM')
   })
 }
 
@@ -408,6 +451,33 @@ async function sampleBossMovement(page, bossId, artifactDir) {
   return samples
 }
 
+/**
+ * Sweep v2 (13h.1, prompt 06 §6.9): every segment reachable by warp. Warps with the real
+ * `stageDebug.setPlayerX` hook (the old spec's `warpTo` alias was never added: it needs a `src/` change
+ * this lane's file list does not cover) to five evenly spaced points across the route and requires the
+ * hero to actually be there a few frames later, not mid-fall into a kill plane or a respawn. Writes
+ * `segment-sweep-v2.json` evidence and throws (failing the mission, like every other assertion here) on
+ * an unreachable sample.
+ */
+async function assertSegmentsReachableByWarp(page, stageId, dir, routeWidth) {
+  const sampleCount = 5
+  const samples = []
+  for (let i = 0; i < sampleCount; i += 1) {
+    const target = Math.round((routeWidth * (i + 0.5)) / sampleCount)
+    await page.evaluate((x) => window.stageDebug?.setPlayerX?.(x), target)
+    await advanceFrames(page, 3)
+    const state = await readState(page)
+    const actual = state.player?.x ?? null
+    const reached = state.scene === 'Game' && actual != null && Math.abs(actual - target) <= 40
+    samples.push({ target, actual, reached })
+  }
+  fs.writeFileSync(path.join(dir, 'segment-sweep-v2.json'), JSON.stringify({ stageId, routeWidth, samples }, null, 2))
+  const unreachable = samples.filter((sample) => !sample.reached)
+  if (unreachable.length > 0) {
+    throw new Error(`[${stageId}] segment sweep v2: warp sample(s) not reachable: ${JSON.stringify(unreachable)}`)
+  }
+}
+
 async function captureMission(browser, slot, summary) {
   const { stageId, bossId, runtimeBossConfigId, direct } = slot
   const context = await browser.newContext()
@@ -498,6 +568,9 @@ async function captureMission(browser, slot, summary) {
     const midState = await readState(page)
     fs.writeFileSync(path.join(dir, 'state-mid.json'), JSON.stringify(midState, null, 2))
     await page.screenshot({ path: path.join(dir, 'mid.png') })
+    await capturePerfSnapshot(page, dir, 'mid')
+
+    await assertSegmentsReachableByWarp(page, stageId, dir, routeWidth)
 
     await page.evaluate((x) => window.stageDebug?.setPlayerX?.(x), routeWidth - 64)
     await advanceFrames(page, 2)
@@ -505,6 +578,7 @@ async function captureMission(browser, slot, summary) {
     assertPreBossState(preBossState, stageId)
     fs.writeFileSync(path.join(dir, 'state-pre-boss.json'), JSON.stringify(preBossState, null, 2))
     await page.screenshot({ path: path.join(dir, 'pre-boss.png') })
+    await capturePerfSnapshot(page, dir, 'pre-boss')
 
     await page.evaluate(() => {
       window.stageDebug?.crossBossGate?.()
@@ -515,6 +589,10 @@ async function captureMission(browser, slot, summary) {
       }
       window.bossDebug?.unlockIntro?.()
       window.stageDebug?.skipDialogue?.()
+      // The sweep measures the boss, not the hero: since 5.2 a hit carries the hero into the room's
+      // hazards and two deaths in the sample window ended the scene (Tide Reaver, 2026-09-24), so the
+      // stationary hero is invulnerable while the boss is sampled.
+      window.__phaserGame?.scene?.getScenes(true)?.[0]?.newPlayerRuntime?.resetForRespawn?.(60000)
     })
 
     const bossRoomState = await waitForState(
@@ -525,6 +603,7 @@ async function captureMission(browser, slot, summary) {
     )
     assertBossRoomState(bossRoomState, stageId)
     fs.writeFileSync(path.join(dir, 'state-boss-room.json'), JSON.stringify(bossRoomState, null, 2))
+    await capturePerfSnapshot(page, dir, 'boss-room')
 
     await sampleBossMovement(page, stageId, dir)
     await page.evaluate(() => {
@@ -579,6 +658,7 @@ async function captureMission(browser, slot, summary) {
 async function main() {
   fs.rmSync(outputRoot, { recursive: true, force: true })
   fs.mkdirSync(outputRoot, { recursive: true })
+  linkStableRunDir(outputRoot, sweepStableDir)
   const summary = createVisualSweepSummary()
   writeVisualSweepSummary(summary)
 
@@ -594,7 +674,13 @@ async function main() {
         VITE_AUTOMATION: '1',
         VITE_SMOKE: '1'
       },
-      shell: false
+      shell: false,
+      detached: process.platform !== 'win32'
+    })
+    // A detached group no longer gets the terminal's Ctrl-C, so pass it on instead of orphaning the server.
+    process.once('SIGINT', () => {
+      signalChildGroup(vite, 'SIGTERM')
+      process.exit(130)
     })
     vite.stdout.on('data', (chunk) => process.stdout.write(`[vite] ${chunk}`))
     vite.stderr.on('data', (chunk) => process.stderr.write(`[vite] ${chunk}`))
@@ -608,9 +694,19 @@ async function main() {
 
   try {
     for (const slot of missionSlots) {
-      await captureMission(browser, slot, summary)
+      try {
+        await captureMission(browser, slot, summary)
+      } catch (error) {
+        if (sweepFailFast) {
+          throw error
+        }
+      }
     }
-    summary.status = 'pass'
+    summary.status = summary.missions.some(
+      (mission) => mission.status === 'fail' || mission.status === 'hung_after_artifacts'
+    )
+      ? 'fail'
+      : 'pass'
   } finally {
     let cleanupError = null
     try {
@@ -641,6 +737,9 @@ async function main() {
   }
 
   console.log(`Mission visual sweep complete. Artifacts: ${outputRoot}`)
+  if (summary.missions.some((mission) => mission.status === 'fail' || mission.status === 'hung_after_artifacts')) {
+    process.exitCode = 1
+  }
 }
 
 main().catch((error) => {

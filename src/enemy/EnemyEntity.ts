@@ -1,11 +1,14 @@
 import Phaser from 'phaser'
+import AudioService from '../audio'
 import { EnemyAnimator } from './EnemyAnimator'
 import { EnemyCatalog } from './EnemyCatalog'
 import { getGeneratedEnemyDefinition } from '../content/enemies'
 import { EnemyCombat } from './EnemyCombat'
 import { EnemyMotor } from './EnemyMotor'
 import { EnemyAI } from './EnemyAI'
-import { DamageEvent, EnemyDefinition, EnemyPatrolBounds, EnemyRuntimeContext, EnemyState } from './types'
+import { createEnemyBrain } from './enemyBrains'
+import { frontShieldGapSide, shieldBlocksShot } from './shieldArc'
+import { DamageEvent, EnemyBrain, EnemyDefinition, EnemyPatrolBounds, EnemyRuntimeContext, EnemyState } from './types'
 
 function firstAvailableFrame(
   texture: Phaser.Textures.Texture,
@@ -50,6 +53,8 @@ export type EnemyEntityOptions = {
   enableProjectiles: boolean
   definitionOverride?: EnemyDefinition
   patrolBounds?: EnemyPatrolBounds
+  /** The level marker's named behaviour (12c), e.g. `'tide_shield'`, `'glacier_slide'`. */
+  variant?: string
 }
 
 export class EnemyEntity {
@@ -60,6 +65,7 @@ export class EnemyEntity {
   readonly sprite: Phaser.Physics.Arcade.Sprite
   readonly spawnPosition: Phaser.Math.Vector2
   readonly patrolBounds?: EnemyPatrolBounds
+  readonly variant?: string
 
   state: EnemyState = 'idle'
   facing: 1 | -1 = 1
@@ -68,6 +74,8 @@ export class EnemyEntity {
   readonly combat: EnemyCombat
   readonly animator: EnemyAnimator
   readonly ai: EnemyAI
+  /** A family's own behaviour (a mini-boss); when present it runs instead of `ai`. */
+  readonly brain?: EnemyBrain
 
   constructor(context: EnemyRuntimeContext, typeKey: string, options: EnemyEntityOptions) {
     const definition = options.definitionOverride ?? getGeneratedEnemyDefinition(typeKey) ?? EnemyCatalog[typeKey]
@@ -81,6 +89,7 @@ export class EnemyEntity {
     this.context = context
     this.spawnPosition = new Phaser.Math.Vector2(options.x, options.y)
     this.patrolBounds = options.patrolBounds
+    this.variant = options.variant
 
     const textureInfo = resolveEnemyTexture(context.scene, typeKey)
     const sprite = context.enemyGroup.create(
@@ -103,6 +112,7 @@ export class EnemyEntity {
     this.combat = new EnemyCombat(sprite, definition, context, this.motor, options.enableProjectiles)
     this.animator = new EnemyAnimator(context.scene, sprite, definition)
     this.ai = new EnemyAI(this, definition, this.motor, this.combat, options.enableAI)
+    this.brain = createEnemyBrain(this, options.enableAI)
   }
 
   update(now: number, deltaMs: number): void {
@@ -113,24 +123,39 @@ export class EnemyEntity {
       return
     }
 
-    this.ai.update(now, deltaMs)
+    if (this.brain) {
+      this.brain.update(now, deltaMs)
+    } else {
+      this.ai.update(now, deltaMs)
+    }
     this.combat.update(now, this.facing)
     this.motor.update(now)
-    this.animator.update(this.state, this.facing)
+    this.animator.update(this.state, this.facing, this.brain?.animationKey?.())
   }
 
   applyDamage(event: DamageEvent): number {
     if (this.state === 'dead') {
       return 0
     }
+    if (this.brain?.isInvulnerable?.()) {
+      return this.combat.currentHp
+    }
+    if (this.blockedByShield(event)) {
+      return this.combat.currentHp
+    }
 
     const remaining = this.combat.receiveDamage(event, this.context.scene.time.now)
     if (remaining <= 0) {
       this.state = 'dead'
+      this.brain?.onDefeated(this.context.scene.time.now)
       return 0
     }
 
-    this.state = 'stunned'
+    if (this.brain) {
+      this.brain.onHurt(this.context.scene.time.now)
+    } else {
+      this.state = 'stunned'
+    }
     this.sprite.setTintFill(0xffffff)
     this.context.scene.time.delayedCall(80, () => {
       if (this.sprite.active) {
@@ -141,7 +166,36 @@ export class EnemyEntity {
     return remaining
   }
 
+  /**
+   * A shield arc (12c): `shield_drone`'s fixed front shield, or a brain's rotating one (the Tide nest's
+   * `shieldGapSide`). Only bullets carry a side and a tier worth checking; melee, contact and explosive
+   * hits (and a punch-through shot, `shieldArc.ts`) are never stopped. A block plays the clash sound and
+   * applies no damage, no hitstun, no knockback.
+   */
+  private blockedByShield(event: DamageEvent): boolean {
+    if (event.type !== 'bullet') {
+      return false
+    }
+    const gapSide = this.brain?.shieldGapSide?.() ?? (this.definition.shieldArc ? frontShieldGapSide(this.facing) : null)
+    if (gapSide == null) {
+      return false
+    }
+    // `knockback.x` carries the shot's own direction of travel (Game.ts: `facing * speed`); the side it
+    // hits from is the opposite (a shot travelling right arrived at the target from the target's left).
+    const side = event.knockback ? ((-Math.sign(event.knockback.x) || this.facing) as 1 | -1) : this.facing
+    const blocked = shieldBlocksShot(gapSide, { side, amount: event.amount })
+    if (blocked) {
+      AudioService.playSfx('sword_hit')
+    }
+    return blocked
+  }
+
   destroy(): void {
+    try {
+      this.brain?.destroy()
+    } catch {
+      // The brain's display objects may already be gone with the scene.
+    }
     const sprite = this.sprite as Phaser.Physics.Arcade.Sprite & { body?: Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody }
     try {
       const body = sprite.body

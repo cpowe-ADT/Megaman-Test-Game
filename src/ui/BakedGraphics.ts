@@ -16,7 +16,7 @@ export class BakedGraphics {
   /** Draw into this, then call `bake`. It is never on the display list. */
   readonly graphics: Phaser.GameObjects.Graphics
   readonly image: Phaser.GameObjects.Image
-  private readonly texture: Phaser.Textures.DynamicTexture
+  private texture: Phaser.Textures.DynamicTexture
 
   constructor(private readonly scene: Phaser.Scene, key: string) {
     this.graphics = scene.make.graphics({}, false)
@@ -43,7 +43,12 @@ export class BakedGraphics {
     const width = Math.max(1, Math.ceil(bounds.width * scale))
     const height = Math.max(1, Math.ceil(bounds.height * scale))
     if (this.texture.width !== width || this.texture.height !== height) {
-      this.texture.setSize(width, height)
+      // Not `setSize`: in Phaser 3.90 a DynamicTexture's WebGL render target is built with autoResize off,
+      // so `setSize` changes the frame but leaves the framebuffer at its first size (1x1 here) and every
+      // bake under WebGL drew nothing (05c playtest: no HUD bars or panels in Safari). Rebuild it instead.
+      const key = this.texture.key
+      this.scene.textures.remove(key)
+      this.texture = this.scene.textures.addDynamicTexture(key, width, height) as Phaser.Textures.DynamicTexture
     }
     this.texture.clear()
     this.graphics.setScale(scale).setPosition(-bounds.x * scale, -bounds.y * scale)

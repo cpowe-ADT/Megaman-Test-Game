@@ -122,8 +122,8 @@
     },
     "enemy_shield_drone/hover/003": {
       "frame": {
-        "x": 0,
-        "y": 30,
+        "x": 228,
+        "y": 0,
         "w": 38,
         "h": 30
       },
@@ -142,8 +142,8 @@
     },
     "enemy_shield_drone/attack_windup/000": {
       "frame": {
-        "x": 38,
-        "y": 30,
+        "x": 266,
+        "y": 0,
         "w": 38,
         "h": 30
       },
@@ -162,7 +162,7 @@
     },
     "enemy_shield_drone/attack_windup/001": {
       "frame": {
-        "x": 76,
+        "x": 0,
         "y": 30,
         "w": 38,
         "h": 30
@@ -182,7 +182,7 @@
     },
     "enemy_shield_drone/attack_windup/002": {
       "frame": {
-        "x": 114,
+        "x": 38,
         "y": 30,
         "w": 38,
         "h": 30
@@ -202,7 +202,7 @@
     },
     "enemy_shield_drone/attack_active/000": {
       "frame": {
-        "x": 152,
+        "x": 76,
         "y": 30,
         "w": 38,
         "h": 30
@@ -222,7 +222,7 @@
     },
     "enemy_shield_drone/attack_active/001": {
       "frame": {
-        "x": 190,
+        "x": 114,
         "y": 30,
         "w": 38,
         "h": 30
@@ -242,8 +242,8 @@
     },
     "enemy_shield_drone/attack_active/002": {
       "frame": {
-        "x": 0,
-        "y": 60,
+        "x": 152,
+        "y": 30,
         "w": 38,
         "h": 30
       },
@@ -262,8 +262,8 @@
     },
     "enemy_shield_drone/hurt/000": {
       "frame": {
-        "x": 38,
-        "y": 60,
+        "x": 190,
+        "y": 30,
         "w": 38,
         "h": 30
       },
@@ -282,8 +282,8 @@
     },
     "enemy_shield_drone/death/000": {
       "frame": {
-        "x": 76,
-        "y": 60,
+        "x": 228,
+        "y": 30,
         "w": 38,
         "h": 30
       },
@@ -302,8 +302,8 @@
     },
     "enemy_shield_drone/death/001": {
       "frame": {
-        "x": 114,
-        "y": 60,
+        "x": 266,
+        "y": 30,
         "w": 38,
         "h": 30
       },
@@ -322,7 +322,7 @@
     },
     "enemy_shield_drone/death/002": {
       "frame": {
-        "x": 152,
+        "x": 0,
         "y": 60,
         "w": 38,
         "h": 30
@@ -342,7 +342,7 @@
     },
     "enemy_shield_drone/death/003": {
       "frame": {
-        "x": 190,
+        "x": 38,
         "y": 60,
         "w": 38,
         "h": 30
@@ -362,14 +362,21 @@
     }
   },
   "meta": {
-    "app": "codex.slice_sheet_to_atlas",
+    "app": "scripts/sprites/cut_enemy_sheet.py",
     "version": "1.0",
     "image": "enemy_shield_drone.png",
     "format": "RGBA8888",
     "size": {
-      "w": 228,
+      "w": 304,
       "h": 90
     },
-    "scale": "1"
+    "scale": "1",
+    "source": "../../assets/sprites/source/enemies/hf_v1/enemy_shield_a.png",
+    "generator": "Higgsfield gpt_image_2",
+    "reskinTarget": {
+      "idleWidth": 38,
+      "idleHeight": 19,
+      "feetRow": 30
+    }
   }
 }

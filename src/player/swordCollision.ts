@@ -1,3 +1,4 @@
+import { resolveHurtbox } from '../combat/Hitbox'
 import type { ResolvedHitbox } from './types'
 
 export type SwordHitTarget = {
@@ -19,28 +20,12 @@ export function resolveSwordHitboxOrigin(
   }
 }
 
+// The sword's hit test now runs through `resolveHurtbox` (prompt 06 phase 6.0, `EVAL-P6-015`: one hit
+// test for sword, shots and the debug overlay), instead of its own copy of the same rect/circle math.
 export function swordHitboxIntersectsTarget(
   origin: { x: number; y: number },
   hitbox: ResolvedHitbox,
   target: SwordHitTarget
 ): boolean {
-  if (hitbox.shape.kind === 'circle') {
-    const dx = target.x - origin.x
-    const dy = target.y - origin.y
-    const radius = hitbox.shape.radius + Math.max(target.width, target.height) * 0.25
-    return dx * dx + dy * dy <= radius * radius
-  }
-
-  const halfW = target.width * 0.5
-  const halfH = target.height * 0.5
-  const left = origin.x - hitbox.shape.width * 0.5
-  const right = left + hitbox.shape.width
-  const top = origin.y - hitbox.shape.height * 0.5
-  const bottom = top + hitbox.shape.height
-  return !(
-    target.x + halfW < left ||
-    target.x - halfW > right ||
-    target.y + halfH < top ||
-    target.y - halfH > bottom
-  )
+  return resolveHurtbox(origin, hitbox.shape, target)
 }

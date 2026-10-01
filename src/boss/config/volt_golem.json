@@ -43,10 +43,10 @@
         "shock_punch": 3,
         "spark_shot": 4,
         "ground_slam": 2,
-        "dash_strike": 3
+        "shoulder_rush": 3
       },
       "unlockAttacks": [
-        "dash_strike"
+        "shoulder_rush"
       ],
       "transitionLockMs": 520
     }
@@ -80,7 +80,9 @@
       "telegraph": {
         "animationName": "volt_punch_windup",
         "sfxName": "sfx_volt_charge",
-        "vfxName": "fx_warning_arc"
+        "vfxName": "fx_warning_arc",
+        "warningFx": "glow",
+        "anchor": "self"
       }
     },
     {
@@ -111,7 +113,9 @@
       "telegraph": {
         "animationName": "volt_shot_windup",
         "sfxName": "sfx_volt_shot",
-        "vfxName": "fx_muzzle_arc"
+        "vfxName": "fx_muzzle_arc",
+        "warningFx": "fan-lines",
+        "anchor": "target"
       }
     },
     {
@@ -141,11 +145,13 @@
       "telegraph": {
         "animationName": "volt_slam_windup",
         "sfxName": "sfx_volt_slam",
-        "vfxName": "fx_ground_warning"
+        "vfxName": "fx_ground_warning",
+        "warningFx": "wave",
+        "anchor": "self"
       }
     },
     {
-      "id": "dash_strike",
+      "id": "shoulder_rush",
       "displayName": "DashStrike",
       "type": "dash",
       "windupTime": 180,
@@ -171,7 +177,9 @@
       "telegraph": {
         "animationName": "volt_dash_windup",
         "sfxName": "sfx_volt_dash",
-        "vfxName": "fx_dash_line"
+        "vfxName": "fx_dash_line",
+        "warningFx": "glow",
+        "anchor": "self"
       }
     }
   ]

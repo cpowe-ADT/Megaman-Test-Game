@@ -2,7 +2,7 @@
 
 - Status: canonical
 - Owner scope: runtime
-- Last reviewed: 2026-09-22 (scale cap, `GAME_SIZE`)
+- Last reviewed: 2026-09-25 (part 12i: the bundled pixel font and the per-surface font decision)
 
 The game is authored at 448x252 (`GAME_WIDTH`, `GAME_HEIGHT` in `src/config/renderPolicy.ts`). Every gameplay and UI coordinate stays in that space.
 
@@ -15,6 +15,21 @@ The game is authored at 448x252 (`GAME_WIDTH`, `GAME_HEIGHT` in `src/config/rend
 5. On window resize `installHdRendering(...).refresh()` recomputes the scale, resizes the canvas, re-zooms the active cameras and re-renders tracked text.
 
 Under `automation=1` the device pixel ratio is pinned to 1, so a 448x252 Playwright viewport renders exactly one canvas pixel per game pixel and every existing screenshot assertion holds.
+
+## Fonts: one bundled pixel font, smooth text only for prose
+
+`OmegaPixel` is original work (part 12i, `EVAL-P8-003`): 108 glyphs (ASCII 32 to 126, the symbols the UI prints, and `É` for Phaser's `|MÉqgy` metrics string) drawn as data in `assets/fonts/source/omega-pixel.glyphs.txt` and built by `scripts/fonts/build-pixel-font.py` (fontTools and Pillow; `--check` fails on stale outputs). The em is 8 font pixels: cap height 5, x-height 4, descenders 2, and the advance is the glyph width plus one.
+
+- `assets/fonts/omega-pixel.woff` (2.6KB; WOFF because the venv has no `brotli` for WOFF2) serves `Text`. `Preload` queues it with `load.font` (the `FontFace` API), and Phaser finishes the loader, font included, before `Preload.create` starts `Title`, so no `Text` is measured with a fallback.
+- `assets/fonts/omega-pixel.png` and `.xml` (a BMFont, key `'font'`, size 8) serve `BitmapText`: the HUD labels and the room-lock countdown already branched on that key.
+- Sizes are 8, 16, 24 or 32px only (`pixelFontSize(1 | 2 | 3 | 4)`; `pixelScaleFor(px)` maps an old smooth size: up to 12px became 8px, 13 to 19px 16px, 20 to 27px 24px, the 30px Title logo 32px; `pixelFont()` for Stage Select's `font` shorthand, which Phaser splits into exactly one size and one family token), so every glyph pixel is a whole game pixel. No synthetic bold (it smears pixel edges) and heading shadows are unblurred.
+- One font makes text measure the same on macOS and on Linux CI, where `monospace` and `Trebuchet MS` fell back to different faces (the fixed 8px boxes in Stage Select date from that).
+
+| Surface | Font | Why |
+| --- | --- | --- |
+| Title, Profile, New Campaign, Stage Select, Options, Controls, pause menu and route console, Game Over headings and choices, results and progression summary, victory modal, stage intro, toasts, HUD, touch-button labels, Ending headings and credits roll, dialogue speaker names and page counter | `OmegaPixel` | short labels and numbers on the pixel grid |
+| Dialogue body (speech box), Prologue and Ending story lines, the Game Over taunt | smooth HD `Text` in the system `monospace` | long prose reads better anti-aliased at device resolution, and its wrap widths and fixed box heights were tuned for it |
+| Debug overlays (`DebugOverlay`, `DevUx`, enemy and player debug) | system `monospace` | developer-only |
 
 ## Why the camera is a subclass
 

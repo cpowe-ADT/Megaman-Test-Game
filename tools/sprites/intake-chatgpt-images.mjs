@@ -135,7 +135,8 @@ const main = async () => {
     copied.push({
       ...entry,
       sourceAbsolute: src,
-      destAbsolute: dst,
+      // Repo-relative (05c): absolute paths carried the machine's folder name into the repo.
+      dest: path.relative(repoRoot, dst),
       sha1: await sha1(dst),
       copiedAt: new Date().toISOString(),
     });

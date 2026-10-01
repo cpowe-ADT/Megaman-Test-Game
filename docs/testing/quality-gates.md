@@ -12,8 +12,9 @@
 | Gameplay flow, UI/input, scene transitions, automation hooks | `npm run test`, `npm run build`, `npm run test:smoke` |
 | Production packaging, deploy, runtime asset-copy workflow | `npm run test`, `npm run build`, `npm run test:smoke:preview` |
 | Sprite, atlas, mission-wide visuals, presentation | `npm run test`, `npm run build`, `npm run test:visual-sweep` |
-| Substantive gameplay, tools, content, or asset-pipeline work | `npm run verify` |
+| Substantive gameplay, tools, content, or asset-pipeline work | `npm run verify` (or `npm run verify:fast` for a quicker local pass; see `TESTING.md` "Smoke Tiers") |
 | Loading, audio, asset families, render scale, per-frame loop | `npm run test`, `npm run build`, `npm run perf:footprint` (budget `tests/perf-budget.json`; also the only gate that boots `dist/` every run) |
+| Stage content (arenas, hazards, pickups, mechanics) | `npm run content:audit` (report-only table, `output/content/audit.md`), `npm run content:lint` (enforcing; part of `npm run verify`) |
 
 ## What Blocks Merge
 - Failed required commands
@@ -31,8 +32,8 @@
 - Any archived or reclassified docs have an obvious replacement path.
 
 ## Browser Gate Settings and Evidence
-- GitHub's push/pull-request job uses Node 22, `npm ci`, `npm run test`, and `npm run build`; `npm run ci` is the corresponding local gate. Browser smoke/sweep run only through the manual workflow and upload `output/` even on failure; see `TESTING.md` for operation.
-- `TESTING.md` owns the complete automation hook and run-setting reference, including `SMOKE_ONLY`, `SMOKE_FROM`, `SMOKE_PORT`, `SWEEP_PORT`, and `SMOKE_SERVER=preview`.
+- GitHub's push/pull-request job (`test-and-build`) uses Node 22, `npm ci`, `npm run test`, and `npm run build`; `npm run ci` is the corresponding local gate. A second job, `browser-gates`, runs smoke automatically on a pull request to `main` at `SMOKE_TIER=fast` (no sweep), and at the full tier plus the visual sweep on a nightly schedule, a `v*` tag push, or the manual `workflow_dispatch`; it uploads `output/` even on failure. See `TESTING.md` "Smoke Tiers" for the fast list and what each trigger runs.
+- `TESTING.md` owns the complete automation hook and run-setting reference, including `SMOKE_ONLY`, `SMOKE_FROM`, `SMOKE_PORT`, `SMOKE_TIER`, `SWEEP_PORT`, and `SMOKE_SERVER=preview`.
 - Browser scenarios use `?renderer=canvas&automation=1&startScene=StageSelect`; title scenarios omit `startScene`. Debug hooks and scene/boss overrides require automation mode.
 - `window.advanceTime(ms)` waits for animation frames; it does not deterministically step Phaser. Prefer state predicates and pure logic checks for timing-sensitive assertions.
 - A full smoke pass requires every registered scenario to pass with no filter skips; a focused `SMOKE_ONLY` pass proves only the selected scenarios.

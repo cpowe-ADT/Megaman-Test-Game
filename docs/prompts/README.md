@@ -14,6 +14,7 @@ The work orders that take the game from playable prototype to v1.0, and the agen
 | `docs/prompts/09-footprint-and-performance.md` | Load, memory, per-frame cost and disk; its budget is a standing gate |
 | `docs/prompts/10-agent-system.md` | The agent system and its next work order |
 | `docs/prompts/11-token-efficiency.md` | Token efficiency: cards, packets, model and risk tiers, budgets |
+| `docs/prompts/12-finish-the-game.md` | The finish work order (2026-09-25): what is left of 05 to 08 in lanes and waves, with the finish audit's additions |
 | `docs/prompts/EVAL_LEDGER.md` | One row per eval for live prompts; finished prompts in `docs/prompts/archive/` |
 | `docs/prompts/DECISIONS.md` | Every question waiting on Craig, with a recommendation; rows marked `entry <N>` block that prompt |
 | `docs/prompts/seats/` | The personas: what each owns, never does, reads and scores |

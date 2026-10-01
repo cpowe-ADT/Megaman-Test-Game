@@ -8,10 +8,9 @@ import {
   addMenuBackdrop,
   addMenuPanel,
   MENU_COLORS,
-  MENU_FONT_BODY,
-  MENU_FONT_CODE,
-  MENU_FONT_DISPLAY,
-  styleMenuHeading
+  styleMenuHeading,
+  PIXEL_FONT,
+  pixelFontSize
 } from '../ui/menu/menuTheme'
 import {
   buildSystemMenuOptions,
@@ -22,6 +21,7 @@ import {
   type SystemMenuSource
 } from './menu/systemMenuSelector'
 import { GAME_SIZE } from '../config/renderPolicy'
+import { menuRowAt, menuTapIntent } from '../ui/menu/menuTap'
 
 type SystemMenuData = {
   sourceScene: SystemMenuSource
@@ -69,14 +69,14 @@ export class SystemMenu extends Phaser.Scene {
     addMenuBackdrop(this, 0.34)
     addMenuPanel(this, panelX, panelY, panelWidth, panelHeight)
     this.add.text(panelX, panelY - panelHeight / 2 + 9, isGame ? 'MISSION PAUSED' : 'ROUTE CONSOLE', {
-      fontFamily: MENU_FONT_CODE,
-      fontSize: '7px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#5de1ff',
       letterSpacing: 2
     }).setOrigin(0.5, 0)
     styleMenuHeading(this.add.text(panelX, panelY - panelHeight / 2 + 19, isGame ? 'PAUSE MENU' : 'SYSTEM MENU', {
-      fontFamily: MENU_FONT_DISPLAY,
-      fontSize: '16px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(2),
       color: '#f5f8ff'
     }).setOrigin(0.5, 0))
 
@@ -88,17 +88,16 @@ export class SystemMenu extends Phaser.Scene {
         this.add.rectangle(panelX, y, panelWidth - 20, 16, MENU_COLORS.panelBright, 0.2)
       )
       return this.add.text(panelX - panelWidth / 2 + 22, y, option.label.toUpperCase(), {
-        fontFamily: MENU_FONT_BODY,
-        fontSize: '10px',
-        fontStyle: 'bold',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(1),
         color: option.enabled ? '#f5f8ff' : '#6f8cb8'
       }).setOrigin(0, 0.5)
     })
 
     if (isGame) {
       this.statusText = this.add.text(panelX, rowStartY + this.options.length * 19 + 2, '', {
-        fontFamily: MENU_FONT_CODE,
-        fontSize: '8px',
+        fontFamily: PIXEL_FONT,
+        fontSize: pixelFontSize(1),
         color: '#a9c9f2',
         align: 'center'
       }).setOrigin(0.5, 0)
@@ -108,8 +107,8 @@ export class SystemMenu extends Phaser.Scene {
     this.add.text(panelX, panelY + panelHeight / 2 - 11, isGame
       ? 'ARROWS  SELECT / CYCLE     ENTER  CONFIRM     ESC  RESUME'
       : 'ARROWS  SELECT     ENTER  CONFIRM     ESC  BACK', {
-      fontFamily: MENU_FONT_CODE,
-      fontSize: '7px',
+      fontFamily: PIXEL_FONT,
+      fontSize: pixelFontSize(1),
       color: '#8faed8'
     }).setOrigin(0.5)
 
@@ -168,14 +167,18 @@ export class SystemMenu extends Phaser.Scene {
       onCancel: () => this.closeWithAction(this.sourceSceneKey === 'Game' ? 'resume' : 'back')
     })
 
+    // Part 12i: the whole plate is the tap target; a cycle row (weapon, sub tank) steps with its outer thirds.
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      const hitIndex = this.rows.findIndex((row) => row.getBounds().contains(pointer.worldX, pointer.worldY))
-      if (hitIndex >= 0) {
-        AudioService.unlock()
-        this.index = hitIndex
-        this.updateCursor()
-        this.activateSelection()
-      }
+      const hitIndex = menuRowAt(this.rowBackplates.map((plate) => plate.getBounds()), pointer.worldX, pointer.worldY)
+      const plate = this.rowBackplates[hitIndex]
+      const option = this.options[hitIndex]
+      if (!plate || !option) return
+      AudioService.unlock()
+      this.index = hitIndex
+      this.updateCursor()
+      const intent = menuTapIntent(pointer.worldX - plate.getBounds().x, plate.width, option.kind === 'cycle' ? 'cycle' : 'action')
+      if (intent === 'activate') this.activateSelection()
+      else this.cycleSelection(intent === 'previous' ? -1 : 1)
     })
   }
 
