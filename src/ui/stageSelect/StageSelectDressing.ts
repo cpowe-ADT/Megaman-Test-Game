@@ -5,6 +5,7 @@ import { GAME_SIZE } from '../../config/renderPolicy'
 import { STAGE_BACKGROUND_ASSETS } from '../../content/stageBackgroundCatalog'
 import { PIXEL_FONT, pixelFontSize } from '../menu/menuTheme'
 import { districtPreviewPlan, liftTint, previewKeysToEvict, TILE_FLIP_MS } from './districtPreview'
+import { loadBackgroundImageOnce } from '../../scenes/game/stageBackgroundLoading'
 
 const DISTRICT_DEPTH = -40
 const TINT_LIFT = 0.4
@@ -44,7 +45,10 @@ export class DistrictBackdrop {
       const asset = STAGE_BACKGROUND_ASSETS.find((entry) => entry.key === layer.key)
       if (!asset) return
       this.loadedByPreview.add(layer.key)
-      this.scene.load.image(layer.key, asset.path)
+      // Shared with Game's own stage-background loader (stageBackgroundLoading.ts): a revisit can have this
+      // preview and the Game scene it is about to hand off to both see the same key "missing" while the
+      // other's fetch is still in flight; the guard skips the duplicate queue instead of racing to add it twice.
+      loadBackgroundImageOnce(this.scene, layer.key, asset.path)
     })
     this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
       if (!this.destroyed && this.wanted === stageId) this.build(stageId)

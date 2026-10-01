@@ -149,11 +149,15 @@ export async function runMireRouteScenario(name, { outputDir, storyUrl, readStat
     mark('b')
     await shield(600000)
 
-    // (c) The capsule: walking off crate A drops into the dip where it sits.
+    // (c) The capsule: walking off crate A drops into the dip where it sits. 13e grounded it (anchor
+    // x:2024 unchanged, y now 227.5, flush on the real floor instead of floating). Stopping right past
+    // it (as before) keeps the landing spot under the pickup instead of carrying on to crate B's wall;
+    // the settle needs more idle frames now that the pickup sits at the real floor, not a shallower
+    // midair y a lighter fall used to reach in time.
     await place(1968, 170)
     await standing('on crate A')
-    const dip = await drive({ targetX: 2028, maxFrames: 90 })
-    await advanceFrames(page, 20)
+    const dip = await drive({ targetX: 2030, maxFrames: 90 })
+    await advanceFrames(page, 80)
     const capsuleChecks = await collected()
     evidence.capsule = { dip, collected: capsuleChecks }
     assert.ok(capsuleChecks.includes('mire_wraith:capsule'), `capsule collected in the dip (${capsuleChecks})`)
