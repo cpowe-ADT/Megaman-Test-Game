@@ -75,21 +75,30 @@ async function runOnce(mode, { runDir, storyUrl, readState, waitForState, advanc
     }
     return heroX()
   }
-  /** Drains the active dialogue sequence: skipDialogue (once through) in 'skip' mode, or repeated advanceDialogue
-   * (which completes a typing line, then advances) in 'read' mode, so a multi-line sequence is read line by line. */
+  /** Drains the active dialogue sequence: skip (once through) in 'skip' mode, or repeated advance (which
+   * completes a typing line, then advances) in 'read' mode, so a multi-line sequence is read line by line.
+   * `stageDebug.skipDialogue`/`advanceDialogue` only exist on the Game scene (GameDebugHooks.ts) -- the
+   * post-stage debrief and clear-count milestones play on Stage Select instead (StageSelect.ts's own
+   * `dialogueOverlay`), so this reaches the scene `render_game_to_text` says is active and calls its
+   * `dialogueOverlay` directly, the same object those hooks wrap (and what beats-flow.mjs already does
+   * for this exact debrief: scripts/smoke/beats-flow.mjs skips it with a raw Escape key instead). */
   const drainDialogue = async (label, maxSteps = 200) => {
     const seen = new Set()
+    const first = await readState(page)
+    if (!first.dialogue?.active) return seen
+    // Stop at the first sequence this call started on, not just "inactive": a skip's onComplete can chain
+    // straight into a new sequence in the same tick (StageSelect.playDebrief's `after` opens the clear-count
+    // milestone this way), and a generic "until inactive" loop would silently swallow that one too before the
+    // caller gets to look at it (full-campaign.mjs's own milestone check, right after the debrief drain).
+    const sequenceId = first.dialogue.sequenceId
     for (let step = 0; step < maxSteps; step += 1) {
       const state = await readState(page)
-      if (!state.dialogue?.active) return seen
+      if (!state.dialogue?.active || state.dialogue.sequenceId !== sequenceId) return seen
       seen.add(state.dialogue.sequenceId)
-      if (mode === 'read') {
-        await page.evaluate(() => window.stageDebug?.advanceDialogue?.())
-        await advanceFrames(page, 3)
-      } else {
-        await page.evaluate(() => window.stageDebug?.skipDialogue?.())
-        await advanceFrames(page, 3)
-      }
+      await page.evaluate(({ sceneKey, method }) => {
+        window.__phaserGame.scene.getScene(sceneKey)?.dialogueOverlay?.[method]?.()
+      }, { sceneKey: state.scene, method: mode === 'read' ? 'advance' : 'skip' })
+      await advanceFrames(page, 3)
     }
     throw new Error(`dialogue never drained: ${label}`)
   }
@@ -148,8 +157,28 @@ async function runOnce(mode, { runDir, storyUrl, readState, waitForState, advanc
       await capture(`${stageId}-warning`)
       const card = await until(async () => { const s = await readState(page); return s.bossIntro?.beat === 'card' ? s : null }, `${stageId} name card`)
       await capture(`${stageId}-card`)
-      const barFill = await until(async () => { const s = await readState(page); return s.bossIntro?.beat === 'bar_fill' ? s : null }, `${stageId} bar fill`)
-      assert.ok(barFill.bossIntro.bar.fraction >= 0 && barFill.bossIntro.bar.fraction < 1, 'the HP bar is filling')
+      // The card is followed by the boss intro dialogue (BossBeats#triggerBossActive -> storyDirector.playBossIntro);
+      // nothing advances it by itself, so skip it like every other sequence while polling, same as
+      // boss-beats.mjs's own step() helper. The bar then fills for ~900ms; `advanceTime` waits on real rAF
+      // callbacks (src/main.ts), so on a loaded machine a single widely-spaced poll (stepFrames=4) can step
+      // clean over that whole window -- poll one frame at a time, and accept catching 'fight' with
+      // 'bar_fill' already in the recorded beat trace (BossPresentation.beats, `getDebugState`) as proof it
+      // ran even if the live beat itself was missed.
+      let barFill = null
+      for (let step = 0; step < 3600 && !barFill; step += 1) {
+        const s = await readState(page)
+        const beat = s.bossIntro?.beat
+        if (beat === 'bar_fill') { barFill = s; break }
+        if (beat === 'fight' && s.bossIntro.beats?.some((entry) => entry.beat === 'bar_fill')) { barFill = s; break }
+        if (s.dialogue?.active) await page.evaluate(() => window.stageDebug?.skipDialogue?.())
+        await advanceFrames(page, 1)
+      }
+      if (!barFill) throw new Error(`timed out: ${stageId} bar fill`)
+      if (barFill.bossIntro.beat === 'bar_fill') {
+        assert.ok(barFill.bossIntro.bar.fraction >= 0 && barFill.bossIntro.bar.fraction < 1, 'the HP bar is filling')
+      } else {
+        assert.equal(barFill.bossIntro.bar.fraction, 1, 'the HP bar finished filling (caught on the trace, not live)')
+      }
       await capture(`${stageId}-bar-fill`)
       await until(async () => (await readState(page)).bossIntro?.beat === 'fight', `${stageId} fight begins`)
       beats = { warning: warning.bossIntro, card: card.bossIntro, barFill: barFill.bossIntro }
@@ -252,6 +281,15 @@ async function runOnce(mode, { runDir, storyUrl, readState, waitForState, advanc
       await enterStage(stageId, { detailed })
       await drainStageIntro(stageId)
       await page.evaluate(() => window.stageDebug?.skipStageIntro?.())
+      // Every warden warps straight to its boss room (`fightBoss`'s own crossBossGate/activateBossRoom, per
+      // this file's header), so the route's heart tank and capsule are never actually walked past; grant them
+      // the same way a real pickup overlap would (Game.ts's own collectProgressionLocation) so the ending's
+      // CAMPAIGN RECORD card sees 8/8 HEARTS and 8/8 CAPSULES instead of 0/8.
+      await page.evaluate((id) => {
+        const scene = window.__phaserGame.scene.getScene('Game')
+        scene.collectProgressionLocation(`${id}:heart_tank`)
+        scene.collectProgressionLocation(`${id}:capsule`)
+      }, stageId)
       await fightBoss(stageId, { detailed })
       const cards = await clearVictoryCards(stageId, { detailed })
       clearedCount += 1
@@ -284,6 +322,11 @@ async function runOnce(mode, { runDir, storyUrl, readState, waitForState, advanc
     // 5. The Central Core in three acts.
     const act1Start = Date.now()
     await enterStage('omega_fortress')
+    // Unlike the warden loop (which drains this right after `enterStage`), the Core's own card/briefing/READY
+    // sequence was never cleared here: the player stayed frozen under it, so `place`/`walkRightTo` below moved
+    // nothing and the act-1 checkpoint wait timed out on a hero stuck at the placed x with vx 0.
+    await drainStageIntro('omega_fortress')
+    await page.evaluate(() => window.stageDebug?.skipStageIntro?.())
     await capture('omega_fortress-act1')
     let omega = () => page.evaluate(() => window.__phaserGame.scene.getScene('Game')?.data?.get?.('omegaActs')?.getDebugState?.() ?? null)
     assert.equal((await omega())?.act, 1)

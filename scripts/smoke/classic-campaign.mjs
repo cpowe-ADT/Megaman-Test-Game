@@ -188,6 +188,11 @@ export async function runClassicUpgradeScenario(name, { outputDir, titleUrl, rea
     const baseCost=baseShot.combatDebug.player.lastProjectile.energyCost
     await page.evaluate(()=>window.stageDebug.grantUpgrade('chip_weapon_plus'))
     await page.evaluate((cost)=>window.stageDebug.setWeaponEnergy('HydroLance',cost),baseCost-1)
+    // The blaster's shared semi-auto cooldown (PLAYER_GAMEPLAY_CONFIG.blaster.fireRateMs, 120ms / ~8 frames
+    // at 60fps) still gates the base shot above: without this wait the second tap arrives too soon, the
+    // motor drops it silently (no projectile event, so WeaponRuntime.fire never runs) and the discounted
+    // shot's energyRemaining never reaches 0, hanging the next waitForState.
+    await advanceFrames(page,10)
     await tapKey(page,'x',2)
     const shot=await waitForState(page,s=>s.combatDebug?.player?.lastProjectile?.weaponId==='HydroLance'&&s.combatDebug?.player?.lastProjectile?.energyRemaining===0)
     assert.equal(shot.combatDebug.player.lastProjectile.energyCost,baseCost-1,'the Weapon Plus chip must take exactly 1 off the authored cost')
