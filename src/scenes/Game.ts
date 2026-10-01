@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { IDENTITY } from '../content/identity'
-import { firePlayerShot, shotPlatformProcess } from '../projectiles/firePlayerShot'
+import { firePlayerShot } from '../projectiles/firePlayerShot'
 import { resolveUpgradeModifiers, upgradeEffectLabel } from '../progression/upgrades'
 import { CampaignSessionStatistics } from '../progression/statistics'
 import { installProgressionDebugHooks } from './game/ProgressionDebugHooks'
@@ -38,7 +38,6 @@ import {
 } from '../content/dialogue/index'
 import {
   getBossRoomActivationX,
-  getBossRoomGateX,
   getBossRoomMovementBounds
 } from '../content/stageArenaLayout'
 import { buildWeaponEnergySnapshot, buildWeaponOrder, getWeaponConfig, getWeaponDisplayName } from '../content/weapons'
@@ -52,7 +51,7 @@ import {
   SABER_WEAPON_RECHARGE_COOLDOWN_MS
 } from '../content/weaponEnergyEconomy'
 import { AUTOMATION } from '../config/automation'
-import { GAMEPLAY_ACTOR_CEILING, getGameplayWorldBounds } from '../config/gameplayLayout'
+import { GAMEPLAY_ACTOR_CEILING } from '../config/gameplayLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/renderPolicy'
 import { returnToStageSelect, showToast } from '../core/navigation'
 import { DigitalButtonPad } from '../input/DigitalButtonPad'
@@ -99,18 +98,13 @@ import { WeaponRuntime } from './game/WeaponRuntime'
 import { evaluatePauseState } from './game/pauseLogic'
 import GameOverScene from './GameOverScene'
 import type { SystemMenuAction } from './menu/systemMenuSelector'
-import {
-  ENEMY_GLOBAL_TUNING,
-  EnemySpawner,
-  resolveEnemyFeatureFlags,
-  resolveLevelEnemyMarkers
-} from '../enemy'
+import { EnemySpawner, resolveEnemyFeatureFlags } from '../enemy'
 import { CombatDebugBus } from '../tools/debug/CombatDebugBus'
 import { PlatformCollisionSystem, PlatformType } from '../physics'
-import { installRoomLocks } from '../mechanics/adapters/RoomLockAdapter'
-import { mainGroundPlatforms } from '../stage/stageGeometry'
 import { StageBackdrop } from './game/StageBackdrop'
-import { buildStageHazards, installStageMechanics, stageMechanicPlatforms } from '../mechanics/adapters/StageMechanicsAdapter'
+import { buildStageHazards } from '../mechanics/adapters/StageMechanicsAdapter'
+import { StageBuilder } from './game/StageBuilder'
+import { EnemyRuntime } from './game/EnemyRuntime'
 import {
   createDefaultProjectileRegistry,
   getLatestActiveProjectile,
@@ -154,8 +148,6 @@ export class Game extends Phaser.Scene {
   private stagePlatforms?: Phaser.Physics.Arcade.StaticGroup
   private stageOneWayPlatforms?: Phaser.Physics.Arcade.StaticGroup
   private platformCollisionSystem?: PlatformCollisionSystem
-  private bossGateBarrier?: Phaser.GameObjects.Rectangle
-  private bossGateBarrierColliders: Phaser.Physics.Arcade.Collider[] = []
   private bossController?: BossController
   private bossLabel!: Phaser.GameObjects.Text
   private weaponLabel!: Phaser.GameObjects.Text
@@ -181,6 +173,10 @@ export class Game extends Phaser.Scene {
   private readonly bossDamage = new BossDamageRouter(this)
   private readonly hitWires = new HitWires(this)
   private readonly weaponRuntime = new WeaponRuntime(this)
+  // Stage build (ground, platforms, the boss gate barrier) and the enemy framework's init/teardown
+  // live in ./game too (prompt 06 phase 6.0, EVAL-P6-014).
+  private readonly stageBuilder = new StageBuilder(this)
+  private readonly enemyRuntime = new EnemyRuntime(this)
   // ======================= [BOSS-HITBOX-END]
   private hud?: HUD
   private bossUiBinder?: BossUIBinder
@@ -245,198 +241,13 @@ export class Game extends Phaser.Scene {
   private readonly deathSequence = new DeathSequence(this)
   private readonly runState = new RunState(this)
 
-  // [REGION: STAGE-BUILDER - BEGIN]
   private applyStageCameraBounds(stageId: string): void { this.cameraDirector.applyStageCameraBounds(stageId) }
   private applyBossRoomCameraLock(): void { this.cameraDirector.applyBossRoomCameraLock() }
-  private buildStage(stageId: string): void {
-    const stage = getCampaignStage(stageId)
-    const cfg = stage.arena
-    const width = GAME_WIDTH
-    const height = GAME_HEIGHT
-    const worldWidth = Math.max(width, Number(cfg.width ?? width))
-    this.activeBossRoom = cfg.bossRoom
-    const gameplayBounds = getGameplayWorldBounds(worldWidth, height)
-    this.physics.world.setBounds(
-      gameplayBounds.x,
-      gameplayBounds.y,
-      gameplayBounds.width,
-      gameplayBounds.height,
-      cfg.leftWall,
-      cfg.rightWall,
-      true,
-      !cfg.allowFallOff
-    )
-    this.physics.world.setBoundsCollision(cfg.leftWall, cfg.rightWall, true, !cfg.allowFallOff)
-    this.applyStageCameraBounds(stageId)
-    this.cameras.main.setBackgroundColor(cfg.background.baseColor ?? cfg.backgroundColor ?? '#0b1220')
-    this.stageBackdrop.render(stageId, worldWidth)
-    this.platformCollisionSystem?.destroy()
-    this.platformCollisionSystem = new PlatformCollisionSystem(this)
-
-    const platforms = [
-      ...mainGroundPlatforms(stage.id, worldWidth, height, cfg.floorGaps),
-      ...cfg.midPlatforms.map((platform) => ({
-        id: platform.id,
-        x: platform.x,
-        y: platform.y,
-        width: platform.width,
-        height: platform.height ?? 8,
-        type: platform.type ?? 'oneWay',
-        color: platform.color ?? 0x33404f,
-        motion: platform.motion
-      })),
-      ...stageMechanicPlatforms(cfg)
-    ]
-
-    this.platformCollisionSystem.rebuild(platforms, stageId)
-    this.stagePlatforms = this.platformCollisionSystem.getSolidGroup()
-    this.stageOneWayPlatforms = this.platformCollisionSystem.getOneWayGroup()
-    this.bossGateLockX = getBossRoomGateX(cfg.bossRoom)
-    this.bossGateLocked = false
-    this.bossRoomCameraLocked = false
-    this.installEntityPlatformCollisions()
-    installRoomLocks({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, onArmed: (lockIndex, hint) => this.storyDirector?.onRoomLockArmed(lockIndex, hint), onDefeatLockArmed: () => this.storyDirector?.onMiniBossLock(), clearedMarkers: () => this.enemySpawner?.getClearedMarkerIds() ?? [], spawnMarkers: (markers) => this.enemySpawner?.spawnFromLevelMarkers(markers), restoreCamera: () => (this.bossRoomCameraLocked ? this.applyBossRoomCameraLock() : this.applyStageCameraBounds(stageId)) })
-    installStageMechanics({ scene: this, stageId, player: () => this.player, runtime: () => this.newPlayerRuntime, platforms: () => this.platformCollisionSystem, playerBullets: () => this.playerBullets, isDying: () => this.fallingToDeath, damagePlayer: (request) => this.requestPlayerDamage(request), enemies: () => this.enemySpawner?.getEntities() ?? [], waterFlagged: () => this.storyDirector?.waterLevelFlagHeard() ?? false })
-  }
-
-  private rebuildBossGateBarrier(): void {
-    this.destroyBossGateBarrier()
-    const gateWidth = 12
-    const gateHeight = Math.max(96, GAME_HEIGHT - 26)
-    const gate = this.add
-      .rectangle(this.bossGateLockX, GAME_HEIGHT * 0.5, gateWidth, gateHeight, 0x7ec8ff, 0.28)
-      .setDepth(4)
-      .setVisible(false)
-      .setAlpha(0)
-
-    this.physics.add.existing(gate, true)
-    const body = gate.body as Phaser.Physics.Arcade.StaticBody | undefined
-    body?.updateFromGameObject?.()
-    if (body) {
-      body.enable = false
-    }
-
-    this.bossGateBarrier = gate
-    this.installBossGateBarrierColliders()
-  }
-
-  private installBossGateBarrierColliders(): void {
-    this.bossGateBarrierColliders.forEach((collider) => collider.destroy())
-    this.bossGateBarrierColliders = []
-
-    if (!this.physics || !this.bossGateBarrier) {
-      return
-    }
-
-    const addCollider = (
-      a: Phaser.Types.Physics.Arcade.ArcadeColliderType,
-      callback?: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback
-    ) => {
-      this.bossGateBarrierColliders.push(
-        this.physics.add.collider(a, this.bossGateBarrier!, callback, undefined, this)
-      )
-    }
-
-    if (this.player) {
-      addCollider(this.player)
-    }
-    if (this.enemies) {
-      addCollider(this.enemies)
-    }
-    if (this.playerBullets) {
-      addCollider(this.playerBullets, this.recycleBullet)
-    }
-    if (this.bossBullets) {
-      addCollider(this.bossBullets, this.recycleBullet)
-    }
-  }
-
-  private destroyBossGateBarrier(): void {
-    this.bossGateBarrierColliders.forEach((collider) => collider.destroy())
-    this.bossGateBarrierColliders = []
-    this.bossGateBarrier?.destroy()
-    this.bossGateBarrier = undefined
-    this.bossGateLocked = false
-  }
-
-  private lockBossGate(): void {
-    if (this.bossGateLocked || !this.bossGateBarrier) {
-      return
-    }
-
-    this.bossGateLocked = true
-    const gate = this.bossGateBarrier
-    gate.setVisible(true)
-    this.tweens.killTweensOf(gate)
-    this.tweens.add({
-      targets: gate,
-      alpha: { from: 0.22, to: 0.58 },
-      duration: 380,
-      yoyo: true,
-      repeat: -1
-    })
-
-    const body = gate.body as Phaser.Physics.Arcade.StaticBody | undefined
-    body?.updateFromGameObject?.()
-    if (body) {
-      body.enable = true
-    }
-
-    const stage = getCampaignStage(this.activeStageId)
-    const respawnX = Math.max(this.bossGateLockX + 18, stage.arena.bossRoom.playerIntroX)
-    const respawnY = stage.arena.spawn.y
-    this.respawnPoint = new Phaser.Math.Vector2(respawnX, respawnY)
-    if (this.player && this.player.x < this.bossGateLockX + 18) {
-      this.player.setPosition(this.bossGateLockX + 18, this.player.y)
-    }
-  }
-
-  private unlockBossGate(): void {
-    if (!this.bossGateBarrier) {
-      this.bossGateLocked = false
-      return
-    }
-    this.bossGateLocked = false
-    this.tweens.killTweensOf(this.bossGateBarrier)
-    this.bossGateBarrier.setVisible(false).setAlpha(0)
-    const body = this.bossGateBarrier.body as Phaser.Physics.Arcade.StaticBody | undefined
-    if (body) {
-      body.enable = false
-    }
-  }
-
-  private installEntityPlatformCollisions(): void {
-    if (!this.platformCollisionSystem) {
-      return
-    }
-
-    if (this.player) {
-      this.platformCollisionSystem.attachActor(this.player, {
-        allowOneWay: true,
-        allowDropThrough: true
-      })
-    }
-
-    if (this.enemies) {
-      this.platformCollisionSystem.attachGroup(this.enemies, {
-        allowOneWay: true
-      })
-    }
-
-    if (this.bossBody) {
-      this.platformCollisionSystem.attachActor(this.bossBody, {
-        allowOneWay: true
-      })
-    }
-
-    if (this.bossTarget && this.bossTarget !== this.bossBody) {
-      this.platformCollisionSystem.attachActor(this.bossTarget, {
-        allowOneWay: true
-      })
-    }
-
-    this.installBossGateBarrierColliders()
-  }
+  // Stage build, the boss gate barrier and the platform colliders live in ./game/StageBuilder.ts
+  // (prompt 06 phase 6.0, EVAL-P6-014); `lockBossGate`/`unlockBossGate` stay named calls here because
+  // `BossBeats`'s host contract invokes them by name.
+  private lockBossGate(): void { this.stageBuilder.lockBossGate() }
+  private unlockBossGate(): void { this.stageBuilder.unlockBossGate() }
 
   private updateRespawnCheckpoint(): void { this.deathSequence.updateRespawnCheckpoint() }
   private refreshWeaponsFromProgression(): void {
@@ -609,16 +420,6 @@ export class Game extends Phaser.Scene {
     else showToast(this, message, durationMs)
   }
 
-  private installProjectilePlatformCollisions(): void {
-    if (!this.physics || !this.stagePlatforms) {
-      return
-    }
-
-    // Shots hit platforms by their physics body, not their drawn bounds (prompt 07 phase 7.0 note, EVAL-P7-010).
-    this.physics.add.collider(this.playerBullets, this.stagePlatforms, this.recycleBullet, shotPlatformProcess, this)
-    this.physics.add.collider(this.bossBullets, this.stagePlatforms, this.recycleBullet, shotPlatformProcess, this)
-  }
-
   private handleDropThroughInput(now: number): void {
     if (!this.player || !this.newPlayerRuntime || !this.platformCollisionSystem) {
       return
@@ -645,7 +446,6 @@ export class Game extends Phaser.Scene {
       body.setVelocityY(120)
     }
   }
-  // [REGION: STAGE-BUILDER - END]
 
   // 13b.3 (EVAL-P13-004): the world-edge kill itself moved into HitWires.ts; this stays a call.
   private readonly handleWorldBounds = (body: Phaser.Physics.Arcade.Body) => this.hitWires.handleWorldBounds(body)
@@ -707,7 +507,7 @@ export class Game extends Phaser.Scene {
       this.platformCollisionSystem?.destroy()
       this.platformCollisionSystem = undefined
       this.stageBackdrop.clear()
-      this.destroyBossGateBarrier()
+      this.stageBuilder.destroyBossGateBarrier()
       this.stagePlatforms = undefined
       this.stageOneWayPlatforms = undefined
       this.activeBossRoom = undefined
@@ -719,11 +519,7 @@ export class Game extends Phaser.Scene {
       this.drops = undefined
       this.newPlayerRuntime?.destroy()
       this.newPlayerRuntime = undefined
-      this.enemySpawner?.destroy()
-      this.enemySpawner = undefined
-      if (typeof window !== 'undefined' && (window as any).spawnEnemyDebug) {
-        delete (window as any).spawnEnemyDebug
-      }
+      this.enemyRuntime.teardown()
       this.bossUiBinder = undefined
       this.victoryModal?.destroy()
       this.victoryModal = undefined
@@ -888,7 +684,7 @@ export class Game extends Phaser.Scene {
     this.player.data.set('maxHp', this.playerMaxHp)
     this.devRegister(this.player, 'player')
 
-    this.buildStage(stageId)
+    this.stageBuilder.buildStage(stageId)
 
     this.projectileRegistry = createDefaultProjectileRegistry()
     this.projectileSystem = new ProjectileSystem(this, this.projectileRegistry, {
@@ -897,7 +693,7 @@ export class Game extends Phaser.Scene {
     })
     this.playerBullets = this.projectileSystem.getGroup('player')
     this.bossBullets = this.projectileSystem.getGroup('enemy')
-    this.rebuildBossGateBarrier()
+    this.stageBuilder.rebuildBossGateBarrier()
     this.bossBeats.initializeProjectileController()
     this.projectileCollisionRouter = new ProjectileCollisionRouter({
       playerBullets: this.playerBullets,
@@ -960,9 +756,9 @@ export class Game extends Phaser.Scene {
 
     this.enemies = this.physics.add.group({ classType: Phaser.Physics.Arcade.Sprite })
     this.pickupSystem.install()
-    this.installEntityPlatformCollisions()
+    this.stageBuilder.installEntityPlatformCollisions()
 
-    this.initializeEnemyFramework(stageId)
+    this.enemyRuntime.initialize(stageId)
 
     // The modular BossController below is the single authoritative boss actor.
     // Do not create a second legacy sprite here: even when hidden, that actor
@@ -972,14 +768,14 @@ export class Game extends Phaser.Scene {
     this.bossHp = { current: bossMaxHp, max: bossMaxHp }
     this.bossName = bossCodename
 
-    this.installEntityPlatformCollisions()
+    this.stageBuilder.installEntityPlatformCollisions()
     this.hitWires.install()
 
     this.physics.add.overlap(this.player, this.hazards, (p, h) => this.hitWires.onHazardContact(p, h))
     this.physics.add.overlap(this.player, this.enemies, (p, e) => this.hitWires.onEnemyContact(p, e))
     this.physics.add.overlap(this.playerBullets, this.enemies, this.onBulletHitsEnemy, undefined, this)
 
-    this.installProjectilePlatformCollisions()
+    this.stageBuilder.installProjectilePlatformCollisions()
 
     this.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.handleWorldBounds)
 
@@ -1046,7 +842,7 @@ export class Game extends Phaser.Scene {
       }
       if (this.bossTarget) {
         this.devRegister(this.bossTarget, 'boss.hitbox')
-        this.installEntityPlatformCollisions()
+        this.stageBuilder.installEntityPlatformCollisions()
       }
       this.hitWires.install()
       this.bossProjectileController?.startLoop()
@@ -1589,61 +1385,6 @@ export class Game extends Phaser.Scene {
   private commitPlayerDamage(dmg: number): void { this.hitWires.commitPlayerDamage(dmg) }
 
   private playerDeathAndRespawn(): void { this.deathSequence.playerDeathAndRespawn() }
-  private initializeEnemyFramework(stageId: string): void {
-    if (!this.player || !this.enemies || !this.bossBullets) {
-      return
-    }
-
-    this.enemySpawner = new EnemySpawner(
-      {
-        scene: this,
-        player: this.player,
-        stageId,
-        enemyGroup: this.enemies,
-        projectileGroup: this.bossBullets,
-        projectileSystem: this.projectileSystem,
-        worldPlatforms: this.stagePlatforms,
-        applyDamageToPlayer: (request) => this.requestPlayerDamage(request),
-        onEnemyDefeated: (sprite: Phaser.Physics.Arcade.Sprite) => {
-          if (this.enemyFeatureFlags.enableEnemyDrops) {
-            this.pickupSystem.spawnEnemyDrop(sprite.x, sprite.y - 8, this.enemySpawner?.defeatDropFor(sprite))
-          }
-          this.onTargetDefeated(sprite)
-        },
-        playAnimationSafe: (target, key, ignoreIfPlaying) =>
-          this.playAnimationSafe(target, key, ignoreIfPlaying)
-      },
-      {
-        enableAI: this.enemyFeatureFlags.enableEnemyAI,
-        enableProjectiles: this.enemyFeatureFlags.enableEnemyProjectiles,
-        enableDebug: this.enemyFeatureFlags.enableEnemyDebug,
-        maxActiveEnemies: ENEMY_GLOBAL_TUNING.maxActiveEnemies
-      }
-    )
-
-    const levelMarkers = resolveLevelEnemyMarkers(stageId)
-    const runtimeMarkers = (this.registry.get('enemy_level_markers') as any[] | undefined) ?? []
-    this.enemySpawner.spawnFromLevelMarkers([...levelMarkers, ...runtimeMarkers])
-
-    if ((this.registry.get('enemy_scripted_wave_demo') as boolean | undefined) === true) {
-      this.enemySpawner.registerWave({
-        id: 'demo_enemy_wave_1',
-        typeKey: 'enemy_gunner_bot',
-        x: this.player.x + 120,
-        y: this.player.y,
-        trigger: 'time',
-        triggerValue: 2500
-      })
-    }
-
-    if (typeof window !== 'undefined' && AUTOMATION.enabled) {
-      ;(window as any).spawnEnemyDebug = (
-        typeKey = 'enemy_gunner_bot',
-        x = this.player.x + 100,
-        y = this.player.y
-      ) => this.enemySpawner?.spawn(typeKey, x, y)
-    }
-  }
 
   private gameOver(): void {
     this.onPlayerGameOver()
