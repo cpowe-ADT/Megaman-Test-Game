@@ -89,8 +89,9 @@ export class PickupSystem {
         }
         pickup.setActive(true).setVisible(true).setDepth(5)
         // Part 13e: ground sits exactly where authored and never bobs; float is the only rest that animates.
+        // EVAL-P13-010: ground also widens the body so a standing hero overlaps a narrow frame (the capsule).
         const category = location.category as Exclude<LocationCheckCategory, 'boss_clear'>
-        applyPickupArt(pickup, LOCATION_ART[category], { bob: location.rest === 'float' })
+        applyPickupArt(pickup, LOCATION_ART[category], { bob: location.rest === 'float', ground: location.rest === 'ground' })
         pickup.setDataEnabled()
         pickup.data?.set('locationId', location.id)
         pickup.data?.set('locationCategory', location.category)

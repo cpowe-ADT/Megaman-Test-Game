@@ -60,6 +60,19 @@ export const LOCATION_ART: Record<Exclude<LocationCheckCategory, 'boss_clear'>, 
 
 /** Part 13e: native size, no runtime shrink. The v2 cut already trims each frame to its final on-screen size. */
 export const PICKUP_ART_SCALE = 1
+
+/**
+ * EVAL-P13-010: a `ground`-rest pickup's physics body is padded to at least this width regardless of its
+ * art frame. 13e grounded every placed pickup flush to the real floor; the capsule's frame is only 8px wide
+ * (the narrowest of the set, see pickups_v2.atlas.json), which left its body narrower than a standing hero's
+ * reach once momentum settled the hero a few pixels past the anchor (smoke 54-mire-route, 58-glacier-route).
+ * Widening is horizontal only: the body's height (and so its floor-flush y) is untouched.
+ */
+export const GROUND_PICKUP_MIN_WIDTH = 24
+
+export function groundPickupBodyWidth(frameWidth: number): number {
+  return Math.max(frameWidth, GROUND_PICKUP_MIN_WIDTH)
+}
 /** The two frames alternate at this rate. */
 export const PICKUP_FRAME_RATE = 4
 /** Placed pickups (no gravity) float this many pixels up and back. */
