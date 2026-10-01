@@ -134,6 +134,23 @@ export class EnemySpawner {
     })
   }
 
+  /**
+   * A defeat lock's gate just closed (13h.3a fix, `EVAL-P6-006`): its markers get a fresh, ready-to-
+   * spawn state. The camera's one-screen lookahead can spawn and then retire a marker on the walk up to
+   * the room, and once that happens a no-respawn marker's `readyToSpawn` only clears once the camera
+   * leaves it by a further screen first (06 §6.1) - a bound the now-locked room's own camera may never
+   * cross again. Already-active or already-defeated markers are left alone.
+   */
+  armDefeatMarkers(markerIds: readonly string[]): void {
+    markerIds.forEach((id) => {
+      const state = this.streamStates.get(id)
+      if (state && (state.phase === 'active' || state.phase === 'cleared')) {
+        return
+      }
+      this.streamStates.set(id, createMarkerStreamState())
+    })
+  }
+
   registerWave(wave: EnemySpawnWave): void {
     this.waves.push({ ...wave })
   }
@@ -275,7 +292,14 @@ export class EnemySpawner {
       const entity = this.enemies.get(markerId)
       const fellOutOfStage = Boolean(entity && entity.sprite.y >= GAME_HEIGHT + 96)
       const stillInPlay = Boolean(entity?.sprite.active) && !fellOutOfStage
-      const canRespawn = marker.persistent !== false && !this.noRespawnMarkerIds.has(markerId)
+      // A mini-boss or `room_lock` wave marker only loses respawn for good once it is truly gone (dead
+      // this tick, fallen out, or already in `retiredMarkerIds` from an earlier tick): the camera's
+      // one-screen lookahead can spawn it before its room locks and then leave it behind unfought, and
+      // that walk-by must not count as a defeat (EVAL-P6-006 fix: a mini-boss room must not open for
+      // free, and a wave the camera merely passed must still be there to fight when it comes back).
+      const trulyGone = (entity ? !entity.sprite.active : false) || fellOutOfStage
+      const defeatedForGood = this.retiredMarkerIds.has(markerId) || trulyGone
+      const canRespawn = marker.persistent !== false && !(this.noRespawnMarkerIds.has(markerId) && defeatedForGood)
       const next = nextMarkerStreamState(state, distance, stillInPlay, canRespawn, GAME_WIDTH)
 
       if (next.phase === state.phase) {
@@ -301,21 +325,26 @@ export class EnemySpawner {
       }
 
       // Left `active`: cleared for good, or resting for a respawn. A live sprite that did not die on its
-      // own (the defeat loop below only catches `!sprite.active`) is retired quietly right here.
+      // own (the defeat loop below only catches `!sprite.active`) is retired quietly right here; it only
+      // counts toward `getClearedMarkerIds` (a room lock's defeat check) when it fell out of the stage,
+      // not when the camera merely carried it out of range unfought.
       if (entity?.sprite.active) {
         this.enemies.delete(markerId)
-        this.onEntityRemoved(markerId)
+        this.onEntityRemoved(markerId, fellOutOfStage)
         entity.destroy()
       }
       this.streamStates.set(markerId, next)
     })
   }
 
-  private onEntityRemoved(id: string): void {
+  private onEntityRemoved(id: string, defeated = true): void {
     if (!this.levelMarkers.has(id)) {
       return
     }
     this.activeMarkerIds.delete(id)
+    if (!defeated) {
+      return
+    }
     this.retiredMarkerIds.add(id)
   }
 

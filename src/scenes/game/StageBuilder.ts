@@ -45,7 +45,7 @@ export interface StageBuilderHost {
   fallingToDeath: boolean
   newPlayerRuntime?: NewPlayerRuntime
   storyDirector?: Pick<StoryDirector, 'onRoomLockArmed' | 'onMiniBossLock' | 'waterLevelFlagHeard'>
-  enemySpawner?: Pick<EnemySpawner, 'getClearedMarkerIds' | 'spawnFromLevelMarkers' | 'getEntities'>
+  enemySpawner?: Pick<EnemySpawner, 'getClearedMarkerIds' | 'spawnFromLevelMarkers' | 'getEntities' | 'armDefeatMarkers'>
   readonly stageBackdrop: Pick<StageBackdrop, 'render'>
   applyStageCameraBounds(stageId: string): void
   applyBossRoomCameraLock(): void
@@ -120,6 +120,7 @@ export class StageBuilder {
       runtime: () => host.newPlayerRuntime,
       onArmed: (lockIndex, hint) => host.storyDirector?.onRoomLockArmed(lockIndex, hint),
       onDefeatLockArmed: () => host.storyDirector?.onMiniBossLock(),
+      armDefeatMarkers: (markerIds) => host.enemySpawner?.armDefeatMarkers(markerIds),
       clearedMarkers: () => host.enemySpawner?.getClearedMarkerIds() ?? [],
       spawnMarkers: (markers) => host.enemySpawner?.spawnFromLevelMarkers(markers),
       restoreCamera: () => (host.bossRoomCameraLocked ? host.applyBossRoomCameraLock() : host.applyStageCameraBounds(stageId))

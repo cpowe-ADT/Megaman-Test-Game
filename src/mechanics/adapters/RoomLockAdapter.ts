@@ -63,6 +63,12 @@ export type RoomLockAdapterDeps = {
   onArmed: (lockIndex: number, keyHint: string) => void
   /** A defeat lock closed (the mid-boss room): the story director plays the stage's `miniboss_callout` on the radio lane. */
   onDefeatLockArmed?: (lockId: string) => void
+  /**
+   * A defeat lock just armed: hands its (first wave's) marker ids a fresh spawn-ready state
+   * (`EnemySpawner.armDefeatMarkers`), since the camera's lookahead may have spawned and retired one of
+   * them, unfought, before the room closed around it.
+   */
+  armDefeatMarkers?: (markerIds: readonly string[]) => void
   /** Level markers gone for good this run (`EnemySpawner.getClearedMarkerIds`); a defeat lock opens when all of its are. */
   clearedMarkers?: () => ReadonlySet<string> | readonly string[]
   /** A wave lock's next wave, handed to the spawner as level markers (`EnemySpawner.spawnFromLevelMarkers`). */
@@ -236,6 +242,7 @@ export class RoomLockAdapter {
       const lock = this.locks[index]
       if (lock.requiredInput) this.deps.onArmed(index, roomLockKeyHint(lock.requiredInput, Settings.get().bindings))
       else if (!isWaveLock(lock)) this.deps.onDefeatLockArmed?.(lock.id)
+      if (isDefeatLock(lock)) this.deps.armDefeatMarkers?.(lock.defeatMarkers ?? [])
     }
     if (index >= 0 && this.states[index].phase === 'locked' && isDefeatLock(this.locks[index])) {
       const before = this.states[index]
