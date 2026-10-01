@@ -350,7 +350,8 @@ export class StageSelect extends Phaser.Scene {
     const r = this.layout!.previewRect
     this.add.rectangle(r.centerX, r.centerY, r.width, r.height, COLOR.panel, .9).setStrokeStyle(1, COLOR.border)
     this.infoText = this.add.text(r.x + 5, r.y + 3, '', { font: FONT.panelBody, color: COLOR.text, wordWrap: { width: r.width - 10 }, lineSpacing: 0 })
-    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: pixelFont(1), color: COLOR.textMuted })
+    this.detailsText = this.add.text(r.x + 5, r.y + 22, '', { font: pixelFont(1), color: COLOR.textMuted, wordWrap: { width: r.width - 10 } })
+      .setFixedSize(r.width - 10, Math.max(8, r.height - 24)) // inside the panel on every OS (Linux font metrics wrapped past it)
   }
 
   private createFooter(): void {
