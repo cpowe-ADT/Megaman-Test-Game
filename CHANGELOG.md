@@ -3,6 +3,58 @@
 All notable changes to OMEGA Relay. Versions follow the prompt batches in `docs/prompts/`; the ledger
 (`docs/prompts/EVAL_LEDGER.md`) holds the evidence for each eval id named here.
 
+## Unreleased: v1.0.0 candidate (prompts 12 and 13, 2026-09)
+
+Prompt 12 (finish the game) and prompt 13 (polish from Craig's playtest, parts 13a to 13h) on top of 0.5.0.
+`package.json`'s version is unchanged here; the v1.0.0 tag is Craig's to make.
+
+### Added
+- Seven more warden stages rebuilt to the Heat Works standard (Mire Wraith, Tide Reaver, Volt Hopper, Basalt
+  Titan, Ferro Blade, Gale Vixen, Glacier Ronin), and the Central Core in three acts: a mechanic-remix act, the
+  eight-door rematch hub, and the finale against OMEGA CORE — ten stages end to end (12d, 12e).
+- Ten boss fights with phase kits, a weakness break and stagger, telegraphed attacks, an intro and death
+  presentation, and per-boss arena hazards (12f).
+- Nine weapons (the Buster plus eight warden specials), each with a charged form (its own move, double cost,
+  triple boss damage), a 28-unit energy bar, and a weapon demo after the WEAPON GET card (12f, 13d).
+- Pickups v2: new native-size Higgsfield art for health, weapon energy, heart and sub tanks, the capsule and
+  the bonus drop; every placement grounded or explicitly marked floating; one extra life per warden stage
+  (13e).
+- The campaign beats: READY, the weapon-get card, stage results, a low-HP warning, LIVES, and a campaign
+  record on the ending (12i); a pre-stage boss-intro card and a district return debrief after every warden
+  clear (13g).
+- Story beats at every capsule, weapon pickup, game over, warden phase and district return, with portraits
+  and a dialogue typewriter (12g).
+- A sound for every new action and music per stage and per boss with a phase-two layer, generated
+  procedurally or sourced CC0 and credited (12h).
+- Difficulty settings (Assist, Normal, Veteran) that change boss HP/damage and enemy damage, with death
+  telemetry and heatmaps to retune any segment over three deaths per run (12i, 13c).
+- Gamepad support with remap, touch controls with a weapon-cycle row, and a bundled pixel font for
+  cross-platform text layout (12i).
+- The public build, a GitHub Pages deploy workflow, an itch.io zip, and a performance budget gate (12i).
+- Automation: smoke tiers (fast in CI, full and long on a schedule or tag), `content:audit` and
+  `content:lint` in `verify`, the shot-contract scenario, and the full-campaign smoke that plays start to
+  ending twice (13h).
+
+### Changed
+- `StageBuilder`, `EnemyRuntime`, `PickupSystem` and `OmegaActs` extracted out of `Game.ts` (1,655 to 1,396
+  lines), with one `resolveHurtbox` shared by the sword, player shots and an enemy's melee hitbox (13h).
+- Sentinel Rook, the tutorial boss, retuned to a fair first fight: 60 HP, 1 contact/hop damage, slower
+  wind-ups, phase two at 40% (13c).
+- Every weapon's range and energy cost rebalanced so a straight shot crosses the view and a bar lasts 7 to
+  28 shots depending on the shot's cost (13d).
+- Stage route data moved out of the JS bundle to load per stage, lowering `jsGzipKB` (12i, 13h,
+  `EVAL-P12-005`).
+
+### Fixed
+- Stage music retries a failed load after 2 s instead of waiting for a key press; a production-build smoke
+  scenario guards the regression (13b).
+- No gap at the top of any vertical segment: the tutorial's wall-kick shaft and every tall room's backdrop
+  now cover the camera's full vertical range (13b).
+- The shot contract: one muzzle point per pose, a pellet that outruns the dash, hit-stop-aware shot age,
+  a deflect/spark reaction on the boss, and lobs/boomerangs that finish their own arc instead of dying at
+  the world edge (13b).
+- The Glacier route's intermittent `TypeError` in the mini-boss's ground-shockwave frame index (13b).
+
 ## 0.5.0: the finish batch (branch `codex/05a-feel-hero-camera`, 2026-09)
 
 Prompt 05 (feel, hero and camera) closed, prompt 06's tutorial pilot and the first finish work from
