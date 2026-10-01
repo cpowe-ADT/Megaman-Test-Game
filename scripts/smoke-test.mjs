@@ -1405,7 +1405,10 @@ async function runEnemyStreamingScenario(name) {
         Number(state.enemySpawner?.activeMarkers ?? 0) <= Number(state.enemySpawner?.totalMarkers ?? 0)
     )
 
-    await page.evaluate(() => window.stageDebug?.setPlayerX?.(700))
+    // 13h.3a (EVAL-P6-006): markers now stream camera-relatively (one screen, 448px), a wider window than
+    // the old per-marker retire triggers, so the camera needs to clear the intro marker by a full screen
+    // before it retires; 700 no longer does that.
+    await page.evaluate(() => window.stageDebug?.setPlayerX?.(1300))
 
     const finalState = await waitForState(
       page,
