@@ -1,5 +1,5 @@
 {
-  "$comment": "13h.1 (prompt 06 §6.9, EVAL-P6-013): SMOKE_TIER=fast runs this list only; unset or any other value runs every registered scenario ('full'). Categories the fast list must cover: boot, input, one stage, one boss, profiles, HD render, the shot contract. Edit scripts/smoke-test.mjs's tier check, not this comment, to change matching rules; SMOKE_ONLY still takes full names or numeric prefixes on top of this filter. 13h.2 (EVAL-P8-008): `long` scenarios stay registered but skipped ('Skipped: needs SMOKE_LONG=1') at every SMOKE_TIER, including 'full' (npm run verify, nightly CI), until SMOKE_LONG=1 explicitly opts in; SMOKE_ONLY naming one is not enough by itself. That keeps a whole-campaign-length scenario from silently multiplying the full suite's run time.",
+  "$comment": "13h.1 (prompt 06 \u00a76.9, EVAL-P6-013): SMOKE_TIER=fast runs this list only; unset or any other value runs every registered scenario ('full'). Categories the fast list must cover: boot, input, one stage, one boss, profiles, HD render, the shot contract. Edit scripts/smoke-test.mjs's tier check, not this comment, to change matching rules; SMOKE_ONLY still takes full names or numeric prefixes on top of this filter. 13h.2 (EVAL-P8-008): `long` scenarios stay registered but skipped ('Skipped: needs SMOKE_LONG=1') at every SMOKE_TIER, including 'full' (npm run verify, nightly CI), until SMOKE_LONG=1 explicitly opts in; SMOKE_ONLY naming one is not enough by itself. That keeps a whole-campaign-length scenario from silently multiplying the full suite's run time.",
   "fast": [
     "1-click-select",
     "2-keyboard-enter-start",
@@ -10,7 +10,6 @@
     "9-checkpoint-respawn",
     "12-weapon-switch-energy",
     "13d-movement-feel",
-    "13e-input-source-lifecycle",
     "13f-input-focus-loss",
     "46-gamepad-and-remap",
     "8-boss-room-activation",

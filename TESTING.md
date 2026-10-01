@@ -29,7 +29,7 @@ The goal is fast feedback from deterministic tests, with browser automation rese
 
 `SMOKE_TIER=fast` (`scripts/smoke/tiers.json`) runs about twenty scenarios in under three minutes: boot
 (`1-click-select`, `2-keyboard-enter-start`), input (`3-enter-then-charge-shot`, `4-title-controls`,
-`13d-movement-feel`, `13e-input-source-lifecycle`, `13f-input-focus-loss`, `46-gamepad-and-remap`), one
+`13d-movement-feel`, `13f-input-focus-loss`, `46-gamepad-and-remap`; `13e-input-source-lifecycle` runs in the full tier only, its 15 s waits time out on CI runners), one
 stage route (`50-pyro-route`), one boss (`8-boss-room-activation`, `39-boss-grounded`,
 `21-boss-gate-lock`), profiles (`41-profiles`), HD render (`40-hd-render`), the shot contract
 (`65-shot-contract`), plus a handful of cheap regressions (`4b`, `4d`, `9`, `12`, `38`). `SMOKE_TIER=full`
