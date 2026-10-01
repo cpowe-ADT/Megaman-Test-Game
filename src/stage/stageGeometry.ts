@@ -81,6 +81,31 @@ export function backdropCoverageTop(spans: readonly { y: number }[]): number {
 }
 
 /**
+ * The plain, opaque strip `StageBackdrop` repaints under the HUD (see its `hudMask`): a screen-fixed
+ * band (`scrollFactor` 0), x and y in screen game px, an `margin` wider than the view each side so a
+ * camera shake never shows its edge. It must be screen-fixed: the final-fixes lane (2026-10-01) found it
+ * painted in world rows 0 to 58, which in a tall room slid a flat, layer-less band across the screen
+ * whenever the camera scrolled up, even a jump's 20 px (Heat Works, the tutorial shaft): "the screen
+ * disappears when jumping".
+ */
+export type FixedBackdropBand = { x: number; y: number; width: number; height: number; scrollFactor: 0 | 1 }
+
+export function hudMaskBand(viewWidth: number, gameplayViewportTop: number, margin = 8): FixedBackdropBand {
+  return { x: -margin, y: 0, width: viewWidth + 2 * margin, height: gameplayViewportTop, scrollFactor: 0 }
+}
+
+/** The world rows a band hides for a camera scroll: a screen-fixed band follows the camera, a world band stays put. */
+export function bandWorldRows(band: FixedBackdropBand, scrollY: number): { top: number; bottom: number } {
+  const offset = band.scrollFactor === 0 ? scrollY : 0
+  return { top: offset + band.y, bottom: offset + band.y + band.height }
+}
+
+/** The camera's reachable vertical scroll, world px: from the stage's tallest room top down to the first screen (0). */
+export function cameraScrollRange(top: number): { min: number; max: number } {
+  return { min: Math.min(0, top), max: 0 }
+}
+
+/**
  * Alpha-composites `overlay` over `base` (both 0xRRGGBB) at `alpha` and returns an opaque 0xRRGGBB
  * result (`StageBackdrop.drawBand`, EVAL-P13-003 fix). The accent band's upward copy now joins the
  * first screen's band at the gameplay viewport top instead of world y 0 (13b.2), so it covers the strip

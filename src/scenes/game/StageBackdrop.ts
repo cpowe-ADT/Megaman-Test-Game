@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { GAMEPLAY_VIEWPORT_TOP } from '../../config/gameplayLayout'
 import { GAME_HEIGHT, GAME_WIDTH } from '../../config/renderPolicy'
 import { getCampaignStage } from '../../content/campaign'
-import { backdropLayerSpans, blendOpaqueColor, stageVerticalTop } from '../../stage/stageGeometry'
+import { backdropLayerSpans, blendOpaqueColor, hudMaskBand, stageVerticalTop } from '../../stage/stageGeometry'
 import { hazardStripPattern } from '../../mechanics/mechanicsVisuals'
 import { killPitGaps } from '../../boss/bossRoomLayout'
 
@@ -40,6 +40,7 @@ export class StageBackdrop {
   private graphics?: Phaser.GameObjects.Graphics
   private slag?: Phaser.GameObjects.Graphics
   private hudMask?: Phaser.GameObjects.Graphics
+  private hudEdge?: Phaser.GameObjects.Graphics
 
   constructor(private readonly scene: Phaser.Scene) {}
 
@@ -63,6 +64,8 @@ export class StageBackdrop {
     this.slag = undefined
     this.hudMask?.destroy()
     this.hudMask = undefined
+    this.hudEdge?.destroy()
+    this.hudEdge = undefined
   }
 
   render(stageId: string, worldWidth: number): void {
@@ -82,8 +85,12 @@ export class StageBackdrop {
     // 13b.2 (EVAL-P13-003): the upward repeat joins the first screen's band at the viewport top, not at
     // world y 0, or a tall room shows a flat, pattern-less strip between them (13a-music-backdrop.md).
     if (top < 0) this.drawBand(backdrop, baseColor, accentColor, worldWidth, top, GAMEPLAY_VIEWPORT_TOP)
-    backdrop.fillStyle(accentColor, 0.45).fillRect(0, GAMEPLAY_VIEWPORT_TOP, worldWidth, 2)
     this.graphics = backdrop
+    // The accent rule under the HUD is screen-fixed too (same depth and pixels at rest): in a tall room a
+    // world-space rule at row 58 crossed the view mid-climb.
+    const edgeBand = hudMaskBand(GAME_WIDTH, GAMEPLAY_VIEWPORT_TOP)
+    this.hudEdge = scene.add.graphics().setDepth(-50).setScrollFactor(edgeBand.scrollFactor)
+    this.hudEdge.fillStyle(accentColor, 0.45).fillRect(edgeBand.x, GAMEPLAY_VIEWPORT_TOP, edgeBand.width, 2)
     layers.forEach((layer, index) => {
       if (!scene.textures.exists(layer.key)) {
         return
@@ -114,15 +121,18 @@ export class StageBackdrop {
       scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.clear, this)
       this.followingCamera = true
     }
-    // EVAL-P13-003 fix (40-hd-render): redraw the strip under the HUD in plain, opaque baseColor, above
-    // the band and layers. That strip is covered by the tall-room upward copies above so a climb has no
-    // gap (13b.2), but the HUD's own chrome blends over it at a live alpha (HUD.ts drawChrome): Phaser's
-    // Canvas and WebGL renderers round that blend a channel or two apart for the new tinted/textured
+    // EVAL-P13-003 fix (40-hd-render): draw the strip under the HUD in plain, opaque baseColor, above
+    // the band and layers. The HUD's own chrome blends over it at a live alpha (HUD.ts drawChrome):
+    // Phaser's Canvas and WebGL renderers round that blend a channel or two apart for tinted/textured
     // colours underneath, which 40-hd-render reads as a 1x/2x pixel mismatch. This keeps the HUD's input
-    // exactly what it was before 13b.2 (the one combination already proven to round the same both ways),
-    // while the upward band and layers stay intact for the part of the room a climb actually reveals.
-    this.hudMask = scene.add.graphics().setDepth(-20)
-    this.hudMask.fillStyle(baseColor, 1).fillRect(0, 0, worldWidth, GAMEPLAY_VIEWPORT_TOP)
+    // exactly what it was before 13b.2 (the one combination already proven to round the same both ways).
+    // Screen-fixed (scrollFactor 0), not world rows 0 to 58: in a tall room (Heat Works, the tutorial
+    // shaft) the camera scrolls above 0 even in an ordinary jump, and a world-space strip slid a flat,
+    // layer-less band down the screen ("the screen disappears when jumping", final-fixes 2026-10-01).
+    // Screen-fixed it is the same pixels at rest and always exactly the HUD's footprint.
+    const hudBand = hudMaskBand(GAME_WIDTH, GAMEPLAY_VIEWPORT_TOP)
+    this.hudMask = scene.add.graphics().setDepth(-20).setScrollFactor(hudBand.scrollFactor)
+    this.hudMask.fillStyle(baseColor, 1).fillRect(hudBand.x, hudBand.y, hudBand.width, hudBand.height)
     // A boss room channel (12f wave 6) has a bed under its cut: no kill-plane strip there.
     this.renderPitSlag(killPitGaps(stage.arena), height)
   }
