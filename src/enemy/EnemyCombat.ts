@@ -4,6 +4,7 @@ import { EnemyProjectileCatalog, spawnEnemyProjectile } from './EnemyProjectiles
 import { EnemyMotor } from './EnemyMotor'
 import { resolveHeavyPush } from './enemyDamage'
 import { computeHitboxRect, resolveAttackPhase, resolveHitboxKey, type EnemyAttackPhase } from './attackHitbox'
+import { rectHurtboxOverlap } from '../combat/Hitbox'
 
 export type { EnemyAttackPhase }
 
@@ -178,8 +179,10 @@ export class EnemyCombat {
       return
     }
 
+    // The hit contract (prompt 06 phase 6.0, `EVAL-P6-015`): the exact box `EnemyDebugOverlay` draws in
+    // red is the box that decides the hit, through the same `resolveHurtbox` the sword and player shots use.
     const playerBounds = this.context.player.getBounds()
-    if (!Phaser.Geom.Rectangle.Overlaps(hitRect, playerBounds)) {
+    if (!rectHurtboxOverlap(hitRect, playerBounds)) {
       return
     }
 

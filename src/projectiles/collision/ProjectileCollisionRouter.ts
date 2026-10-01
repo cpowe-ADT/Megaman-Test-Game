@@ -9,6 +9,14 @@ import {
 import { WEAPON_TUNING } from '../../content/weapons'
 import { corrodeTickDelays, resolveChainTargets } from '../weaponEffects'
 import { weaponOnHitEffects } from './weaponOnHitEffects'
+import { rectHurtboxOverlap, type TopLeftRect } from '../../combat/Hitbox'
+
+/** An Arcade body as the top-left rect `rectHurtboxOverlap` shares with the sword and an enemy's melee
+ * hitbox (prompt 06 phase 6.0, `EVAL-P6-015`); `null` when the sprite has no live body to read yet. */
+function bodyRect(sprite: Phaser.Physics.Arcade.Sprite | null | undefined): TopLeftRect | null {
+  const body = sprite?.body as Phaser.Physics.Arcade.Body | undefined
+  return body ? { x: body.x, y: body.y, width: body.width, height: body.height } : null
+}
 
 type CombatSource = 'player' | 'enemy' | 'boss' | 'hazard' | 'system'
 type CombatTarget = 'player' | 'enemy' | 'boss' | 'environment'
@@ -161,6 +169,15 @@ export class ProjectileCollisionRouter {
       return
     }
 
+    // The hit contract (prompt 06 phase 6.0, `EVAL-P6-015`): Arcade's overlap is still the broad phase,
+    // but the accept/reject decision now runs through the same `resolveHurtbox` rects as the sword and
+    // an enemy's melee hitbox, instead of trusting the overlap callback alone.
+    const bulletRect = bodyRect(bullet)
+    const bossRect = bodyRect(target)
+    if (bulletRect && bossRect && !rectHurtboxOverlap(bulletRect, bossRect)) {
+      return
+    }
+
     const damage = (bullet.data?.get?.('damage') as number | undefined) ?? 1
     const accepted = this.options.damageBoss(damage, {
       weaponId: bullet.data?.get?.('weaponId') as string | undefined,
@@ -305,6 +322,14 @@ export class ProjectileCollisionRouter {
       asDynSprite(enemyObj) ||
       asDynSprite(bulletObj)
     if (!bullet?.data || !enemy || bullet.data.get('owner') !== 'player') {
+      return
+    }
+
+    // The hit contract (prompt 06 phase 6.0, `EVAL-P6-015`): same rects, same function, as the sword
+    // and an enemy's melee hitbox against the player.
+    const bulletRect = bodyRect(bullet)
+    const enemyRect = bodyRect(enemy)
+    if (bulletRect && enemyRect && !rectHurtboxOverlap(bulletRect, enemyRect)) {
       return
     }
 
