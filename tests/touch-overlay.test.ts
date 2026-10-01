@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DEFAULT_BINDINGS } from '../src/input/ActionState'
 import { keyEventInitFor, keyInfoForCode, primaryCodeForAction } from '../src/input/touch/touchKeyMap'
-import { cssBoxForSpec, touchButtonsFor, touchSetForScene, type TouchButtonSpec } from '../src/input/touch/touchButtonSets'
+import { cssBoxForSpec, touchActionsOf, touchButtonsFor, touchSetForScene, type TouchButtonSpec } from '../src/input/touch/touchButtonSets'
 import { getHudLayout } from '../src/ui/hudLayout'
 import { GAME_HEIGHT, GAME_WIDTH, resolveGameZoom } from '../src/config/renderPolicy'
 
@@ -104,4 +104,40 @@ test('touch set for scene: Game in control gets the play set; a dialogue, pause,
 test('touch button sets: the CSS box scales a game-pixel spec to the canvas rect, centred the same way', () => {
   const spec: TouchButtonSpec = { id: 'faceBottom', action: 'jump', label: 'JUMP', x: 100, y: 50, width: 20, height: 10, round: true, alpha: 0.2, fontScale: 2 }
   assert.deepEqual(cssBoxForSpec(spec, 2), { left: 180, top: 90, width: 40, height: 20 })
+})
+
+// Final fixes (2026-10-01): one thumb for a dash-jump. The motor starts a dash-jump when dash and jump land
+// on the same frame (PlayerMotor: "Jump and dash on the same frame is a dash-jump from its first frame"),
+// so the button presses both keys together.
+test('DASH JUMP: a play-set button that presses dash and jump together, labelled DASH JUMP, absent from the menu set', () => {
+  const play = touchButtonsFor('play')
+  const chord = play.find((b) => b.id === 'dashJump')
+  assert.ok(chord, 'the play set has a dashJump button')
+  assert.equal(chord.label, 'DASH JUMP')
+  assert.deepEqual(touchActionsOf(chord), ['dash', 'jump'])
+  assert.equal(chord.round, true)
+  // Plain buttons press only their own action.
+  const plainJump = play.find((b) => b.id === 'faceBottom')!
+  assert.deepEqual(touchActionsOf(plainJump), ['jump'])
+  assert.ok(!touchButtonsFor('menu').some((b) => b.id === 'dashJump'), 'menus have no dash-jump')
+})
+
+test('DASH JUMP sits beside the diamond: 48 CSS px, 8 CSS px clear of every other button, inside the frame at 844x390, 932x430 and 667x375', () => {
+  const play = touchButtonsFor('play')
+  const chord = play.find((b) => b.id === 'dashJump')!
+  const diamondIds = ['faceBottom', 'faceRight', 'faceLeft', 'faceTop']
+  const diamond = play.filter((b) => diamondIds.includes(b.id))
+  // "Beside": right of the bottom (JUMP) button and below the right (SHOT) one, i.e. in the diamond's corner.
+  const jump = play.find((b) => b.id === 'faceBottom')!
+  const shot = play.find((b) => b.id === 'faceRight')!
+  assert.ok(chord.x > jump.x && chord.y >= jump.y - 4 && chord.y > shot.y, "DASH JUMP is the diamond's lower-right neighbour")
+  assert.ok(chord.x - chord.width / 2 >= 0 && chord.x + chord.width / 2 <= GAME_WIDTH && chord.y + chord.height / 2 <= GAME_HEIGHT, 'inside the frame')
+  for (const { w, h } of REFERENCE_VIEWPORTS) {
+    const scale = resolveGameZoom(w, h, 'smooth')
+    assert.ok(Math.min(chord.width, chord.height) * scale >= MIN_CSS_PX, `DASH JUMP at ${w}x${h}: ${Math.min(chord.width, chord.height) * scale}px >= ${MIN_CSS_PX}`)
+    play.filter((b) => b.id !== chord.id).forEach((other) => {
+      assert.ok(separated(chord, other, MIN_GAP_CSS_PX / scale), `DASH JUMP vs ${other.id} at ${w}x${h}: closer than ${MIN_GAP_CSS_PX}px`)
+    })
+    diamond.forEach((other) => assert.ok(separated(chord, other, MIN_GAP_CSS_PX / scale), `DASH JUMP vs diamond ${other.id} at ${w}x${h}`))
+  }
 })

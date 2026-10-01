@@ -52,6 +52,32 @@ async function tapCanvas(page, gx, gy) {
   await page.touchscreen.tap(at.x, at.y)
 }
 
+/** The same hold, found by the button's own id (`data-id`): DASH JUMP's `data-action` is `dash+jump`, so
+ * `holdSet(page, 'dash', ...)` can only ever mean the plain DASH button. */
+async function holdById(page, id, down) {
+  await page.evaluate(
+    ({ id, down }) => {
+      const el = document.querySelector(`.touch-btn[data-id="${id}"]`)
+      if (!el) throw new Error(`No touch button with id "${id}"`)
+      el.dispatchEvent(new PointerEvent(down ? 'pointerdown' : 'pointerup', { bubbles: true, cancelable: true, pointerId: 102, pointerType: 'touch', isPrimary: true }))
+    },
+    { id, down }
+  )
+}
+
+/** Every visible touch control's CSS box, for the overlap checks (the corner pair and the play set). */
+async function boxes(page) {
+  return page.evaluate(() => {
+    const out = []
+    document.querySelectorAll('.touch-btn, .touch-fullscreen, .touch-toggle').forEach((el) => {
+      if (getComputedStyle(el).display === 'none') return
+      const r = el.getBoundingClientRect()
+      out.push({ id: el.dataset?.id ?? el.className, left: r.left, top: r.top, right: r.right, bottom: r.bottom })
+    })
+    return out
+  })
+}
+
 /** A hold across frames: Playwright's `touchscreen.tap` has no duration, so this dispatches the same
  * pointer events the overlay's own buttons listen for, directly on the element a real finger would hit. */
 async function holdSet(page, action, down) {
@@ -82,6 +108,32 @@ export async function runTouchModeScenario(name, deps) {
   }
 
   try {
+    // Full screen (final-fixes): a stub counts `requestFullscreen`/`exitFullscreen` calls and flips
+    // `document.fullscreenElement`, and the primary pointer reports coarse, so this headless desktop
+    // context reads as a phone. Real Chromium would refuse a full-screen request from a script-driven tap.
+    await page.addInitScript(() => {
+      window.__fs = { requests: 0, exits: 0, locks: 0 }
+      let current = null
+      Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => current })
+      Element.prototype.requestFullscreen = function () {
+        window.__fs.requests += 1
+        current = document.documentElement
+        document.dispatchEvent(new Event('fullscreenchange'))
+        return Promise.resolve()
+      }
+      document.exitFullscreen = () => {
+        window.__fs.exits += 1
+        current = null
+        document.dispatchEvent(new Event('fullscreenchange'))
+        return Promise.resolve()
+      }
+      if (screen.orientation) screen.orientation.lock = () => { window.__fs.locks += 1; return Promise.resolve() }
+      const realMatchMedia = window.matchMedia.bind(window)
+      window.matchMedia = (query) => {
+        const real = realMatchMedia(query)
+        return /pointer:\s*coarse/.test(query) ? new Proxy(real, { get: (target, key) => (key === 'matches' ? true : typeof target[key] === 'function' ? target[key].bind(target) : target[key]) }) : real
+      }
+    })
     await page.goto(touchUrl, { waitUntil: 'domcontentloaded' })
     await page.waitForTimeout(400)
     await page.evaluate(() => window.dispatchEvent(new Event('resize')))
@@ -94,6 +146,12 @@ export async function runTouchModeScenario(name, deps) {
     await page.waitForFunction(() => document.querySelector('.touch-start-card')?.style.display === 'none', null, { timeout: 4000 })
     await advanceFrames(page, 2)
     assert.equal((await readState(page)).settings?.touchControls, 'on', 'tapping the start card sets touchControls to ON')
+    // Phone full screen: the same tap entered full screen (on its release) and tried the landscape lock.
+    await page.waitForFunction(() => window.__fs.requests === 1, null, { timeout: 4000 })
+    const startFullscreen = await page.evaluate(() => ({ ...window.__fs }))
+    assert.equal(startFullscreen.locks, 1, 'the landscape lock was tried once, after the request')
+    const afterStartTap = await readState(page)
+    assert.deepEqual(afterStartTap.touch?.fullscreen, { supported: true, active: true, phone: true }, 'a phone-like device is in full screen after the start card tap')
 
     // 1. Title's own menu set: the cross, A (OK) and B (BACK), SELECT and START. No keyboard anywhere below.
     const titleMenuState = await capture('0-title-menu-set')
@@ -181,7 +239,59 @@ export async function runTouchModeScenario(name, deps) {
     await tap(page, 'cancel')
     const resumedState = await waitForState(page, (state) => !state.activeScenes?.includes('SystemMenu') && state.touch?.set === 'play', 4000, 'tapping BACK on the pause menu to resume at once')
 
-    const summary = { titleMenuState, playSetState, walkedState, jumpedState, shotState, pausedState, resumedState, tutorialState }
+    // 4. DASH JUMP: one tap presses dash and jump on the same frame, so the hero leaves the ground already
+    // carrying dash speed (a plain jump has vx 0; a plain dash stays grounded). Found by id, not action.
+    await waitForState(page, (state) => state.newPlayer?.locomotion?.grounded === true, 6000, 'standing on the floor before DASH JUMP')
+    const beforeDashJump = await readState(page)
+    const dashJumpGroundY = Number(beforeDashJump.player?.y ?? 0)
+    assert.ok(playSetState.touch.buttons.includes('dash') && playSetState.touch.buttons.includes('jump'), 'DASH JUMP adds no new action: it is dash plus jump')
+    assert.equal(await page.evaluate(() => document.querySelector('.touch-btn[data-id="dashJump"]')?.textContent), 'DASH JUMP', 'the button is labelled DASH JUMP')
+    await holdById(page, 'dashJump', true)
+    await advanceFrames(page, 5)
+    const dashJumpState = await waitForState(
+      page,
+      (state) => state.newPlayer?.locomotion?.grounded === false && Math.abs(Number(state.player?.vx ?? 0)) >= 250 && Number(state.player?.y ?? dashJumpGroundY) < dashJumpGroundY,
+      4000,
+      'tapping DASH JUMP to leave the ground at dash speed'
+    )
+    await holdById(page, 'dashJump', false)
+    await capture('2-dash-jump')
+    await waitForState(page, (state) => state.newPlayer?.locomotion?.grounded === true, 6000, 'landing after the dash-jump')
+
+    // 5. The corner: FULLSCREEN stacked above TOUCH, and neither under a play-set button, at the three
+    // reference phone viewports. The tap exits and re-enters full screen through the stubbed API.
+    const cornerBoxes = {}
+    for (const viewport of [{ width: 844, height: 390 }, { width: 932, height: 430 }, { width: 667, height: 375 }]) {
+      await page.setViewportSize(viewport)
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+      await advanceFrames(page, 3)
+      const all = await boxes(page)
+      const corner = all.filter((box) => /touch-fullscreen|touch-toggle/.test(box.id))
+      const pads = all.filter((box) => !/touch-fullscreen|touch-toggle/.test(box.id))
+      assert.equal(corner.length, 2, `${viewport.width}x${viewport.height}: the FULLSCREEN and TOUCH buttons are both shown`)
+      for (const c of corner) {
+        for (const pad of pads) {
+          const gapX = Math.max(pad.left - c.right, c.left - pad.right)
+          const gapY = Math.max(pad.top - c.bottom, c.top - pad.bottom)
+          assert.ok(Math.max(gapX, gapY) >= 0, `${viewport.width}x${viewport.height}: ${c.id} overlaps ${pad.id}`)
+        }
+      }
+      const [fullscreenBox, touchBox] = [corner.find((c) => /touch-fullscreen/.test(c.id)), corner.find((c) => /touch-toggle/.test(c.id))]
+      assert.ok(fullscreenBox.bottom <= touchBox.top, `${viewport.width}x${viewport.height}: FULLSCREEN sits above TOUCH`)
+      cornerBoxes[`${viewport.width}x${viewport.height}`] = { fullscreenBox, touchBox }
+    }
+    await page.setViewportSize({ width: 844, height: 390 })
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+    await advanceFrames(page, 3)
+    assert.equal(await page.evaluate(() => document.querySelector('.touch-fullscreen')?.textContent), 'EXIT FULL', 'the corner button offers EXIT while in full screen')
+    await page.evaluate(() => document.querySelector('.touch-fullscreen').click())
+    await page.waitForFunction(() => window.__fs.exits === 1, null, { timeout: 4000 })
+    assert.equal((await readState(page)).touch?.fullscreen?.active, false, 'the corner button leaves full screen')
+    await page.evaluate(() => document.querySelector('.touch-fullscreen').click())
+    await page.waitForFunction(() => window.__fs.requests === 2, null, { timeout: 4000 })
+    assert.equal((await readState(page)).touch?.fullscreen?.active, true, 'the corner button enters full screen again')
+
+    const summary = { titleMenuState, playSetState, walkedState, jumpedState, shotState, pausedState, resumedState, tutorialState, dashJumpState, startFullscreen, cornerBoxes }
     fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify(summary, null, 2))
     assert.deepEqual(errors, [], `No browser errors; saw ${JSON.stringify(errors)}`)
     return summary

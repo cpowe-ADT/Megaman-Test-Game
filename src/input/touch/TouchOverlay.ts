@@ -15,7 +15,8 @@ import { GAME_WIDTH } from '../../config/renderPolicy'
 import { Settings } from '../../systems/Settings'
 import { cycleTouchControls } from '../../ui/menu/touchOptions'
 import { keyEventInitFor } from './touchKeyMap'
-import { cssBoxForSpec, touchButtonsFor, touchControlsVisible, touchSetForScene, type TouchSet } from './touchButtonSets'
+import { cssBoxForSpec, touchActionsOf, touchButtonsFor, touchControlsVisible, touchSetForScene, type TouchSet } from './touchButtonSets'
+import { autoFullscreenOnStartTap, fullscreenSupported, isFullscreen, isPhoneOrTablet, toggleFullscreen, type FullscreenEnvironment } from './fullscreen'
 
 /** Persists across sessions: the start card shows again only once the stored mode no longer matches
  * the live one (Craig's v2 note: "once per device until the setting changes"). */
@@ -27,6 +28,14 @@ function isTouchScreen(): boolean {
   if (typeof window === 'undefined') return false
   if (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) return true
   return Boolean(window.matchMedia?.('(pointer: coarse)')?.matches)
+}
+
+/** What `isPhoneOrTablet` reads: the primary pointer is coarse and the device reports touch points. */
+function fullscreenEnvironment(): FullscreenEnvironment {
+  return {
+    coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
+    maxTouchPoints: typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 0
+  }
 }
 
 /** `?touchControls=1` (automation only) forces the overlay on for a smoke without a real touch screen. */
@@ -49,23 +58,44 @@ export class TouchOverlay {
   }
 
   /** `render_game_to_text`'s `touch` field (automation only): shown, the active set and its buttons,
-   * and the toggle's current mode, so a smoke can assert the overlay without scraping the DOM. */
-  static describe(): { shown: boolean; set: TouchSet | null; buttons: ActionName[]; toggleMode: string } {
+   * the toggle's current mode, and the full-screen state (`supported` by the browser, `active` now,
+   * `phone` = detected as a phone or tablet, so the start card's tap enters it), so a smoke can assert
+   * the overlay without scraping the DOM. */
+  static describe(): {
+    shown: boolean
+    set: TouchSet | null
+    buttons: ActionName[]
+    toggleMode: string
+    fullscreen: { supported: boolean; active: boolean; phone: boolean }
+  } {
     const instance = this.instance
+    const hasDocument = typeof document !== 'undefined'
     return {
       shown: instance?.shown ?? false,
       set: instance?.currentSet ?? null,
-      buttons: instance ? [...new Set([...instance.buttons.values()].map((entry) => entry.action))] : [],
-      toggleMode: Settings.get().touchControls
+      buttons: instance ? [...new Set([...instance.buttons.values()].flatMap((entry) => entry.actions))] : [],
+      toggleMode: Settings.get().touchControls,
+      fullscreen: {
+        supported: hasDocument && fullscreenSupported(document),
+        active: hasDocument && isFullscreen(document),
+        phone: typeof window !== 'undefined' && isPhoneOrTablet(fullscreenEnvironment())
+      }
     }
   }
 
   private readonly root: HTMLDivElement
+  private readonly corner: HTMLDivElement
   private readonly toggle: HTMLButtonElement
+  private readonly fullscreenButton: HTMLButtonElement
   private readonly hint: HTMLDivElement
   private readonly startCard: HTMLDivElement
-  private readonly buttons = new Map<string, { el: HTMLDivElement; action: ActionName }>()
+  private readonly buttons = new Map<string, { el: HTMLDivElement; actions: ActionName[] }>()
   private readonly pressCounts = new Map<string, number>()
+  /** Buttons holding each action now: one real key goes down on the first and up on the last, so
+   * DASH JUMP held with JUMP (or two buttons for one action) never double-presses or half-releases a key. */
+  private readonly actionHolds = new Map<ActionName, number>()
+  /** Set by the start card's tap; the full-screen request fires on the touch's release (see below). */
+  private wantFullscreen = false
   private currentSet: TouchSet | null = null
   private shown = false
   private chipUntil = 0
@@ -74,6 +104,19 @@ export class TouchOverlay {
     this.root = document.createElement('div')
     this.root.className = 'touch-overlay-root'
     this.root.style.display = 'none'
+
+    this.corner = document.createElement('div')
+    this.corner.className = 'touch-corner'
+
+    this.fullscreenButton = document.createElement('button')
+    this.fullscreenButton.type = 'button'
+    this.fullscreenButton.className = 'touch-fullscreen'
+    this.fullscreenButton.style.display = 'none'
+    // `click`, not `pointerdown`: a touch's activation for `requestFullscreen` is set on release.
+    this.fullscreenButton.addEventListener('click', (event) => {
+      event.preventDefault()
+      void toggleFullscreen(document, screen).then(() => this.poll())
+    })
 
     this.toggle = document.createElement('button')
     this.toggle.type = 'button'
@@ -97,7 +140,19 @@ export class TouchOverlay {
       event.preventDefault()
       event.stopPropagation()
       this.dismissStartCard(true)
+      // Phone or tablet: the same tap also asks for full screen. A touch grants the browser's user
+      // activation on release, not press, so the request waits for the release (`flushFullscreen`).
+      this.wantFullscreen = true
     })
+    const flushFullscreen = () => {
+      if (!this.wantFullscreen) return
+      this.wantFullscreen = false
+      void autoFullscreenOnStartTap(fullscreenEnvironment(), document, screen).then(() => this.poll())
+    }
+    window.addEventListener('pointerup', flushFullscreen)
+    window.addEventListener('touchend', flushFullscreen)
+    document.addEventListener('fullscreenchange', () => this.poll())
+    document.addEventListener('webkitfullscreenchange', () => this.poll())
     const dismissFromPhysicalInput = () => { if (this.startCard.style.display !== 'none') this.dismissStartCard(false) }
     window.addEventListener('keydown', dismissFromPhysicalInput)
 
@@ -105,13 +160,16 @@ export class TouchOverlay {
     // into "TOUCH: OFF -- TAP TO TURN ON" for a moment, so a phone player is never locked out without
     // a second DOM element (`chipUntil`, read back in `poll`).
     window.addEventListener('pointerdown', (event) => {
-      if (event.target === this.toggle) return
+      if (event.target === this.toggle || event.target === this.fullscreenButton) return
       if (event.target === this.startCard || (event.target instanceof Node && this.startCard.contains(event.target))) return
       if (Settings.get().touchControls === 'off' && isTouchScreen()) this.chipUntil = Date.now() + 2500
     })
 
+    // The corner stacks FULLSCREEN above TOUCH: beside it, the pair ran under the d-pad's down arm at 667x375.
+    this.corner.appendChild(this.fullscreenButton)
+    this.corner.appendChild(this.toggle)
     document.body.appendChild(this.root)
-    document.body.appendChild(this.toggle)
+    document.body.appendChild(this.corner)
     document.body.appendChild(this.hint)
     document.body.appendChild(this.startCard)
 
@@ -175,6 +233,10 @@ export class TouchOverlay {
     const forced = automationForced()
 
     this.toggle.style.display = touchScreen || forced ? 'flex' : 'none'
+    // Offered wherever the browser can do it (not iPhone Safari), on a touch screen or when automation forces touch.
+    const fullscreenOffered = (touchScreen || forced) && fullscreenSupported(document)
+    this.fullscreenButton.style.display = fullscreenOffered ? 'flex' : 'none'
+    this.fullscreenButton.textContent = isFullscreen(document) ? 'EXIT FULL' : 'FULLSCREEN'
     this.toggle.textContent = Date.now() < this.chipUntil ? 'TOUCH: OFF — TAP TO TURN ON' : `TOUCH: ${Settings.get().touchControls.toUpperCase()}`
     this.maybeShowStartCard(touchScreen || forced)
     if (this.startCard.style.display === 'none') this.game.input.enabled = true
@@ -209,21 +271,23 @@ export class TouchOverlay {
       el.style.opacity = String(spec.alpha + 0.6)
       // Smoke 67 (and any future one) finds a button by its action or its own id (two buttons, e.g.
       // SELECT and BACK, can share an action); `data-id` disambiguates, `data-action` is the common case.
-      el.dataset.action = spec.action
+      // A chord reads `dash+jump`, so a lookup by `data-action="dash"` still finds only the plain DASH button.
+      const actions = touchActionsOf(spec)
+      el.dataset.action = actions.join('+')
       el.dataset.id = spec.id
       const press = (event: Event) => {
         event.preventDefault()
-        this.press(spec.id, spec.action)
+        this.press(spec.id, actions)
       }
       const release = (event: Event) => {
         event.preventDefault()
-        this.release(spec.id, spec.action)
+        this.release(spec.id, actions)
       }
       el.addEventListener('pointerdown', press)
       el.addEventListener('pointerup', release)
       el.addEventListener('pointercancel', release)
       this.root.appendChild(el)
-      this.buttons.set(spec.id, { el, action: spec.action })
+      this.buttons.set(spec.id, { el, actions })
     })
   }
 
@@ -249,25 +313,40 @@ export class TouchOverlay {
     })
   }
 
-  private press(id: string, action: ActionName): void {
+  private press(id: string, actions: readonly ActionName[]): void {
     const count = (this.pressCounts.get(id) ?? 0) + 1
     this.pressCounts.set(id, count)
     this.buttons.get(id)?.el.classList.add('pressed')
-    if (count === 1) this.dispatchKey(action, 'keydown')
+    if (count === 1) actions.forEach((action) => this.holdAction(action))
   }
 
-  private release(id: string, action: ActionName): void {
+  private release(id: string, actions: readonly ActionName[]): void {
     const count = Math.max(0, (this.pressCounts.get(id) ?? 0) - 1)
     this.pressCounts.set(id, count)
     if (count > 0) return
     this.buttons.get(id)?.el.classList.remove('pressed')
-    this.dispatchKey(action, 'keyup')
+    actions.forEach((action) => this.releaseAction(action))
+  }
+
+  /** The first button down on an action presses its key (a chord's keys go down in one synchronous run,
+   * so the game reads them on the same frame: that is what starts a dash-jump). */
+  private holdAction(action: ActionName): void {
+    const holds = (this.actionHolds.get(action) ?? 0) + 1
+    this.actionHolds.set(action, holds)
+    if (holds === 1) this.dispatchKey(action, 'keydown')
+  }
+
+  private releaseAction(action: ActionName): void {
+    const holds = Math.max(0, (this.actionHolds.get(action) ?? 0) - 1)
+    this.actionHolds.set(action, holds)
+    if (holds === 0) this.dispatchKey(action, 'keyup')
   }
 
   private releaseAllHeld(): void {
-    this.buttons.forEach(({ action }, id) => {
-      if ((this.pressCounts.get(id) ?? 0) > 0) this.dispatchKey(action, 'keyup')
+    this.actionHolds.forEach((holds, action) => {
+      if (holds > 0) this.dispatchKey(action, 'keyup')
     })
+    this.actionHolds.clear()
     this.pressCounts.clear()
     this.buttons.forEach(({ el }) => el.classList.remove('pressed'))
   }
