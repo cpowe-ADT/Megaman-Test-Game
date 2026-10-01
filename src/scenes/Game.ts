@@ -64,7 +64,6 @@ import { SwordHitRouter } from '../combat/SwordHitRouter'
 import type { PlayerDamageRequest, PlayerDamageResult } from '../player/types'
 import { ActiveRunSaveData, Save } from '../systems/Save'
 import { queueStageAssets, resolveGameStageAndBoss } from './game/stageBackgroundLoading'
-import { GameplayTouchControls } from '../ui/GameplayTouchControls'
 import { HUD, formatDistrictLabel } from '../ui/HUD'
 import { StageClearCards } from '../ui/StageClearCards'
 import { DialogueOverlayController } from '../ui/DialogueOverlayController'
@@ -182,7 +181,6 @@ export class Game extends Phaser.Scene {
   private bossUiBinder?: BossUIBinder
   private bossSceneEvents?: BossSceneEventBindings
   private virtualButtons?: DigitalButtonPad
-  private touchControls?: GameplayTouchControls
   private currentWeaponIndex = 0
   private weapons: string[] = ['Buster']
   private weaponEnergyById: Record<string, number> = buildWeaponEnergySnapshot([])
@@ -781,18 +779,6 @@ export class Game extends Phaser.Scene {
 
     this.virtualButtons = new DigitalButtonPad()
     this.actions.setTouchSource(this.virtualButtons)
-    this.touchControls?.destroy()
-    this.touchControls = undefined
-    if (this.playerFeatureFlags.enableTouchControls && GameplayTouchControls.shouldEnable()) {
-      this.touchControls = new GameplayTouchControls(this, this.virtualButtons, {
-        onPause: () => this.actions.pulse('pause')
-      })
-      this.touchControls.setVisible(true)
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        this.touchControls?.destroy()
-        this.touchControls = undefined
-      })
-    }
     this.swordHitRouter = new SwordHitRouter({
       scene: this, player: () => this.player, facing: () => this.facing, enemies: () => this.enemies, enemyShots: () => this.bossBullets,
       boss: () => (this.victoryTriggered ? null : (this.bossBeats.bodies.hurtTarget() ?? (this.bossTarget ?? this.bossBody)) as any ?? null), bossHp: () => this.bossHp?.current ?? null,
@@ -970,6 +956,12 @@ export class Game extends Phaser.Scene {
 
   private createPauseOverlay(width: number, height: number): void {
     this.pauseOverlay = createPauseOverlay(this, width, height)
+  }
+
+  /** The touch overlay's play/menu switch (`src/input/touch/TouchOverlay.ts`): true while the hero
+   * reads input directly, false while a dialogue, the pause menu, a card or results sits on top. */
+  isPlayInputActive(): boolean {
+    return !this.paused && !this.victoryTriggered && !this.dialogueOverlay?.isActive() && !this.victoryModal?.isOpen() && !this.storyDirector?.isBlocking()
   }
 
   private openSystemMenu(): void {
