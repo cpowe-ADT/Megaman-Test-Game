@@ -1,3 +1,4 @@
+/** Input vocabulary: action names, default and shortcut keyboard bindings, and the gamepad input names. */
 export const ACTION_NAMES = [
   'moveLeft', 'moveRight', 'aimUp', 'aimDown', 'jump', 'dash', 'shoot', 'saber',
   'weaponPrev', 'weaponNext', 'pause', 'confirm', 'cancel'

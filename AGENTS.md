@@ -6,7 +6,7 @@
 
 1. `progress.md`: the **Now** block and the last three entries. Never the archive unless a question needs history (`grep -n` it).
 2. Running a prompt from `docs/prompts/` (a work order such as `05-feel-hero-and-camera.md`): run `npm run agents:check -- --entry <N>`, then `npm run agents:context -- --part <part>` and read `output/context/<part>.md` instead of the whole charter, prompt, ledger and log. Paste formats are in `docs/prompts/START.md`.
-3. Any other task: the row for your area in "Where things are" below, and nothing else until the task needs it.
+3. Any other task: `grep -n -i <word> docs/MAP.md` finds the files (every `src/` file with its line count and header), then the row for your area in "Where things are" below, and nothing else until the task needs it. `docs/README.md` has the full read order.
 4. Numbers (tests, scenarios, `Game.ts` lines, open decisions, the latest footprint run): `npm run agents:facts`; budgets live in `tests/perf-budget.json` and `tests/agent-budget.json`. A count written in prose is stale by definition.
 
 ## Hard rules
@@ -68,6 +68,7 @@ Details and scenario names: `TESTING.md`. Merge blockers: `docs/testing/quality-
 | Automation, smoke, sweep | `TESTING.md`, `scripts/smoke-test.mjs`, `scripts/smoke/`, `scripts/mission-visual-sweep.mjs` |
 | Performance and disk | `docs/prompts/09-footprint-and-performance.md`, `scripts/perf/`, `tests/perf-budget.json` |
 | Agent system, prompts, seats, logs | `docs/prompts/10-agent-system.md`, `scripts/agents/`, `docs/prompts/seats/README.md` |
+| Find any file (all of `src/`, scripts, tests by area, smoke scenarios) | `docs/MAP.md`; regenerate with `npm run agents:map` after adding a file |
 | Architecture overview | `ARCHITECTURE.md`; full index `docs/README.md` |
 
 Scene flow: `Boot` -> `Preload` -> `Title`, then `NewCampaign`, `Prologue`, `StageSelect`, `Game`, with `SystemMenu` (pause and route console), `Options`, `Controls`, `GameOver`, `ProgressionSummary` and `Ending` (all registered in `src/main.ts`).

@@ -1,3 +1,4 @@
+/** Save data: the save shape, version and migrations, active-run validation, and the Save and Profiles stores over localStorage. */
 import {
   createFreshProgressionState,
   ensureProgressionState,

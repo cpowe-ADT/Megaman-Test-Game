@@ -1,3 +1,4 @@
+/** The boss roster: every boss blueprint (BOSS_ROSTER) in campaign order, with lookups by id. */
 import { IDENTITY } from '../content/identity'
 import { BossBlueprint, BossId, WeaknessTable } from './types'
 

@@ -16,6 +16,7 @@ import {
   checkHandoff,
   checkLedger,
   handoffStatus,
+  mapDrift,
   missingDocPaths,
   parseLedger
 } from './checks.mjs'
@@ -68,6 +69,19 @@ const docStats = Object.fromEntries(
   })
 )
 
+/** Every file under src/ (repo-relative), for the code-map check. */
+function srcFiles() {
+  const out = []
+  const visit = (dir) => {
+    for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+      if (entry.isDirectory()) visit(`${dir}/${entry.name}`)
+      else out.push(`${dir}/${entry.name}`)
+    }
+  }
+  visit('src')
+  return out
+}
+
 const groups = [
   ['ledger', checkLedger(rows, { commitExists, enforceFrom: budget.enforceLedgerFrom })],
   ['handoffs', handoffFiles.flatMap((file) => checkHandoff(read(`${handoffDir}/${file}`), file))],
@@ -79,20 +93,28 @@ const groups = [
       missingDocPaths(read(file), exists).map((missing) => ({ level: 'error', id: file, message: `names \`${missing}\`, which does not exist` }))
     )
   ],
-  ['decisions', checkDecisions(read('docs/prompts/DECISIONS.md'))]
+  ['decisions', checkDecisions(read('docs/prompts/DECISIONS.md'))],
+  ['code map', mapDrift(srcFiles(), exists('docs/MAP.md') ? read('docs/MAP.md') : '')]
 ]
 if (entry !== null) groups.push([`entry ${entry}`, checkEntry(entry, { chain: budget.chain, handoffs, rows, decisions: read('docs/prompts/DECISIONS.md') })])
 
 let errors = 0
 let warnings = 0
+let shownWarnings = 0
 for (const [name, issues] of groups) {
   const groupErrors = issues.filter((issue) => issue.level === 'error')
   const groupWarnings = issues.filter((issue) => issue.level === 'warn')
   errors += groupErrors.length
-  warnings += groupWarnings.length
-  console.log(`${groupErrors.length ? 'FAIL' : 'PASS'} ${name}${groupWarnings.length ? ` (${groupWarnings.length} legacy warnings)` : ''}`)
+  warnings += groupWarnings.filter((issue) => !issue.show).length
+  shownWarnings += groupWarnings.filter((issue) => issue.show).length
+  const shown = groupWarnings.filter((issue) => issue.show)
+  const legacy = groupWarnings.length - shown.length
+  const label = [legacy ? `${legacy} legacy warnings` : '', shown.length ? `${shown.length} warnings` : ''].filter(Boolean).join(', ')
+  console.log(`${groupErrors.length ? 'FAIL' : 'PASS'} ${name}${label ? ` (${label})` : ''}`)
   groupErrors.forEach((issue) => console.log(`  error ${issue.id}: ${issue.message}`))
-  if (process.argv.includes('--verbose')) groupWarnings.forEach((issue) => console.log(`  warn  ${issue.id}: ${issue.message}`))
+  shown.slice(0, 8).forEach((issue) => console.log(`  warn  ${issue.id}: ${issue.message}`))
+  if (shown.length > 8) console.log(`  warn  ... ${shown.length - 8} more`)
+  if (process.argv.includes('--verbose')) groupWarnings.filter((issue) => !issue.show).forEach((issue) => console.log(`  warn  ${issue.id}: ${issue.message}`))
 }
-console.log(`\nagents:check: ${errors} errors, ${warnings} legacy warnings (--verbose lists them); Game.ts ${gameTsLines} lines; ${rows.length} ledger rows in ${ledgerFiles.length} files.`)
+console.log(`\nagents:check: ${errors} errors, ${warnings} legacy warnings (--verbose lists them)${shownWarnings ? `, ${shownWarnings} map warnings (npm run agents:map)` : ''}; Game.ts ${gameTsLines} lines; ${rows.length} ledger rows in ${ledgerFiles.length} files.`)
 process.exit(errors ? 1 : 0)

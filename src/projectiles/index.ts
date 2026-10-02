@@ -1,3 +1,4 @@
+/** Projectiles entry point: re-exports the registry, system, collision router, default registry and player-shot helpers. */
 import { ProjectileRegistry } from './ProjectileRegistry'
 
 export { ProjectileRegistry } from './ProjectileRegistry'

@@ -1,3 +1,4 @@
+/** Progression types: modes, difficulty, stage-access, upgrade and consumable items, and location checks. */
 import type { BossId, WeaponId } from '../bosses/types'
 import type { CampaignStageId } from '../content/campaign'
 

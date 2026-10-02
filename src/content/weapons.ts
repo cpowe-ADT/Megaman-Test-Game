@@ -1,3 +1,4 @@
+/** Weapon configs: the Buster and each boss weapon's tuning, charged forms and fire behaviour, plus energy and weapon-order helpers. */
 import { BOSS_ROSTER } from '../bosses/roster'
 import type { Element, WeaponId } from '../bosses/types'
 

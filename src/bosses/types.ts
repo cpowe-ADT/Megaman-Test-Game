@@ -1,3 +1,4 @@
+/** Boss types: elements and the weakness table, damage multipliers, and the blueprint, attack and telegraph shapes the roster uses. */
 import Phaser from 'phaser'
 
 export type Element =

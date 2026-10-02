@@ -1,3 +1,4 @@
+/** The campaign: stage definitions (tutorial, eight robot-master stages, the Central Core) with their types, ids and the clear and unlock lookups. */
 import { IDENTITY } from './identity'
 import type { BossId, WeaponId } from '../bosses/types'
 import type { EnemyLevelMarker } from '../enemy/types'
