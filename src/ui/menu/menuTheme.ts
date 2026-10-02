@@ -1,3 +1,4 @@
+/** Menu theme: shared colours, backdrop, panel and heading helpers for the menu scenes, and the pixel-font exports. */
 import Phaser from 'phaser'
 import { GAME_SIZE } from '../../config/renderPolicy'
 

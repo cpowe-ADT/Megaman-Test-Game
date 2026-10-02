@@ -1,3 +1,4 @@
+/** Player config: the movement, dash, charge, blaster and sword tuning types and values, with Vec2, Direction8 and hitbox shapes. */
 export type Vec2 = { x: number; y: number }
 
 export type MovementTuningConfig = {

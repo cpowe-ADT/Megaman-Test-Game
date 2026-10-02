@@ -1,3 +1,4 @@
+/** Boss framework types: states, stats, hit specs, attacks, telegraphs and phase definitions for data-driven bosses. */
 import type { TelegraphSpec } from '../../bosses/types'
 
 export type BossState =

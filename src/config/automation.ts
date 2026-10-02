@@ -1,3 +1,4 @@
+/** Automation config: reads the ?automation=1 query and story and boss-intro flags into the AUTOMATION object scenes consult. */
 export type AutomationConfig = {
   enabled: boolean
   /** Story surfaces (prologue, stage card, briefing, radio, milestones, ending pages) play. `?storyIntro=off` disables them for automation. */

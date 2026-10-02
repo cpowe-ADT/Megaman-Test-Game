@@ -218,6 +218,40 @@ export function missingDocPaths(markdown, exists) {
   return [...new Set(missing)]
 }
 
+/**
+ * Paths the code map lists (docs/MAP.md, written by scripts/agents/map.mjs): a `### dir` heading, then
+ * one `name lines: header` line per file under it. Other lines (prose, scenario names) never match.
+ */
+export function mapListedPaths(markdown) {
+  const listed = new Set()
+  let dir = null
+  for (const line of markdown.split('\n')) {
+    if (line.startsWith('## ')) dir = null
+    const heading = line.match(/^### (\S+)/)
+    if (heading) dir = heading[1]
+    else if (dir) {
+      const entry = line.match(/^(\S+) \d+: /)
+      if (entry) listed.add(`${dir}/${entry[1]}`)
+    }
+  }
+  return listed
+}
+
+/** Warnings (never errors) when src/ files are not in the code map, or the map lists a src/ file that is gone. */
+export function mapDrift(srcFiles, mapMarkdown) {
+  if (!mapMarkdown) return [{ level: 'warn', id: 'docs/MAP.md', message: 'is missing; run npm run agents:map', show: true }]
+  const listed = mapListedPaths(mapMarkdown)
+  const onDisk = new Set(srcFiles)
+  const issues = []
+  for (const file of srcFiles) {
+    if (!listed.has(file)) issues.push({ level: 'warn', id: file, message: 'is not in docs/MAP.md; run npm run agents:map', show: true })
+  }
+  for (const file of listed) {
+    if (file.startsWith('src/') && !onDisk.has(file)) issues.push({ level: 'warn', id: file, message: 'is in docs/MAP.md but gone; run npm run agents:map', show: true })
+  }
+  return issues
+}
+
 /** Decisions log rows: `| D-001 | raised | question | recommendation | panel | blocks | OPEN or DECIDED | reply | date |`. */
 export function parseDecisions(markdown) {
   return markdown

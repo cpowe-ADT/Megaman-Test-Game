@@ -58,6 +58,9 @@
     },
     "docs/prompts/13-polish-from-playtest.md": {
       "maxBytes": 16000
+    },
+    "docs/MAP.md": {
+      "maxBytes": 26000
     }
   },
   "pathCheckedDocs": [

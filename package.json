@@ -21,6 +21,7 @@
     "clean:artifacts": "node scripts/perf/clean-artifacts.mjs",
     "agents:check": "node scripts/agents/check.mjs",
     "agents:facts": "node scripts/agents/facts.mjs",
+    "agents:map": "node scripts/agents/map.mjs",
     "agents:context": "node scripts/agents/context-pack.mjs",
     "agents:packet": "node scripts/agents/review-packet.mjs",
     "gate": "node scripts/agents/gate.mjs",

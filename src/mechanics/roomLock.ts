@@ -1,3 +1,4 @@
+/** Room lock rules: the locked-room state machine (dormant, locked, open) with defeat and wave locks and the inputs it disables, pure. */
 import type { InputBindings } from '../input/ActionState'
 import type { EnemyLevelMarker } from '../enemy/types'
 

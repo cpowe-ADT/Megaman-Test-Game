@@ -1,3 +1,4 @@
+/** Breakable wall: pure state (intact, cracked, broken) and hit rules for the saber and charged shots. */
 import { isSaberInReach } from './roomLock'
 import type { Box } from './crumbleGroup'
 

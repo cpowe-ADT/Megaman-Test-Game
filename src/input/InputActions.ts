@@ -1,3 +1,4 @@
+/** Input actions: the keyboard and gamepad hub, and the per-scene SceneInputActions that scenes read held and pressed actions from. */
 import type Phaser from 'phaser'
 import AudioService from '../audio'
 import { Settings } from '../systems/Settings'

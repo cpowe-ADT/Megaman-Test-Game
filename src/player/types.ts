@@ -1,3 +1,4 @@
+/** Player runtime types: intent, locomotion and action states, motor and combat snapshots, and projectile spawn requests. */
 import type { Direction8, HitboxShape } from './config'
 
 export type PlayerIntent = {

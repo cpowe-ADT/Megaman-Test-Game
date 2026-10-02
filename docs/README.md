@@ -1,5 +1,14 @@
 # Documentation Index
 
+## Read order for a new model
+1. `AGENTS.md`: rules, gates and where things are (under 150 lines).
+2. `progress.md`: the **Now** block, then the last three entries.
+3. `docs/MAP.md`: every `src/` file with its line count and header sentence, the scripts, the tests by area and the smoke scenarios. Find code with `grep -n -i <word> docs/MAP.md`; regenerate it with `npm run agents:map`.
+4. The row for your area in the AGENTS.md "Where things are" table, and only the files it names.
+5. `docs/next/`: the work backlog, one card per slice (planned: the orchestrator writes it after the map).
+
+Then read ranges, not whole files: anything over 20KB is read with `grep -n` and an offset.
+
 This repository uses an authority-based documentation structure. Start here when you need to know which docs are current, which are in-progress planning artifacts, and which are historical context only.
 
 ## Status Model
@@ -11,6 +20,7 @@ This repository uses an authority-based documentation structure. Start here when
 ## If You Need X, Read Y
 | Need | Read |
 | --- | --- |
+| Find which file holds what (every `src/` file, scripts, tests, smoke scenarios) | `docs/MAP.md` |
 | Run the game and see current state | `README.md` |
 | Understand repo workflow for agents | `AGENTS.md` |
 | Understand contribution rules | `CONTRIBUTING.md` |
@@ -117,4 +127,4 @@ This repository uses an authority-based documentation structure. Start here when
 - Update this index whenever a doc is added, moved, archived, or promoted.
 
 ## Compatibility Notes
-- Legacy flat `docs/*.md` paths for moved files now contain lightweight redirect stubs so older references still resolve to the new canonical or archived locations.
+- The flat redirect stubs that used to sit directly in `docs/` (assets, sprites, target architecture and twelve more) moved to `docs/archive/legacy/` on 2026-10-01; its README says what replaced each one.

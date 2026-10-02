@@ -1,3 +1,4 @@
+/** Settings: defaults and validation for volume, key and pad bindings, touch-controls mode and the other persisted options. */
 import { ACTION_NAMES, DEFAULT_BINDINGS, DEFAULT_PAD_BINDINGS, PAD_INPUTS, type InputBindings, type PadBindings, type PadInput } from '../input/ActionState'
 import { PIXEL_SCALING_MODES, setPixelScalingSource, type PixelScaling } from '../config/renderPolicy'
 type SettingsStorage = { getItem(key: string): string | null; setItem(key: string, value: string): void }

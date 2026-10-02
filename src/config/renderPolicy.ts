@@ -1,3 +1,4 @@
+/** The render policy: game-pixel size (GAME_WIDTH, GAME_HEIGHT, GAME_SIZE), strict pixel settings and the smooth or integer zoom rule. */
 export const STRICT_PIXEL_RENDER_POLICY = Object.freeze({
   antialias: false,
   pixelArt: true,

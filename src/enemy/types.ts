@@ -1,3 +1,4 @@
+/** Enemy types: the config shapes for movement, stats, AI, attacks and death that enemy definitions and the runtime share. */
 import Phaser from 'phaser'
 import type { ProjectileSystem } from '../projectiles'
 import type { PlayerDamageRequest, PlayerDamageResult } from '../player/types'

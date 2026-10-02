@@ -13,3 +13,4 @@ This folder preserves historical context that may still help future contributors
 ## Files
 - `implementation-prompt-v2.md`
 - `next-7-days.md`
+- `legacy/`: the flat redirect stubs that used to sit in `docs/` (index inside, one line per file)
